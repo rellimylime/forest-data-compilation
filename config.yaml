@@ -1,0 +1,191 @@
+# forest-data-compilation configuration
+# Nested structure: access paths like config['raw']['ads']['files']['region1']['url']
+
+base_path: '/home/ermiller/forest-data-compilation'
+
+# ==============================================================================
+# RAW DATA
+# ==============================================================================
+
+raw:
+
+  ids:
+    description: "USDA Forest Service Insect and Disease Detection Survey"
+    source: "https://www.fs.usda.gov/science-technology/data-tools-products/fhp-mapping-reporting/detection-surveys"
+    format: "geodatabase (.gdb)"
+    local_dir: "01_ids/data/raw"
+    files:
+      region1:
+        url: "https://www.fs.usda.gov/foresthealth/docs/IDS_Data_for_Download/CONUS_Region1_AllYears.gdb.zip"
+        filename: "CONUS_Region1_AllYears.gdb.zip"
+        description: "Northern Region (MT, ND, ID panhandle)"
+      region2:
+        url: "https://www.fs.usda.gov/foresthealth/docs/IDS_Data_for_Download/CONUS_Region2_AllYears.gdb.zip"
+        filename: "CONUS_Region2_AllYears.gdb.zip"
+        description: "Rocky Mountain Region (CO, WY, SD, NE, KS)"
+      region3:
+        url: "https://www.fs.usda.gov/foresthealth/docs/IDS_Data_for_Download/CONUS_Region3_AllYears.gdb.zip"
+        filename: "CONUS_Region3_AllYears.gdb.zip"
+        description: "Southwestern Region (AZ, NM)"
+      region4:
+        url: "https://www.fs.usda.gov/foresthealth/docs/IDS_Data_for_Download/CONUS_Region4_AllYears.gdb.zip"
+        filename: "CONUS_Region4_AllYears.gdb.zip"
+        description: "Intermountain Region (UT, NV, ID, WY)"
+      region5_ca:
+        url: "https://www.fs.usda.gov/foresthealth/docs/IDS_Data_for_Download/CONUS_Region5_AllYears.gdb.zip"
+        filename: "CONUS_Region5_AllYears.gdb.zip"
+        description: "Pacific Southwest Region - California"
+      region5_hi:
+        url: "https://www.fs.usda.gov/foresthealth/docs/IDS_Data_for_Download/HI_Region5_AllYears.gdb.zip"
+        filename: "HI_Region5_AllYears.gdb.zip"
+        description: "Pacific Southwest Region - Hawaii"
+      region6:
+        url: "https://www.fs.usda.gov/foresthealth/docs/IDS_Data_for_Download/CONUS_Region6_AllYears.gdb.zip"
+        filename: "CONUS_Region6_AllYears.gdb.zip"
+        description: "Pacific Northwest Region (OR, WA)"
+      region8:
+        url: "https://www.fs.usda.gov/foresthealth/docs/IDS_Data_for_Download/CONUS_Region8_AllYears.gdb.zip"
+        filename: "CONUS_Region8_AllYears.gdb.zip"
+        description: "Southern Region (13 southeastern states)"
+      region9:
+        url: "https://www.fs.usda.gov/foresthealth/docs/IDS_Data_for_Download/CONUS_Region9_AllYears.gdb.zip"
+        filename: "CONUS_Region9_AllYears.gdb.zip"
+        description: "Eastern Region (20 northeastern/midwestern states)"
+      region10:
+        url: "https://www.fs.usda.gov/foresthealth/docs/IDS_Data_for_Download/AK_Region10_AllYears.gdb.zip"
+        filename: "AK_Region10_AllYears.gdb.zip"
+        description: "Alaska Region"
+
+  terraclimate:
+    description: "High-resolution global climate and water balance (1958-present)"
+    source: "https://www.climatologylab.org/terraclimate.html"
+    citation: "Abatzoglou et al. 2018, Scientific Data"
+    format: "GeoTIFF (exported from GEE)"
+    access_method: "Google Earth Engine"
+    gee_asset: "IDAHO_EPSCOR/TERRACLIMATE"
+    spatial_resolution: "~4km (1/24th degree)"
+    temporal_resolution: "monthly"
+    local_dir: "02_terraclimate/data/raw"
+    variables:
+      # Primary climate variables
+      tmax:
+        description: "Maximum temperature"
+        units: "°C"
+        scale: 0.1
+      tmin:
+        description: "Minimum temperature"
+        units: "°C"
+        scale: 0.1
+      ppt:
+        description: "Precipitation accumulation"
+        units: "mm"
+        scale: 1
+      srad:
+        description: "Downward surface shortwave radiation"
+        units: "W/m2"
+        scale: 0.1
+      vs:
+        description: "Wind speed at 10m"
+        units: "m/s"
+        scale: 0.01
+      vap:
+        description: "Vapor pressure"
+        units: "kPa"
+        scale: 0.001
+      # Derived variables
+      vpd:
+        description: "Vapor pressure deficit"
+        units: "kPa"
+        scale: 0.01
+      pet:
+        description: "Reference evapotranspiration (Penman-Monteith)"
+        units: "mm"
+        scale: 0.1
+      aet:
+        description: "Actual evapotranspiration"
+        units: "mm"
+        scale: 0.1
+      def:
+        description: "Climate water deficit"
+        units: "mm"
+        scale: 0.1
+      soil:
+        description: "Soil moisture"
+        units: "mm"
+        scale: 0.1
+      swe:
+        description: "Snow water equivalent"
+        units: "mm"
+        scale: 1
+      ro:
+        description: "Runoff"
+        units: "mm"
+        scale: 1
+      pdsi:
+        description: "Palmer Drought Severity Index"
+        units: "unitless"
+        scale: 0.01
+
+  prism:
+    description: "PRISM climate data for contiguous US"
+    source: "https://prism.oregonstate.edu/"
+    format: "BIL raster"
+    local_dir: "03_prism/data/raw"
+    files: {}  # TBD
+
+  worldclim:
+    description: "Global climate and bioclimatic variables"
+    source: "https://www.worldclim.org/"
+    format: "GeoTIFF"
+    local_dir: "04_worldclim/data/raw"
+    files: {}  # TBD
+
+# ==============================================================================
+# PROCESSED DATA
+# ==============================================================================
+
+processed:
+
+  ids:
+    local_dir: "01_ids/data/processed"
+    files:
+      merged:
+        filename: "ids_all_regions.gpkg"
+        description: "All regions merged into single file"
+      cleaned:
+        filename: "ids_cleaned.gpkg"
+        description: "After QC and cleaning"
+
+  terraclimate:
+    local_dir: "02_terraclimate/data/processed"
+    files:
+      cleaned:
+        filename: "terraclimate_cleaned.csv"
+        description: "Extracted and cleaned TerraClimate data"
+
+# ==============================================================================
+# MERGED DATA
+# ==============================================================================
+
+merged:
+  local_dir: "merged_data"
+  files:
+    deliverable1:
+      filename: "ids_terraclimate_merged.csv"
+      description: "IDS observations joined with TerraClimate variables"
+
+# ==============================================================================
+# PARAMETERS
+# ==============================================================================
+
+params:
+  study_area:
+    description: "Continental US bounding box"
+    xmin: -125
+    xmax: -66
+    ymin: 24
+    ymax: 50
+  time_range:
+    start_year: 1997
+    end_year: 2024
+  crs: "EPSG:4326"
