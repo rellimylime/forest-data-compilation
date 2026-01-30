@@ -127,7 +127,7 @@ list_gdb_layers <- function(gdb_path) {
 #' @param dataset_name Name of dataset (e.g., "ids", "terraclimate")
 #' @return data.frame with schema definition
 load_schema <- function(dataset_name) {
-  schema_path <- here("scripts/utils/schemas", paste0(dataset_name, "_schema.csv"))
+  schema_path <- here(dataset_folder, "schema.csv")
   
   if (!file.exists(schema_path)) {
     stop(glue("Schema not found: {schema_path}"))

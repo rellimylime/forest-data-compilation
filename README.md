@@ -15,16 +15,21 @@ forest-data-compilation/
 │   ├── 00_setup.R
 │   └── utils/
 │       ├── load_config.R
-│       └── gee_utils.R                # Reusable GEE functions
+│       ├── gee_utils.R               # Reusable GEE functions
+│       └── metadata_utils.R                
 │
 ├── local/                             # Gitignored, user-specific
 │   └── user_config.yaml
 │
 ├── 01_ids/
 │   ├── README.txt
+│   ├── schema.csv
 │   ├── data_dictionary.csv
 │   ├── cleaning_log.md
 │   ├── WORKFLOW.md
+├── docs/
+│   ├── IDS2_FlatFiles_Readme.pdf
+│   └── IDS2_TemplateFeatureClasses.xlsx
 │   ├── scripts/
 │   │   ├── 01_download_ids.R
 │   │   ├── 02_inspect_ids.R
