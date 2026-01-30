@@ -3,39 +3,66 @@
 # Download USDA Forest Service Insect and Disease Detection Survey data
 # ==============================================================================
 
-library(yaml)
-library(here)
+# Load config
+source("scripts/utils/load_config.R")
+config <- load_config()
 
-# --- Load config --------------------------------------------------------------
-config <- read_yaml(here("config.yaml"))
-ids_config <- config$raw$ids
+library(fs)
+library(httr)
+library(glue)
 
-# --- Setup output directory ---------------------------------------------------
-output_dir <- here(ids_config$local_dir)
-dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+# Set up directories
+raw_dir <- here(config$raw$ids$local_dir)
+dir_create(raw_dir)
 
-cat("Source:", ids_config$source, "\n")
-cat("Downloading to:", output_dir, "\n\n")
+# Get list of regions from config
+regions <- config$raw$ids$files
 
-# --- Download each region -----------------------------------------------------
-for (region_name in names(ids_config$files)) {
-  region <- ids_config$files[[region_name]]
+# Download function
+download_ids_region <- function(region_name, region_info, dest_dir) {
   
-  output_path <- file.path(output_dir, region$filename)
+  dest_file <- file.path(dest_dir, region_info$filename)
   
   # Skip if already exists
-  if (file.exists(output_path)) {
-    cat("[SKIP]", region_name, "- already exists\n")
-    next
+  if (file_exists(dest_file)) {
+    message(glue("Skipping {region_name}: {region_info$filename} already exists"))
+    return(invisible(NULL))
   }
   
-  cat("[DOWNLOAD]", region_name, "-", region$description, "\n")
+  message(glue("Downloading {region_name}: {region_info$description}"))
   
-  download.file(
-    url = region$url,
-    destfile = output_path,
-    mode = "wb"  # binary mode for zip files
+  # Download with progress
+  response <- GET(
+    region_info$url,
+    write_disk(dest_file, overwrite = FALSE),
+    progress()
   )
+  
+  # Check for errors
+  if (http_error(response)) {
+    warning(glue("Failed to download {region_name}: HTTP {status_code(response)}"))
+    file_delete(dest_file)  # Clean up partial download
+    return(invisible(NULL))
+  }
+  
+  message(glue("  Saved: {dest_file} ({file_size(dest_file)})"))
+  
+  # Unzip
+  gdb_dir <- file.path(dest_dir, gsub("\\.zip$", "", region_info$filename))
+  if (!dir_exists(gdb_dir)) {
+    message(glue("  Unzipping..."))
+    unzip(dest_file, exdir = dest_dir)
+  }
+  
+  invisible(dest_file)
 }
 
-cat("\nDone.\n")
+# Download all regions
+message(glue("Downloading IDS data to: {raw_dir}\n"))
+
+for (region_name in names(regions)) {
+  download_ids_region(region_name, regions[[region_name]], raw_dir)
+  message("")  # blank line between regions
+}
+
+message("Done.")
