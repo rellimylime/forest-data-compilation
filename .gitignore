@@ -41,6 +41,7 @@ vignettes/*.pdf
 
 # pkgdown site
 docs/
+!01_ids/docs
 
 # translation temp files
 po/*~
