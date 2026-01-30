@@ -50,3 +50,6 @@ rsconnect/
 
 # Data folder
 **/data/
+
+# User specifc
+local/
