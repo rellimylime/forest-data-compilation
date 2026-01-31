@@ -1,6 +1,5 @@
 # forest-data-compilation
 Compiled and cleaned datasets for forest disturbance analysis: aerial detection surveys, climate data (TerraClimate, PRISM, WorldClim), and related environmental variables.
-
 ```
 forest-data-compilation/
 ├── README.md
@@ -15,31 +14,36 @@ forest-data-compilation/
 │   ├── 00_setup.R
 │   └── utils/
 │       ├── load_config.R
-│       ├── gee_utils.R               # Reusable GEE functions
-│       └── metadata_utils.R                
+│       ├── gee_utils.R
+│       └── metadata_utils.R
 │
 ├── local/                             # Gitignored, user-specific
 │   └── user_config.yaml
 │
 ├── 01_ids/
 │   ├── README.txt
-│   ├── schema.csv
 │   ├── data_dictionary.csv
 │   ├── cleaning_log.md
 │   ├── WORKFLOW.md
-├── docs/
-│   ├── IDS2_FlatFiles_Readme.pdf
-│   └── IDS2_TemplateFeatureClasses.xlsx
+│   ├── docs/
+│   │   ├── IDS2_FlatFiles_Readme.pdf
+│   │   └── IDS2_TemplateFeatureClasses.xlsx
+│   ├── lookups/
+│   │   ├── host_code_lookup.csv
+│   │   ├── dca_code_lookup.csv
+│   │   ├── damage_type_lookup.csv
+│   │   ├── percent_affected_lookup.csv
+│   │   ├── legacy_severity_lookup.csv
+│   │   └── region_lookup.csv
 │   ├── scripts/
 │   │   ├── 01_download_ids.R
 │   │   ├── 02_inspect_ids.R
 │   │   ├── 03_clean_ids.R
-│   │   └── 04_prep_merge_ids.R
+│   │   └── 04_verify_ids.R
 │   └── data/
-│       ├── raw/
-│       │   └── .gitkeep
+│       ├── raw/                       # 10 regional .gdb files (~1.6 GB)
 │       └── processed/
-│           └── .gitkeep
+│           └── ids_damage_areas_cleaned.gpkg  # 4.5M features, 3.8 GB
 │
 ├── 02_terraclimate/
 │   ├── README.txt
@@ -47,10 +51,7 @@ forest-data-compilation/
 │   ├── cleaning_log.md
 │   ├── WORKFLOW.md
 │   ├── scripts/
-│   │   ├── 01_get_terraclimate.R      # Uses gee_utils.R
-│   │   ├── 02_inspect_terraclimate.R
-│   │   ├── 03_clean_terraclimate.R
-│   │   └── 04_prep_merge_terraclimate.R
+│   │   └── .gitkeep
 │   └── data/
 │       ├── raw/
 │       │   └── .gitkeep
