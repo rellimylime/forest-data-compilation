@@ -1,0 +1,4 @@
+LEGACY_SEVERITY_CODE,LEGACY_SEVERITY
+-1,No Data
+1,Low (<= 50% defol.)
+2,High (> 50% defol.)

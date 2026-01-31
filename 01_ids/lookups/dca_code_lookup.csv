@@ -1,0 +1,130 @@
+DCA_CODE,DCA_COMMON_NAME
+10000,miscellaneous insects and allies
+10021,conifer seedling weevil
+11000,bark beetles
+11002,western pine beetle
+11004,Jeffrey pine beetle
+11005,lodgepole pine beetle
+11006,mountain pine beetle
+11007,Douglas-fir beetle
+11012,red turpentine beetle
+11019,pinyon ips
+11027,California fivespined ips
+11029,pine engraver
+11030,ips engraver beetles
+11035,cedar & cypress bark beetles
+11036,western cedar bark beetle
+11039,twig beetles
+11041,fir root bark beetle
+11048,true fir bark beetles
+11049,Douglas-fir engraver
+11050,fir engraver
+11070,Mediterranean oak borer
+11900,unknown bark beetle
+12000,defoliators
+12004,needleminers
+12005,sawflies
+12015,alder flea beetle
+12021,fruittree leafroller
+12040,western spruce budworm
+12042,Modoc budworm
+12045,leafhopper
+12048,birch casebearer
+12049,lodgepole needleminer
+12050,Gelechiid moths/needleminers
+12082,fall webworm
+12084,oak looper
+12086,satin moth
+12103,balsam fir sawfly
+12123,Douglas-fir tussock moth
+12132,California oakworm
+12160,pine needle sheathminer
+12171,pinyon sawfly
+12900,unknown defoliator
+14003,balsam woolly adelgid
+14017,spruce aphid
+14029,pinyon needle scale
+14039,black pineleaf scale
+15000,wood borers
+15008,flatheaded borer
+15040,California flatheaded borer
+15041,flatheaded fir borer
+15094,goldspotted oak borer
+15104,polyphagous shot hole borer
+15900,unknown wood borer
+19000,general diseases
+21000,root diseases/decay
+21001,Armillaria root disease
+21010,Heterobasidion root disease
+21014,black stain root disease
+21020,Port-Orford-cedar root disease
+21028,sudden oak death
+21036,pine black stain root disease
+21046,canker rot of oak
+21800,"other root disease or decay, known (code pending)"
+21900,unknown root disease or decay
+22026,Cytospora canker of fir
+22032,pitch canker of pines (Gibberella circinata also known as Fusarium circinatum)
+22048,aspen trunk rot
+22066,pinyon black stain root disease
+22086,thousand cankers disease
+22091,sudden oak death
+22098,pistachio canker
+22800,"other canker agent, known (code pending)"
+23001,mistletoes
+23008,western dwarf mistletoe
+23020,true mistletoe
+23021,red fir dwarf mistletoe
+23023,dwarf mistletoe
+24000,wilts
+24007,pest complex
+24017,true fir pest complex
+25000,foliage and shoot diseases
+25005,needlecast
+25010,sycamore anthracnose
+25022,Elytroderma needle blight
+25025,anthracnose
+25034,Lophodermella needle cast of pines
+25035,Lophodermium needle cast of pines
+25036,Marssonina blight
+25040,Dothistroma needle blight (D. septosporum)
+25043,Swiss needle cast
+25058,Diplodia canker
+25900,unknown foliage or shoot disease
+26000,rusts
+26001,white pine blister rust
+26002,western gall rust
+26004,comandra blister rust
+30000,fire
+30001,wild fire
+30002,human caused fire
+41000,wild animals
+41001,bears
+41009,squirrels
+41900,unknown wild animal
+50000,abiotic agents
+50001,air pollutants
+50003,drought
+50004,flooding-high water
+50005,frost
+50008,lightning
+50009,nutrient imbalances
+50011,snow-ice
+50013,wind-tornado/hurricane
+50014,winter injury
+50015,avalanche
+50016,mud-land slide
+50017,volcano
+70000,human activities
+70001,herbicides
+70006,land use conversion
+70008,mechanical
+70012,suppression
+80000,"multi-agent ""complexes"""
+80001,aspen defoliation
+80008,root disease or bears
+90000,unknown
+90002,dead top
+90008,foliage discoloration
+90009,mortality
+99999,no data

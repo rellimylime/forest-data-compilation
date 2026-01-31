@@ -1,0 +1,18 @@
+DAMAGE_TYPE_CODE,DAMAGE_TYPE
+-1,No Data
+1,Defoliation
+2,Mortality
+3,Crown Discoloration
+4,Crown Dieback
+5,Topkill
+6,Branch Breakage
+7,Main stem Broken or Uprooted
+8,Branch flagging
+9,No damage
+10,Other Damage
+11,Mortality - Previously Undocumented
+12,Defoliation < 50% of leaves defoliated
+13,Defoliation 50-75% of leaves defoliated
+14,Defoliation > 75% of leaves defoliated
+18,Other Damage (known)
+19,Unknown Damage

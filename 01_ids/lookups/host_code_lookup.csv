@@ -1,0 +1,77 @@
+HOST_CODE,HOST
+10,fir spp.
+14,Santa Lucia or bristlecone fir
+15,white fir
+17,grand fir
+19,subalpine fir
+20,California red fir
+21,Shasta red fir
+41,Port-Orford-cedar
+50,cypress
+54,Monterey cypress
+55,Sargent's cypress
+57,redcedar/juniper spp.
+62,California juniper
+64,western juniper
+81,incense-cedar
+90,spruce spp.
+96,blue spruce
+98,Sitka spruce
+100,pine spp.
+101,whitebark pine
+102,Rocky Mountain bristlecone pine
+103,knobcone pine
+104,foxtail pine
+106,common or two-needle pinyon
+108,lodgepole pine
+109,Coulter pine
+113,limber pine
+116,Jeffrey pine
+117,sugar pine
+119,western white pine
+120,bishop pine
+122,ponderosa pine
+124,Monterey pine
+127,gray or California foothill pine
+133,singleleaf pinyon
+137,Washoe pine
+138,four-leaf or Parry pinyon pine
+201,bigcone Douglas-fir
+202,Douglas-fir
+211,redwood
+212,giant sequoia
+264,mountain hemlock
+299,Unknown conifer(s)
+312,bigleaf maple
+313,boxelder
+351,red alder
+352,white alder
+361,Pacific madrone
+475,curlleaf mountain-mahogany
+510,eucalyptus spp.
+603,northern California black walnut
+631,tanoak
+730,California sycamore
+740,cottonwood and poplar spp.
+746,quaking aspen
+747,black cottonwood
+748,Fremont cottonwood
+800,oak spp.
+801,California live oak
+805,canyon live oak
+807,blue oak
+808,Durand oak
+811,Engelmann oak
+815,Oregon white oak
+818,California black oak
+821,California white oak
+838,live oak
+839,interior live oak
+920,willow spp.
+924,Bonpland willow
+998,Unknown hardwood(s)
+999,Other or unknown live tree
+6011,blackwood
+7783,ohia lehua
+9998,All tree species
+9999,known but not listed
