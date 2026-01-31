@@ -218,6 +218,95 @@ print(totals)
 cat(glue("\nGrand total DAMAGE_AREAS: {format(totals$total_features[totals$layer_type == 'DAMAGE_AREAS_FLAT'], big.mark = ',')}\n"))
 
 # ==============================================================================
+# 8. GENERATE LOOKUP TABLES
+# ==============================================================================
+
+cat("\n\n=== GENERATING LOOKUP TABLES ===\n")
+
+# HOST_CODE lookup
+host_query <- glue("SELECT HOST_CODE, HOST FROM \"{r5_damage_areas}\" WHERE HOST IS NOT NULL")
+host_lookup <- st_read(r5_path, query = host_query, quiet = TRUE) |> 
+  st_drop_geometry() |>
+  distinct(HOST_CODE, HOST) |>
+  arrange(HOST_CODE)
+
+write_csv(host_lookup, here("01_ids/host_code_lookup.csv"))
+cat(glue("Saved {nrow(host_lookup)} host codes to host_code_lookup.csv\n"))
+
+# DCA_CODE lookup
+dca_query <- glue("SELECT DCA_CODE, DCA_COMMON_NAME FROM \"{r5_damage_areas}\"")
+dca_lookup <- st_read(r5_path, query = dca_query, quiet = TRUE) |> 
+  st_drop_geometry() |>
+  distinct(DCA_CODE, DCA_COMMON_NAME) |>
+  arrange(DCA_CODE)
+
+write_csv(dca_lookup, here("01_ids/dca_code_lookup.csv"))
+cat(glue("Saved {nrow(dca_lookup)} DCA codes to dca_code_lookup.csv\n"))
+
+# DAMAGE_TYPE lookup
+damage_type_query <- glue("SELECT DAMAGE_TYPE_CODE, DAMAGE_TYPE FROM \"{r5_damage_areas}\"")
+damage_type_lookup <- st_read(r5_path, query = damage_type_query, quiet = TRUE) |> 
+  st_drop_geometry() |>
+  distinct(DAMAGE_TYPE_CODE, DAMAGE_TYPE) |>
+  arrange(DAMAGE_TYPE_CODE)
+
+write_csv(damage_type_lookup, here("01_ids/damage_type_lookup.csv"))
+cat(glue("Saved {nrow(damage_type_lookup)} damage types to damage_type_lookup.csv\n"))
+
+# PERCENT_AFFECTED lookup
+pct_query <- glue("SELECT PERCENT_AFFECTED_CODE, PERCENT_AFFECTED FROM \"{r5_damage_areas}\" WHERE PERCENT_AFFECTED IS NOT NULL")
+pct_lookup <- st_read(r5_path, query = pct_query, quiet = TRUE) |> 
+  st_drop_geometry() |>
+  distinct(PERCENT_AFFECTED_CODE, PERCENT_AFFECTED) |>
+  arrange(PERCENT_AFFECTED_CODE)
+
+write_csv(pct_lookup, here("01_ids/percent_affected_lookup.csv"))
+cat(glue("Saved {nrow(pct_lookup)} percent affected codes to percent_affected_lookup.csv\n"))
+
+# LEGACY_SEVERITY lookup
+severity_query <- glue("SELECT LEGACY_SEVERITY_CODE, LEGACY_SEVERITY FROM \"{r5_damage_areas}\" WHERE LEGACY_SEVERITY IS NOT NULL")
+severity_lookup <- st_read(r5_path, query = severity_query, quiet = TRUE) |> 
+  st_drop_geometry() |>
+  distinct(LEGACY_SEVERITY_CODE, LEGACY_SEVERITY) |>
+  arrange(LEGACY_SEVERITY_CODE)
+
+write_csv(severity_lookup, here("01_ids/legacy_severity_lookup.csv"))
+cat(glue("Saved {nrow(severity_lookup)} legacy severity codes to legacy_severity_lookup.csv\n"))
+
+# REGION lookup (manually created - not extracted from data)
+region_lookup <- tibble(
+  REGION_ID = c(1, 2, 3, 4, 5, 5, 6, 8, 9, 10),
+  REGION_NAME = c(
+    "Northern",
+    "Rocky Mountain", 
+    "Southwestern",
+    "Intermountain",
+    "Pacific Southwest (CA)",
+    "Pacific Southwest (HI)",
+    "Pacific Northwest",
+    "Southern",
+    "Eastern",
+    "Alaska"
+  ),
+  STATES = c(
+    "MT, ND, ID panhandle",
+    "CO, WY, SD, NE, KS",
+    "AZ, NM",
+    "UT, NV, ID, WY",
+    "CA",
+    "HI",
+    "OR, WA",
+    "13 SE states",
+    "20 NE/MW states",
+    "AK"
+  ),
+  US_AREA = c("CONUS", "CONUS", "CONUS", "CONUS", "CONUS", "HAWAII", "CONUS", "CONUS", "CONUS", "ALASKA")
+)
+
+write_csv(region_lookup, here("01_ids/region_lookup.csv"))
+cat(glue("Saved {nrow(region_lookup)} regions to region_lookup.csv\n"))
+
+# ==============================================================================
 # DONE
 # ==============================================================================
 
