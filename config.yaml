@@ -57,75 +57,73 @@ raw:
         description: "Alaska Region"
 
   terraclimate:
-    description: "High-resolution global climate and water balance (1958-present)"
-    source: "https://www.climatologylab.org/terraclimate.html"
-    citation: "Abatzoglou et al. 2018, Scientific Data"
-    format: "GeoTIFF (exported from GEE)"
-    access_method: "Google Earth Engine"
-    gee_asset: "IDAHO_EPSCOR/TERRACLIMATE"
-    spatial_resolution: "~4km (1/24th degree)"
-    temporal_resolution: "monthly"
-    local_dir: "02_terraclimate/data/raw"
-    variables:
-      # Primary climate variables
-      tmax:
-        description: "Maximum temperature"
-        units: "°C"
-        scale: 0.1
-      tmin:
-        description: "Minimum temperature"
-        units: "°C"
-        scale: 0.1
-      ppt:
-        description: "Precipitation accumulation"
-        units: "mm"
-        scale: 1
-      srad:
-        description: "Downward surface shortwave radiation"
-        units: "W/m2"
-        scale: 0.1
-      vs:
-        description: "Wind speed at 10m"
-        units: "m/s"
-        scale: 0.01
-      vap:
-        description: "Vapor pressure"
-        units: "kPa"
-        scale: 0.001
-      # Derived variables
-      vpd:
-        description: "Vapor pressure deficit"
-        units: "kPa"
-        scale: 0.01
-      pet:
-        description: "Reference evapotranspiration (Penman-Monteith)"
-        units: "mm"
-        scale: 0.1
-      aet:
-        description: "Actual evapotranspiration"
-        units: "mm"
-        scale: 0.1
-      def:
-        description: "Climate water deficit"
-        units: "mm"
-        scale: 0.1
-      soil:
-        description: "Soil moisture"
-        units: "mm"
-        scale: 0.1
-      swe:
-        description: "Snow water equivalent"
-        units: "mm"
-        scale: 1
-      ro:
-        description: "Runoff"
-        units: "mm"
-        scale: 1
-      pdsi:
-        description: "Palmer Drought Severity Index"
-        units: "unitless"
-        scale: 0.01
-
+      description: "High-resolution global climate and water balance (1958-present)"
+      source: "https://www.climatologylab.org/terraclimate.html"
+      citation: "Abatzoglou et al. 2018, Scientific Data"
+      format: "extracted via GEE"
+      access_method: "Google Earth Engine"
+      gee_asset: "IDAHO_EPSCOR/TERRACLIMATE"
+      spatial_resolution: "~4km (1/24th degree)"
+      temporal_resolution: "monthly"
+      local_dir: "02_terraclimate/data/raw"
+      variables:
+        tmmx:
+          description: "Maximum temperature"
+          units: "°C"
+          scale: 0.1
+        tmmn:
+          description: "Minimum temperature"
+          units: "°C"
+          scale: 0.1
+        pr:
+          description: "Precipitation accumulation"
+          units: "mm"
+          scale: 1
+        srad:
+          description: "Downward surface shortwave radiation"
+          units: "W/m2"
+          scale: 0.1
+        vs:
+          description: "Wind speed at 10m"
+          units: "m/s"
+          scale: 0.01
+        vap:
+          description: "Vapor pressure"
+          units: "kPa"
+          scale: 0.001
+        vpd:
+          description: "Vapor pressure deficit"
+          units: "kPa"
+          scale: 0.01
+        pet:
+          description: "Reference evapotranspiration (Penman-Monteith)"
+          units: "mm"
+          scale: 0.1
+        aet:
+          description: "Actual evapotranspiration"
+          units: "mm"
+          scale: 0.1
+        def:
+          description: "Climate water deficit"
+          units: "mm"
+          scale: 0.1
+        soil:
+          description: "Soil moisture"
+          units: "mm"
+          scale: 0.1
+        swe:
+          description: "Snow water equivalent"
+          units: "mm"
+          scale: 1
+        ro:
+          description: "Runoff"
+          units: "mm"
+          scale: 1
+        pdsi:
+          description: "Palmer Drought Severity Index"
+          units: "unitless"
+          scale: 0.01
+        
   prism:
     description: "PRISM climate data for contiguous US"
     source: "https://prism.oregonstate.edu/"
