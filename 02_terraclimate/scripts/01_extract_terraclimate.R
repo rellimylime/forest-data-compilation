@@ -110,7 +110,17 @@ for (i in seq_len(nrow(batches_todo))) {
     }
     
     # Get centroids
-    centroids <- st_centroid(ids_batch)
+    centroids <- st_point_on_surface(ids_batch)
+    
+    coords <- st_coordinates(centroids)
+    valid_coords <- !is.na(coords[,1]) & !is.na(coords[,2])
+    
+    if (!all(valid_coords)) {
+      cat(glue("Removing {sum(!valid_coords)} features with invalid coordinates... "))
+      centroids <- centroids[valid_coords, ]
+      ids_batch <- ids_batch[valid_coords, ]
+      n_features <- nrow(ids_batch)
+    }
     
     # Get TerraClimate annual image
     tc_annual <- get_terraclimate_annual(year, all_vars, ee)
