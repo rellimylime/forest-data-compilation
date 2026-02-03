@@ -2,9 +2,9 @@
 
 **Dataset:** USDA Forest Service Insect and Disease Detection Survey (IDS)  
 **Data Manager:** Emily Miller  
-**Institution:** UCSB, Landscapes of Change Lab  
-**Log Created:** 2025-01-30  
-**Last Updated:** 2025-01-30  
+**Institution:** UCSB, Bren School, Landscapes of Change Lab  
+**Log Created:** 2026-01-30  
+**Last Updated:** 2026-02-03  
 
 ---
 
@@ -231,8 +231,8 @@ US_AREA column contains only 3 values: "CONUS", "ALASKA", "HAWAII". This is redu
 - `DAMAGE_TYPE` - redundant with DAMAGE_TYPE_CODE
 - `PERCENT_AFFECTED` - redundant with PERCENT_AFFECTED_CODE
 - `LEGACY_SEVERITY` - redundant with LEGACY_SEVERITY_CODE
-- `LEGACY_PATTERN_CODE`, `LEGACY_PATTERN` - defoliation-specific, not essential
-- `LEGACY_FOREST_TYPE_CODE`, `LEGACY_FOREST_TYPE` - can get from other sources
+- `LEGACY_PATTERN_CODE`, `LEGACY_PATTERN` - defoliation-specific, only applied to subset, 2015 method
+- `LEGACY_FOREST_TYPE_CODE`, `LEGACY_FOREST_TYPE` - more reliable from HOST info, 2015 method
 - `NOTES` - free text, not needed for merge
 - `COLLECTION_MODE`, `SNAPGRID_ROW`, `SNAPGRID_COLUMN` - DMSM grid metadata
 - `STATUS` - always 1
@@ -247,7 +247,7 @@ US_AREA column contains only 3 values: "CONUS", "ALASKA", "HAWAII". This is redu
 
 | Action | Description |
 |--------|-------------|
-| Field selection | Keep 16 fields, drop 27 |
+| Field selection | Keep 16 fields, drop 28 |
 | CRS transformation | All regions → EPSG:4326 |
 | OBSERVATION_COUNT | Standardize to uppercase |
 | PERCENT_AFFECTED_CODE | Recode -1 → NA |
@@ -271,6 +271,17 @@ US_AREA column contains only 3 values: "CONUS", "ALASKA", "HAWAII". This is redu
 
 ---
 
+## Scripts
+
+| Script | Purpose | Status |
+|--------|---------|--------|
+| `01_download_ids.R` | Download 10 regional .gdb files from USFS | Complete |
+| `02_inspect_ids.R` | Inspect structure, generate lookups, identify issues | Complete |
+| `03_clean_ids.R` | Clean fields, transform CRS, merge regions | Complete |
+| `04_verify_ids.R` | Verify cleaned output before TerraClimate merge | Complete |
+
+---
+
 ## Next Steps
 
 - [x] Sample post-2015 data to verify PERCENT_AFFECTED population
@@ -278,9 +289,9 @@ US_AREA column contains only 3 values: "CONUS", "ALASKA", "HAWAII". This is redu
 - [x] Decide on legacy vs DMSM handling (keep both)
 - [x] Write 03_clean_ids.R with field selection and region merging
 - [x] Create lookup tables
-- [ ] Run 03_clean_ids.R to completion
-- [ ] Verify output file
-- [ ] Begin TerraClimate extraction workflow
+- [x] Run 03_clean_ids.R to completion
+- [x] Verify output file with 04_verify_ids.R
+- [x] Begin TerraClimate extraction workflow
 
 ---
 
@@ -290,3 +301,4 @@ US_AREA column contains only 3 values: "CONUS", "ALASKA", "HAWAII". This is redu
 |---------|------|---------|
 | 0.1 | 2025-01-30 | Initial inspection findings |
 | 0.2 | 2025-01-30 | Added CRS issue, US_AREA decision, lookup tables, finalized field list |
+| 0.3 | 2025-01-30 | Added scripts table, updated progress tracking |
