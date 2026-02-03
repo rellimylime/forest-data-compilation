@@ -81,7 +81,8 @@ cat(glue("  IDS columns: {ncol(ids_data)}\n\n"))
 cat("[4] Merging IDS with TerraClimate...\n")
 
 merged <- ids_data %>%
-  left_join(tc_data, by = "OBSERVATION_ID")
+  left_join(tc_data, 
+            by = c("OBSERVATION_ID", "REGION_ID", "SURVEY_YEAR"))
 
 cat(glue("  Merged rows: {format(nrow(merged), big.mark=',')}\n"))
 cat(glue("  Merged columns: {ncol(merged)}\n"))
