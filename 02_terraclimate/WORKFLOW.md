@@ -3,8 +3,7 @@
 ## Status
 - [x] Configure GEE access (gee_utils.R)
 - [x] Extract climate data at IDS centroids (01_extract_terraclimate.R)
-- [ ] Process and scale extracted data (02_process_terraclimate.R)
-- [ ] Merge with IDS data (03_merge_ids_terraclimate.R)
+- [x] Process, scale, and merge with IDS data (02_merge_terraclimate.R)
 
 ## Overview
 
@@ -56,28 +55,26 @@ Extracts TerraClimate annual means at IDS polygon centroids.
 
 ---
 
-### 02_process_terraclimate.R *(TODO)*
-Processes raw extraction CSVs into analysis-ready format.
+### 02_merge_terraclimate.R
+Combines all TerraClimate CSVs, applies scale factors, and joins with IDS data.
 
-**Planned actions:**
-1. Combine all 251 CSVs into single file
-2. Apply scale factors (e.g., tmmx × 0.1 → °C)
-3. Calculate annual totals for flux variables (pr, aet, pet, def, ro)
-4. Add derived variables (e.g., mean annual temperature)
-5. Check for missing values (coastal NoData)
-6. Export to `02_terraclimate/data/processed/terraclimate_scaled.csv`
+**Input:**
+- `02_terraclimate/data/raw/tc_r*.csv` (251 files from extraction)
+- `01_ids/data/processed/ids_damage_areas_cleaned.gpkg`
+- `config.yaml` (scale factors)
 
----
+**Output:**
+- `02_terraclimate/data/processed/ids_terraclimate_merged.gpkg`
 
-### 03_merge_ids_terraclimate.R *(TODO)*
-Joins processed climate data to IDS observations.
+**Process:**
+1. Load and combine all 251 TerraClimate CSVs
+2. Apply scale factors from config (e.g., tmmx × 0.1 → °C)
+3. Load IDS cleaned data
+4. Left join on OBSERVATION_ID
+5. Save merged GeoPackage
 
-**Planned actions:**
-1. Load IDS cleaned data
-2. Load processed TerraClimate data
-3. Left join on OBSERVATION_ID
-4. Verify join completeness (expect ~10 unmatched due to invalid centroids)
-5. Export to `merged_data/ids_terraclimate_merged.csv`
+**Runtime:** ~5 minutes  
+**Output size:** 4.2 GB
 
 ---
 
@@ -169,21 +166,12 @@ RETICULATE_PYTHON=/path/to/python
 │  Raw integer values, one row per IDS observation                            │
 └─────────────────────────────────────────────────────────────────────────────┘
                                       │
-                                      │ 02_process_terraclimate.R
-                                      │ Apply scales, combine files
+                                      │ 02_merge_terraclimate.R
+                                      │ Apply scales, combine, join to IDS
                                       ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │  02_terraclimate/data/processed/                                            │
-│  terraclimate_scaled.csv                                                    │
-│  Physical units, derived variables, single file                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                      │
-                                      │ 03_merge_ids_terraclimate.R
-                                      │ Join on OBSERVATION_ID
-                                      ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  merged_data/                                                               │
-│  ids_terraclimate_merged.csv                                                │
-│  IDS observations + climate variables, analysis-ready                       │
+│  ids_terraclimate_merged.gpkg (4.2 GB)                                      │
+│  IDS observations + scaled climate variables, analysis-ready                │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```

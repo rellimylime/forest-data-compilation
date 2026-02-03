@@ -34,14 +34,21 @@ location during that year.
 ================================================================================
 OUTPUT FILES
 ================================================================================
-Location: 02_terraclimate/data/raw/
-Format: CSV (one file per region-year batch)
-Naming convention: tc_r{REGION_ID}_{SURVEY_YEAR}.csv
-Example: tc_r10_2020.csv (Alaska, year 2020)
+Raw extraction CSVs:
+  Location: 02_terraclimate/data/raw/
+  Format: CSV (one file per region-year batch)
+  Naming convention: tc_r{REGION_ID}_{SURVEY_YEAR}.csv
+  Example: tc_r10_2020.csv (Alaska, year 2020)
+  Total files: 251 (one per region × year combination)
+  Total observations extracted: 4,475,817 (matches IDS cleaned data)
+  Extraction time: ~25 minutes
 
-Total files: 251 (one per region × year combination)
-Total observations extracted: 4,475,817 (matches IDS cleaned data)
-Extraction time: ~25 minutes
+Merged output (analysis-ready):
+  Location: 02_terraclimate/data/processed/ids_terraclimate_merged.gpkg
+  Format: GeoPackage (IDS geometries + scaled climate variables)
+  Size: 4.2 GB
+  Scale factors: Applied (values in physical units)
+  Merge date: 2025-02-03
 
 ================================================================================
 VARIABLES EXTRACTED (14 total)
@@ -82,13 +89,12 @@ KEY FIELDS IN OUTPUT CSVs
 ================================================================================
 KNOWN ISSUES
 ================================================================================
-1. SCALE FACTORS NOT APPLIED: Raw CSV values are integers from GEE. Must 
-   multiply by scale factors (listed above) to get physical units. This is 
-   done in the processing/merge scripts, not during extraction.
+1. RAW CSVs REQUIRE SCALING: Raw CSV values in data/raw/ are integers from GEE.
+   Scale factors are applied in the merged GeoPackage (data/processed/).
 
 2. ANNUAL MEANS: Values represent mean of 12 monthly values. For variables 
    like precipitation (pr) where annual TOTAL is more meaningful, multiply 
-   the mean by 12 in downstream processing.
+   the mean by 12 in downstream analysis.
 
 3. INVALID CENTROIDS: 10 IDS observations had geometries that produced NaN 
    centroids (0.0002% of data). These were excluded from extraction.
@@ -101,25 +107,30 @@ KNOWN ISSUES
    is negligible at 4km resolution.
 
 ================================================================================
-JOINING TO IDS DATA
+USING THE MERGED DATA
 ================================================================================
-To merge with IDS cleaned data:
+The merged GeoPackage contains IDS observations with scaled climate variables:
+
+```r
+library(sf)
+
+# Load merged data (IDS + TerraClimate, scale factors already applied)
+data <- st_read("02_terraclimate/data/processed/ids_terraclimate_merged.gpkg")
+
+# Climate variables are now in physical units (°C, mm, kPa, etc.)
+```
+
+To work with raw extraction CSVs directly (e.g., for debugging):
 
 ```r
 library(dplyr)
 library(readr)
+library(purrr)
 
-# Load IDS data
-ids <- st_read("01_ids/data/processed/ids_damage_areas_cleaned.gpkg")
-
-# Load and combine all TerraClimate CSVs
 tc_files <- list.files("02_terraclimate/data/raw", pattern = "\\.csv$", 
                        full.names = TRUE)
-terraclimate <- map_dfr(tc_files, read_csv)
-
-# Join on OBSERVATION_ID
-merged <- ids %>%
-  left_join(terraclimate, by = "OBSERVATION_ID")
+terraclimate_raw <- map_dfr(tc_files, read_csv)
+# Note: Raw values require scale factor application
 ```
 
 ================================================================================

@@ -2,9 +2,9 @@
 
 **Dataset:** TerraClimate extracted at IDS observation centroids  
 **Data Manager:** Emily Miller  
-**Institution:** UCSB, Bren School - MEDS Program  
-**Log Created:** 2025-01-31  
-**Last Updated:** 2025-01-31  
+**Institution:** UCSB, Bren School, Landscapes of Change Lab  
+**Log Created:** 2026-01-31  
+**Last Updated:** 2026-02-03  
 
 ---
 
@@ -198,16 +198,24 @@ OBSERVATION_ID,aet,def,pdsi,pet,pr,ro,soil,srad,swe,tmmn,tmmx,vap,vpd,vs,REGION_
 {083df988-...},379.67,55.92,-38.83,435.58,80.75,34.00,1091.75,1011.25,92.25,4.42,77.42,657.67,34.75,328.33,10,2020
 ```
 
+**Merged GeoPackage:**
+- Location: `02_terraclimate/data/processed/ids_terraclimate_merged.gpkg`
+- Size: 4.2 GB
+- Contents: IDS geometries + 14 scaled climate variables
+- Scale factors: Applied
+
 ---
 
-## Processing Steps (Next Phase)
+## Processing Steps
 
-1. [ ] Combine all CSVs into single file
-2. [ ] Apply scale factors to convert to physical units
-3. [ ] Calculate derived variables (annual totals for flux variables)
-4. [ ] Check for missing values (coastal NoData issue)
-5. [ ] Join to IDS cleaned data on OBSERVATION_ID
-6. [ ] Export merged dataset
+1. [x] Combine all CSVs into single file
+2. [x] Apply scale factors to convert to physical units
+3. [ ] Calculate derived variables (annual totals for flux variables) — deferred to analysis
+4. [ ] Check for missing values (coastal NoData issue) — deferred to analysis
+5. [x] Join to IDS cleaned data on OBSERVATION_ID
+6. [x] Export merged dataset
+
+**Merged output:** `02_terraclimate/data/processed/ids_terraclimate_merged.gpkg` (4.2 GB)
 
 ---
 
@@ -229,3 +237,4 @@ OBSERVATION_ID,aet,def,pdsi,pet,pr,ro,soil,srad,swe,tmmn,tmmx,vap,vpd,vs,REGION_
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0 | 2025-01-31 | Initial extraction complete |
+| 1.1 | 2025-02-03 | Merged with IDS data, scale factors applied |
