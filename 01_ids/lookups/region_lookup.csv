@@ -1,0 +1,11 @@
+REGION_ID,REGION_NAME,STATES,US_AREA
+1,Northern,"MT, ND, ID panhandle",CONUS
+2,Rocky Mountain,"CO, WY, SD, NE, KS",CONUS
+3,Southwestern,"AZ, NM",CONUS
+4,Intermountain,"UT, NV, ID, WY",CONUS
+5,Pacific Southwest (CA),CA,CONUS
+5,Pacific Southwest (HI),HI,HAWAII
+6,Pacific Northwest,"OR, WA",CONUS
+8,Southern,13 SE states,CONUS
+9,Eastern,20 NE/MW states,CONUS
+10,Alaska,AK,ALASKA

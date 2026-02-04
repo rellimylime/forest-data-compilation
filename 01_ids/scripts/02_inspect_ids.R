@@ -230,7 +230,7 @@ host_lookup <- st_read(r5_path, query = host_query, quiet = TRUE) |>
   distinct(HOST_CODE, HOST) |>
   arrange(HOST_CODE)
 
-write_csv(host_lookup, here("01_ids/host_code_lookup.csv"))
+write_csv(host_lookup, here("01_ids/lookups/host_code_lookup.csv"))
 cat(glue("Saved {nrow(host_lookup)} host codes to host_code_lookup.csv\n"))
 
 # DCA_CODE lookup
@@ -240,7 +240,7 @@ dca_lookup <- st_read(r5_path, query = dca_query, quiet = TRUE) |>
   distinct(DCA_CODE, DCA_COMMON_NAME) |>
   arrange(DCA_CODE)
 
-write_csv(dca_lookup, here("01_ids/dca_code_lookup.csv"))
+write_csv(dca_lookup, here("01_ids/lookups/dca_code_lookup.csv"))
 cat(glue("Saved {nrow(dca_lookup)} DCA codes to dca_code_lookup.csv\n"))
 
 # DAMAGE_TYPE lookup
@@ -250,7 +250,7 @@ damage_type_lookup <- st_read(r5_path, query = damage_type_query, quiet = TRUE) 
   distinct(DAMAGE_TYPE_CODE, DAMAGE_TYPE) |>
   arrange(DAMAGE_TYPE_CODE)
 
-write_csv(damage_type_lookup, here("01_ids/damage_type_lookup.csv"))
+write_csv(damage_type_lookup, here("01_ids/lookups/damage_type_lookup.csv"))
 cat(glue("Saved {nrow(damage_type_lookup)} damage types to damage_type_lookup.csv\n"))
 
 # PERCENT_AFFECTED lookup
@@ -260,7 +260,7 @@ pct_lookup <- st_read(r5_path, query = pct_query, quiet = TRUE) |>
   distinct(PERCENT_AFFECTED_CODE, PERCENT_AFFECTED) |>
   arrange(PERCENT_AFFECTED_CODE)
 
-write_csv(pct_lookup, here("01_ids/percent_affected_lookup.csv"))
+write_csv(pct_lookup, here("01_ids/lookups/percent_affected_lookup.csv"))
 cat(glue("Saved {nrow(pct_lookup)} percent affected codes to percent_affected_lookup.csv\n"))
 
 # LEGACY_SEVERITY lookup
@@ -270,7 +270,7 @@ severity_lookup <- st_read(r5_path, query = severity_query, quiet = TRUE) |>
   distinct(LEGACY_SEVERITY_CODE, LEGACY_SEVERITY) |>
   arrange(LEGACY_SEVERITY_CODE)
 
-write_csv(severity_lookup, here("01_ids/legacy_severity_lookup.csv"))
+write_csv(severity_lookup, here("01_ids/lookups/legacy_severity_lookup.csv"))
 cat(glue("Saved {nrow(severity_lookup)} legacy severity codes to legacy_severity_lookup.csv\n"))
 
 # REGION lookup (manually created - not extracted from data)
