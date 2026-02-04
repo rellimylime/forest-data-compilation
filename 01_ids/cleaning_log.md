@@ -29,7 +29,7 @@ Each regional .gdb contains 3 layers with region-specific suffixes:
 - `DAMAGE_POINTS_FLAT_Allyears_<region>` - Points for small damage clusters
 - `SURVEYED_AREAS_FLAT_AllYears_<region>` - Survey boundary polygons
 
-**Decision:** Use DAMAGE_AREAS_FLAT only for initial climate merge. Points and surveyed areas can be added later.
+**Decision:** Extract and clean all three layers so the full IDS content is available (damage areas, damage points, and surveyed areas). Use layer-specific field lists so outputs are compact and documented.
 
 ### Field Consistency
 All 10 regions have identical field structure (44 fields). No cross-region inconsistencies.
@@ -133,6 +133,7 @@ Per documentation, overlapping damage from multiple agents creates "pancake" fea
 **Quantified:** 14.7% of R5 features have OBSERVATION_COUNT = "MULTIPLE"
 
 **Decision:** Keep all rows (one per observation). Document that ACRES should not be summed naively - group by DAMAGE_AREA_ID first if calculating total area.
+**Climate extraction:** For polygon-based extractions, use unique `DAMAGE_AREA_ID` geometries and join results back to observations to avoid redundant sampling while preserving per-observation records.
 
 ---
 
@@ -186,38 +187,27 @@ US_AREA column contains only 3 values: "CONUS", "ALASKA", "HAWAII". This is redu
 
 ## Fields Kept in Cleaned Output
 
-**Identifiers:**
-- `OBSERVATION_ID` - unique identifier per observation
-- `DAMAGE_AREA_ID` - geometry identifier (for pancake tracking)
-
-**Spatial/Temporal:**
+**Core fields across cleaned layers:**
 - `SURVEY_YEAR` - temporal join key
 - `REGION_ID` - USFS region (use region_lookup.csv for names)
+- `ACRES` - area affected/surveyed (where present)
+- `AREA_TYPE` - polygon vs grid collection method (where present)
+- `SOURCE_FILE` - original .gdb filename for traceability
+- `SURVEY_FEATURE_ID` - unique ID for surveyed_areas polygons
+- `geom` - geometry (transformed to EPSG:4326)
 
-**What was damaged (codes only):**
+**Damage layers (damage_areas, damage_points):**
+- `OBSERVATION_ID` - unique identifier per observation
+- `DAMAGE_AREA_ID` - geometry identifier (for pancake tracking)
 - `HOST_CODE` - tree species affected (use host_code_lookup.csv)
 - `DCA_CODE` - damage causing agent (use dca_code_lookup.csv)
 - `DAMAGE_TYPE_CODE` - mortality, defoliation, etc. (use damage_type_lookup.csv)
-
-**Extent:**
-- `ACRES` - area affected
-- `AREA_TYPE` - polygon vs grid collection method
 - `OBSERVATION_COUNT` - SINGLE/MULTIPLE flag
-
-**Intensity - DMSM (2015+):**
 - `PERCENT_AFFECTED_CODE` - 1-5 scale (use percent_affected_lookup.csv)
 - `PERCENT_MID` - midpoint percentage
-
-**Intensity - Legacy (pre-2015):**
 - `LEGACY_TPA` - trees per acre
 - `LEGACY_NO_TREES` - total tree count
 - `LEGACY_SEVERITY_CODE` - severity rating (use legacy_severity_lookup.csv)
-
-**Added during cleaning:**
-- `SOURCE_FILE` - original .gdb filename for traceability
-- `geom` - geometry (transformed to EPSG:4326)
-
-**Total: 16 fields + geometry**
 
 ---
 
@@ -247,19 +237,22 @@ US_AREA column contains only 3 values: "CONUS", "ALASKA", "HAWAII". This is redu
 
 | Action | Description |
 |--------|-------------|
-| Field selection | Keep 16 fields, drop 28 |
+| Field selection | Keep layer-specific fields (damage vs surveyed) |
 | CRS transformation | All regions → EPSG:4326 |
-| OBSERVATION_COUNT | Standardize to uppercase |
-| PERCENT_AFFECTED_CODE | Recode -1 → NA |
+| OBSERVATION_COUNT | Standardize to uppercase (damage layers) |
+| PERCENT_AFFECTED_CODE | Recode -1 → NA (damage layers) |
 | Add SOURCE_FILE | Track original .gdb for each record |
-| Merge regions | Combine all 10 into single geopackage |
+| Merge regions | Combine all 10 regions per layer into a single geopackage |
 
 ---
 
 ## Output Files
 
-**Cleaned data:**
-- `01_ids/data/processed/ids_damage_areas_cleaned.gpkg`
+**Cleaned data (geopackage layers):**
+- `01_ids/data/processed/ids_layers_cleaned.gpkg`
+  - damage_areas
+  - damage_points
+  - surveyed_areas
 
 **Lookup tables:**
 - `01_ids/host_code_lookup.csv`

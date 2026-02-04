@@ -30,25 +30,27 @@ Utility functions for Google Earth Engine operations via reticulate.
 ---
 
 ### 01_extract_terraclimate.R
-Extracts TerraClimate annual means at IDS polygon centroids.
+Extracts TerraClimate annual means for IDS polygons and points.
 
 **Input:**
-- `01_ids/data/processed/ids_damage_areas_cleaned.gpkg`
+- `01_ids/data/processed/ids_layers_cleaned.gpkg` (use all IDS layers)
 - `config.yaml` (TerraClimate variable definitions)
 
 **Output:**
-- `02_terraclimate/data/raw/tc_r{REGION}_{YEAR}.csv` (251 files)
+- `02_terraclimate/data/raw/tc_damage_areas_r{REGION}_{YEAR}.csv`
+- `02_terraclimate/data/raw/tc_damage_points_r{REGION}_{YEAR}.csv`
+- `02_terraclimate/data/raw/tc_surveyed_areas_r{REGION}_{YEAR}.csv`
 
 **Process:**
 1. Load unique REGION_ID × SURVEY_YEAR combinations from IDS data
 2. Check for existing output files (resumable)
 3. For each batch:
    - Load IDS geometries for that region-year
-   - Compute centroids using `st_point_on_surface()`
-   - Filter invalid coordinates (NaN)
    - Query TerraClimate annual mean image
-   - Extract in sub-batches of 5000 (GEE limit)
-   - Save to CSV
+   - **damage_areas:** extract polygon means on unique `DAMAGE_AREA_ID`, then join back to all observations to handle pancake features
+   - **damage_points:** extract at observation points
+   - **surveyed_areas:** extract polygon means for surveyed coverage
+   - Save to CSV (layer-specific filenames)
 
 **Runtime:** ~25 minutes for full dataset  
 **Features extracted:** 4,475,817 (10 excluded for invalid coordinates)
@@ -59,15 +61,15 @@ Extracts TerraClimate annual means at IDS polygon centroids.
 Cleans and joins TerraClimate data to IDS observations.
 
 **Input:**
-- `02_terraclimate/data/raw/tc_r*.csv` (251 files from extraction)
-- `01_ids/data/processed/ids_damage_areas_cleaned.gpkg`
+- `02_terraclimate/data/raw/tc_damage_areas_r*.csv` (region-year extractions)
+- `01_ids/data/processed/ids_layers_cleaned.gpkg` (use `damage_areas` layer)
 - `config.yaml` (scale factors)
 
 **Output:**
 - `02_terraclimate/data/processed/ids_terraclimate_merged.gpkg`
 
 **Process:**
-1. Load and combine all 251 TerraClimate CSVs
+1. Load and combine all TerraClimate CSVs (damage_areas layer)
 2. Apply scale factors from config (e.g., tmmx × 0.1 → °C)
 3. Remove rows with NA OBSERVATION_ID (15 from Region 9, 2024 batch)
 4. Deduplicate on OBSERVATION_ID (3,499 duplicates from sub-batch boundary issue)
