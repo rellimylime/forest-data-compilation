@@ -123,6 +123,7 @@ verify_layer <- function(layer_name) {
   if ("OBSERVATION_COUNT" %in% names(ids)) {
     obs_count_vals <- unique(ids$OBSERVATION_COUNT)
     cat("OBSERVATION_COUNT values:", paste(obs_count_vals, collapse = ", "), "\n")
+    obs_count_vals <- na.omit(unique(ids$OBSERVATION_COUNT))
     if (all(obs_count_vals == toupper(obs_count_vals))) {
       cat("✓ All uppercase\n")
     } else {
