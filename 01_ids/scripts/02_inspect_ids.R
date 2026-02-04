@@ -303,7 +303,7 @@ region_lookup <- tibble(
   US_AREA = c("CONUS", "CONUS", "CONUS", "CONUS", "CONUS", "HAWAII", "CONUS", "CONUS", "CONUS", "ALASKA")
 )
 
-write_csv(region_lookup, here("01_ids/region_lookup.csv"))
+write_csv(region_lookup, here("01_ids/lookups/region_lookup.csv"))
 cat(glue("Saved {nrow(region_lookup)} regions to region_lookup.csv\n"))
 
 # ==============================================================================

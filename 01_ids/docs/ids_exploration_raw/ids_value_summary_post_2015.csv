@@ -1,0 +1,9 @@
+column,type,n,top_values,min,p25,median,p75,max
+FEATURE_USER_ID,character,844038,jwmoore02_usfs: 39363; csfs_dan: 34371; ddepinte_usfs: 33944; ssontag_usfs: 33923; billmcnee: 30288; justinhof_usfs: 30055; Isaac.Davis_wadnr: 24422; behowell_usfs: 21283; cwnelson_usfs: 19618; R2fhpdmsm: 18246,,,,,
+OBSERVATION_USER_ID,character,844038,jwmoore02_usfs: 39207; csfs_dan: 34362; ssontag_usfs: 33967; ddepinte_usfs: 33863; billmcnee: 30288; justinhof_usfs: 30132; Isaac.Davis_wadnr: 24408; behowell_usfs: 21281; cwnelson_usfs: 19616; R2fhpdmsm: 18246,,,,,
+LABEL,character,842539,EAB_MORT_4: 30222; 4_OR-2: 17308; DFB-2: 17283; WSBW-5: 16845; 4_OR-1: 12744; DFB-3: 10439; BEAR-1: 8959; FEB-GrandFir-2: 8579; WBBB-1: 8354; WSBW-4: 7612,,,,,
+HOST_GROUP_CODE,numeric,330866,,0,9202,9602,9711,9998
+HOST_GROUP,character,329910,"white, green & black ash: 50759; Pacific silver, grand, CA red, noble & white fir: 36918; white,subalpine & Doug-fir, Engelmann&blue spruce: 35313; Engelmann spruce & Doug, subalpine & grand fir: 22125; subalpine fir, Douglas-fir: 18821; silvr maple,e. cottnwd,blk willow,green&white ash: 15020; black, n. red & n. pin oak: 13444; balsam fir, white & black spruce: 12645; Pacific silver, noble & grand fir: 12147; red, black & white oak, yellow birch, red maple: 10195",,,,,
+COLLECTION_MODE,character,771711,Aerial_Survey: 745716; Ground_Check: 15829; DesktopGIS: 5785; Ground_Survey: 4133; Scan_Sketch: 232; Aerial Survey: 15; verified: 1,,,,,
+SNAPGRID_ROW,numeric,79390,,0,4170,9929,33813,40218
+SNAPGRID_COLUMN,numeric,79390,,0,986,2081,4753,10943

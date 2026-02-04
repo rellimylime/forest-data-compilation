@@ -1,30 +1,52 @@
 # 05_explore_ids_coverage.R
-# Explore IDS cleaned data for missingness (pre/post 2015), era-specific columns,
+# Explore IDS raw data for missingness (pre/post 2015), era-specific columns,
 # value distributions, and regional temporal coverage.
 
 suppressPackageStartupMessages({
   library(data.table)
   library(sf)
+  library(here)
+  library(glue)
   library(stringr)
 })
 
 cat("=== IDS DATA EXPLORATION ===\n\n")
 
-input_file <- "01_ids/data/processed/ids_damage_areas_cleaned.gpkg"
-output_dir <- "01_ids/data/processed/ids_exploration"
+source(here("scripts/utils/metadata_utils.R"))
 
-if (!file.exists(input_file)) {
-  stop(
-    "Cleaned IDS file not found at ", input_file, "\n",
-    "Run 01_ids/scripts/03_clean_ids.R first or update input_file path."
-  )
+raw_dir <- here("01_ids/data/raw")
+output_dir <- here("01_ids/data/processed/ids_exploration_raw")
+layer_prefix <- "DAMAGE_AREAS_FLAT"
+
+gdb_dirs <- list.dirs(raw_dir, recursive = FALSE, full.names = TRUE)
+gdb_dirs <- gdb_dirs[grepl("\\.gdb$", gdb_dirs)]
+
+if (length(gdb_dirs) == 0) {
+  stop("No IDS geodatabases found in ", raw_dir, ". Run 01_ids/scripts/01_download_ids.R first.")
 }
 
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
-cat("[1] Reading cleaned IDS data...\n")
-ids_sf <- st_read(input_file, quiet = TRUE)
-ids_dt <- as.data.table(st_drop_geometry(ids_sf))
+extract_region_id <- function(gdb_path) {
+  match <- str_match(basename(gdb_path), "Region(\\d+)_AllYears\\.gdb$")
+  as.integer(match[, 2])
+}
+
+read_ids_layer <- function(gdb_path) {
+  layer_name <- get_layer_name(gdb_path, layer_prefix)
+  cat(glue("  Reading {basename(gdb_path)} ({layer_name})...\n"))
+  ids_sf <- st_read(gdb_path, layer = layer_name, quiet = TRUE)
+  ids_dt <- as.data.table(st_drop_geometry(ids_sf))
+  ids_dt[, SOURCE_GDB := basename(gdb_path)]
+  if (!"REGION_ID" %in% names(ids_dt)) {
+    ids_dt[, REGION_ID := extract_region_id(gdb_path)]
+  }
+  ids_dt
+}
+
+cat("[1] Reading raw IDS data...\n")
+ids_list <- lapply(gdb_dirs, read_ids_layer)
+ids_dt <- rbindlist(ids_list, fill = TRUE)
 
 if (!"SURVEY_YEAR" %in% names(ids_dt)) {
   stop("SURVEY_YEAR column is required for era splitting.")
