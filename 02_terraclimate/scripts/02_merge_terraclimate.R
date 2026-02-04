@@ -21,7 +21,7 @@ cat("=== MERGE TERRACLIMATE WITH IDS ===\n\n")
 config <- load_config()
 
 tc_dir <- here("02_terraclimate/data/raw")
-ids_path <- here("01_ids/data/processed/ids_damage_areas_cleaned.gpkg")
+ids_path <- here("01_ids/data/processed/ids_layers_cleaned.gpkg")
 output_dir <- here("02_terraclimate/data/processed")
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
@@ -33,7 +33,7 @@ output_file <- file.path(output_dir, "ids_terraclimate_merged.gpkg")
 
 cat("[1] Loading TerraClimate CSVs...\n")
 
-tc_files <- list.files(tc_dir, pattern = "^tc_r\\d+_\\d{4}\\.csv$", full.names = TRUE)
+tc_files <- list.files(tc_dir, pattern = "^tc_damage_areas_r\\d+_\\d{4}\\.csv$", full.names = TRUE)
 
 if (length(tc_files) == 0) {
   stop("No TerraClimate CSV files found. Run 01_extract_terraclimate.R first.")
@@ -69,7 +69,7 @@ cat("  Done\n\n")
 
 cat("[3] Loading IDS data...\n")
 
-ids_data <- st_read(ids_path, quiet = TRUE)
+ids_data <- st_read(ids_path, layer = "damage_areas", quiet = TRUE)
 
 cat(glue("  IDS rows: {format(nrow(ids_data), big.mark=',')}\n"))
 cat(glue("  IDS columns: {ncol(ids_data)}\n\n"))

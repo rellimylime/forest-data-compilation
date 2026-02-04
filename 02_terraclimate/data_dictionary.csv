@@ -1,5 +1,5 @@
 field_name,description,data_type,units,scale_factor,value_range,notes
-OBSERVATION_ID,Unique identifier linking to IDS cleaned data,character,NA,NA,UUID format,Primary join key to ids_damage_areas_cleaned.gpkg
+OBSERVATION_ID,Unique identifier linking to IDS cleaned data,character,NA,NA,UUID format,Primary join key to ids_layers_cleaned.gpkg (damage_areas layer)
 REGION_ID,USFS region identifier,integer,NA,NA,1-10 (excluding 7),Added during extraction; matches IDS REGION_ID
 SURVEY_YEAR,Year of IDS observation,integer,NA,NA,1997-2024,Added during extraction; matches IDS SURVEY_YEAR
 tmmx,Maximum temperature (annual mean of monthly means),numeric,°C,0.1,Varies by location,"Raw values are integers; multiply by 0.1 to get °C"

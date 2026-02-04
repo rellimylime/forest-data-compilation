@@ -35,134 +35,169 @@ cat(glue("Variables to extract: {paste(all_vars, collapse=', ')}\n\n"))
 
 cat("[1] Loading IDS data...\n")
 
-ids_path <- here("01_ids/data/processed/ids_damage_areas_cleaned.gpkg")
+ids_path <- here("01_ids/data/processed/ids_layers_cleaned.gpkg")
 
 if (!file.exists(ids_path)) {
   stop("IDS data not found. Run IDS cleaning scripts first.")
 }
 
-# Get unique region-year combinations for batching
-batch_query <- "SELECT DISTINCT REGION_ID, SURVEY_YEAR FROM ids_damage_areas_cleaned ORDER BY REGION_ID, SURVEY_YEAR"
-batches <- st_read(ids_path, query = batch_query, quiet = TRUE) |> st_drop_geometry()
-
-cat(glue("  Total batches (region × year): {nrow(batches)}\n"))
-cat(glue("  Years: {min(batches$SURVEY_YEAR)} - {max(batches$SURVEY_YEAR)}\n"))
-cat(glue("  Regions: {paste(sort(unique(batches$REGION_ID)), collapse=', ')}\n\n"))
-
-# ==============================================================================
-# CHECK FOR EXISTING PROGRESS
-# ==============================================================================
-
-cat("[2] Checking existing progress...\n")
-
-completed_files <- list.files(output_dir, pattern = "^tc_r\\d+_\\d{4}\\.csv$")
-completed_batches <- gsub("tc_r(\\d+)_(\\d{4})\\.csv", "\\1_\\2", completed_files)
-
-batches$batch_id <- paste(batches$REGION_ID, batches$SURVEY_YEAR, sep = "_")
-batches$completed <- batches$batch_id %in% completed_batches
-
-n_completed <- sum(batches$completed)
-n_remaining <- sum(!batches$completed)
-
-cat(glue("  Completed: {n_completed}/{nrow(batches)}\n"))
-cat(glue("  Remaining: {n_remaining}\n\n"))
-
-if (n_remaining == 0) {
-  cat("All batches complete. Nothing to do.\n")
-  stop("No batches remaining - exiting script")
-}
-
-# Filter to remaining batches
-batches_todo <- batches |> filter(!completed)
+layer_specs <- list(
+  damage_areas = list(
+    layer = "damage_areas",
+    id_col = "OBSERVATION_ID",
+    geom_id = "DAMAGE_AREA_ID",
+    method = "polygon"
+  ),
+  damage_points = list(
+    layer = "damage_points",
+    id_col = "OBSERVATION_ID",
+    geom_id = NULL,
+    method = "centroid"
+  ),
+  surveyed_areas = list(
+    layer = "surveyed_areas",
+    id_col = "SURVEY_FEATURE_ID",
+    geom_id = NULL,
+    method = "polygon"
+  )
+)
 
 # ==============================================================================
 # EXTRACTION LOOP
 # ==============================================================================
 
-cat("[3] Starting extraction...\n\n")
+cat("[2] Starting extraction...\n\n")
 
 total_features <- 0
 total_time <- 0
 errors <- list()
 
-for (i in seq_len(nrow(batches_todo))) {
+for (layer_name in names(layer_specs)) {
+  spec <- layer_specs[[layer_name]]
+  cat(glue("=== LAYER: {layer_name} ===\n"))
   
-  region <- batches_todo$REGION_ID[i]
-  year <- batches_todo$SURVEY_YEAR[i]
+  batch_query <- glue("SELECT DISTINCT REGION_ID, SURVEY_YEAR FROM {spec$layer} ORDER BY REGION_ID, SURVEY_YEAR")
+  batches <- st_read(ids_path, query = batch_query, quiet = TRUE) |> st_drop_geometry()
   
-  cat(glue("Batch {i}/{nrow(batches_todo)}: Region {region}, Year {year}... "))
+  cat(glue("  Total batches (region × year): {nrow(batches)}\n"))
+  cat(glue("  Years: {min(batches$SURVEY_YEAR)} - {max(batches$SURVEY_YEAR)}\n"))
+  cat(glue("  Regions: {paste(sort(unique(batches$REGION_ID)), collapse=', ')}\n\n"))
   
-  t_start <- Sys.time()
+  completed_files <- list.files(
+    output_dir,
+    pattern = glue("^tc_{layer_name}_r\\d+_\\d{{4}}\\.csv$")
+  )
+  completed_batches <- gsub(glue("tc_{layer_name}_r(\\d+)_(\\d{{4}})\\.csv"), "\\1_\\2", completed_files)
   
-  tryCatch({
+  batches$batch_id <- paste(batches$REGION_ID, batches$SURVEY_YEAR, sep = "_")
+  batches$completed <- batches$batch_id %in% completed_batches
+  
+  n_completed <- sum(batches$completed)
+  n_remaining <- sum(!batches$completed)
+  
+  cat(glue("  Completed: {n_completed}/{nrow(batches)}\n"))
+  cat(glue("  Remaining: {n_remaining}\n\n"))
+  
+  if (n_remaining == 0) {
+    cat("  All batches complete. Skipping layer.\n\n")
+    next
+  }
+  
+  batches_todo <- batches |> filter(!completed)
+  
+  for (i in seq_len(nrow(batches_todo))) {
+    region <- batches_todo$REGION_ID[i]
+    year <- batches_todo$SURVEY_YEAR[i]
     
-    # Load features for this batch
-    query <- glue("SELECT OBSERVATION_ID, geom FROM ids_damage_areas_cleaned 
-                   WHERE REGION_ID = {region} AND SURVEY_YEAR = {year}")
+    cat(glue("Batch {i}/{nrow(batches_todo)}: Region {region}, Year {year}... "))
     
-    ids_batch <- st_read(ids_path, query = query, quiet = TRUE)
-    ids_batch <- st_make_valid(ids_batch)
-    n_features <- nrow(ids_batch)
+    t_start <- Sys.time()
     
-    if (n_features == 0) {
-      cat("no features, skipping\n")
-      next
-    }
-    
-    # Get centroids
-    centroids <- st_point_on_surface(ids_batch)
-    
-    coords <- st_coordinates(centroids)
-    valid_coords <- !is.na(coords[,1]) & !is.na(coords[,2])
-    
-    if (!all(valid_coords)) {
-      cat(glue("Removing {sum(!valid_coords)} features with invalid coordinates... "))
-      centroids <- centroids[valid_coords, ]
-      ids_batch <- ids_batch[valid_coords, ]
+    tryCatch({
+      select_cols <- c("REGION_ID", "SURVEY_YEAR", spec$id_col, "geom")
+      if (!is.null(spec$geom_id)) {
+        select_cols <- c(select_cols, spec$geom_id)
+      }
+      
+      query <- glue("SELECT {paste(select_cols, collapse = ', ')} FROM {spec$layer} 
+                    WHERE REGION_ID = {region} AND SURVEY_YEAR = {year}")
+      
+      ids_batch <- st_read(ids_path, query = query, quiet = TRUE)
+      ids_batch <- st_make_valid(ids_batch)
       n_features <- nrow(ids_batch)
-    }
-    
-    # Get TerraClimate annual image
-    tc_annual <- get_terraclimate_annual(year, all_vars, ee)
-    
-    # Extract in sub-batches if needed (GEE limit ~5000)
-    batch_size <- 5000
-    n_sub_batches <- ceiling(n_features / batch_size)
-    
-    results <- list()
-    
-    for (j in seq_len(n_sub_batches)) {
-      start_idx <- (j - 1) * batch_size + 1
-      end_idx <- min(j * batch_size, n_features)
       
-      sub_centroids <- centroids[start_idx:end_idx, ]
-      centroids_ee <- sf_points_to_ee(sub_centroids, "OBSERVATION_ID", ee)
+      if (n_features == 0) {
+        cat("no features, skipping\n")
+        next
+      }
       
-      sub_result <- extract_at_points(tc_annual, centroids_ee, scale = 4000, ee)
-      results[[j]] <- sub_result
-    }
-    
-    # Combine results
-    batch_result <- bind_rows(results)
-    batch_result$REGION_ID <- region
-    batch_result$SURVEY_YEAR <- year
-    
-    # Save to CSV
-    output_file <- file.path(output_dir, glue("tc_r{region}_{year}.csv"))
-    write_csv(batch_result, output_file)
-    
-    t_end <- Sys.time()
-    elapsed <- as.numeric(difftime(t_end, t_start, units = "secs"))
-    
-    total_features <- total_features + n_features
-    total_time <- total_time + elapsed
-    
-    cat(glue("{n_features} features, {round(elapsed, 1)}s\n"))
-    
-  }, error = function(e) {
-    cat(glue("ERROR: {e$message}\n"))
-    errors[[length(errors) + 1]] <- list(region = region, year = year, error = e$message)
-  })
+      tc_annual <- get_terraclimate_annual(year, all_vars, ee)
+      
+      if (layer_name == "damage_areas") {
+        unique_areas <- ids_batch |>
+          distinct(DAMAGE_AREA_ID, .keep_all = TRUE)
+        
+        batch_result <- extract_in_batches(
+          unique_areas,
+          id_col = "DAMAGE_AREA_ID",
+          image = tc_annual,
+          ee = ee,
+          method = "polygon",
+          scale = 4000
+        )
+        
+        batch_result <- ids_batch |>
+          st_drop_geometry() |>
+          select(OBSERVATION_ID, DAMAGE_AREA_ID, REGION_ID, SURVEY_YEAR) |>
+          left_join(batch_result, by = "DAMAGE_AREA_ID")
+      } else if (layer_name == "surveyed_areas") {
+        batch_result <- extract_in_batches(
+          ids_batch,
+          id_col = "SURVEY_FEATURE_ID",
+          image = tc_annual,
+          ee = ee,
+          method = "polygon",
+          scale = 4000
+        )
+        
+        batch_result <- ids_batch |>
+          st_drop_geometry() |>
+          select(SURVEY_FEATURE_ID, REGION_ID, SURVEY_YEAR) |>
+          left_join(batch_result, by = "SURVEY_FEATURE_ID")
+      } else {
+        batch_result <- extract_in_batches(
+          ids_batch,
+          id_col = spec$id_col,
+          image = tc_annual,
+          ee = ee,
+          method = spec$method,
+          scale = 4000
+        )
+        
+        batch_result <- ids_batch |>
+          st_drop_geometry() |>
+          select(OBSERVATION_ID, REGION_ID, SURVEY_YEAR) |>
+          left_join(batch_result, by = "OBSERVATION_ID")
+      }
+      
+      output_file <- file.path(output_dir, glue("tc_{layer_name}_r{region}_{year}.csv"))
+      write_csv(batch_result, output_file)
+      
+      t_end <- Sys.time()
+      elapsed <- as.numeric(difftime(t_end, t_start, units = "secs"))
+      
+      total_features <- total_features + n_features
+      total_time <- total_time + elapsed
+      
+      cat(glue("{n_features} features, {round(elapsed, 1)}s\n"))
+      
+    }, error = function(e) {
+      cat(glue("ERROR: {e$message}\n"))
+      errors[[length(errors) + 1]] <- list(layer = layer_name, region = region, year = year, error = e$message)
+    })
+  }
+  
+  cat("\n")
 }
 
 # ==============================================================================
@@ -188,5 +223,5 @@ if (length(errors) > 0) {
   cat("No errors.\n")
 }
 
-cat(glue("\nOutput files: {output_dir}/tc_r*_*.csv\n"))
+cat(glue("\nOutput files: {output_dir}/tc_*_r*_*.csv\n"))
 cat("================================================================================\n")

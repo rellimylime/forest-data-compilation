@@ -65,14 +65,14 @@ cat(glue("  Images in 2020: {n_images} (monthly)\n\n"))
 
 cat("[4] Loading sample IDS data...\n")
 
-ids_path <- here("01_ids/data/processed/ids_damage_areas_cleaned.gpkg")
+ids_path <- here("01_ids/data/processed/ids_layers_cleaned.gpkg")
 
 if (!file.exists(ids_path)) {
   stop("IDS data not found at: ", ids_path)
 }
 
 # Small sample: 100 features from 2020, Region 5 (California)
-sample_query <- "SELECT * FROM ids_damage_areas_cleaned 
+sample_query <- "SELECT * FROM damage_areas 
                  WHERE SURVEY_YEAR = 2020 AND REGION_ID = 5 
                  LIMIT 100"
 
@@ -90,10 +90,10 @@ cat(glue("  Note: TerraClimate pixel = ~16 km² (4km × 4km)\n"))
 cat("  → Polygons are much smaller than pixels, so centroid extraction is appropriate\n\n")
 
 # ==============================================================================
-# 5. TEST CENTROID EXTRACTION
+# 5. TEST POLYGON EXTRACTION
 # ==============================================================================
 
-cat("[5] Testing centroid extraction...\n")
+cat("[5] Testing polygon extraction...\n")
 
 # Variables to test (subset)
 test_vars <- c("tmmx", "tmmn", "pr", "vpd", "def")
@@ -101,15 +101,14 @@ test_vars <- c("tmmx", "tmmn", "pr", "vpd", "def")
 # Create annual mean image for 2020
 tc_annual <- get_terraclimate_annual(2020, test_vars, ee)
 
-# Get centroids and convert to ee
-centroids <- st_centroid(ids_sample)
-centroids_ee <- sf_points_to_ee(centroids, "OBSERVATION_ID", ee)
+# Convert polygons to ee
+polygons_ee <- sf_polygons_to_ee(ids_sample, "OBSERVATION_ID", ee)
 
 # Extract
-cat("  Extracting at centroids...\n")
+cat("  Extracting polygon means...\n")
 t1 <- Sys.time()
 
-result_centroid <- extract_at_points(tc_annual, centroids_ee, scale = 4000, ee)
+result_centroid <- extract_polygon_mean(tc_annual, polygons_ee, scale = 4000, ee)
 
 t2 <- Sys.time()
 centroid_time <- as.numeric(difftime(t2, t1, units = "secs"))

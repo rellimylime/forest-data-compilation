@@ -189,8 +189,8 @@ See:
 
 | File | Location | Size | Description |
 |------|----------|------|-------------|
-| `ids_damage_areas_cleaned.gpkg` | `01_ids/data/processed/` | 3.8 GB | Cleaned IDS polygons (4.5M features) |
-| `tc_r*_*.csv` (251 files) | `02_terraclimate/data/raw/` | ~500 MB | TerraClimate extractions by region-year |
+| `ids_layers_cleaned.gpkg` | `01_ids/data/processed/` | ~4+ GB | Cleaned IDS layers (damage areas, damage points, surveyed areas) |
+| `tc_*_r*_*.csv` | `02_terraclimate/data/raw/` | ~500+ MB | TerraClimate extractions by layer and region-year |
 
 ### Planned Outputs
 

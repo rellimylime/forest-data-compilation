@@ -31,27 +31,27 @@ Explores data structure, checks field consistency, generates lookup tables.
   - Legacy vs DMSM methodology break ~2015
 
 ### 03_clean_ids.R
-Selects fields, transforms CRS, merges all regions.
+Selects fields, transforms CRS, merges all regions for every IDS layer.
 - Input: 10 raw .gdb files
-- Output: data/processed/ids_damage_areas_cleaned.gpkg (4,475,827 features, 3.77 GB)
+- Output: data/processed/ids_layers_cleaned.gpkg (layers: damage_areas, damage_points, surveyed_areas)
 - Actions:
-  - Keep 16 fields, drop 27 (admin metadata, redundant text columns)
+  - Keep relevant fields per layer (codes only - lookups for names)
   - Transform all regions to EPSG:4326 (WGS84)
-  - Standardize OBSERVATION_COUNT to uppercase
-  - Recode PERCENT_AFFECTED_CODE -1 → NA
+  - Standardize OBSERVATION_COUNT to uppercase (damage layers)
+  - Recode PERCENT_AFFECTED_CODE -1 → NA (damage layers)
   - Add SOURCE_FILE column for traceability
-  - Merge all 10 regions into single geopackage
+  - Merge all 10 regions per layer into a single geopackage
 
 ### 04_verify_ids.R
 Validates cleaned output before proceeding to climate merge.
-- Input: ids_damage_areas_cleaned.gpkg
-- Checks:
-  - Field structure matches expected (16 fields)
+- Input: ids_layers_cleaned.gpkg
+- Checks (per layer):
+  - Field structure matches expected fields per layer
   - CRS is EPSG:4326
   - Cleaning actions applied (uppercase, no -1 values)
   - No empty geometries
-  - Summary stats by region, year, damage type
-  - Legacy vs DMSM field population by year
+  - Summary stats by region/year (damage type for damage layers)
+  - Legacy vs DMSM field population by year (damage layers)
 
 ## Decisions Log
 
