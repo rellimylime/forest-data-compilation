@@ -42,6 +42,7 @@ vignettes/*.pdf
 # pkgdown site
 docs/
 !01_ids/docs
+!02_terraclimate/docs
 
 # translation temp files
 po/*~

@@ -61,7 +61,7 @@ for (var_name in names(tc_vars)) {
   }
 }
 
-cat("  ✓ Scale factors applied\n\n")
+cat("  Done\n\n")
 
 # ==============================================================================
 # LOAD IDS DATA
@@ -75,31 +75,66 @@ cat(glue("  IDS rows: {format(nrow(ids_data), big.mark=',')}\n"))
 cat(glue("  IDS columns: {ncol(ids_data)}\n\n"))
 
 # ==============================================================================
+# CLEAN TERRACLIMATE DATA
+# ==============================================================================
+
+cat("[4] Cleaning TerraClimate data...\n")
+
+n_na_ids <- sum(is.na(tc_data$OBSERVATION_ID))
+n_dupes <- nrow(tc_data) - n_distinct(tc_data$OBSERVATION_ID, na.rm = TRUE)
+
+cat(glue("  Rows with NA OBSERVATION_ID: {n_na_ids}\n"))
+cat(glue("  Duplicate OBSERVATION_IDs: {n_dupes}\n"))
+
+tc_data_clean <- tc_data %>%
+  filter(!is.na(OBSERVATION_ID)) %>%
+  distinct(OBSERVATION_ID, .keep_all = TRUE)
+
+cat(glue("  Rows after cleaning: {format(nrow(tc_data_clean), big.mark=',')}\n\n"))
+
+# ==============================================================================
 # MERGE
 # ==============================================================================
 
-cat("[4] Merging IDS with TerraClimate...\n")
+cat("[5] Merging IDS with TerraClimate...\n")
 
 merged <- ids_data %>%
-  left_join(tc_data, 
-            by = c("OBSERVATION_ID", "REGION_ID", "SURVEY_YEAR"))
+  left_join(tc_data_clean %>% select(-REGION_ID, -SURVEY_YEAR), 
+            by = "OBSERVATION_ID")
 
 cat(glue("  Merged rows: {format(nrow(merged), big.mark=',')}\n"))
-cat(glue("  Merged columns: {ncol(merged)}\n"))
+cat(glue("  Merged columns: {ncol(merged)}\n\n"))
 
-n_missing <- sum(is.na(merged$tmmx))
-cat(glue("  Observations without climate data: {format(n_missing, big.mark=',')}\n\n"))
+# ==============================================================================
+# REPORT MISSING CLIMATE DATA
+# ==============================================================================
+
+cat("[6] Checking missing climate data...\n")
+
+missing_climate <- merged %>% 
+  st_drop_geometry() %>%
+  filter(is.na(tmmx))
+
+n_missing <- nrow(missing_climate)
+cat(glue("  Observations without climate data: {format(n_missing, big.mark=',')} ({round(100*n_missing/nrow(merged), 3)}%)\n"))
+
+if (n_missing > 0) {
+  cat("\n  Missing by region:\n")
+  print(table(missing_climate$REGION_ID))
+}
+
+cat("\n")
 
 # ==============================================================================
 # SAVE
 # ==============================================================================
 
-cat("[5] Saving merged data...\n")
+cat("[7] Saving merged data...\n")
 
 st_write(merged, output_file, delete_dsn = TRUE, quiet = TRUE)
 
 file_size_mb <- file.size(output_file) / 1024^2
-cat(glue("  ✓ Saved: {output_file}\n"))
+cat(glue("  Saved: {output_file}\n"))
 cat(glue("  File size: {round(file_size_mb, 1)} MB\n\n"))
 
 # ==============================================================================
@@ -111,5 +146,6 @@ cat("MERGE COMPLETE\n")
 cat("================================================================================\n\n")
 cat(glue("Output: {output_file}\n"))
 cat(glue("Total observations: {format(nrow(merged), big.mark=',')}\n"))
+cat(glue("Missing climate data: {format(n_missing, big.mark=',')} ({round(100*n_missing/nrow(merged), 3)}%)\n"))
 cat(glue("Climate variables: {length(names(tc_vars))}\n"))
 cat("================================================================================\n")

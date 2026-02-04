@@ -56,7 +56,7 @@ Extracts TerraClimate annual means at IDS polygon centroids.
 ---
 
 ### 02_merge_terraclimate.R
-Combines all TerraClimate CSVs, applies scale factors, and joins with IDS data.
+Cleans and joins TerraClimate data to IDS observations.
 
 **Input:**
 - `02_terraclimate/data/raw/tc_r*.csv` (251 files from extraction)
@@ -69,12 +69,16 @@ Combines all TerraClimate CSVs, applies scale factors, and joins with IDS data.
 **Process:**
 1. Load and combine all 251 TerraClimate CSVs
 2. Apply scale factors from config (e.g., tmmx × 0.1 → °C)
-3. Load IDS cleaned data
-4. Left join on OBSERVATION_ID
-5. Save merged GeoPackage
+3. Remove rows with NA OBSERVATION_ID (15 from Region 9, 2024 batch)
+4. Deduplicate on OBSERVATION_ID (3,499 duplicates from sub-batch boundary issue)
+5. Load IDS cleaned data
+6. Left join on OBSERVATION_ID only (avoids type mismatch on REGION_ID/SURVEY_YEAR)
+7. Report missing climate data by region
+8. Save merged GeoPackage
 
 **Runtime:** ~5 minutes  
-**Output size:** 4.2 GB
+**Output size:** ~4.2 GB  
+**Expected:** 4,475,827 rows; 1,235 with missing climate data (0.03%)
 
 ---
 
@@ -142,6 +146,13 @@ gee_project: "your-gee-project-id"
 ```
 RETICULATE_PYTHON=/path/to/python
 ```
+### Duplicate rows in TerraClimate CSVs
+**Cause:** Sub-batch boundary issue - features at positions 5000, 10000, etc. may be extracted twice  
+**Solution:** Deduplicate with `distinct(OBSERVATION_ID, .keep_all = TRUE)` during merge. All duplicates have identical values.
+
+### Many NAs after merge (type mismatch)
+**Cause:** REGION_ID/SURVEY_YEAR stored as numeric in CSVs but integer in geopackage  
+**Solution:** Join on OBSERVATION_ID only; drop REGION_ID/SURVEY_YEAR from TerraClimate data before join
 
 ---
 

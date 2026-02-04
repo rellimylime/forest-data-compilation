@@ -107,6 +107,24 @@ KNOWN ISSUES
    is negligible at 4km resolution.
 
 ================================================================================
+DATA QUALITY NOTES
+================================================================================
+1. DUPLICATES: Extraction produced 3,499 duplicate OBSERVATION_IDs due to 
+   sub-batch boundary issue. All duplicates identical; removed during merge.
+
+2. NA IDS: 15 observations from Region 9, 2024 lost OBSERVATION_ID during 
+   GEE extraction. Excluded from merge.
+
+3. MISSING CLIMATE DATA: 1,235 observations (0.03%) have no climate values.
+   Centroids fall in TerraClimate NoData pixels, concentrated in:
+   - Alaska (694)
+   - Pacific Northwest (152)
+   - Other coastal areas (389)
+
+4. JOIN METHOD: Merge uses OBSERVATION_ID only (not REGION_ID/SURVEY_YEAR) 
+   to avoid type mismatch issues.
+
+================================================================================
 USING THE MERGED DATA
 ================================================================================
 The merged GeoPackage contains IDS observations with scaled climate variables:

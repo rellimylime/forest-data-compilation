@@ -163,6 +163,64 @@ This occurs because the function uses planar geometry algorithms on spherical co
 
 ---
 
+### Issue #007: Duplicate OBSERVATION_IDs in TerraClimate Output
+
+**Date identified:** 2025-02-03  
+**Records affected:** 3,499 duplicate pairs (6,998 rows total)
+
+**Description:**  
+Extraction produced duplicate rows for ~3,499 OBSERVATION_IDs, all within the same region-year batch. Likely caused by off-by-one error at sub-batch boundaries (features at positions 5000, 10000, etc. extracted twice).
+
+**Verification:** All duplicates have identical climate values.
+
+**Decision:** Deduplicate with `distinct(OBSERVATION_ID, .keep_all = TRUE)` during merge. Root cause in extraction script not fixed (low priority given duplicates are identical).
+
+---
+
+### Issue #008: NA OBSERVATION_IDs in Region 9, 2024
+
+**Date identified:** 2025-02-03  
+**Records affected:** 15
+
+**Description:**  
+15 rows from Region 9, Year 2024 batch have NA OBSERVATION_IDs. The ID column was not passed through GEE correctly for these features.
+
+**Decision:** Filter out during merge. Too few to investigate further.
+
+---
+
+### Issue #009: Join Type Mismatch
+
+**Date identified:** 2025-02-03  
+**Impact:** 896,929 false NA matches initially
+
+**Description:**  
+Original merge joined on OBSERVATION_ID, REGION_ID, and SURVEY_YEAR. TerraClimate CSVs stored REGION_ID and SURVEY_YEAR as numeric (double), while IDS geopackage stored them as integer. This caused join failures.
+
+**Decision:** Join on OBSERVATION_ID only (unique identifier). Drop REGION_ID and SURVEY_YEAR from TerraClimate data before join.
+
+---
+
+### Issue #010: Missing Climate Data (NoData Pixels)
+
+**Date identified:** 2025-02-03  
+**Records affected:** 1,235 (0.03%)
+
+**Description:**  
+1,235 IDS observations have no climate data because their centroids fall in TerraClimate NoData pixels (ocean, dataset edges).
+
+**Distribution by region:**
+- Region 10 (Alaska): 694
+- Region 9 (Pacific NW): 152
+- Region 6: 269
+- Region 8: 41
+- Region 5: 35
+- Region 2: 44
+
+**Decision:** Accept as missing. Too few to warrant polygon-mean extraction.
+
+---
+
 ## Variables Extracted
 
 | Variable | Description | Units | Scale Factor | Notes |

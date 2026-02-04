@@ -69,7 +69,7 @@ cat(glue("  Remaining: {n_remaining}\n\n"))
 
 if (n_remaining == 0) {
   cat("All batches complete. Nothing to do.\n")
-  quit(save = "no")
+  stop("No batches remaining - exiting script")
 }
 
 # Filter to remaining batches
