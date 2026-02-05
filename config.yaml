@@ -127,16 +127,123 @@ raw:
   prism:
     description: "PRISM climate data for contiguous US"
     source: "https://prism.oregonstate.edu/"
-    format: "BIL raster"
+    format: "extracted via GEE"
+    access_method: "Google Earth Engine"
+    gee_asset: "OREGONSTATE/PRISM/AN81m"
+    spatial_resolution: "~800m"
+    temporal_resolution: "monthly"
+    coverage_note: "CONUS only (no Alaska/Hawaii)"
     local_dir: "03_prism/data/raw"
-    files: {}  # TBD
+    variables:
+      ppt:
+        description: "Total precipitation"
+        units: "mm"
+      tmean:
+        description: "Mean air temperature"
+        units: "°C"
+      tmin:
+        description: "Minimum air temperature"
+        units: "°C"
+      tmax:
+        description: "Maximum air temperature"
+        units: "°C"
+      tdmean:
+        description: "Mean dewpoint temperature"
+        units: "°C"
+      vpdmin:
+        description: "Minimum vapor pressure deficit"
+        units: "hPa"
+      vpdmax:
+        description: "Maximum vapor pressure deficit"
+        units: "hPa"
+    suggested_variables: ["ppt", "tmean", "tmin", "tmax", "vpdmax"]
 
   worldclim:
-    description: "Global climate and bioclimatic variables"
-    source: "https://www.worldclim.org/"
-    format: "GeoTIFF"
+    description: "Global climate monthly climatologies"
+    source: "https://www.worldclim.org/data/monthlywth.html"
+    format: "extracted via GEE"
+    access_method: "Google Earth Engine"
+    gee_asset: "WORLDCLIM/V1/MONTHLY"
+    spatial_resolution: "~1km"
+    temporal_resolution: "monthly climatology"
     local_dir: "04_worldclim/data/raw"
-    files: {}  # TBD
+    variables:
+      prec:
+        description: "Monthly precipitation climatology"
+        units: "mm"
+      tavg:
+        description: "Monthly average temperature climatology"
+        units: "°C"
+      tmin:
+        description: "Monthly minimum temperature climatology"
+        units: "°C"
+      tmax:
+        description: "Monthly maximum temperature climatology"
+        units: "°C"
+    suggested_variables: ["prec", "tavg", "tmin", "tmax"]
+
+  era5_daily:
+    description: "ERA5 daily reanalysis single-level variables"
+    source: "https://cds.climate.copernicus.eu/datasets/reanalysis-era5-single-levels?tab=overview"
+    format: "extracted via GEE"
+    access_method: "Google Earth Engine"
+    gee_asset: "ECMWF/ERA5/DAILY"
+    spatial_resolution: "~0.25 degree (~27.8km)"
+    temporal_resolution: "daily"
+    local_dir: "05_era5/data/raw"
+    variables:
+      mean_2m_air_temperature:
+        description: "Mean 2m air temperature"
+        units: "K"
+      minimum_2m_air_temperature:
+        description: "Minimum 2m air temperature"
+        units: "K"
+      maximum_2m_air_temperature:
+        description: "Maximum 2m air temperature"
+        units: "K"
+      total_precipitation:
+        description: "Total precipitation"
+        units: "m"
+      u_component_of_wind_10m:
+        description: "10m eastward wind component"
+        units: "m/s"
+      v_component_of_wind_10m:
+        description: "10m northward wind component"
+        units: "m/s"
+      surface_solar_radiation_downwards:
+        description: "Surface solar radiation downwards"
+        units: "J/m2"
+      snow_depth:
+        description: "Snow depth"
+        units: "m"
+      total_evaporation:
+        description: "Total evaporation"
+        units: "m"
+      volumetric_soil_water_layer_1:
+        description: "Volumetric soil water layer 1"
+        units: "m3/m3"
+      volumetric_soil_water_layer_2:
+        description: "Volumetric soil water layer 2"
+        units: "m3/m3"
+      volumetric_soil_water_layer_3:
+        description: "Volumetric soil water layer 3"
+        units: "m3/m3"
+      volumetric_soil_water_layer_4:
+        description: "Volumetric soil water layer 4"
+        units: "m3/m3"
+    suggested_variables:
+      - mean_2m_air_temperature
+      - minimum_2m_air_temperature
+      - maximum_2m_air_temperature
+      - total_precipitation
+      - u_component_of_wind_10m
+      - v_component_of_wind_10m
+      - surface_solar_radiation_downwards
+      - snow_depth
+      - volumetric_soil_water_layer_1
+      - volumetric_soil_water_layer_2
+      - volumetric_soil_water_layer_3
+      - volumetric_soil_water_layer_4
 
 # ==============================================================================
 # PROCESSED DATA

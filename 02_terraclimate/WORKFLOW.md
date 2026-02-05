@@ -8,6 +8,17 @@
 
 ## Overview
 
+## Multi-source climate extraction (new)
+
+The repository now includes a generic extraction script that preserves **all intersecting climate pixels** and **all available timesteps** (monthly or daily, depending on source), rather than polygon means.
+
+- Script: `scripts/01_extract_climate_pixels.R`
+- Utilities: `scripts/utils/climate_extraction_utils.R`
+- Sources supported: TerraClimate, WorldClim, PRISM, ERA5 Daily
+- Output: one row per IDS polygon x climate pixel x climate timestamp, written to `data/raw/climate_pixels/`
+
+This new workflow can be run alongside the existing TerraClimate annual-mean pipeline documented below.
+
 TerraClimate is a global gridded climate dataset at ~4km resolution. Rather than downloading raw raster tiles, we extract point values directly at IDS observation locations via Google Earth Engine. This is storage-efficient (~500 MB of CSVs vs ~500 GB of raw tiles) and directly joinable to IDS data via OBSERVATION_ID.
 
 ## Scripts
