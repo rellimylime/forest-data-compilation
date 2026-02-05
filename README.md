@@ -39,17 +39,23 @@ This repository provides a reproducible pipeline for compiling forest disturbanc
 - **Description:** High-resolution (~4km) global climate and water balance data
 - **Coverage:** Global, monthly (1958-present)
 - **Variables:** 14 climate variables (temperature, precipitation, ET, drought indices, etc.)
-- **Access Method:** Point extraction via Google Earth Engine at IDS observation centroids
+- **Access Method:** Pixel-level polygon extraction via Google Earth Engine
 
-### 3. PRISM *(Planned)*
+### 3. PRISM
 - **Source:** [PRISM Climate Group](https://prism.oregonstate.edu/)
 - **Description:** High-resolution climate data for the contiguous United States
 - **Coverage:** CONUS only, monthly/daily (1895-present)
 
-### 4. WorldClim *(Planned)*
+### 4. WorldClim
 - **Source:** [WorldClim](https://www.worldclim.org/)
 - **Description:** Global climate and bioclimatic variables
 - **Coverage:** Global, climatological normals
+
+### 5. ERA5 Daily
+- **Source:** [Copernicus Climate Data Store / ERA5](https://cds.climate.copernicus.eu/datasets/reanalysis-era5-single-levels?tab=overview)
+- **Description:** Global reanalysis weather fields at daily temporal resolution
+- **Coverage:** Global, daily
+- **Access Method:** Google Earth Engine (`ECMWF/ERA5/DAILY`)
 
 ---
 
@@ -161,8 +167,8 @@ source("01_ids/scripts/02_inspect_ids.R")   # Generate data dictionary & lookups
 source("01_ids/scripts/03_clean_ids.R")     # Clean and merge regions
 source("01_ids/scripts/04_verify_ids.R")    # Validate output
 
-# 2. Extract TerraClimate at IDS locations
-source("02_terraclimate/scripts/01_extract_terraclimate.R")  # ~25 min for 4.5M points
+# 2. Extract full climate pixel time series for IDS polygons
+source("scripts/01_extract_climate_pixels.R")
 
 # 3. Process and merge (coming soon)
 # source("02_terraclimate/scripts/02_process_terraclimate.R")
