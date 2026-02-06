@@ -349,6 +349,29 @@ processed:
       cleaned:
         filename: "ids_cleaned.gpkg"
         description: "After QC and cleaning"
+    # Derived IDS products (spatial assignment + area metrics)
+    derived:
+      output_dir: "processed/ids"
+      damage_area_to_surveyed_area:
+        filename: "damage_area_to_surveyed_area.parquet"
+        description: "Spatial assignment of damage areas to surveyed areas (max overlap)"
+        columns: "DAMAGE_AREA_ID, SURVEYED_AREA_ID, overlap_m2, match_quality_flag"
+      damage_area_area_metrics:
+        filename: "damage_area_area_metrics.parquet"
+        description: "Area metrics in EPSG:5070: damage_area_m2, survey_area_m2, damage_frac_of_survey"
+        columns: "DAMAGE_AREA_ID, damage_area_m2, SURVEYED_AREA_ID, survey_area_m2, damage_frac_of_survey"
+
+  # Standardized climate outputs (long format, dataset-agnostic)
+  climate:
+    output_dir: "processed/climate"
+    description: "Standardized long-format climate data per dataset"
+    note: "Each dataset has pixel_values.parquet and damage_areas_summaries_long.parquet"
+    pixel_values:
+      description: "Long-format pixel values keyed by pixel_id, calendar_year, calendar_month, variable, value"
+      note: "Includes water_year and water_year_month columns"
+    damage_areas_summaries:
+      description: "Area-weighted climate means per DAMAGE_AREA_ID per variable per time step"
+      columns: "DAMAGE_AREA_ID, calendar_year, calendar_month, water_year, water_year_month, variable, weighted_mean, n_pixels, n_pixels_with_data, sum_coverage_fraction"
 
   # Climate pixel maps (observation -> pixel mapping)
   pixel_maps:
@@ -400,3 +423,7 @@ params:
     start_year: 1997
     end_year: 2024
   crs: "EPSG:4326"
+  area_crs: "EPSG:5070"  # Conus Albers Equal Area for area calculations
+  water_year:
+    description: "US hydrological convention: Oct-Sep"
+    note: "month >= 10: water_year = calendar_year + 1, water_year_month = month - 9"
