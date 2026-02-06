@@ -6,6 +6,8 @@
 - [x] Clean data (03_clean_ids.R)
 - [x] Verify output (04_verify_ids.R)
 - [x] Explore coverage (05_explore_ids_coverage.R)
+- [ ] Assign damage areas to surveyed areas (06_assign_surveyed_areas.R)
+- [ ] Compute area metrics (07_compute_area_metrics.R)
 
 ## Scripts
 
@@ -61,6 +63,30 @@ Explores raw data for era-specific patterns, missingness, and regional temporal 
   - `ids_value_summary_pre_2015.csv` / `ids_value_summary_post_2015.csv` — distributions for era-specific columns
   - `ids_region_coverage.csv` — year range and gaps per region
 
+### 06_assign_surveyed_areas.R
+Spatially assigns each DAMAGE_AREA_ID to the best-matching SURVEYED_AREA_ID via polygon intersection with max-overlap selection. Processed in chunks (10k features) to handle millions of geometries.
+- **Input:** `data/processed/ids_layers_cleaned.gpkg` (damage_areas + surveyed_areas layers)
+- **Output:** `processed/ids/damage_area_to_surveyed_area.parquet`
+  - Columns: DAMAGE_AREA_ID, SURVEYED_AREA_ID, overlap_m2, match_quality_flag
+  - match_quality_flag: "matched" or "no_survey"
+- **CRS:** Transforms to EPSG:5070 (Conus Albers) for accurate area intersection
+- **Notes:**
+  - Filters surveyed areas to matching SURVEY_YEAR for efficiency
+  - Unmatched damage areas are flagged, not dropped
+
+### 07_compute_area_metrics.R
+Computes area metrics for damage areas and their assigned surveyed areas.
+- **Input:**
+  - `data/processed/ids_layers_cleaned.gpkg`
+  - `processed/ids/damage_area_to_surveyed_area.parquet` (from step 06)
+- **Output:** `processed/ids/damage_area_area_metrics.parquet`
+  - Columns: DAMAGE_AREA_ID, damage_area_m2, SURVEYED_AREA_ID, survey_area_m2, damage_frac_of_survey
+- **CRS:** EPSG:5070 for area calculations
+- **Notes:**
+  - damage_frac_of_survey = damage_area_m2 / survey_area_m2
+  - NA where no surveyed area assigned or survey_area_m2 = 0
+  - IDS SURVEY_YEAR is preserved as-is (NOT converted to water year)
+
 ## Decisions Log
 
 | Decision | Rationale | Date |
@@ -73,3 +99,7 @@ Explores raw data for era-specific patterns, missingness, and regional temporal 
 | Keep pancake features (14.7%) | Preserves multi-agent damage info; document ACRES summing caveat | 2025-01-30 |
 | Recode PERCENT_AFFECTED_CODE -1 → NA | 2015 transition year placeholder; LEGACY_* fields available | 2025-01-30 |
 | Add SOURCE_FILE column | Distinguishes CA vs HI (both REGION_ID=5) | 2025-01-30 |
+| Assign damage to surveyed via max overlap | Deterministic 1:1 assignment; simple and auditable | 2026-02-06 |
+| Area metrics in EPSG:5070 | Equal-area projection for accurate m2 calculations | 2026-02-06 |
+| IDS keeps SURVEY_YEAR (no water year) | Survey timing is administrative, not hydrological | 2026-02-06 |
+| Chunked spatial ops (10k features) | Handles 4.5M+ features without memory exhaustion | 2026-02-06 |

@@ -570,11 +570,19 @@ img <- ee$ImageCollection(gee_asset)$first()
 
 
 #' Join pixel values back to observations using pixel map
+#'
+#' Computes area-weighted mean per observation per time step.
+#' Adds diagnostic columns: n_pixels, sum_coverage_fraction.
+#' Optionally adds water year columns.
+#'
 #' @param pixel_values data.frame of climate values per pixel per time
 #' @param pixel_map data.frame mapping observations to pixels
 #' @param id_col Name of observation ID column in pixel_map
+#' @param add_water_year If TRUE, append water_year and water_year_month columns
 #' @return data.frame with climate values per observation per time
-join_to_observations <- function(pixel_values, pixel_map, id_col = "OBSERVATION_ID") {
+join_to_observations <- function(pixel_values, pixel_map,
+                                  id_col = "OBSERVATION_ID",
+                                  add_water_year = FALSE) {
 
   # For observations with multiple pixels, compute weighted mean
   time_cols <- intersect(c("year", "month", "day"), names(pixel_values))
@@ -591,8 +599,19 @@ join_to_observations <- function(pixel_values, pixel_map, id_col = "OBSERVATION_
       across(all_of(value_cols),
              ~ weighted.mean(.x, coverage_fraction, na.rm = TRUE)),
       n_pixels = n(),
+      sum_coverage_fraction = sum(coverage_fraction),
       .groups = "drop"
     )
+
+  # Optionally add water year columns
+  if (add_water_year && "year" %in% names(result) && "month" %in% names(result)) {
+    if (!exists("calendar_to_water_year", mode = "function")) {
+      source(here("scripts/utils/time_utils.R"))
+    }
+    wy <- calendar_to_water_year(result$year, result$month)
+    result$water_year <- wy$water_year
+    result$water_year_month <- wy$water_year_month
+  }
 
   result
 }
