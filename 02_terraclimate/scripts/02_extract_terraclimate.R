@@ -1,55 +1,53 @@
-# ==============================================================================
-# 02_terraclimate/scripts/02_extract_terraclimate.R
-# Extract TerraClimate pixel values from GEE for all unique pixels
-# ==============================================================================
-
 library(here)
 library(yaml)
 library(dplyr)
 library(arrow)
+library(purrr)
 
 source(here("scripts/utils/load_config.R"))
 source(here("scripts/utils/gee_utils.R"))
 source(here("scripts/utils/climate_extract.R"))
 
-# Load config
 config <- load_config()
 tc_config <- config$raw$terraclimate
 time_config <- config$params$time_range
 
-# Paths
 pixel_map_dir <- here(tc_config$output_dir, "pixel_maps")
 output_dir <- here(tc_config$output_dir, "pixel_values")
+
+# Cache the deduped pixels (so you do Step 1 once)
+pixel_coords_cache <- file.path(pixel_map_dir, "_all_layers_unique_pixels.parquet")
 
 cat("TerraClimate Extraction (GEE)\n")
 cat("================================\n\n")
 
 # ------------------------------------------------------------------------------
-# Step 1: Load pixel maps and get unique pixels
+# Step 1: Build pixel_coords efficiently (and cache it)
 # ------------------------------------------------------------------------------
 
 cat("Step 1: Loading pixel maps...\n")
 
-# Combine unique pixels from all layers
-all_pixels <- list()
-
-for (layer in c("damage_areas", "damage_points", "surveyed_areas")) {
-  pm_file <- file.path(pixel_map_dir, paste0(layer, "_pixel_map.parquet"))
-
-  if (file.exists(pm_file)) {
-    pm <- read_parquet(pm_file)
-    all_pixels[[layer]] <- get_unique_pixels(pm)
-    cat(sprintf("  %s: %d unique pixels\n", layer, nrow(all_pixels[[layer]])))
-  } else {
-    cat(sprintf("  %s: pixel map not found, skipping\n", layer))
-  }
+if (file.exists(pixel_coords_cache)) {
+  pixel_coords <- read_parquet(pixel_coords_cache)
+  cat(sprintf("  Using cached pixel_coords: %d unique pixels\n", nrow(pixel_coords)))
+} else {
+  layers <- c("damage_areas", "damage_points", "surveyed_areas")
+  pm_files <- file.path(pixel_map_dir, paste0(layers, "_pixel_map.parquet"))
+  pm_files <- pm_files[file.exists(pm_files)]
+  
+  if (length(pm_files) == 0) stop("No pixel map parquet files found.")
+  
+  # Arrow: read only needed columns, do distinct in Arrow, then collect once
+  ds <- open_dataset(pm_files, format = "parquet")
+  
+  pixel_coords <- ds %>%
+    select(pixel_id, x, y) %>%     # only columns you need
+    distinct() %>%                # Arrow pushes this down
+    collect()
+  
+  write_parquet(pixel_coords, pixel_coords_cache)
+  cat(sprintf("  Cached pixel_coords: %d unique pixels\n", nrow(pixel_coords)))
 }
-
-# Combine and deduplicate
-pixel_coords <- bind_rows(all_pixels) %>%
-  distinct(pixel_id, x, y)
-
-cat(sprintf("\nTotal unique pixels across all layers: %d\n", nrow(pixel_coords)))
 
 # ------------------------------------------------------------------------------
 # Step 2: Initialize GEE
@@ -65,15 +63,9 @@ cat("  GEE initialized successfully\n")
 
 cat("\nStep 3: Extracting climate values from GEE...\n")
 
-# Get variable names and scale factors
 variables <- names(tc_config$variables)
-scale_factors <- sapply(tc_config$variables, function(v) v$scale)
-
+scale_factors <- vapply(tc_config$variables, function(v) v$scale, numeric(1))
 years <- time_config$start_year:time_config$end_year
-
-cat(sprintf("  Variables: %s\n", paste(variables, collapse = ", ")))
-cat(sprintf("  Years: %d-%d\n", min(years), max(years)))
-cat(sprintf("  Temporal resolution: monthly\n\n"))
 
 extract_climate_from_gee(
   pixel_coords = pixel_coords,
@@ -88,25 +80,3 @@ extract_climate_from_gee(
   scale_factors = scale_factors,
   monthly = TRUE
 )
-
-# ------------------------------------------------------------------------------
-# Summary
-# ------------------------------------------------------------------------------
-
-cat("\n================================\n")
-cat("Extraction complete!\n\n")
-
-output_files <- list.files(output_dir, pattern = "\\.parquet$", full.names = TRUE)
-cat(sprintf("Output files: %d parquet files\n", length(output_files)))
-cat(sprintf("Output directory: %s\n", output_dir))
-
-# Show sample
-if (length(output_files) > 0) {
-  sample_file <- output_files[1]
-  sample_data <- read_parquet(sample_file)
-  cat(sprintf("\nSample from %s:\n", basename(sample_file)))
-  cat(sprintf("  Rows: %d\n", nrow(sample_data)))
-  cat(sprintf("  Columns: %s\n", paste(names(sample_data), collapse = ", ")))
-}
-
-cat("\nTo join with IDS observations, use join_to_observations() from climate_extract.R\n")
