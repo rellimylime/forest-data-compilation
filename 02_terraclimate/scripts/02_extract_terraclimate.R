@@ -72,8 +72,10 @@ scale_factors <- sapply(tc_config$variables, function(v) v$scale)
 years <- time_config$start_year:time_config$end_year
 
 cat(sprintf("  Variables: %s\n", paste(variables, collapse = ", ")))
-cat(sprintf("  Years: %d-%d\n", min(years), max(years)))
-cat(sprintf("  Temporal resolution: monthly\n\n"))
+cat(sprintf("  Years: %d-%d (%d years)\n", min(years), max(years), length(years)))
+cat(sprintf("  Temporal resolution: monthly (stacked extraction)\n\n"))
+
+t_start <- Sys.time()
 
 extract_climate_from_gee(
   pixel_coords = pixel_coords,
@@ -82,19 +84,22 @@ extract_climate_from_gee(
   years = years,
   ee = ee,
   scale = tc_config$gee_scale,
-  batch_size = 5000,
+  batch_size = 2500,
   output_dir = output_dir,
   output_prefix = tc_config$output_prefix,
   scale_factors = scale_factors,
   monthly = TRUE
 )
 
+t_end <- Sys.time()
+
 # ------------------------------------------------------------------------------
 # Summary
 # ------------------------------------------------------------------------------
 
 cat("\n================================\n")
-cat("Extraction complete!\n\n")
+cat(sprintf("Extraction complete! Total time: %.1f hours\n\n",
+            as.numeric(difftime(t_end, t_start, units = "hours"))))
 
 output_files <- list.files(output_dir, pattern = "\\.parquet$", full.names = TRUE)
 cat(sprintf("Output files: %d parquet files\n", length(output_files)))

@@ -177,13 +177,17 @@ build_ids_pixel_maps <- function(ids_path,
 
 #' Extract climate data from GEE ImageCollection at pixel coordinates
 #'
+#' For monthly extraction, stacks all 12 months into a single multi-band image
+#' per year and extracts in one sampleRegions() call per batch, then unstacks.
+#' This reduces GEE round-trips by ~12x compared to per-month extraction.
+#'
 #' @param pixel_coords data.frame with x, y columns (unique pixels)
 #' @param gee_asset GEE asset path (e.g., "IDAHO_EPSCOR/TERRACLIMATE")
 #' @param variables Character vector of band names to extract
 #' @param years Integer vector of years to extract
 #' @param ee Initialized ee module from init_gee()
 #' @param scale Pixel resolution in meters for sampling
-#' @param batch_size Number of points per GEE request
+#' @param batch_size Number of points per GEE request (auto-adjusted for monthly stacking)
 #' @param output_dir Directory to save results (one parquet per year)
 #' @param output_prefix Prefix for output files
 #' @param scale_factors Named list of scale factors to apply
@@ -208,8 +212,21 @@ extract_climate_from_gee <- function(pixel_coords,
     distinct(pixel_id, x, y)
 
   n_pixels <- nrow(pixel_coords)
+
+  # For monthly stacking (14 vars x 12 months = 168 bands), reduce batch size
+  # to keep GEE response payload manageable
+  if (monthly) {
+    stacked_batch_size <- min(batch_size, 2500)
+  }
+
   cat(sprintf("Extracting %d variables for %d unique pixels across %d years\n",
               length(variables), n_pixels, length(years)))
+  if (monthly) {
+    cat(sprintf("  Monthly stacking: 12 months x %d vars = %d bands per image\n",
+                length(variables), 12 * length(variables)))
+    cat(sprintf("  Batch size: %d pixels (adjusted for stacked extraction)\n",
+                stacked_batch_size))
+  }
 
   for (year in years) {
     output_file <- file.path(output_dir, sprintf("%s_%d.parquet", output_prefix, year))
@@ -220,41 +237,26 @@ extract_climate_from_gee <- function(pixel_coords,
     }
 
     cat(sprintf("  %d: ", year))
+    t_year_start <- Sys.time()
 
     if (monthly) {
-      # Extract each month separately
-      year_results <- list()
+      # Build a single image with all 12 months stacked as separate bands
+      # Band names: {variable}_{month:02d} (e.g., tmmx_01, tmmx_02, ...)
+      stacked_img <- .build_yearly_stacked_image(year, gee_asset, variables, ee)
 
-      for (month in 1:12) {
-        start_date <- sprintf("%d-%02d-01", year, month)
-        if (month == 12) {
-          end_date <- sprintf("%d-01-01", year + 1)
-        } else {
-          end_date <- sprintf("%d-%02d-01", year, month + 1)
-        }
+      # Extract all 168 bands in batched sampleRegions() calls
+      stacked_result <- .extract_gee_batches(
+        pixel_coords, stacked_img, ee, scale, stacked_batch_size,
+        verbose = FALSE
+      )
 
-        # Get image for this month
-        img <- ee$ImageCollection(gee_asset)$
-          filterDate(start_date, end_date)$
-          select(variables)$
-          first()
-
-        # Extract in batches
-        month_result <- .extract_gee_batches(
-          pixel_coords, img, ee, scale, batch_size,
-          verbose = FALSE
-        )
-
-        if (!is.null(month_result) && nrow(month_result) > 0) {
-          month_result$year <- year
-          month_result$month <- month
-          year_results[[month]] <- month_result
-        }
-
-        cat(".")
+      # Unstack: wide (168 cols) -> long-ish (14 var cols + year + month)
+      # Pass pixel_coords so x/y can be joined (sampleRegions only returns pixel_id)
+      if (!is.null(stacked_result) && nrow(stacked_result) > 0) {
+        year_data <- .unstack_yearly_result(stacked_result, variables, year, pixel_coords)
+      } else {
+        year_data <- data.frame()
       }
-
-      year_data <- bind_rows(year_results)
 
     } else {
       # Annual mean
@@ -285,15 +287,119 @@ extract_climate_from_gee <- function(pixel_coords,
       }
     }
 
+    t_year_end <- Sys.time()
     write_parquet(year_data, output_file)
-    cat(sprintf(" saved %d rows\n", nrow(year_data)))
+    cat(sprintf(" saved %d rows (%.1f min)\n",
+                nrow(year_data),
+                as.numeric(difftime(t_year_end, t_year_start, units = "mins"))))
   }
 
   invisible(NULL)
 }
 
 
+#' Build a single stacked image with all 12 months for a year
+#'
+#' Creates a 168-band image (14 variables x 12 months) with band names
+#' formatted as {variable}_{month:02d} (e.g., tmmx_01, tmmx_02, ..., pdsi_12).
+#' This allows extracting an entire year of monthly data in one sampleRegions() call.
+#'
+#' @param year Integer year
+#' @param gee_asset GEE asset path
+#' @param variables Character vector of band names
+#' @param ee Initialized ee module
+#' @return ee.Image with 12 * length(variables) bands
+#' @keywords internal
+.build_yearly_stacked_image <- function(year, gee_asset, variables, ee) {
+
+  ic <- ee$ImageCollection(gee_asset)$
+    filterDate(sprintf("%d-01-01", year), sprintf("%d-01-01", year + 1))$
+    select(variables)
+
+  stacked_img <- NULL
+
+  for (month in 1:12) {
+    monthly_img <- ic$
+      filter(ee$Filter$calendarRange(as.integer(month), as.integer(month), "month"))$
+      first()
+
+    new_names <- sprintf("%s_%02d", variables, month)
+    monthly_renamed <- monthly_img$select(variables)$rename(new_names)
+
+    if (is.null(stacked_img)) {
+      stacked_img <- monthly_renamed
+    } else {
+      stacked_img <- stacked_img$addBands(monthly_renamed)
+    }
+  }
+
+  stacked_img
+}
+
+
+#' Unstack a yearly stacked result back to standard row-per-month format
+#'
+#' Takes a data.frame with columns like tmmx_01, tmmx_02, ..., pdsi_12 (plus pixel_id)
+#' and reshapes to rows with columns: pixel_id, x, y, year, month, tmmx, tmmn, ...
+#'
+#' sampleRegions() only returns pixel_id and band values (no x/y), so pixel_coords
+#' is used to look up coordinates.
+#'
+#' @param stacked_result data.frame from .extract_gee_batches() on a stacked image
+#' @param variables Character vector of original variable names
+#' @param year Integer year to assign
+#' @param pixel_coords data.frame with pixel_id, x, y for coordinate lookup
+#' @return data.frame in standard per-month format
+#' @keywords internal
+.unstack_yearly_result <- function(stacked_result, variables, year, pixel_coords) {
+
+  # Build coordinate lookup from pixel_coords
+  coord_lookup <- pixel_coords %>%
+    distinct(pixel_id, x, y)
+
+  month_results <- list()
+
+  for (month in 1:12) {
+    # Column names for this month: tmmx_01, tmmn_01, ...
+    stacked_cols <- sprintf("%s_%02d", variables, month)
+
+    # Check which columns exist (handles missing months gracefully)
+    existing <- stacked_cols %in% names(stacked_result)
+    if (!any(existing)) next
+
+    month_df <- data.frame(
+      pixel_id = stacked_result$pixel_id,
+      year = year,
+      month = month
+    )
+
+    for (k in seq_along(variables)) {
+      if (existing[k]) {
+        month_df[[variables[k]]] <- stacked_result[[stacked_cols[k]]]
+      } else {
+        month_df[[variables[k]]] <- NA_real_
+      }
+    }
+
+    month_results[[month]] <- month_df
+  }
+
+  result <- bind_rows(month_results)
+
+  # Join x/y coordinates from pixel_coords
+  result <- result %>%
+    left_join(coord_lookup, by = "pixel_id") %>%
+    select(pixel_id, x, y, year, month, all_of(variables))
+
+  result
+}
+
+
 #' Extract from GEE image in batches
+#'
+#' Builds ee.FeatureCollection from a GeoJSON dict (single Python call)
+#' rather than constructing individual ee.Feature objects per point.
+#'
 #' @keywords internal
 .extract_gee_batches <- function(pixel_coords, image, ee, scale, batch_size, verbose = TRUE) {
 
@@ -306,12 +412,24 @@ extract_climate_from_gee <- function(pixel_coords,
     end_idx <- min(i * batch_size, n_pixels)
     batch <- pixel_coords[start_idx:end_idx, ]
 
-    # Convert to ee.FeatureCollection of points
-    features <- lapply(seq_len(nrow(batch)), function(j) {
-      geom <- ee$Geometry$Point(c(batch$x[j], batch$y[j]))
-      ee$Feature(geom, list(pixel_id = batch$pixel_id[j]))
-    })
-    fc <- ee$FeatureCollection(features)
+    # Build GeoJSON FeatureCollection in R, pass to ee in a single call.
+    # This avoids N individual ee$Geometry$Point() + ee$Feature() calls
+    # which are slow due to per-call reticulate overhead.
+    geojson_features <- vector("list", nrow(batch))
+    for (j in seq_len(nrow(batch))) {
+      geojson_features[[j]] <- list(
+        type = "Feature",
+        geometry = list(
+          type = "Point",
+          coordinates = list(batch$x[j], batch$y[j])
+        ),
+        properties = list(pixel_id = as.integer(batch$pixel_id[j]))
+      )
+    }
+    fc <- ee$FeatureCollection(list(
+      type = "FeatureCollection",
+      features = geojson_features
+    ))
 
     # Sample regions
     sampled <- image$sampleRegions(
