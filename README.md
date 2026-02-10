@@ -39,7 +39,7 @@ This repository provides a reproducible pipeline for compiling forest disturbanc
 - **Description:** High-resolution (~4km) global climate and water balance data
 - **Coverage:** Global, monthly (1958-present)
 - **Variables:** 14 climate variables (temperature, precipitation, ET, drought indices, etc.)
-- **Access Method:** Point extraction via Google Earth Engine at IDS observation centroids
+- **Access Method:** Pixel-level extraction via Google Earth Engine (no per-observation rasters)
 
 ### 3. PRISM *(Planned)*
 - **Source:** [PRISM Climate Group](https://prism.oregonstate.edu/)
@@ -65,10 +65,21 @@ forest-data-compilation/
 │
 ├── scripts/                  # Shared utility scripts
 │   ├── 00_setup.R           # Environment setup and package loading
+│   ├── 03_reshape_pixel_values.R   # Reshape climate data to long format
+│   ├── 04_build_climate_summaries.R # Observation-level weighted means
 │   └── utils/
 │       ├── load_config.R    # Configuration file loader
+│       ├── climate_extract.R # Pixel map & extraction framework
 │       ├── gee_utils.R      # Google Earth Engine functions
+│       ├── time_utils.R     # Calendar/water year conversions
 │       └── metadata_utils.R # Metadata management helpers
+│
+├── processed/                # Cross-dataset derived outputs (gitignored)
+│   ├── ids/                 # Surveyed area assignments, area metrics
+│   └── climate/             # Standardized long-format climate per dataset
+│       ├── terraclimate/    # pixel_values.parquet, damage_areas_summaries_long.parquet
+│       ├── prism/           # (same structure)
+│       └── worldclim/       # (same structure)
 │
 ├── local/                    # User-specific config (gitignored)
 │   └── user_config.yaml     # GEE project ID, local paths
@@ -161,12 +172,18 @@ source("01_ids/scripts/02_inspect_ids.R")   # Generate data dictionary & lookups
 source("01_ids/scripts/03_clean_ids.R")     # Clean and merge regions
 source("01_ids/scripts/04_verify_ids.R")    # Validate output
 
-# 2. Extract TerraClimate at IDS locations
-source("02_terraclimate/scripts/01_extract_terraclimate.R")  # ~25 min for 4.5M points
+# 2. IDS spatial products
+source("01_ids/scripts/06_assign_surveyed_areas.R")  # Damage -> surveyed area assignment
+source("01_ids/scripts/07_compute_area_metrics.R")    # Area metrics (EPSG:5070)
 
-# 3. Process and merge (coming soon)
-# source("02_terraclimate/scripts/02_process_terraclimate.R")
-# source("02_terraclimate/scripts/03_merge_ids_terraclimate.R")
+# 3. Build pixel maps and extract climate (per dataset)
+source("02_terraclimate/scripts/01_build_pixel_maps.R")
+source("02_terraclimate/scripts/02_extract_terraclimate.R")
+
+# 4. Reshape climate to long format and build observation summaries
+Rscript scripts/03_reshape_pixel_values.R terraclimate
+Rscript scripts/04_build_climate_summaries.R terraclimate
+# Same pattern for prism, worldclim, era5
 ```
 
 ### Detailed Workflow Documentation
@@ -185,19 +202,22 @@ See:
 
 ## Data Outputs
 
-### Current Outputs
-
-| File | Location | Size | Description |
-|------|----------|------|-------------|
-| `ids_layers_cleaned.gpkg` | `01_ids/data/processed/` | ~4+ GB | Cleaned IDS layers (damage areas, damage points, surveyed areas) |
-| `tc_*_r*_*.csv` | `02_terraclimate/data/raw/` | ~500+ MB | TerraClimate extractions by layer and region-year |
-
-### Planned Outputs
+### IDS Outputs
 
 | File | Location | Description |
 |------|----------|-------------|
-| `terraclimate_scaled.csv` | `02_terraclimate/data/processed/` | Scaled climate values, single file |
-| `ids_terraclimate_merged.csv` | `merged_data/` | IDS + TerraClimate joined dataset |
+| `ids_layers_cleaned.gpkg` | `01_ids/data/processed/` | Cleaned IDS layers (damage areas, damage points, surveyed areas) |
+| `damage_area_to_surveyed_area.parquet` | `processed/ids/` | Spatial assignment: each damage area to its best-matching surveyed area |
+| `damage_area_area_metrics.parquet` | `processed/ids/` | Area metrics: damage_area_m2, survey_area_m2, damage_frac_of_survey (EPSG:5070) |
+
+### Climate Outputs (per dataset)
+
+| File | Location | Description |
+|------|----------|-------------|
+| `*_pixel_map.parquet` | `XX_dataset/data/processed/pixel_maps/` | Pixel map: observation to raster pixel with coverage_fraction |
+| `*_{year}.parquet` | `XX_dataset/data/processed/pixel_values/` | Wide-format pixel values per year |
+| `pixel_values.parquet` | `processed/climate/<dataset>/` | Long-format pixel values (pixel_id, calendar_year/month, water_year/month, variable, value) |
+| `damage_areas_summaries_long.parquet` | `processed/climate/<dataset>/` | Observation-level area-weighted means with diagnostics |
 
 ### Data Access
 
@@ -222,6 +242,40 @@ Raw and processed data files are **not tracked in git** due to size. To obtain:
 
 ---
 
+## Architecture: Pixel Decomposition
+
+Climate data is linked to IDS observations through a **pixel decomposition** approach
+rather than clipping rasters per observation. This is reused identically for all climate
+datasets (TerraClimate, PRISM, WorldClim, ERA5).
+
+```
+IDS Observations    Pixel Maps                   Pixel Values (long)
+┌──────────────┐   ┌────────────────────────┐   ┌─────────────────────────────────┐
+│ OBSERVATION_ID│──▶│ OBSERVATION_ID         │   │ pixel_id                        │
+│ DAMAGE_AREA_ID│  │ DAMAGE_AREA_ID         │   │ calendar_year, calendar_month   │
+│ geometry     │   │ pixel_id  ─────────────┼──▶│ water_year, water_year_month    │
+└──────────────┘   │ coverage_fraction      │   │ variable, value                 │
+                   └────────────────────────┘   └─────────────────────────────────┘
+```
+
+**coverage_fraction** = area(observation intersect pixel) / area(pixel). NOT normalized across
+observations; used as weight for area-weighted means.
+
+### Time Conventions
+
+- **Climate data** carries both **calendar year/month** and **water year/month**.
+- **Water year**: Oct-Sep. If month >= 10: water_year = cal_year + 1, water_year_month = month - 9.
+- **IDS data** is keyed by its original `SURVEY_YEAR`; it is NOT forced into water year.
+- Shared helper: `scripts/utils/time_utils.R` (`calendar_to_water_year()`, `add_water_year()`).
+
+### Survey Area Fraction
+
+Each `DAMAGE_AREA_ID` is spatially assigned to its best-matching `SURVEYED_AREA_ID` via
+polygon intersection (max overlap). Area metrics (`damage_area_m2`, `survey_area_m2`,
+`damage_frac_of_survey`) are computed in EPSG:5070 (Conus Albers Equal Area).
+
+---
+
 ## Known Issues & Limitations
 
 ### IDS Data
@@ -231,7 +285,7 @@ Raw and processed data files are **not tracked in git** due to size. To obtain:
 
 ### TerraClimate
 - **Scale factors:** Raw values are integers; must apply scale factors for physical units
-- **Annual means:** Flux variables (precipitation, ET) may need ×12 for annual totals
+- **Annual means:** Flux variables (precipitation, ET) may need x12 for annual totals
 - **10 excluded observations:** Invalid geometries couldn't produce centroids
 
 ### General

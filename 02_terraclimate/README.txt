@@ -16,54 +16,186 @@ Temporal resolution: Monthly (all 12 months preserved per year)
 Temporal coverage: 1958-present (IDS extraction: 1997-2024)
 
 ================================================================================
-DATA ARCHITECTURE (Two-Table Design)
+RUNNING THE WORKFLOW
 ================================================================================
-This extraction preserves ALL individual pixel values within each IDS polygon,
-rather than computing polygon means. This enables analysis of within-polygon
-climate variation.
+Run scripts in order. Steps 1-2 are TerraClimate-specific (in this directory).
+Steps 3-4 use shared scripts (in the top-level scripts/ directory) that work
+identically for all climate datasets (PRISM, WorldClim, ERA5).
 
-1. PIXEL MAPS (observation -> pixel mapping)
-   Location: 02_terraclimate/data/processed/pixel_maps/
-   Files:
-     - damage_areas_pixel_map.parquet
-     - damage_points_pixel_map.parquet
-     - surveyed_areas_pixel_map.parquet
-   Columns: OBSERVATION_ID (or SURVEY_FEATURE_ID), DAMAGE_AREA_ID, pixel_id,
-            x, y, coverage_fraction
-   Purpose: Links each IDS observation to the climate raster pixels it overlaps
+  Step 1: Rscript 02_terraclimate/scripts/01_build_pixel_maps.R
+          Maps each IDS observation to the ~4km TerraClimate pixels it overlaps.
 
-2. PIXEL VALUES (climate data per unique pixel per month)
-   Location: 02_terraclimate/data/processed/pixel_values/
-   Files: terraclimate_{year}.parquet (one per year, 1997-2024)
-   Columns: pixel_id, x, y, year, month, tmmx, tmmn, pr, ... (14 climate vars)
-   Purpose: Climate values for each unique pixel across all time steps
+  Step 2: Rscript 02_terraclimate/scripts/02_extract_terraclimate.R
+          Extracts monthly climate values for all unique pixels from GEE.
 
-To join: Use pixel_id to link pixel_values to observations via pixel_maps.
-         For polygon summaries, use coverage_fraction as weights.
+  Step 3: Rscript scripts/03_reshape_pixel_values.R terraclimate
+          Reshapes wide-format yearly files into a single long-format parquet.
+
+  Step 4: Rscript scripts/04_build_climate_summaries.R terraclimate
+          Computes area-weighted climate means per observation per month.
+
+Prerequisite: 00_explore_terraclimate.R is an optional exploratory script.
+
+================================================================================
+USING THE OUTPUTS
+================================================================================
+The workflow produces two key output types:
+
+  1. PIXEL MAPS  -- link observations to raster pixels
+     Location: 02_terraclimate/data/processed/pixel_maps/
+     Files: damage_areas_pixel_map.parquet
+            damage_points_pixel_map.parquet
+            surveyed_areas_pixel_map.parquet
+     Columns: OBSERVATION_ID, DAMAGE_AREA_ID, pixel_id, x, y, coverage_fraction
+
+  2. PIXEL VALUES -- monthly climate data per unique pixel
+     Location: 02_terraclimate/data/processed/pixel_values/
+     Files: terraclimate_{year}.parquet (one per year, 1997-2024)
+     Columns: pixel_id, x, y, year, month, [14 climate variables]
+
+After reshape (step 3):
+     Location: processed/climate/terraclimate/pixel_values.parquet
+     Columns: pixel_id, calendar_year, calendar_month, water_year,
+              water_year_month, variable, value
+
+After summaries (step 4):
+     Location: processed/climate/terraclimate/damage_areas_summaries_long.parquet
+     Columns: DAMAGE_AREA_ID, calendar_year, calendar_month, water_year,
+              water_year_month, variable, weighted_mean, n_pixels,
+              n_pixels_with_data, sum_coverage_fraction
+
+================================================================================
+HOW TO: Get Climate Data for a Specific Species
+================================================================================
+Goal: Select IDS observations for a particular host species and retrieve the
+TerraClimate values at the corresponding pixels.
+
+  library(sf)
+  library(dplyr)
+  library(arrow)
+
+  # --- 1. Load IDS data and species lookup ---
+  damage_areas <- st_read(
+    "01_ids/data/processed/ids_layers_cleaned.gpkg",
+    layer = "damage_areas"
+  )
+  species_lookup <- read.csv("01_ids/lookups/host_code_lookup.csv")
+
+  # --- 2. Find the HOST_CODE for your species ---
+  # Browse available species:
+  print(species_lookup)
+  # Example codes: 122 = ponderosa pine, 202 = Douglas-fir,
+  #                746 = quaking aspen, 108 = lodgepole pine
+
+  # --- 3. Filter IDS observations ---
+  my_obs <- damage_areas %>%
+    filter(HOST_CODE == 122)               # ponderosa pine
+  # Add more filters if needed:
+  #   filter(HOST_CODE == 122,
+  #          SURVEY_YEAR >= 2010,
+  #          REGION_ID == 1)               # Northern Region only
+
+  # --- 4. Get the TerraClimate pixels for those observations ---
+  pixel_map <- read_parquet(
+    "02_terraclimate/data/processed/pixel_maps/damage_areas_pixel_map.parquet"
+  )
+  my_pixels <- pixel_map %>%
+    filter(OBSERVATION_ID %in% my_obs$OBSERVATION_ID)
+
+  # --- 5. Load climate data and join ---
+  # OPTION A: Use pre-built summaries (one weighted mean per observation)
+  summaries <- read_parquet(
+    "processed/climate/terraclimate/damage_areas_summaries_long.parquet"
+  )
+  my_climate <- summaries %>%
+    filter(DAMAGE_AREA_ID %in% unique(my_obs$DAMAGE_AREA_ID))
+
+  # OPTION B: Keep individual pixel values (for within-polygon variation)
+  pixel_values <- read_parquet(
+    "processed/climate/terraclimate/pixel_values.parquet"
+  )
+  my_pixel_climate <- my_pixels %>%
+    inner_join(pixel_values, by = "pixel_id")
+
+  # --- 6. Merge climate back to IDS attributes ---
+  result <- my_obs %>%
+    st_drop_geometry() %>%
+    inner_join(
+      my_climate %>% filter(variable == "tmmx"),
+      by = "DAMAGE_AREA_ID"
+    )
+
+NOTE ON PANCAKE FEATURES: Multiple OBSERVATION_IDs can share the same
+DAMAGE_AREA_ID (same geometry, different damage agents). When computing
+total affected area, group by DAMAGE_AREA_ID first to avoid double-counting.
+Pancake features are flagged by OBSERVATION_COUNT = "MULTIPLE".
+
+================================================================================
+HOW TO: Get Climate Data for a Survey Area
+================================================================================
+Goal: Retrieve TerraClimate values for surveyed areas (the polygons describing
+where aerial surveys actually flew), rather than for individual damage
+observations.
+
+  library(sf)
+  library(dplyr)
+  library(arrow)
+
+  # --- 1. Load surveyed areas ---
+  survey_areas <- st_read(
+    "01_ids/data/processed/ids_layers_cleaned.gpkg",
+    layer = "surveyed_areas"
+  )
+  # Filter if needed:
+  #   survey_areas %>% filter(SURVEY_YEAR == 2020, REGION_ID == 5)
+
+  # --- 2. Get the TerraClimate pixels for those survey polygons ---
+  pixel_map <- read_parquet(
+    "02_terraclimate/data/processed/pixel_maps/surveyed_areas_pixel_map.parquet"
+  )
+  my_pixels <- pixel_map %>%
+    filter(SURVEY_FEATURE_ID %in% survey_areas$SURVEY_FEATURE_ID)
+
+  # --- 3. Load pixel values and join ---
+  pixel_values <- read_parquet(
+    "processed/climate/terraclimate/pixel_values.parquet"
+  )
+  survey_climate <- my_pixels %>%
+    inner_join(pixel_values, by = "pixel_id")
+
+  # --- 4. Compute area-weighted mean per survey polygon ---
+  survey_summaries <- survey_climate %>%
+    group_by(SURVEY_FEATURE_ID, calendar_year, calendar_month,
+             water_year, water_year_month, variable) %>%
+    summarize(
+      weighted_mean = sum(value * coverage_fraction, na.rm = TRUE) /
+                      sum(coverage_fraction[!is.na(value)]),
+      n_pixels = n(),
+      .groups = "drop"
+    )
+
+NOTE: Surveyed areas use SURVEY_FEATURE_ID (not OBSERVATION_ID) as their
+primary key. The pre-built summaries (step 4) are generated for damage_areas
+by default. For surveyed_areas, compute summaries from pixel values directly
+as shown above, or run script 04 with the surveyed_areas layer.
 
 ================================================================================
 VARIABLES EXTRACTED (14 total)
 ================================================================================
-See data_dictionary.csv for full details. All values have scale factors applied.
+See data_dictionary.csv for complete field definitions and scale factors.
 
-Temperature: tmmx (max), tmmn (min) - units: degrees C
-Precipitation & Water: pr (precip), aet (actual ET), pet (reference ET),
-                       def (water deficit), soil (moisture), swe (snow), ro (runoff)
-Atmospheric: vap (vapor pressure), vpd (vapor pressure deficit),
-             srad (solar radiation), vs (wind speed)
-Drought Index: pdsi (Palmer Drought Severity Index)
-
-================================================================================
-SCRIPTS
-================================================================================
-  00_explore_terraclimate.R - Exploratory analysis of TerraClimate data
-  01_build_pixel_maps.R     - Build pixel maps from GEE reference raster
-  02_extract_terraclimate.R - Extract monthly pixel values from GEE
+Temperature:          tmmx (max), tmmn (min) -- degrees C
+Precipitation/Water:  pr (precip), aet (actual ET), pet (reference ET),
+                      def (water deficit), soil (moisture), swe (snow),
+                      ro (runoff) -- mm
+Atmospheric:          vap (vapor pressure), vpd (vapor pressure deficit),
+                      srad (solar radiation), vs (wind speed)
+Drought Index:        pdsi (Palmer Drought Severity Index) -- unitless
 
 ================================================================================
-DOCUMENTATION
+OTHER DOCUMENTATION
 ================================================================================
-  - WORKFLOW.md: Script descriptions, data flow, processing decisions
-  - cleaning_log.md: Data quality issues and resolutions
-  - data_dictionary.csv: Field definitions and scale factors
-  - docs/terraclim_ref.pdf: TerraClimate reference publication
+  WORKFLOW.md        Technical architecture, script details, design decisions
+  cleaning_log.md    Data quality issues and resolutions
+  data_dictionary.csv  Field definitions and scale factors for all output tables
+  docs/terraclim_ref.pdf  TerraClimate reference publication
