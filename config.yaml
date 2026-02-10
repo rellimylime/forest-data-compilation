@@ -347,7 +347,7 @@ processed:
         filename: "ids_all_regions.gpkg"
         description: "All regions merged into single file"
       cleaned:
-        filename: "ids_cleaned.gpkg"
+        filename: "ids_layers_cleaned.gpkg"
         description: "After QC and cleaning"
 
   # Climate pixel maps (observation -> pixel mapping)
