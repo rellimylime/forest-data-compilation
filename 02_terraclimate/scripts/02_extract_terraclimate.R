@@ -67,6 +67,12 @@ variables <- names(tc_config$variables)
 scale_factors <- vapply(tc_config$variables, function(v) v$scale, numeric(1))
 years <- time_config$start_year:time_config$end_year
 
+cat(sprintf("  Variables: %s\n", paste(variables, collapse = ", ")))
+cat(sprintf("  Years: %d-%d (%d years)\n", min(years), max(years), length(years)))
+cat(sprintf("  Temporal resolution: monthly (stacked extraction)\n\n"))
+
+t_start <- Sys.time()
+
 extract_climate_from_gee(
   pixel_coords = pixel_coords,
   gee_asset = tc_config$gee_asset,
@@ -74,9 +80,34 @@ extract_climate_from_gee(
   years = years,
   ee = ee,
   scale = tc_config$gee_scale,
-  batch_size = 5000,
+  batch_size = 2500,
   output_dir = output_dir,
   output_prefix = tc_config$output_prefix,
   scale_factors = scale_factors,
   monthly = TRUE
 )
+
+t_end <- Sys.time()
+
+# ------------------------------------------------------------------------------
+# Summary
+# ------------------------------------------------------------------------------
+
+cat("\n================================\n")
+cat(sprintf("Extraction complete! Total time: %.1f hours\n\n",
+            as.numeric(difftime(t_end, t_start, units = "hours"))))
+
+output_files <- list.files(output_dir, pattern = "\\.parquet$", full.names = TRUE)
+cat(sprintf("Output files: %d parquet files\n", length(output_files)))
+cat(sprintf("Output directory: %s\n", output_dir))
+
+# Show sample
+if (length(output_files) > 0) {
+  sample_file <- output_files[1]
+  sample_data <- read_parquet(sample_file)
+  cat(sprintf("\nSample from %s:\n", basename(sample_file)))
+  cat(sprintf("  Rows: %d\n", nrow(sample_data)))
+  cat(sprintf("  Columns: %s\n", paste(names(sample_data), collapse = ", ")))
+}
+
+cat("\nTo join with IDS observations, use join_to_observations() from climate_extract.R\n")
