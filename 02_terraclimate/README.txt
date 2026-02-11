@@ -180,6 +180,43 @@ by default. For surveyed_areas, compute summaries from pixel values directly
 as shown above, or run script 04 with the surveyed_areas layer.
 
 ================================================================================
+SURVEY_YEAR vs WATER YEAR
+================================================================================
+IDS observations have SURVEY_YEAR (integer, no month). TerraClimate pixel
+values store monthly data with BOTH calendar_year/calendar_month AND
+water_year/water_year_month on every row. All years of climate data are
+extracted for every pixel -- not just the observation year.
+
+The water year runs Oct-Sep. When joining IDS observations to climate:
+
+  - calendar_year == SURVEY_YEAR gives Jan-Dec of the observation year
+  - water_year == SURVEY_YEAR gives Oct(prior year)-Sep(observation year)
+
+These share 9 months (Jan-Sep) but differ on 3 (Oct-Dec). Because IDS
+surveys are typically flown in summer/fall, the damage being observed was
+often driven by climate from the preceding winter/spring -- which is better
+captured by the water year. However, without month-of-survey there is
+inherent ambiguity.
+
+The pixel values and summaries include both time systems on every row, so
+you choose the time window at analysis time:
+
+  # Calendar year match: Jan-Dec of SURVEY_YEAR
+  my_climate %>% filter(calendar_year == 2020)
+
+  # Water year match: Oct 2019 - Sep 2020
+  my_climate %>% filter(water_year == 2020)
+
+  # Custom: prior water year (lagged climate)
+  my_climate %>% filter(water_year == 2020 - 1)
+
+  # Growing season only (Apr-Sep = water year months 7-12)
+  my_climate %>% filter(water_year == 2020, water_year_month >= 7)
+
+This is a downstream analysis decision. The extraction pipeline is agnostic
+-- it stores all months for all years and lets you filter at join time.
+
+================================================================================
 VARIABLES EXTRACTED (14 total)
 ================================================================================
 See data_dictionary.csv for complete field definitions and scale factors.

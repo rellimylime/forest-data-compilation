@@ -142,10 +142,18 @@ Extracts monthly climate values for all unique pixels via GEE.
 1. Load pixel maps from all three IDS layers
 2. Extract unique pixel coordinates (deduplicated across layers)
 3. For each year (1997-2024):
-   - For each month (1-12): filter ImageCollection by date, sample at pixel coords
-   - Batch size: 5,000 pixels per GEE request (prevents timeout)
+   - Stack all 12 monthly images into a single 168-band image
+     (14 variables x 12 months, bands named `{variable}_{month:02d}`)
+   - Extract stacked image at pixel coordinates in batches of 2,500
+   - Unstack result back to per-month rows
    - Apply scale factors from config.yaml
 4. Save as yearly parquet files (wide format)
+
+**Performance:** Stacking all months into one image reduces GEE round-trips
+by ~12x (one `sampleRegions()` call per batch instead of 12). The
+FeatureCollection is built from a GeoJSON dict in a single Python call
+rather than per-point `ee.Feature()` construction. If GEE timeouts occur,
+reduce `batch_size` (default 2,500).
 
 **Pixel values schema (wide, per-year files):**
 
@@ -283,7 +291,8 @@ gee_project: "your-gee-project-id"
 
 ### GEE timeout errors
 **Cause:** Too many pixels in single request.
-**Solution:** Reduce `batch_size` parameter (default 5000).
+**Solution:** Reduce `batch_size` parameter (default 2500 for monthly stacking).
+With 168 bands per image, batch sizes above 3000 may exceed GEE limits.
 
 ### Missing pixel values
 **Cause:** Pixel in NoData area (ocean, data edge).
