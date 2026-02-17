@@ -8,10 +8,9 @@ configuration, and design decisions.
 
 ## Status
 - [x] Explore TerraClimate data (00_explore_terraclimate.R)
-- [ ] Build pixel maps (01_build_pixel_maps.R)
-- [ ] Extract monthly pixel values (02_extract_terraclimate.R)
-- [ ] Reshape to long format (scripts/03_reshape_pixel_values.R terraclimate)
-- [ ] Build observation summaries (scripts/04_build_climate_summaries.R terraclimate)
+- [x] Build pixel maps (01_build_pixel_maps.R)
+- [x] Extract monthly pixel values (02_extract_terraclimate.R)
+- [x] Build observation summaries (scripts/build_climate_summaries.R terraclimate)
 
 ---
 
@@ -168,30 +167,17 @@ reduce `batch_size` (default 2,500).
 
 ---
 
-### scripts/03_reshape_pixel_values.R (shared)
-Reshapes wide-format yearly parquet files into a single long-format parquet.
-Run as: `Rscript scripts/03_reshape_pixel_values.R terraclimate`
-
-**Input:** `data/processed/pixel_values/terraclimate_{year}.parquet`
-**Output:** `processed/climate/terraclimate/pixel_values.parquet`
-
-**Process:**
-1. Load pixel maps to get set of valid pixel_ids
-2. Load yearly wide files, filter to valid pixels, pivot to long
-3. Append water_year and water_year_month via `time_utils.R`
-4. Write single parquet
-
----
-
-### scripts/04_build_climate_summaries.R (shared)
-Computes observation-level area-weighted climate means.
-Run as: `Rscript scripts/04_build_climate_summaries.R terraclimate`
+### scripts/build_climate_summaries.R (shared)
+Computes observation-level area-weighted climate summaries.
+Run as: `Rscript scripts/build_climate_summaries.R terraclimate`
 
 **Input:**
 - `data/processed/pixel_maps/damage_areas_pixel_map.parquet`
-- `processed/climate/terraclimate/pixel_values.parquet`
+- `data/processed/pixel_values/terraclimate_{year}.parquet` (reads wide-format source files directly)
 
-**Output:** `processed/climate/terraclimate/damage_areas_summaries_long.parquet`
+**Output:** `processed/climate/terraclimate/damage_areas_summaries/` (per-variable parquet files)
+
+The script reads directly from wide-format yearly source files — no intermediate reshape step required. For each variable × year chunk, it reads the relevant column, joins to the pixel map, and computes area-weighted aggregations. Output is one parquet file per variable, readable as a unified dataset via `open_dataset()`.
 
 **Weighted mean formula:**
 ```
@@ -200,6 +186,17 @@ weighted_mean = sum(value * coverage_fraction, na.rm = TRUE) /
 ```
 
 Only pixels with non-NA values contribute to the denominator.
+
+**Summary columns:** weighted_mean, value_min, value_max, n_pixels, n_pixels_with_data, sum_coverage_fraction
+
+---
+
+### scripts/reshape_pixel_values.R (shared, optional)
+Reshapes wide-format yearly parquet files into long format. **Not required** for the summaries pipeline — only needed if you want pixel-level long-format data for custom analysis.
+Run as: `Rscript scripts/reshape_pixel_values.R terraclimate`
+
+**Input:** `data/processed/pixel_values/terraclimate_{year}.parquet`
+**Output:** `processed/climate/terraclimate/pixel_values/`
 
 ---
 
@@ -222,21 +219,23 @@ Only pixels with non-NA values contribute to the denominator.
 +--------------------------+        |  terraclimate_2024.parquet (wide)        |
           |                         +------------------------------------------+
           v                                    |
-+----------------------------------+           | 03_reshape_pixel_values.R
-|  data/processed/pixel_maps/      |           v
-|  damage_areas_pixel_map.parquet  |  +----------------------------------------+
-|  damage_points_pixel_map.parquet |  |  processed/climate/terraclimate/       |
-|  surveyed_areas_pixel_map.parquet|  |  pixel_values.parquet (long format)    |
-+----------------------------------+  |  calendar + water year, variable, value|
-          |                           +----------------------------------------+
++----------------------------------+           |
+|  data/processed/pixel_maps/      |           |
+|  damage_areas_pixel_map.parquet  |           |
+|  damage_points_pixel_map.parquet |           |
+|  surveyed_areas_pixel_map.parquet|           |
++----------------------------------+           |
           |                                    |
           +-----------------+------------------+
-                            | 04_build_climate_summaries.R
+                            | build_climate_summaries.R
+                            | (reads source files directly)
                             v
                   +-----------------------------------------+
                   |  processed/climate/terraclimate/         |
-                  |  damage_areas_summaries_long.parquet     |
-                  |  (weighted_mean per obs per var per time)|
+                  |  damage_areas_summaries/                 |
+                  |    tmmx.parquet, tmmn.parquet, ...       |
+                  |  (weighted_mean, value_min, value_max    |
+                  |   per obs per var per time)              |
                   +-----------------------------------------+
 ```
 
