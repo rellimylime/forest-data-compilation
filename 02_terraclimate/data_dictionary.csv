@@ -1,18 +1,44 @@
-field_name,description,data_type,units,scale_factor,value_range,notes
-OBSERVATION_ID,Unique identifier linking to IDS cleaned data,character,NA,NA,UUID format,Primary join key to ids_layers_cleaned.gpkg (damage_areas layer)
-REGION_ID,USFS region identifier,integer,NA,NA,1-10 (excluding 7),Added during extraction; matches IDS REGION_ID
-SURVEY_YEAR,Year of IDS observation,integer,NA,NA,1997-2024,Added during extraction; matches IDS SURVEY_YEAR
-tmmx,Maximum temperature (annual mean of monthly means),numeric,°C,0.1,Varies by location,"Raw values are integers; multiply by 0.1 to get °C"
-tmmn,Minimum temperature (annual mean of monthly means),numeric,°C,0.1,Varies by location,"Raw values are integers; multiply by 0.1 to get °C"
-pr,Precipitation accumulation (annual mean of monthly totals),numeric,mm,1,0-500+ typical,"For annual TOTAL precipitation, multiply by 12"
-srad,Downward surface shortwave radiation,numeric,W/m²,0.1,Varies by latitude,Annual mean of monthly means
-vs,Wind speed at 10m height,numeric,m/s,0.01,0-15 typical,Annual mean of monthly means
-vap,Vapor pressure,numeric,kPa,0.001,0-3 typical,Annual mean of monthly means
-vpd,Vapor pressure deficit,numeric,kPa,0.01,0-4 typical,Higher values indicate drier atmospheric conditions
-pet,Reference evapotranspiration (Penman-Monteith),numeric,mm,0.1,Varies by climate,"For annual TOTAL ET, multiply by 12"
-aet,Actual evapotranspiration,numeric,mm,0.1,Varies by climate,"For annual TOTAL ET, multiply by 12; limited by water availability"
-def,Climate water deficit (pet - aet),numeric,mm,0.1,0-200+ typical,"For annual TOTAL deficit, multiply by 12; indicates drought stress"
-soil,Soil moisture,numeric,mm,0.1,0-500 typical,Annual mean of monthly means; depth-integrated
-swe,Snow water equivalent,numeric,mm,1,0-1000+ in mountains,Annual mean of monthly means; high in snowy regions
-ro,Runoff,numeric,mm,1,Varies widely,"For annual TOTAL runoff, multiply by 12"
-pdsi,Palmer Drought Severity Index,numeric,unitless,0.01,-10 to +10 typical,Negative = drought; positive = wet conditions
+table,field_name,description,data_type,units,scale_factor,value_range,notes
+pixel_map,OBSERVATION_ID,Unique IDS observation identifier,integer,NA,NA,varies,Primary join key to ids_layers_cleaned.gpkg; present in damage_areas and damage_points pixel maps
+pixel_map,DAMAGE_AREA_ID,Geometry identifier for damage area,integer,NA,NA,varies,Shared by pancake features (multiple observations on same geometry); present in damage_areas pixel map only
+pixel_map,SURVEY_FEATURE_ID,Unique survey polygon identifier,integer,NA,NA,varies,Present in surveyed_areas pixel map only
+pixel_map,pixel_id,Unique raster cell identifier,integer,NA,NA,varies,Raster cell number from TerraClimate reference grid; join key to pixel_values
+pixel_map,x,Pixel center longitude,numeric,degrees,NA,-180 to 180,EPSG:4326
+pixel_map,y,Pixel center latitude,numeric,degrees,NA,-90 to 90,EPSG:4326
+pixel_map,coverage_fraction,Fractional overlap of observation and pixel,numeric,proportion,NA,0 to 1,"area(observation intersect pixel) / area(pixel); NOT normalized; use as weight for area-weighted means; set to 1.0 for point observations"
+pixel_values_wide,pixel_id,Unique raster cell identifier,integer,NA,NA,varies,Matches pixel_id in pixel maps
+pixel_values_wide,x,Pixel center longitude,numeric,degrees,NA,-180 to 180,EPSG:4326
+pixel_values_wide,y,Pixel center latitude,numeric,degrees,NA,-90 to 90,EPSG:4326
+pixel_values_wide,year,Calendar year of observation,integer,NA,NA,1997-2024,
+pixel_values_wide,month,Calendar month of observation,integer,NA,NA,1-12,
+pixel_values_wide,tmmx,Maximum temperature,numeric,deg C,0.1,varies,Scale factor already applied in output
+pixel_values_wide,tmmn,Minimum temperature,numeric,deg C,0.1,varies,Scale factor already applied in output
+pixel_values_wide,pr,Precipitation accumulation,numeric,mm,1,0-500+,Monthly total
+pixel_values_wide,srad,Downward surface shortwave radiation,numeric,W/m2,0.1,varies,Monthly mean
+pixel_values_wide,vs,Wind speed at 10m height,numeric,m/s,0.01,0-15,Monthly mean
+pixel_values_wide,vap,Vapor pressure,numeric,kPa,0.001,0-3,Monthly mean
+pixel_values_wide,vpd,Vapor pressure deficit,numeric,kPa,0.01,0-4,Higher values = drier conditions
+pixel_values_wide,pet,Reference evapotranspiration (Penman-Monteith),numeric,mm,0.1,varies,Monthly total
+pixel_values_wide,aet,Actual evapotranspiration,numeric,mm,0.1,varies,Monthly total; limited by water availability
+pixel_values_wide,def,Climate water deficit (pet - aet),numeric,mm,0.1,0-200+,Monthly total; indicates drought stress
+pixel_values_wide,soil,Soil moisture,numeric,mm,0.1,0-500,Monthly mean; depth-integrated
+pixel_values_wide,swe,Snow water equivalent,numeric,mm,1,0-1000+,Monthly mean; high in snowy regions
+pixel_values_wide,ro,Runoff,numeric,mm,1,varies,Monthly total
+pixel_values_wide,pdsi,Palmer Drought Severity Index,numeric,unitless,0.01,-10 to +10,Negative = drought; positive = wet
+pixel_values_long,pixel_id,Unique raster cell identifier,integer,NA,NA,varies,Matches pixel_id in pixel maps
+pixel_values_long,calendar_year,Calendar year,integer,NA,NA,1997-2024,
+pixel_values_long,calendar_month,Calendar month,integer,NA,NA,1-12,
+pixel_values_long,water_year,Water year (Oct-Sep),integer,NA,NA,1998-2025,"Oct-Dec of calendar year N belong to water year N+1"
+pixel_values_long,water_year_month,Month within water year,integer,NA,NA,1-12,"1=Oct, 2=Nov, ..., 12=Sep"
+pixel_values_long,variable,Climate variable name,character,NA,NA,see climate variables,One of the 14 TerraClimate variable names
+pixel_values_long,value,Climate measurement,numeric,varies by variable,NA,varies,Scale factors already applied; units depend on variable
+summaries,DAMAGE_AREA_ID,Geometry identifier for damage area,integer,NA,NA,varies,Join to IDS via DAMAGE_AREA_ID or OBSERVATION_ID
+summaries,calendar_year,Calendar year,integer,NA,NA,1997-2024,
+summaries,calendar_month,Calendar month,integer,NA,NA,1-12,
+summaries,water_year,Water year (Oct-Sep),integer,NA,NA,1998-2025,
+summaries,water_year_month,Month within water year,integer,NA,NA,1-12,"1=Oct, 2=Nov, ..., 12=Sep"
+summaries,variable,Climate variable name,character,NA,NA,see climate variables,
+summaries,weighted_mean,Area-weighted mean climate value,numeric,varies by variable,NA,varies,"sum(value * coverage_fraction) / sum(coverage_fraction) over non-NA pixels"
+summaries,n_pixels,Total pixels overlapping observation,integer,NA,NA,1+,
+summaries,n_pixels_with_data,Pixels with non-NA climate values,integer,NA,NA,0+,If 0 then weighted_mean is NA; compare to n_pixels to assess coverage
+summaries,sum_coverage_fraction,Sum of coverage_fraction across pixels,numeric,proportion,NA,0+,Diagnostic; roughly proportional to observation area relative to pixel area

@@ -3,7 +3,7 @@ WorldClim Monthly Weather Pixel-Level Extraction for IDS Observations
 ================================================================================
 Source: https://www.worldclim.org/data/monthlywth.html
 Description: Global historical monthly weather data at ~4.5km resolution.
-Interpolated from weather station observations. Monthly data from 1960-2021.
+Interpolated from weather station observations (CRU TS 4.09). Monthly 1950-2024.
 
 Citation: Fick, S.E. and R.J. Hijmans (2017). WorldClim 2: new 1km spatial
 resolution climate surfaces for global land areas. International Journal of
@@ -12,7 +12,7 @@ Climatology 37(12): 4302-4315.
 Data source: https://geodata.ucdavis.edu/climate/worldclim/
 Native resolution: ~4.5km (2.5 arc-minutes)
 Temporal resolution: Monthly (all 12 months preserved per year)
-Temporal coverage: 1960-2021 (IDS extraction: 1997-2021)
+Temporal coverage: 1950-2024 (IDS extraction: 1997-2024)
 Geographic coverage: Global land areas
 
 ================================================================================
@@ -29,7 +29,7 @@ Same architecture as TerraClimate - see 02_terraclimate/README.txt for details.
 
 2. PIXEL VALUES (climate data per unique pixel per month)
    Location: 04_worldclim/data/processed/pixel_values/
-   Files: worldclim_{year}.parquet (one per year, 1997-2021)
+   Files: worldclim_{year}.parquet (one per year, 1997-2024)
    Columns: pixel_id, x, y, year, month, tmin, tmax, prec
 
 ================================================================================
@@ -50,8 +50,7 @@ SCRIPTS
 ================================================================================
 NOTES
 ================================================================================
-- WorldClim data ends in 2021 (IDS years 2022-2024 have no WorldClim data)
-- Data is organized by decade: 1960-1969, 1970-1979, ..., 2019-2021
+- Data is organized by decade: 1950-1959, 1960-1969, ..., 2020-2024
 - Resolution is similar to TerraClimate (~4.5km vs ~4km)
 - Fewer variables than TerraClimate (3 vs 14)
 

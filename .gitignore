@@ -53,5 +53,8 @@ rsconnect/
 # Data folder
 **/data/
 
+# Processed outputs (cross-dataset derived products)
+processed/
+
 # User specifc
 local/
