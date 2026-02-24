@@ -53,7 +53,7 @@ build_pixel_map <- function(sf_obj, reference_raster, id_col) {
       sf_obj,
       include_xy = TRUE,
       include_cell = TRUE,
-      progress = FALSE
+      progress = TRUE
     )
 
     pixel_map <- bind_rows(lapply(seq_along(extracted), function(i) {
@@ -104,11 +104,12 @@ build_ids_pixel_maps <- function(ids_path,
     output_file <- file.path(output_dir, paste0(layer, "_pixel_map.parquet"))
 
     if (file.exists(output_file)) {
-      cat("  Loading existing pixel map\n")
+      cat("  Already complete — loading existing file\n")
       results[[layer]] <- read_parquet(output_file)
       next
     }
 
+    t_layer_start <- Sys.time()
     sf_obj <- st_read(ids_path, layer = layer, quiet = TRUE)
 
     # Filter to CONUS if requested (for PRISM which only covers CONUS)
@@ -131,7 +132,9 @@ build_ids_pixel_maps <- function(ids_path,
     }
 
     write_parquet(pixel_map, output_file)
-    cat(sprintf("  Saved %d pixel mappings to %s\n", nrow(pixel_map), basename(output_file)))
+    elapsed <- as.numeric(difftime(Sys.time(), t_layer_start, units = "mins"))
+    cat(sprintf("  Saved %d pixel mappings to %s (%.1f min)\n",
+                nrow(pixel_map), basename(output_file), elapsed))
 
     results[[layer]] <- pixel_map
   }
@@ -158,9 +161,11 @@ build_ids_pixel_maps <- function(ids_path,
   geom_pixel_map <- build_pixel_map(unique_geoms, reference_raster, "DAMAGE_AREA_ID")
 
   # Create lookup from DAMAGE_AREA_ID to OBSERVATION_ID
+  # distinct() removes the ~3500 OBSERVATION_IDs that appear twice in IDS raw data
   obs_lookup <- sf_obj %>%
     st_drop_geometry() %>%
-    select(OBSERVATION_ID, DAMAGE_AREA_ID)
+    select(OBSERVATION_ID, DAMAGE_AREA_ID) %>%
+    distinct()
 
   # Join to get OBSERVATION_ID level pixel map
   pixel_map <- geom_pixel_map %>%

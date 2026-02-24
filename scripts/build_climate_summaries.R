@@ -72,6 +72,7 @@ process_one_chunk <- function(var, year, source_file, pixel_map_dt,
   wide <- as.data.table(read_parquet(source_file,
                                      col_select = all_of(src_cols)))
   setnames(wide, var, "value")
+  wide[, value := as.double(value)]   # ensure double; rasters may store as integer
   wide[, `:=`(variable = var,
               calendar_year = as.integer(year),
               calendar_month = as.integer(month))]
