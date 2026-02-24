@@ -25,8 +25,8 @@ time_config <- config$params$time_range
 output_dir <- here(era5_config$local_dir)
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
-cat("ERA5 Daily Reanalysis Downloader (CDS API)\n")
-cat("==========================================\n\n")
+cat("ERA5 Monthly Reanalysis Downloader (CDS API)\n")
+cat("============================================\n\n")
 
 cat(sprintf("Source: %s\n", era5_config$source))
 cat(sprintf("Resolution: %s\n", era5_config$spatial_resolution))
@@ -65,41 +65,46 @@ cat("  CDS API initialized successfully\n\n")
 # ------------------------------------------------------------------------------
 
 years <- time_config$start_year:time_config$end_year
-variables <- names(era5_config$variables)
+all_variable_configs <- era5_config$variables
+all_variables <- names(all_variable_configs)
+is_supported_monthly <- vapply(
+  all_variable_configs,
+  function(v) {
+    era5_name <- if (is.null(v$era5_name)) "" else v$era5_name
+    !is_unsupported_monthly_mean_variable(era5_name)
+  },
+  logical(1)
+)
+variables <- all_variables[is_supported_monthly]
+excluded_variables <- all_variables[!is_supported_monthly]
 area <- era5_config$cds_area  # [north, west, south, east]
 
 cat(sprintf("Variables to download: %d\n", length(variables)))
 cat(sprintf("  %s\n", paste(variables, collapse = ", ")))
+if (length(excluded_variables) > 0) {
+  cat(sprintf(
+    "Skipping unsupported monthly-mean variables: %s\n",
+    paste(excluded_variables, collapse = ", ")
+  ))
+}
 cat(sprintf("\nYears: %d-%d (%d years)\n", min(years), max(years), length(years)))
 cat(sprintf("Area: [N=%.0f, W=%.0f, S=%.0f, E=%.0f]\n\n", area[1], area[2], area[3], area[4]))
 
 total_files <- length(variables) * length(years)
-cat(sprintf("Total files to download: %d\n", total_files))
-cat("Note: Each file is ~1-2 GB. Ensure sufficient disk space.\n")
-cat("      Downloads may take several hours.\n\n")
+cat(sprintf("Total files / CDS API requests: %d\n", total_files))
+cat("Note: Uses one variable-year request at a time (smaller requests).\n")
+cat("      This follows CDS efficiency guidance better than large combined jobs.\n")
+cat("      Downloads may take several hours depending on CDS queue times.\n\n")
 
-# Download each variable for each year
+# Download one variable at a time (monthly means for a single year per request)
 for (year in years) {
   cat(sprintf("\nYear %d:\n", year))
-
-  for (var_name in variables) {
-    var_config <- era5_config$variables[[var_name]]
-    era5_name <- var_config$era5_name
-
-    var_dir <- file.path(output_dir, var_name)
-    dir.create(var_dir, recursive = TRUE, showWarnings = FALSE)
-
-    output_path <- file.path(var_dir, sprintf("%s_%d.nc", var_name, year))
-
-    download_era5_variable(
-      client = client,
-      variable_name = var_name,
-      era5_name = era5_name,
-      year = year,
-      area = area,
-      output_path = output_path
-    )
-  }
+  download_era5_year(
+    client = client,
+    config = config,
+    year = year,
+    output_dir = output_dir
+  )
 }
 
 # ------------------------------------------------------------------------------

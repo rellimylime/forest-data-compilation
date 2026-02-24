@@ -1,6 +1,6 @@
 # ==============================================================================
 # 05_era5/scripts/03_extract_era5.R
-# Extract ERA5 daily pixel values from local NetCDF files
+# Extract ERA5 monthly pixel values from local NetCDF files
 # ==============================================================================
 
 library(here)
@@ -25,8 +25,8 @@ output_dir <- here(era5_config$output_dir, "pixel_values")
 
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
-cat("ERA5 Extraction (Local NetCDF, Daily)\n")
-cat("=====================================\n\n")
+cat("ERA5 Extraction (Local NetCDF, Monthly)\n")
+cat("========================================\n\n")
 
 # ------------------------------------------------------------------------------
 # Step 1: Load pixel maps and get unique pixels
@@ -46,11 +46,12 @@ for (layer in c("damage_areas", "damage_points", "surveyed_areas")) {
   }
 }
 
-pixel_coords <- bind_rows(all_pixels) %>%
+pixel_coords <- bind_rows(all_pixels) |>
   distinct(pixel_id, x, y)
 
 coords_matrix <- as.matrix(pixel_coords[, c("x", "y")])
-cat(sprintf("\nTotal unique pixels: %d\n", nrow(pixel_coords)))
+n_pixels <- nrow(pixel_coords)
+cat(sprintf("\nTotal unique pixels: %d\n", n_pixels))
 
 # ------------------------------------------------------------------------------
 # Step 2: Prepare extraction parameters
@@ -76,86 +77,80 @@ for (var_name in variables) {
 
 cat(sprintf("  Variables: %d\n", length(variables)))
 cat(sprintf("  Years: %d-%d\n", min(years), max(years)))
-cat(sprintf("  Temporal resolution: daily (~365 time steps/year)\n"))
-cat(sprintf("  Kelvin -> Celsius conversion: %s\n", paste(kelvin_vars, collapse = ", ")))
+cat(sprintf("  Temporal resolution: monthly (12 time steps/year)\n"))
+cat(sprintf("  Kelvin -> Celsius: %s\n", paste(kelvin_vars, collapse = ", ")))
 
 # ------------------------------------------------------------------------------
 # Step 3: Extract values year by year
 # ------------------------------------------------------------------------------
 
-cat("\nStep 3: Extracting climate values...\n")
-cat("  Note: Daily extraction produces large files. Ensure sufficient disk space.\n\n")
+cat("\nStep 3: Extracting climate values...\n\n")
 
 for (year in years) {
-  output_file <- file.path(output_dir, sprintf("%s_%d.parquet", era5_config$output_prefix, year))
+  output_file <- file.path(
+    output_dir, sprintf("%s_%d.parquet", era5_config$output_prefix, year)
+  )
 
   if (file.exists(output_file)) {
-    cat(sprintf("  %d: exists, skipping\n", year))
-    next
+    existing_cols <- open_dataset(output_file)$schema$names
+    missing_vars <- setdiff(variables, existing_cols)
+    if (length(missing_vars) == 0) {
+      cat(sprintf("  %d: exists, skipping\n", year))
+      next
+    } else {
+      cat(sprintf("  %d: missing columns [%s], re-extracting\n",
+                  year, paste(missing_vars, collapse = ", ")))
+    }
   }
 
-  cat(sprintf("  %d: ", year))
+  cat(sprintf("  %d:", year))
 
-  # Determine dates for this year
-  start_date <- as.Date(sprintf("%d-01-01", year))
-  end_date <- as.Date(sprintf("%d-12-31", year))
-  dates <- seq(start_date, end_date, by = "day")
-  n_days <- length(dates)
+  # Build skeleton: n_pixels * 12 rows, months cycle slowly
+  year_data <- data.frame(
+    pixel_id = rep(pixel_coords$pixel_id, times = 12),
+    x        = rep(pixel_coords$x,        times = 12),
+    y        = rep(pixel_coords$y,        times = 12),
+    year     = year,
+    month    = rep(1:12, each = n_pixels)
+  )
 
-  # Initialize list to hold daily data
-  daily_results <- vector("list", n_days)
+  for (var_name in variables) {
+    nc_file <- file.path(raw_dir, var_name, sprintf("%s_%d.nc", var_name, year))
 
-  for (day_idx in seq_len(n_days)) {
-    current_date <- dates[day_idx]
-    day_data <- data.frame(
-      pixel_id = pixel_coords$pixel_id,
-      x = pixel_coords$x,
-      y = pixel_coords$y,
-      year = year,
-      month = as.integer(format(current_date, "%m")),
-      day = as.integer(format(current_date, "%d"))
-    )
-
-    for (var_name in variables) {
-      nc_file <- file.path(raw_dir, var_name, sprintf("%s_%d.nc", var_name, year))
-
-      if (!file.exists(nc_file)) {
-        day_data[[var_name]] <- NA
-        next
-      }
-
-      # Load raster (lazy loading)
-      r <- rast(nc_file)
-
-      # ERA5 NetCDFs have one band per day
-      if (day_idx > nlyr(r)) {
-        day_data[[var_name]] <- NA
-        next
-      }
-
-      values <- extract(r[[day_idx]], coords_matrix)
-      raw_values <- values[, 1]
-
-      # Apply scale factor
-      if (var_name %in% names(scale_factors)) {
-        raw_values <- raw_values * scale_factors[[var_name]]
-      }
-
-      # Convert Kelvin to Celsius
-      if (var_name %in% kelvin_vars) {
-        raw_values <- raw_values - 273.15
-      }
-
-      day_data[[var_name]] <- raw_values
+    if (!file.exists(nc_file)) {
+      year_data[[var_name]] <- NA_real_
+      next
     }
 
-    daily_results[[day_idx]] <- day_data
+    r <- rast(nc_file)
 
-    # Progress indicator
-    if (day_idx %% 30 == 0) cat(".")
+    if (nlyr(r) < 12) {
+      # Unexpected band count — fill NA and warn
+      year_data[[var_name]] <- NA_real_
+      cat(sprintf(" [%s:%dL]", var_name, nlyr(r)))
+      next
+    }
+
+    # Extract all 12 months at once: returns n_pixels × 13 data.frame (ID + 12 bands)
+    extracted     <- extract(r[[1:12]], coords_matrix)
+    values_matrix <- as.matrix(extracted[, -1, drop = FALSE])  # n_pixels × 12
+
+    # as.vector() is column-major: all pixels for month 1, then month 2, ...
+    # This matches year_data row order: pixels repeat (times=12), month cycles (each=n_pixels)
+    values_vec <- as.vector(values_matrix)
+
+    # Apply scale factor and unit conversions
+    if (var_name %in% names(scale_factors)) {
+      values_vec <- values_vec * scale_factors[[var_name]]
+    }
+    if (var_name %in% kelvin_vars) {
+      values_vec <- values_vec - 273.15
+    }
+
+    year_data[[var_name]] <- values_vec
+    cat(".")
   }
 
-  year_data <- bind_rows(daily_results)
   write_parquet(year_data, output_file)
   cat(sprintf(" saved %d rows\n", nrow(year_data)))
 }
@@ -164,7 +159,7 @@ for (year in years) {
 # Summary
 # ------------------------------------------------------------------------------
 
-cat("\n=====================================\n")
+cat("\n========================================\n")
 cat("Extraction complete!\n\n")
 
 output_files <- list.files(output_dir, pattern = "\\.parquet$", full.names = TRUE)
@@ -175,11 +170,7 @@ if (length(output_files) > 0) {
   sample_file <- output_files[1]
   sample_data <- read_parquet(sample_file)
   cat(sprintf("\nSample from %s:\n", basename(sample_file)))
-  cat(sprintf("  Rows: %d (pixels x days)\n", nrow(sample_data)))
+  cat(sprintf("  Rows: %d (pixels x months)\n", nrow(sample_data)))
   cat(sprintf("  Columns: %s\n", paste(names(sample_data), collapse = ", ")))
-
-  # Show date range
-  cat(sprintf("  Date range: %d-%02d-%02d to %d-%02d-%02d\n",
-              min(sample_data$year), min(sample_data$month), min(sample_data$day),
-              max(sample_data$year), max(sample_data$month), max(sample_data$day)))
+  cat(sprintf("  Months: %s\n", paste(sort(unique(sample_data$month)), collapse = ", ")))
 }
