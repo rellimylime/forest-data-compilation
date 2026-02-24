@@ -4,11 +4,13 @@ PRISM 800m Pixel-Level Extraction for IDS Observations
 Source: https://prism.oregonstate.edu/
 Description: High-resolution (800m) climate data for the contiguous United States.
 Developed by Oregon State University's PRISM Climate Group. Monthly data from
-1981 to present. Pixel-level values extracted via Google Earth Engine.
+1981 to present. Pixel-level values extracted via direct web service download
+(services.nacse.org); no Google Earth Engine account required.
 
 Citation: PRISM Climate Group, Oregon State University, https://prism.oregonstate.edu
 
-GEE Asset: OREGONSTATE/PRISM/AN81m
+Product: AN81m (monthly 800m normals)
+Access: https://services.nacse.org/prism/data/get/us/800m/{variable}/{YYYYMM}
 Native resolution: 800m (~30 arc-seconds)
 Temporal resolution: Monthly (all 12 months preserved per year)
 Temporal coverage: 1981-present (IDS extraction: 1997-2024)
@@ -44,8 +46,10 @@ Vapor Pressure: vpdmin (min VPD), vpdmax (max VPD) - units: hPa
 ================================================================================
 SCRIPTS
 ================================================================================
-  01_build_pixel_maps.R - Build pixel maps from GEE reference raster (CONUS only)
-  02_extract_prism.R    - Extract monthly pixel values from GEE
+  01_build_pixel_maps.R - Build pixel maps linking IDS observations to PRISM pixels
+                          (downloads one reference raster from web service; CONUS only)
+  02_extract_prism.R    - Extract monthly pixel values via direct web service download
+                          (download-extract-delete per month; saves one parquet per year)
 
 ================================================================================
 NOTES

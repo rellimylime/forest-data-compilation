@@ -7,9 +7,9 @@ This document covers WorldClim-specific technical details. For the shared pixel 
 ---
 
 ## Status
-- [ ] Download decade GeoTIFFs (01_download_worldclim.R)
-- [ ] Build pixel maps (02_build_pixel_maps.R)
-- [ ] Extract monthly pixel values (03_extract_worldclim.R)
+- [x] Download decade GeoTIFFs (01_download_worldclim.R)
+- [x] Build pixel maps (02_build_pixel_maps.R)
+- [x] Extract monthly pixel values (03_extract_worldclim.R)
 - [ ] Build observation summaries (scripts/build_climate_summaries.R worldclim)
 
 ---
@@ -19,15 +19,15 @@ This document covers WorldClim-specific technical details. For the shared pixel 
 **Source:** [WorldClim Version 2.1](https://www.worldclim.org/)
 **Resolution:** ~4.5km (2.5 arc-minutes / 0.04166°)
 **Coverage:** Global
-**Temporal Resolution:** Monthly, 1960-2021 (ends before IDS 2022-2024)
+**Temporal Resolution:** Monthly, 1950-2024 (CRU TS 4.09 interpolation)
 **Variables:** 3 climate variables (tmin, tmax, prec)
 **Access Method:** Direct download (local GeoTIFF files)
 
 **Key Differences from TerraClimate:**
 - Similar resolution (~4.5km vs 4km)
 - Fewer variables (3 vs 14) — temperature and precipitation only
-- Different interpolation methodology (station-based)
-- **Data ends in 2021** — no coverage for IDS years 2022-2024
+- Different interpolation methodology (station-based, CRU TS 4.09)
+- Full IDS coverage (1997-2024)
 - Local download required (not available via GEE)
 
 ---
@@ -38,15 +38,15 @@ This document covers WorldClim-specific technical details. For the shared pixel 
 
 ```yaml
 worldclim:
-  download_url: "https://geodata.ucdavis.edu/climate/worldclim/2_1/base/"
-  resolution: "2.5m"  # 2.5 arc-minutes (~4.5km)
+  download_url_pattern: "https://geodata.ucdavis.edu/climate/worldclim/2_1/hist/cts4.09/wc2.1_cruts4.09_2.5m_{variable}_{decade}.zip"
+  coverage: "Global land areas, 1950-2024"
   variables:
     tmin:
-      units: "deg C"
-      scale: 0.1  # WorldClim stores as integer × 10
+      units: "°C"
+      scale: 1
     tmax:
-      units: "deg C"
-      scale: 0.1
+      units: "°C"
+      scale: 1
     prec:
       units: "mm"
       scale: 1
@@ -58,22 +58,27 @@ worldclim:
 
 ### 01_download_worldclim.R
 **WorldClim-Specific Behavior:**
-- Downloads decade-based GeoTIFF archives from geodata.ucdavis.edu
-- Each file contains 120 bands (10 years × 12 months), except:
-  - 2010-2018: 108 bands (9 years × 12 months)
-  - 2019-2021: 36 bands (3 years × 12 months)
-- Downloads 3 variables × 7 decade files = 21 archives
-- Total download size: ~500 MB
+- Downloads decade-based zip archives from geodata.ucdavis.edu (CRU TS 4.09)
+- Each zip contains 120 individual monthly GeoTIFFs (10 years × 12 months),
+  except the final 2020-2024 zip which has 60 files (5 years × 12 months)
+- Downloads 3 variables × 8 decade files = 24 archives
+- Total download size: ~600 MB (estimate)
 
-**Decade Files:**
+**Decade Archives (example: tmin):**
 ```
-wc2.1_2.5m_tmin_1960-1969.tif    # 120 bands
-wc2.1_2.5m_tmin_1970-1979.tif    # 120 bands
-wc2.1_2.5m_tmin_1980-1989.tif    # 120 bands
-wc2.1_2.5m_tmin_1990-1999.tif    # 120 bands
-wc2.1_2.5m_tmin_2000-2009.tif    # 120 bands
-wc2.1_2.5m_tmin_2010-2018.tif    # 108 bands
-wc2.1_2.5m_tmin_2019-2021.tif    # 36 bands
+wc2.1_cruts4.09_2.5m_tmin_1950-1959.zip    # 120 monthly TIFs
+wc2.1_cruts4.09_2.5m_tmin_1960-1969.zip    # 120 monthly TIFs
+...
+wc2.1_cruts4.09_2.5m_tmin_2010-2019.zip    # 120 monthly TIFs
+wc2.1_cruts4.09_2.5m_tmin_2020-2024.zip    # 60 monthly TIFs
+```
+
+**Extracted file naming convention:**
+```
+wc2.1_cruts4.09_2.5m_tmin_1990-01.tif   (Jan 1990)
+wc2.1_cruts4.09_2.5m_tmin_1990-02.tif   (Feb 1990)
+...
+wc2.1_cruts4.09_2.5m_tmin_1999-12.tif   (Dec 1999)
 ```
 
 ---
@@ -89,59 +94,43 @@ wc2.1_2.5m_tmin_2019-2021.tif    # 36 bands
 ### 03_extract_worldclim.R
 **WorldClim-Specific Behavior:**
 - Extracts from local GeoTIFF files (not GEE)
-- **Band index calculation:**
-  ```r
-  decade_start <- floor(year / 10) * 10
-  year_offset <- year - decade_start
-  band_index <- (year_offset * 12) + month
-  ```
-- Applies scale factors during extraction (×0.1 for temperatures)
-- **Skips years 2022-2024** (no WorldClim data available)
+- Each month is a separate single-band TIF; no band index math needed
+- Looks up monthly TIF by name: `wc2.1_cruts4.09_2.5m_{var}_{YYYY}-{MM}.tif`
+- Values are in native units (°C, mm) — no scale factors applied
+- Covers full IDS range 1997-2024
 
 ---
 
 ## File Structure
 
-WorldClim GeoTIFFs store multiple years in a single file:
+Each zip extracts to 120 individual monthly GeoTIFFs (single-band each):
 
 ```
-wc2.1_2.5m_tmin_1990-1999.tif
-├── Band 1:  Jan 1990
-├── Band 2:  Feb 1990
+04_worldclim/data/raw/tmin/
+├── wc2.1_cruts4.09_2.5m_tmin_1990-01.tif   (Jan 1990)
+├── wc2.1_cruts4.09_2.5m_tmin_1990-02.tif   (Feb 1990)
 ├── ...
-├── Band 12: Dec 1990
-├── Band 13: Jan 1991
-├── ...
-└── Band 120: Dec 1999
+└── wc2.1_cruts4.09_2.5m_tmin_1999-12.tif   (Dec 1999)
 ```
 
-**Band Index Formula:**
-```
-band = (year - decade_start) × 12 + month
-```
-
-**Example:** February 1995:
-- decade_start = 1990
-- year_offset = 1995 - 1990 = 5
-- band = (5 × 12) + 2 = 62
+To extract February 1995: just load `tmin_1995-02.tif` directly (band 1).
 
 ---
 
 ## Temporal Coverage
 
-| Decade File | Years | Bands | IDS Coverage |
-|-------------|-------|-------|--------------|
-| 1960-1969 | 1960-1969 | 120 | None (pre-IDS) |
-| 1970-1979 | 1970-1979 | 120 | None (pre-IDS) |
-| 1980-1989 | 1980-1989 | 120 | None (pre-IDS) |
-| 1990-1999 | 1990-1999 | 120 | Partial (1997-1999) |
-| 2000-2009 | 2000-2009 | 120 | Full |
-| 2010-2018 | 2010-2018 | 108 | Full |
-| 2019-2021 | 2019-2021 | 36 | Partial (2019-2021) |
+| Decade Archive | Monthly TIFs | IDS Coverage |
+|----------------|-------------|--------------|
+| 1950-1959 | 120 | None (pre-IDS) |
+| 1960-1969 | 120 | None (pre-IDS) |
+| 1970-1979 | 120 | None (pre-IDS) |
+| 1980-1989 | 120 | None (pre-IDS) |
+| 1990-1999 | 120 | Partial (1997-1999) |
+| 2000-2009 | 120 | Full |
+| 2010-2019 | 120 | Full |
+| 2020-2024 | 60 | Full (2020-2024) |
 
-**IDS years with NO WorldClim data:** 2022, 2023, 2024
-
-**Affected observations:** ~500k IDS observations from 2022-2024 will have no WorldClim summaries
+**Full IDS coverage:** all years 1997-2024 have WorldClim data.
 
 ---
 
@@ -162,11 +151,11 @@ WorldClim and TerraClimate have similar spatial granularity.
 
 | Decision | Rationale | Date |
 |----------|-----------|------|
-| Local download (not GEE) | WorldClim monthly weather not available on GEE (only bioclim) | TBD |
-| 2.5 arc-minute resolution | Matches available monthly weather data | TBD |
-| Skip years 2022-2024 | WorldClim data ends in 2021 | TBD |
-| Decade-based files | WorldClim distribution format | TBD |
-| Same pixel decomposition as TerraClimate | Proven efficient pattern | TBD |
+| Local download (not GEE) | WorldClim monthly weather not available on GEE (only bioclim) | 2026-02 |
+| 2.5 arc-minute resolution | Matches available monthly weather data | 2026-02 |
+| Extract 1997-2024 | Full IDS range; WorldClim CRU TS 4.09 covers through 2024 | 2026-02 |
+| Decade-based files | WorldClim distribution format | 2026-02 |
+| Same pixel decomposition as TerraClimate | Proven efficient pattern | 2026-02 |
 
 ---
 
@@ -192,17 +181,16 @@ For detailed workflow architecture, see [`docs/ARCHITECTURE.md`](../docs/ARCHITE
 
 ## Troubleshooting
 
-### Missing data for 2022-2024
-**Expected:** WorldClim ends in 2021. IDS observations from 2022-2024 will have NA summaries.
-**Solution:** Use TerraClimate or ERA5 for these years.
-
-### Incorrect band index
-**Symptom:** Climate values don't match expected month/year.
-**Solution:** Verify band calculation: `(year - decade_start) × 12 + month`
+### Unexpected "missing" messages during extraction
+**Symptom:** Script prints `missing tmin/2020-01` etc.
+**Cause:** Assumed filename convention (`wc2.1_cruts4.09_2.5m_{var}_{YYYY}-{MM}.tif`)
+doesn't match actual filenames extracted from zip.
+**Solution:** Check actual filenames: `list.files("04_worldclim/data/raw/tmin")`.
+Update the `sprintf()` pattern in `03_extract_worldclim.R` line ~95 accordingly.
 
 ### Download failures
 **Cause:** geodata.ucdavis.edu server issues or network interruption.
 **Solution:** Script includes retry logic. Check server status if persistent.
 
 ### Large raw file sizes
-**Note:** Decade files are ~70-100 MB each. 21 total files = ~500 MB. This is manageable compared to GEE-based datasets.
+**Note:** Decade files are ~70-100 MB each. 24 total files = ~600 MB. This is manageable compared to GEE-based datasets.

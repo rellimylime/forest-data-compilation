@@ -19,7 +19,7 @@ Temporal coverage: 1958-present (IDS extraction: 1997-2024)
 RUNNING THE WORKFLOW
 ================================================================================
 Run scripts in order. Steps 1-2 are TerraClimate-specific (in this directory).
-Steps 3-4 use shared scripts (in the top-level scripts/ directory) that work
+Step 3 uses a shared script (in the top-level scripts/ directory) that works
 identically for all climate datasets (PRISM, WorldClim, ERA5).
 
   Step 1: Rscript 02_terraclimate/scripts/01_build_pixel_maps.R
@@ -28,11 +28,9 @@ identically for all climate datasets (PRISM, WorldClim, ERA5).
   Step 2: Rscript 02_terraclimate/scripts/02_extract_terraclimate.R
           Extracts monthly climate values for all unique pixels from GEE.
 
-  Step 3: Rscript scripts/03_reshape_pixel_values.R terraclimate
-          Reshapes wide-format yearly files into a single long-format parquet.
-
-  Step 4: Rscript scripts/04_build_climate_summaries.R terraclimate
+  Step 3: Rscript scripts/build_climate_summaries.R terraclimate
           Computes area-weighted climate means per observation per month.
+          Water year columns are added during this step.
 
 Prerequisite: 00_explore_terraclimate.R is an optional exploratory script.
 
@@ -53,16 +51,12 @@ The workflow produces two key output types:
      Files: terraclimate_{year}.parquet (one per year, 1997-2024)
      Columns: pixel_id, x, y, year, month, [14 climate variables]
 
-After reshape (step 3):
-     Location: processed/climate/terraclimate/pixel_values.parquet
-     Columns: pixel_id, calendar_year, calendar_month, water_year,
-              water_year_month, variable, value
-
-After summaries (step 4):
-     Location: processed/climate/terraclimate/damage_areas_summaries_long.parquet
+After summaries (step 3):
+     Location: processed/climate/terraclimate/damage_areas_summaries/
+     Format: one parquet per variable (read with open_dataset())
      Columns: DAMAGE_AREA_ID, calendar_year, calendar_month, water_year,
-              water_year_month, variable, weighted_mean, n_pixels,
-              n_pixels_with_data, sum_coverage_fraction
+              water_year_month, variable, weighted_mean, value_min, value_max,
+              n_pixels, n_pixels_with_data, sum_coverage_fraction
 
 ================================================================================
 HOW TO: Get Climate Data for a Specific Species
@@ -103,19 +97,24 @@ TerraClimate values at the corresponding pixels.
     filter(OBSERVATION_ID %in% my_obs$OBSERVATION_ID)
 
   # --- 5. Load climate data and join ---
-  # OPTION A: Use pre-built summaries (one weighted mean per observation)
-  summaries <- read_parquet(
-    "processed/climate/terraclimate/damage_areas_summaries_long.parquet"
+  # OPTION A: Use pre-built summaries (one weighted mean per observation per month)
+  # Summaries are stored as per-variable parquet files; read with open_dataset()
+  summaries <- open_dataset(
+    "processed/climate/terraclimate/damage_areas_summaries"
   )
   my_climate <- summaries %>%
-    filter(DAMAGE_AREA_ID %in% unique(my_obs$DAMAGE_AREA_ID))
+    filter(DAMAGE_AREA_ID %in% unique(my_obs$DAMAGE_AREA_ID)) %>%
+    collect()
 
   # OPTION B: Keep individual pixel values (for within-polygon variation)
-  pixel_values <- read_parquet(
-    "processed/climate/terraclimate/pixel_values.parquet"
+  # Pixel values are stored as yearly wide-format parquet files
+  pixel_values <- open_dataset(
+    "02_terraclimate/data/processed/pixel_values"
   )
-  my_pixel_climate <- my_pixels %>%
-    inner_join(pixel_values, by = "pixel_id")
+  my_pixel_climate <- pixel_values %>%
+    filter(pixel_id %in% my_pixels$pixel_id) %>%
+    collect() %>%
+    inner_join(my_pixels, by = "pixel_id")
 
   # --- 6. Merge climate back to IDS attributes ---
   result <- my_obs %>%
@@ -157,11 +156,14 @@ observations.
     filter(SURVEY_FEATURE_ID %in% survey_areas$SURVEY_FEATURE_ID)
 
   # --- 3. Load pixel values and join ---
-  pixel_values <- read_parquet(
-    "processed/climate/terraclimate/pixel_values.parquet"
+  # Pixel values are yearly wide-format files; use open_dataset() to query across years
+  pixel_values <- open_dataset(
+    "02_terraclimate/data/processed/pixel_values"
   )
-  survey_climate <- my_pixels %>%
-    inner_join(pixel_values, by = "pixel_id")
+  survey_climate <- pixel_values %>%
+    filter(pixel_id %in% my_pixels$pixel_id) %>%
+    collect() %>%
+    inner_join(my_pixels, by = "pixel_id")
 
   # --- 4. Compute area-weighted mean per survey polygon ---
   survey_summaries <- survey_climate %>%

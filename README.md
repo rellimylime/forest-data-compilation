@@ -4,7 +4,7 @@ Compiled and cleaned datasets for forest disturbance analysis: USDA Forest Servi
 
 **Author:** Emily Miller
 **Institution:** UC Santa Barbara, Bren School of Environmental Science & Management
-**Last Updated:** 2026-02-13
+**Last Updated:** 2026-02-23
 
 ---
 
@@ -18,8 +18,8 @@ This repository provides a reproducible pipeline for compiling forest disturbanc
 |---------|-------------|---------|--------|
 | IDS Damage Areas | Forest insect/disease damage polygons (1997-2024) | 4,475,827 | ✅ Complete |
 | TerraClimate | Climate variables at IDS observation centroids | 4,475,817 | ✅ Complete |
-| PRISM | High-resolution US climate normals | — | 🔲 Planned |
-| WorldClim | Global bioclimatic variables | — | 🔲 Planned |
+| PRISM | High-resolution US climate normals (CONUS only) | — | ⏳ Extraction complete; summaries pending |
+| WorldClim | Global monthly weather at ~4.5km | — | ⏳ Extraction complete; summaries pending |
 | **Merged Dataset** | IDS + all climate variables | — | 🔲 In Progress |
 
 ---
@@ -32,8 +32,8 @@ This repository provides a reproducible pipeline for compiling forest disturbanc
 |-----------|---------|----------------|
 | `01_ids/` | IDS (Insect & Disease Survey) data processing | ✅ Scripts & docs only |
 | `02_terraclimate/` | TerraClimate climate data extraction | ✅ Scripts & docs only |
-| `03_prism/` | PRISM climate data (planned) | ✅ Scripts & docs only |
-| `04_worldclim/` | WorldClim climate data (planned) | ✅ Scripts & docs only |
+| `03_prism/` | PRISM climate data (CONUS, extraction complete) | ✅ Scripts & docs only |
+| `04_worldclim/` | WorldClim climate data (global, extraction complete) | ✅ Scripts & docs only |
 | `05_era5/` | ERA5 climate data (planned) | ✅ Scripts & docs only |
 | `scripts/` | Shared utilities and cross-dataset processing | ✅ All files |
 | `docs/` | Project-wide documentation (architecture, guides) | ✅ All files |
@@ -91,8 +91,8 @@ NN_datasetname/
 | File | Type | Purpose |
 |------|------|---------|
 | `00_setup.R` | Setup | Load packages, initialize GEE, check environment |
-| `reshape_pixel_values.R` | Processing | *(Optional)* Convert wide-format yearly files → long-format parquet (generic for all datasets) |
-| `build_climate_summaries.R` | Processing | Compute area-weighted observation-level summaries (reads source files directly; generic for all datasets) |
+| `build_climate_summaries.R` | Processing | Compute area-weighted observation-level summaries (reads wide yearly source files directly; generic for all datasets) |
+| `demo_mpb_climate_analysis.R` | Demo | MPB × climate analysis across datasets; accepts `terraclimate`, `prism`, or `worldclim` argument |
 | **utils/climate_extract.R** | Utility | Pixel map building, GEE extraction framework |
 | **utils/gee_utils.R** | Utility | GEE initialization, sf↔ee conversions |
 | **utils/time_utils.R** | Utility | Calendar ↔ water year conversions |
@@ -104,9 +104,6 @@ NN_datasetname/
 ```r
 # Build observation-level summaries (reads directly from yearly source files)
 Rscript scripts/build_climate_summaries.R terraclimate
-
-# Optional: reshape to long-format pixel values for custom analysis
-Rscript scripts/reshape_pixel_values.R terraclimate
 ```
 
 ### Processed Outputs Directory
@@ -124,8 +121,8 @@ processed/
     │       ├── tmmx.parquet                  # weighted_mean, value_min, value_max per obs
     │       ├── tmmn.parquet
     │       └── ...                           # One file per climate variable
-    ├── prism/                                # (Same structure, planned)
-    ├── worldclim/                            # (Same structure, planned)
+    ├── prism/                                # (Same structure; summaries pending)
+    ├── worldclim/                            # (Same structure; summaries pending)
     └── era5/                                 # (Same structure, planned)
 ```
 
@@ -148,15 +145,19 @@ processed/
 - **Variables:** 14 climate variables (temperature, precipitation, ET, drought indices, etc.)
 - **Access Method:** Pixel-level extraction via Google Earth Engine (no per-observation rasters)
 
-### 3. PRISM *(Planned)*
+### 3. PRISM
 - **Source:** [PRISM Climate Group](https://prism.oregonstate.edu/)
-- **Description:** High-resolution climate data for the contiguous United States
-- **Coverage:** CONUS only, monthly/daily (1895-present)
+- **Description:** High-resolution (800m) climate data for the contiguous United States
+- **Coverage:** CONUS only, monthly (1981-present); IDS extraction 1997-2024
+- **Variables:** 7 (ppt, tmean, tmin, tmax, tdmean, vpdmin, vpdmax)
+- **Access Method:** Direct web service download (services.nacse.org)
 
-### 4. WorldClim *(Planned)*
-- **Source:** [WorldClim](https://www.worldclim.org/)
-- **Description:** Global climate and bioclimatic variables
-- **Coverage:** Global, climatological normals
+### 4. WorldClim
+- **Source:** [WorldClim Version 2.1](https://www.worldclim.org/)
+- **Description:** Global historical monthly weather at ~4.5km (CRU TS 4.09)
+- **Coverage:** Global, monthly (1950-2024); IDS extraction 1997-2024
+- **Variables:** 3 (tmin, tmax, prec)
+- **Access Method:** Bulk download (local GeoTIFF files)
 
 ---
 
@@ -174,7 +175,6 @@ forest-data-compilation/
 │
 ├── scripts/                       # Shared utilities (all climate datasets)
 │   ├── 00_setup.R                 # Environment setup
-│   ├── reshape_pixel_values.R     # Wide → long format conversion
 │   ├── build_climate_summaries.R  # Observation-level weighted means
 │   ├── SETUP.md                   # Installation guide
 │   └── utils/                     # Utility modules
@@ -188,8 +188,8 @@ forest-data-compilation/
 │
 ├── 01_ids/                        # Insect & Disease Survey
 ├── 02_terraclimate/               # TerraClimate (✅ complete)
-├── 03_prism/                      # PRISM (planned)
-├── 04_worldclim/                  # WorldClim (planned)
+├── 03_prism/                      # PRISM (⏳ extraction complete, summaries pending)
+├── 04_worldclim/                  # WorldClim (⏳ extraction complete, summaries pending)
 └── 05_era5/                       # ERA5 (planned)
 ```
 
@@ -254,11 +254,10 @@ See **[Directory and File Organization](#directory-and-file-organization)** abov
 source("01_ids/scripts/01_download_ids.R")    # Download raw geodatabases (~1.6GB)
 source("01_ids/scripts/02_inspect_ids.R")     # Generate data dictionary & lookups
 source("01_ids/scripts/03_clean_ids.R")       # Clean and merge 10 regions
-source("01_ids/scripts/04_verify_ids.R")      # Validate cleaned output
 
 # === STEP 2: IDS Spatial Products (Required) ===
-source("01_ids/scripts/06_assign_surveyed_areas.R")  # Spatial join: damage → survey areas
-source("01_ids/scripts/07_compute_area_metrics.R")   # Compute area metrics (EPSG:5070)
+source("01_ids/scripts/04_assign_surveyed_areas.R")  # Spatial join: damage → survey areas
+source("01_ids/scripts/05_compute_area_metrics.R")   # Compute area metrics (EPSG:5070)
 
 # === STEP 3: Climate Extraction (Per Dataset) ===
 # TerraClimate example:
@@ -270,21 +269,33 @@ Rscript scripts/build_climate_summaries.R terraclimate   # Area-weighted summari
 
 # Repeat Steps 3-4 for additional datasets:
 # Rscript scripts/build_climate_summaries.R prism
-# (Same pattern for worldclim, era5)
+# Rscript scripts/build_climate_summaries.R worldclim
+# (Same pattern for era5)
 
-# === OPTIONAL: Reshape pixel values to long format (for custom analysis) ===
-# Rscript scripts/reshape_pixel_values.R terraclimate
 ```
 
-### Optional Exploratory Scripts
+### Cross-Dataset Validation Demo
+
+```bash
+# Run MPB x climate analysis for each dataset (compare outputs to validate agreement)
+Rscript scripts/demo_mpb_climate_analysis.R terraclimate
+Rscript scripts/demo_mpb_climate_analysis.R prism
+Rscript scripts/demo_mpb_climate_analysis.R worldclim
+# Output: output/demo_mpb_<dataset>/ (3 figures each)
+```
+
+### Optional QC / Exploratory Scripts
 
 These scripts generate diagnostic outputs but are **not required** for the core workflow:
 
 ```r
-# IDS temporal coverage analysis (optional)
-source("01_ids/scripts/05_explore_ids_coverage.R")
+# IDS QC validation (checks field structure, geometry validity, cleaning)
+source("01_ids/scripts/qc/validate_ids.R")
 
-# TerraClimate extraction testing (optional)
+# IDS temporal coverage exploration (era differences, missingness by region)
+source("01_ids/scripts/qc/explore_ids_coverage.R")
+
+# TerraClimate exploration (optional, tests GEE extraction on sample)
 source("02_terraclimate/scripts/00_explore_terraclimate.R")
 ```
 

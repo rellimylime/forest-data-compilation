@@ -7,8 +7,8 @@ This document covers PRISM-specific technical details. For the shared pixel deco
 ---
 
 ## Status
-- [ ] Build pixel maps (01_build_pixel_maps.R)
-- [ ] Extract monthly pixel values (02_extract_prism.R)
+- [x] Build pixel maps (01_build_pixel_maps.R)
+- [x] Extract monthly pixel values (02_extract_prism.R)
 - [ ] Build observation summaries (scripts/build_climate_summaries.R prism)
 
 ---
@@ -19,8 +19,8 @@ This document covers PRISM-specific technical details. For the shared pixel deco
 **Resolution:** ~800m (0.04166° / 1/24°)
 **Coverage:** Contiguous United States only (CONUS)
 **Temporal Resolution:** Monthly, 1981-present
-**Variables:** 6 climate variables (tmin, tmean, tmax, ppt, tdmean, vpdmin)
-**Access Method:** Google Earth Engine (OREGONSTATE/PRISM/AN81m)
+**Variables:** 7 climate variables (ppt, tmean, tmin, tmax, tdmean, vpdmin, vpdmax)
+**Access Method:** Direct web service (services.nacse.org) — no GEE account required
 
 **Key Differences from TerraClimate:**
 - Much higher spatial resolution (800m vs 4km) — more pixels per observation
@@ -36,28 +36,21 @@ This document covers PRISM-specific technical details. For the shared pixel deco
 
 ```yaml
 prism:
-  gee_asset: "OREGONSTATE/PRISM/AN81m"
-  gee_scale: 800  # meters
+  access_method: "Direct web service (services.nacse.org)"
+  product: "AN81m (monthly 800m normals)"
+  spatial_resolution: "800m (~30 arc-seconds)"
+  output_prefix: "prism"
   variables:
-    ppt:
-      scale: 1
-      units: "mm"
-    tmean:
-      scale: 1
-      units: "deg C"
-    tmin:
-      scale: 1
-      units: "deg C"
-    tmax:
-      scale: 1
-      units: "deg C"
-    tdmean:
-      scale: 1
-      units: "deg C"
-    vpdmin:
-      scale: 0.01
-      units: "hPa"
+    ppt:      { units: "mm" }
+    tmean:    { units: "°C" }
+    tmin:     { units: "°C" }
+    tmax:     { units: "°C" }
+    tdmean:   { units: "°C" }
+    vpdmin:   { units: "hPa" }
+    vpdmax:   { units: "hPa" }
 ```
+
+All values are delivered in physical units by the web service — no scale factors needed.
 
 ---
 
@@ -67,26 +60,26 @@ prism:
 **PRISM-Specific Behavior:**
 - Filters IDS observations to CONUS only (regions 1-6, 8, 9)
 - Excludes Region 10 (Alaska) and Hawaii observations
-- Uses 800m reference raster from GEE
+- Downloads one reference raster from web service (ppt Jan 2000) to define the 800m pixel grid
 - Higher resolution produces 5-25x more pixels per observation than TerraClimate
 
 **Expected Output:**
 - CONUS damage_areas: ~4.2M observations → ~50-100M pixel mappings
-- Extraction time will be significantly longer than TerraClimate
+- File sizes are larger than TerraClimate due to higher resolution (expected)
 
 ---
 
 ### 02_extract_prism.R
 **PRISM-Specific Behavior:**
-- Extracts from GEE ImageCollection: OREGONSTATE/PRISM/AN81m
-- Temporal range: 1981-present (earlier than TerraClimate)
-- No scale factors needed for tmin/tmax/tmean/ppt (already in physical units)
-- vpdmin requires 0.01 scale factor
+- Downloads each month's zip from services.nacse.org, extracts with terra::extract(), deletes immediately
+- One parquet per year saved to pixel_values/; safe to interrupt and resume (completed years skipped)
+- Temporal range: 1981-present (earlier than TerraClimate); IDS extraction covers 1997-2024
+- All values in physical units — no scale factors needed
+- 0.5s courtesy delay between downloads; each file downloaded only once (within PRISM's 2/day limit)
 
 **Performance Notes:**
-- More unique pixels than TerraClimate due to finer resolution
-- Consider larger batch sizes (e.g., 5000) for GEE efficiency
-- Monthly stacking approach same as TerraClimate (12x speedup)
+- More unique pixels than TerraClimate due to finer resolution (~25x)
+- Actual runtime ~4 hours for 1997-2024 (well under the 20-40h estimate)
 
 ---
 
@@ -129,7 +122,7 @@ prism:
 |--------|----------|-------------------|
 | PRISM data | 1981-present | All IDS years (1997-2024) |
 | TerraClimate | 1958-present | All IDS years |
-| WorldClim | 1960-2021 | 1997-2021 (missing 2022-2024) |
+| WorldClim | 1950-2024 | All IDS years (1997-2024) |
 
 PRISM has complete coverage for all IDS survey years.
 
@@ -139,10 +132,9 @@ PRISM has complete coverage for all IDS survey years.
 
 | Decision | Rationale | Date |
 |----------|-----------|------|
-| GEE extraction (not direct download) | Free access via GEE; PRISM direct download requires paid subscription | TBD |
-| Exclude Alaska/Hawaii | PRISM coverage is CONUS only | TBD |
-| 800m scale parameter | Native PRISM resolution | TBD |
-| Same pixel decomposition as TerraClimate | Proven efficient pattern | TBD |
+| Direct web service (not GEE) | services.nacse.org is freely accessible; download-extract-delete avoids large local storage of raw zips | 2025 |
+| Exclude Alaska/Hawaii | PRISM coverage is CONUS only | 2025 |
+| Same pixel decomposition as TerraClimate | Proven efficient pattern | 2025 |
 
 ---
 
@@ -152,7 +144,7 @@ PRISM has complete coverage for all IDS survey years.
 # 1. Build pixel maps (CONUS only)
 source("03_prism/scripts/01_build_pixel_maps.R")
 
-# 2. Extract climate from GEE
+# 2. Extract climate via web service download
 source("03_prism/scripts/02_extract_prism.R")
 
 # 3. Build observation summaries (shared script, reads source files directly)
@@ -172,6 +164,6 @@ For detailed workflow architecture, see [`docs/ARCHITECTURE.md`](../docs/ARCHITE
 **Cause:** 800m resolution produces 5-25x more pixel mappings than TerraClimate.
 **Solution:** This is expected. Parquet compression keeps file sizes manageable.
 
-### GEE timeout at 800m scale
-**Cause:** High resolution increases computation load.
-**Solution:** Reduce batch size from default 2500 to 1500-2000 pixels per request.
+### Download failures
+**Cause:** Network interruption or PRISM server error.
+**Solution:** The script catches errors per-variable and stores NA; failed downloads are logged as WARNings. Re-run the script — completed years are skipped automatically.

@@ -189,14 +189,7 @@ Only pixels with non-NA values contribute to the denominator.
 
 **Summary columns:** weighted_mean, value_min, value_max, n_pixels, n_pixels_with_data, sum_coverage_fraction
 
----
-
-### scripts/reshape_pixel_values.R (shared, optional)
-Reshapes wide-format yearly parquet files into long format. **Not required** for the summaries pipeline — only needed if you want pixel-level long-format data for custom analysis.
-Run as: `Rscript scripts/reshape_pixel_values.R terraclimate`
-
-**Input:** `data/processed/pixel_values/terraclimate_{year}.parquet`
-**Output:** `processed/climate/terraclimate/pixel_values/`
+Water year columns (water_year, water_year_month) are computed inside this script during chunk processing — no separate reshape step is needed.
 
 ---
 

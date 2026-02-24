@@ -4,7 +4,7 @@
 **Data Manager:** Emily Miller
 **Institution:** UCSB, Bren School, Landscapes of Change Lab
 **Log Created:** 2026-01-31
-**Last Updated:** 2026-02-13
+**Last Updated:** 2026-02-23
 
 ---
 
@@ -104,6 +104,34 @@ annual_pr_wrong <- summarize(annual_mean = mean(value))  # INCORRECT for flux va
 
 ---
 
+### Issue #005: 10 IDS Observations Excluded — No Pixel Overlap
+
+**Date identified:** 2026-02-23
+**Records affected:** 10 observations (0.0002%)
+
+**Description:**
+The TerraClimate pixel map (`damage_areas_pixel_map.parquet`) contains 4,475,817 unique
+OBSERVATION_IDs, while the IDS damage_areas layer has 4,475,827 — a difference of exactly 10.
+These 10 observations have geometries so degenerate (near-zero-area slivers or self-intersecting
+polygons) that `exactextractr::exact_extract()` returns zero rows for them. No TerraClimate
+pixel at ~4km resolution overlaps the geometry, so these observations have no pixel mapping
+and no climate summaries.
+
+**Evidence:**
+- IDS `damage_areas` total OBSERVATION_IDs: 4,475,827
+- TerraClimate pixel map unique OBSERVATION_IDs: 4,475,817
+- Difference: 10 (confirmed consistent across all build_climate_summaries.R runs)
+
+**Decision:** Accepted as missing data. The geometries are valid enough to pass sf validation
+but produce no usable area intersection at ~4km resolution. These observations will have no
+rows in any climate summaries output. Users joining on OBSERVATION_ID should be aware that
+10 observations will not match.
+
+**Impact:** Negligible (0.0002% of observations). The same 10 observations are likely absent
+from PRISM, WorldClim, and ERA5 pixel maps as well, since their geometries are dataset-agnostic.
+
+---
+
 ## Design Decisions
 
 Key decisions made during workflow development that affect data structure and usage.
@@ -155,7 +183,7 @@ Key decisions made during workflow development that affect data structure and us
 
 3. **NoData at coastlines/edges:** ~1,200 observations lack climate data due to proximity to ocean or dataset boundary.
 
-4. **Degenerate geometries:** IDS observations with invalid geometries (slivers, self-intersections) may produce no pixel mappings or very low coverage_fraction.
+4. **Degenerate geometries (10 observations):** See Issue #005. Exactly 10 IDS observations have geometries that produce no pixel overlap at ~4km resolution. They are absent from all climate summaries.
 
 5. **Recent year data quality:** Most recent year (2024 at time of extraction) may be provisional. Check TerraClimate release notes.
 
