@@ -19,6 +19,7 @@ Requires:
 Source: FIADB User Guide v9.4, August 2025
 """
 
+import json
 import os
 import sqlite3
 from typing import Dict, List, Optional, Tuple
@@ -871,7 +872,7 @@ _TABLE_TO_CAT: Dict[str, str] = {
 
 
 def build_pyvis_graph(db_tables: List[str]) -> str:
-    net = Network(height="650px", width="100%", directed=True, notebook=False)
+    net = Network(height="580px", width="100%", directed=True, notebook=False)
     net.set_options("""{
       "physics": {
         "barnesHut": {"gravitationalConstant": -8000, "springLength": 120},
@@ -883,11 +884,12 @@ def build_pyvis_graph(db_tables: List[str]) -> str:
         "font": {"size": 9, "align": "top"}
       },
       "nodes": {"font": {"size": 12}, "borderWidth": 1.5},
-      "interaction": {"hover": true, "tooltipDelay": 200}
+      "interaction": {"hover": true, "tooltipDelay": 100}
     }""")
 
     present = set(db_tables) if db_tables else set(_TABLE_TO_CAT.keys())
     nodes_added: set = set()
+    table_info: dict = {}
 
     for child, child_fk, parent, parent_pk, label in RELATIONSHIPS:
         for t in (child, parent):
@@ -895,16 +897,64 @@ def build_pyvis_graph(db_tables: List[str]) -> str:
                 cat   = _TABLE_TO_CAT.get(t, "Unknown")
                 color = CATEGORY_COLORS.get(cat, "#cccccc")
                 size  = 25 if t in ("PLOT", "TREE", "COND") else 16
-                title = f"<b>{t}</b><br>{TABLE_DESCRIPTIONS.get(t, '')[:200]}"
-                net.add_node(t, label=t, color=color, size=size, title=title)
+                desc  = TABLE_DESCRIPTIONS.get(t, "No description available.")
+                # Plain text title for hover (avoids HTML-as-plaintext rendering bug);
+                # full description is shown in the click panel below the graph.
+                net.add_node(t, label=t, color=color, size=size, title=t)
+                table_info[t] = {"category": cat, "description": desc, "color": color}
                 nodes_added.add(t)
 
     for child, child_fk, parent, parent_pk, label in RELATIONSHIPS:
         if child in nodes_added and parent in nodes_added:
             net.add_edge(child, parent, label=label,
-                         title=f"{child}.{child_fk} → {parent}.{parent_pk}")
+                         title=f"{child}.{child_fk} \u2192 {parent}.{parent_pk}")
 
-    return net.generate_html()
+    html_str = net.generate_html()
+
+    # ── Inject click-info panel + JS event handler ───────────────────────────
+    table_info_json = json.dumps(table_info, ensure_ascii=False)
+
+    injection = f"""
+<div id="fia-node-panel" style="
+    display:none; margin:10px 4px 4px 4px; padding:14px 18px;
+    background:#ffffff; border-radius:6px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.15);
+    font-family:-apple-system,BlinkMacSystemFont,sans-serif;
+    font-size:13px; line-height:1.5; border-left:5px solid #ccc;
+">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+    <span id="fia-node-name" style="font-weight:700;font-size:16px;"></span>
+    <span id="fia-node-cat"  style="padding:2px 10px;border-radius:4px;color:white;font-size:11px;"></span>
+  </div>
+  <div id="fia-node-desc" style="color:#333;border-top:1px solid #eee;padding-top:8px;"></div>
+  <div style="margin-top:8px;font-size:11px;color:#aaa;">Click on empty space to dismiss</div>
+</div>
+<script>
+var FIA_TABLE_INFO = {table_info_json};
+(function waitForNetwork() {{
+    if (typeof network === 'undefined') {{ setTimeout(waitForNetwork, 100); return; }}
+    network.on("click", function(params) {{
+        var panel = document.getElementById("fia-node-panel");
+        if (params.nodes.length > 0) {{
+            var nodeId = params.nodes[0];
+            var info = FIA_TABLE_INFO[nodeId];
+            if (!info) return;
+            document.getElementById("fia-node-name").textContent = nodeId;
+            var catEl = document.getElementById("fia-node-cat");
+            catEl.textContent = info.category;
+            catEl.style.background = info.color;
+            document.getElementById("fia-node-desc").textContent = info.description;
+            panel.style.borderLeftColor = info.color;
+            panel.style.display = "block";
+        }} else {{
+            panel.style.display = "none";
+        }}
+    }});
+}})();
+</script>
+"""
+    html_str = html_str.replace("</body>", injection + "\n</body>")
+    return html_str
 
 
 def build_graphviz_graph(db_tables: List[str]) -> "Digraph":
@@ -950,7 +1000,7 @@ def main() -> None:
             help="Full absolute path. Schema metadata is read instantly via PRAGMA.",
         )
         st.markdown("---")
-        st.markdown("**Color key**")
+        st.markdown("**Table groups**")
         for cat, color in CATEGORY_COLORS.items():
             st.markdown(
                 f'<span style="background:{color};color:white;padding:2px 8px;'
@@ -958,6 +1008,28 @@ def main() -> None:
                 f'{cat}</span>',
                 unsafe_allow_html=True,
             )
+        st.markdown("---")
+        st.markdown("**Explore a group**")
+        cat_options = ["— select a group —"] + list(CATEGORY_COLORS.keys())
+        selected_sidebar_cat = st.selectbox(
+            "Group", cat_options, label_visibility="collapsed", key="sidebar_cat"
+        )
+        if selected_sidebar_cat != "— select a group —":
+            s_color  = CATEGORY_COLORS.get(selected_sidebar_cat, "#888")
+            s_tables = TABLE_CATEGORIES.get(selected_sidebar_cat, [])
+            st.markdown(
+                f'<span style="background:{s_color};color:white;padding:3px 10px;'
+                f'border-radius:4px;font-size:0.85em">{selected_sidebar_cat}</span>',
+                unsafe_allow_html=True,
+            )
+            st.caption(f"{len(s_tables)} tables")
+            for t in s_tables:
+                desc    = TABLE_DESCRIPTIONS.get(t, "")
+                in_db   = t in db_tables if db_tables else None
+                tick    = " ✓" if in_db else (" ✗" if in_db is False else "")
+                st.markdown(f"**`{t}`**{tick}")
+                if desc:
+                    st.caption(desc[:130] + ("…" if len(desc) > 130 else ""))
 
     # ── Database connection ──────────────────────────────────────────────────
     conn: Optional[sqlite3.Connection] = None
@@ -986,6 +1058,18 @@ def main() -> None:
     # ────────────────────────────────────────────────────────────────────────
     with tabs[0]:
         st.header("Database Overview")
+        st.markdown("""
+The **Forest Inventory and Analysis (FIA)** database is the U.S. government's most comprehensive
+record of forest conditions nationwide. Field crews visit thousands of plots every year and measure
+every tree, track which trees died, count seedlings, and record soil and stand conditions.
+All of that data lives in this database as interconnected tables.
+
+**This tool helps you navigate the structure** — which tables exist, what columns they contain,
+and how they link together — without loading the actual data. You don't need to be a database
+expert to use it: the tabs above walk you through everything from a high-level overview to
+ready-to-run analysis code.
+        """)
+        st.markdown("---")
 
         c1, c2, c3 = st.columns(3)
         total_spec = sum(len(v) for v in TABLE_CATEGORIES.values())
@@ -1047,6 +1131,15 @@ are exact and reliable for county-level spatial joins.
     # ────────────────────────────────────────────────────────────────────────
     with tabs[1]:
         st.header("Schema Browser")
+        st.markdown("""
+Select any table from the dropdown to see its columns, data types, and what each coded number means
+in plain English. At the bottom of each table's page you'll also see its **connections** — which other
+tables it links to and which tables link back to it.
+
+> **Tip:** If you see a column like `STATUSCD` with values 1, 2, 3 — the *Coded columns reference*
+> section below the column list will tell you exactly what each number means.
+        """)
+        st.markdown("---")
 
         all_known = [t for cat in TABLE_CATEGORIES.values() for t in cat]
         choices   = db_tables if db_tables else all_known
@@ -1095,13 +1188,23 @@ are exact and reliable for county-level spatial joins.
             outgoing = [(c, ck, p, pk, lb) for c, ck, p, pk, lb in RELATIONSHIPS if c == selected]
             incoming = [(c, ck, p, pk, lb) for c, ck, p, pk, lb in RELATIONSHIPS if p == selected]
             if outgoing or incoming:
-                st.subheader("Relationships")
+                st.subheader("Table connections")
                 if outgoing:
-                    st.markdown("**References (FK out) →**")
+                    st.markdown(
+                        "**Links to →** "
+                        "<span style='color:gray;font-size:0.9em'>"
+                        "This table borrows an ID from another table — use these columns to join.</span>",
+                        unsafe_allow_html=True,
+                    )
                     for c, ck, p, pk, lb in outgoing:
                         st.markdown(f"- `{c}.{ck}` → `{p}.{pk}`")
                 if incoming:
-                    st.markdown("**Referenced by (FK in) ←**")
+                    st.markdown(
+                        "**Linked from ←** "
+                        "<span style='color:gray;font-size:0.9em'>"
+                        "These tables have a column that points back to this one.</span>",
+                        unsafe_allow_html=True,
+                    )
                     for c, ck, p, pk, lb in incoming:
                         st.markdown(f"- `{c}.{ck}` → `{selected}.{pk}`")
 
@@ -1122,10 +1225,18 @@ are exact and reliable for county-level spatial joins.
     # ────────────────────────────────────────────────────────────────────────
     with tabs[2]:
         st.header("Relationship Map")
-        st.caption(
-            "Nodes = tables · Edges = foreign key links · Colors = table category · "
-            "Hover a node for its description · Drag to rearrange"
-        )
+        st.markdown("""
+This diagram shows every FIA table as a node and every connection between tables as an arrow.
+An arrow from Table A to Table B means: *"Table A has a column that stores a row ID from Table B"*
+— in other words, you can join them on that column.
+
+**PLOT** is the central hub — almost every other table links back to it via `PLT_CN`.
+The color of each node shows which group the table belongs to (see the color key in the sidebar).
+
+> **How to use:** Hover over a node to see a description. Drag nodes to rearrange the layout.
+> Click a table name in the *Schema Browser* tab to explore its columns and connections in detail.
+        """)
+        st.caption("Nodes = tables · Arrows = connections · Colors = table group · Drag to rearrange")
 
         if _PYVIS_AVAILABLE:
             html = build_pyvis_graph(db_tables)
@@ -1144,10 +1255,14 @@ are exact and reliable for county-level spatial joins.
             )
 
         st.markdown("---")
-        st.subheader("All declared relationships")
+        st.subheader("All table connections")
+        st.caption(
+            "Each row means: the 'From table' has a column (Join column) that stores an ID "
+            "pointing to a row in the 'Links to table'."
+        )
         rel_df = pd.DataFrame(
             [(c, ck, p, pk) for c, ck, p, pk, lb in RELATIONSHIPS],
-            columns=["Child table", "FK column", "Parent table", "PK column"],
+            columns=["From table", "Join column", "Links to table", "Matched column"],
         )
         st.dataframe(rel_df, use_container_width=True, hide_index=True)
 
@@ -1156,7 +1271,14 @@ are exact and reliable for county-level spatial joins.
     # ────────────────────────────────────────────────────────────────────────
     with tabs[3]:
         st.header("Column Search")
-        st.caption("Find which tables contain a given column — useful for tracing join paths")
+        st.markdown("""
+FIA uses consistent column names across tables — for example, `SPCD` (species code) appears in
+TREE, SEEDLING, and REF_SPECIES, which is how you join them together. Use this tab to find
+every table that contains a column you're interested in.
+
+Type any column name (or part of one) in the box below to see where it appears.
+The *Universal join keys* table at the bottom lists the most important shared columns and what they're for.
+        """)
 
         query = st.text_input("Column name (partial match OK)", placeholder="e.g. SPCD, PLT_CN, AGENTCD")
 
@@ -1204,7 +1326,13 @@ are exact and reliable for county-level spatial joins.
     # ────────────────────────────────────────────────────────────────────────
     with tabs[4]:
         st.header("Analysis Pipelines")
-        st.caption("Common analysis goals with table-join paths and ready-to-run SQL")
+        st.markdown("""
+These are step-by-step recipes for the most common FIA analyses. Each one explains the goal in plain
+language, lists the tables you need to pull from and why, and includes a ready-to-run SQL query you
+can paste directly into a SQLite viewer, R (`DBI::dbGetQuery()`), or Python (`pd.read_sql()`).
+
+Click any pipeline below to expand it.
+        """)
 
         for tmpl in PIPELINE_TEMPLATES:
             with st.expander(f"**{tmpl['name']}**  —  *{tmpl['goal']}*"):
