@@ -1,65 +1,25 @@
 # ==============================================================================
-# scripts/demo_mpb_climate_analysis.R
+# Mountain Pine Beetle x Climate — Example Analysis
+# ==============================================================================
 #
-# Mountain Pine Beetle (Dendroctonus ponderosae) x Climate Analysis Demo
+# Demonstrates how the compiled datasets from this project can be used:
 #
-# PURPOSE
-# -------
-# Demonstrates the end-to-end workflow for linking IDS forest disturbance
-# observations to climate data. Uses Mountain Pine Beetle (MPB, DCA_CODE 11006)
-# as a case study to explore how outbreak severity relates to water-year climate.
+#   Step 1  Load IDS disturbance data (01_ids workflow)
+#   Step 2  Open climate summaries (02_terraclimate / 03_prism / 04_worldclim)
+#   Step 3  Extract climate conditions at MPB damage sites
+#   Step 4  Build annual outbreak + climate summaries
+#   Step 5  Generate figures
 #
-# PREREQUISITES
-# -------------
-# Before running, the following data must be available:
-#   - IDS processed output:   01_ids/data/processed/ids_layers_cleaned.gpkg
-#   - Climate summaries:      processed/climate/<dataset>/damage_areas_summaries/
-#     (generate with: Rscript scripts/build_climate_summaries.R <dataset>)
-#
-# USAGE
-# -----
-#   Rscript scripts/demo_mpb_climate_analysis.R                   # default: terraclimate
+# Usage:
+#   Rscript scripts/demo_mpb_climate_analysis.R                  # terraclimate (default)
 #   Rscript scripts/demo_mpb_climate_analysis.R prism
 #   Rscript scripts/demo_mpb_climate_analysis.R worldclim
 #
-# Run all three and compare the output/ directories to validate cross-dataset
-# agreement - if the datasets agree, relationships are robust.
+# Prerequisites (data must be compiled first):
+#   01_ids/data/processed/ids_layers_cleaned.gpkg
+#   processed/climate/<dataset>/damage_areas_summaries/
 #
-# ANALYSIS STEPS
-# --------------
-# Step 1  Load IDS observations for Mountain Pine Beetle
-#         Filters the IDS GeoPackage to MPB (DCA_CODE = 11006) and extracts
-#         DAMAGE_AREA_ID, SURVEY_YEAR, and ACRES for each observation.
-#
-# Step 2  Extract water-year climate at MPB damage sites
-#         Opens the per-variable Arrow parquet dataset for the chosen climate
-#         source. Joins MPB damage areas to climate summaries (lazy, in Arrow)
-#         and computes three water-year aggregates per area:
-#           tmax   - peak maximum temperature  (max of monthly value_max)
-#           tmin   - lowest minimum temperature (min of monthly value_min)
-#           precip - total annual precipitation (sum of monthly weighted_mean)
-#
-# Step 3  Join ACRES and validate
-#         Attaches damage extent (ACRES) back to the climate-joined data and
-#         reports NA counts and year range as a sanity check.
-#
-# Step 4  Build annual outbreak + climate summaries
-#         Aggregates to survey-year level: total acres damaged, number of
-#         MPB observations, and mean water-year climate across all sites.
-#
-# OUTPUT FILES  (saved to output/demo_mpb_<dataset>/)
-# ------------
-#   01_mpb_outbreak_timeline.png   - MPB damage acres per survey year (bar chart)
-#   02_mpb_climate_timeseries.png  - tmax, tmin, and precip at MPB sites over time
-#   03_mpb_climate_scatter.png     - Outbreak severity vs. water-year climate
-#
-# VARIABLE NAME MAPPING ACROSS DATASETS
-# --------------------------------------
-#   Concept  | TerraClimate | PRISM | WorldClim
-#   ---------|--------------|-------|----------
-#   tmax     | tmmx         | tmax  | tmax
-#   tmin     | tmmn         | tmin  | tmin
-#   precip   | pr           | ppt   | prec
+# Output: output/demo_mpb_<dataset>/  (3 PNG figures)
 # ==============================================================================
 
 library(here)
@@ -70,239 +30,165 @@ library(ggplot2)
 library(sf)
 library(scales)
 
-options(warn = 1)
-
-tick <- function(t0, label = "") {
-  elapsed <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
-  cat(sprintf("  [%.1fs] %s\n", elapsed, label))
-  invisible(Sys.time())
-}
-
-# ==============================================================================
-# Configuration
-# ==============================================================================
-
+# Dataset is set by command-line argument; defaults to terraclimate
 args    <- commandArgs(trailingOnly = TRUE)
 dataset <- if (length(args) >= 1) args[1] else "terraclimate"
 
-valid_datasets <- c("terraclimate", "prism", "worldclim")
-if (!dataset %in% valid_datasets) {
-  stop("Unknown dataset: '", dataset, "'. Choose from: ",
-       paste(valid_datasets, collapse = ", "))
+if (!dataset %in% c("terraclimate", "prism", "worldclim")) {
+  stop("Unknown dataset '", dataset, "'. Choose: terraclimate, prism, worldclim")
 }
 
-# Variable name for each concept in each dataset
+# Variable names differ across datasets but map to the same three concepts
 var_map <- list(
-  terraclimate = list(tmax = "tmmx",  tmin = "tmmn",  precip = "pr"),
-  prism        = list(tmax = "tmax",  tmin = "tmin",  precip = "ppt"),
-  worldclim    = list(tmax = "tmax",  tmin = "tmin",  precip = "prec")
+  terraclimate = list(tmax = "tmmx", tmin = "tmmn", precip = "pr"),
+  prism        = list(tmax = "tmax", tmin = "tmin", precip = "ppt"),
+  worldclim    = list(tmax = "tmax", tmin = "tmin", precip = "prec")
 )
 vars <- var_map[[dataset]]
 
-summaries_path <- here("processed/climate", dataset, "damage_areas_summaries")
-MPB_CODE       <- 11006
-output_dir     <- here("output", paste0("demo_mpb_", dataset))
+output_dir <- here("output", paste0("demo_mpb_", dataset))
 dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
-cat("\n================================================================\n")
-cat(sprintf(" Mountain Pine Beetle x Climate | dataset: %s\n", toupper(dataset)))
-cat("================================================================\n\n")
-cat(sprintf("  tmax   -> %s\n", vars$tmax))
-cat(sprintf("  tmin   -> %s\n", vars$tmin))
-cat(sprintf("  precip -> %s\n", vars$precip))
-if (dataset == "prism") {
-  cat("  NOTE: PRISM is CONUS-only; Alaskan MPB observations will be absent\n")
-}
-cat("\n")
-
-script_start <- Sys.time()
+cat(sprintf("Dataset: %s  (tmax=%s  tmin=%s  precip=%s)\n",
+            dataset, vars$tmax, vars$tmin, vars$precip))
 
 # ==============================================================================
-# Step 1: Load IDS MPB observations
+# Step 1: Load IDS disturbance data — Mountain Pine Beetle only
 # ==============================================================================
+#
+# The compiled IDS file holds 4.4 million damage observations (all agents,
+# all years). A SQL query at read time filters to Mountain Pine Beetle
+# (DCA_CODE = 11006), so only the ~1.3 million relevant rows are loaded.
+#
 
-cat("Step 1: Loading MPB observations from GeoPackage...\n")
-t0 <- Sys.time()
-
-ids <- st_read(
+mpb <- st_read(
   here("01_ids/data/processed/ids_layers_cleaned.gpkg"),
   layer = "damage_areas",
-  query = sprintf("SELECT * FROM damage_areas WHERE DCA_CODE = %d", MPB_CODE),
+  query = "SELECT DAMAGE_AREA_ID, SURVEY_YEAR, ACRES
+           FROM damage_areas
+           WHERE DCA_CODE = 11006",
   quiet = TRUE
+) %>% st_drop_geometry()
+
+cat(sprintf("MPB observations loaded: %s  (%d-%d)\n",
+            format(nrow(mpb), big.mark = ","),
+            min(mpb$SURVEY_YEAR), max(mpb$SURVEY_YEAR)))
+
+# ==============================================================================
+# Step 2: Open the climate summaries
+# ==============================================================================
+#
+# Climate summaries are stored as partitioned parquet files — one file per
+# variable, covering all 4.4M damage areas across all years. open_dataset()
+# connects without loading data into memory; queries are executed lazily.
+#
+# Each row: DAMAGE_AREA_ID | variable | water_year | calendar_month | weighted_mean | ...
+#
+
+climate <- open_dataset(
+  here("processed/climate", dataset, "damage_areas_summaries")
 )
 
-tick(t0, sprintf("%s observations loaded", format(nrow(ids), big.mark = ",")))
-cat(sprintf("  Year range : %d-%d\n", min(ids$SURVEY_YEAR), max(ids$SURVEY_YEAR)))
-cat(sprintf("  Unique IDs : %s\n", format(length(unique(ids$DAMAGE_AREA_ID)), big.mark = ",")))
-cat(sprintf("  Acres range: %.0f - %s\n",
-            min(ids$ACRES, na.rm = TRUE),
-            format(max(ids$ACRES, na.rm = TRUE), big.mark = ",")))
-
 # ==============================================================================
-# Step 2: Load climate summaries - join MPB lookup into Arrow BEFORE groupby
+# Step 3: Extract climate at MPB sites and aggregate to water year
 # ==============================================================================
-# Strategy: build a small lookup of (DAMAGE_AREA_ID, water_year) for MPB obs,
-# join it into each Arrow query so only MPB rows enter the groupby.
-# This avoids grouping all 4.4M damage areas (OOM with Arrow).
-# ==============================================================================
+#
+# For each MPB damage area, compute three water-year summaries:
+#   tmax_c    = peak maximum temperature       (°C)
+#   tmin_c    = lowest minimum temperature     (°C)
+#   precip_mm = total annual precipitation     (mm)
+#
+# The join is performed inside Arrow before collecting, so only MPB rows
+# are pulled into memory (not the full 4.4M-area dataset).
+#
 
-cat(sprintf("\nStep 2: Loading climate summaries (%s)...\n", dataset))
-
-if (!dir.exists(summaries_path)) {
-  stop("Summaries not found: ", summaries_path,
-       "\nRun: Rscript scripts/build_climate_summaries.R ", dataset)
-}
-
-ds <- open_dataset(summaries_path)
-cat(sprintf("  Variables in dataset: %s\n",
-            paste(ds %>% distinct(variable) %>% pull() %>% sort(), collapse = ", ")))
-
-# Build MPB lookup: one row per unique (DAMAGE_AREA_ID, water_year)
-ids_attrs <- ids %>%
-  st_drop_geometry() %>%
-  select(DAMAGE_AREA_ID, SURVEY_YEAR, ACRES) %>%
-  distinct()
-
-mpb_lookup <- ids_attrs %>%
-  distinct(DAMAGE_AREA_ID, water_year = SURVEY_YEAR) %>%
-  mutate(DAMAGE_AREA_ID = as.character(DAMAGE_AREA_ID),
-         water_year     = as.integer(water_year)) %>%
+mpb_lookup <- mpb %>%
+  distinct(DAMAGE_AREA_ID = as.character(DAMAGE_AREA_ID),
+           water_year     = as.integer(SURVEY_YEAR)) %>%
   arrow_table()
 
-cat(sprintf("  MPB lookup: %s unique (DAMAGE_AREA_ID, water_year) pairs\n",
-            format(nrow(mpb_lookup), big.mark = ",")))
-
-# Helper: extract one climate concept per MPB area per water year
-extract_concept <- function(var_name, concept, agg_col, agg_fn) {
-  cat(sprintf("  %s [%s]: %s per water year...\n", concept, var_name, agg_col))
-  t0 <- Sys.time()
-
-  result <- ds %>%
+get_climate <- function(var_name, value_col, agg_fn, out_col) {
+  climate %>%
     filter(variable == var_name) %>%
-    select(DAMAGE_AREA_ID, water_year, value = !!sym(agg_col)) %>%
+    select(DAMAGE_AREA_ID, water_year, value = !!sym(value_col)) %>%
     mutate(DAMAGE_AREA_ID = cast(DAMAGE_AREA_ID, utf8())) %>%
     inner_join(mpb_lookup, by = c("DAMAGE_AREA_ID", "water_year")) %>%
-    group_by(DAMAGE_AREA_ID, water_year) %>%
     collect() %>%
-    summarize(wy_value = agg_fn(value), .groups = "drop") %>%
-    mutate(concept = concept)
-
-  tick(t0, sprintf("%s: %s rows | range %.2f to %.2f",
-                   concept, format(nrow(result), big.mark = ","),
-                   min(result$wy_value, na.rm = TRUE),
-                   max(result$wy_value, na.rm = TRUE)))
-  result
+    group_by(DAMAGE_AREA_ID, water_year) %>%
+    summarize(!!out_col := agg_fn(value, na.rm = TRUE), .groups = "drop")
 }
 
-tmax_wy   <- extract_concept(vars$tmax,   "tmax",   "value_max",    function(x) max(x,  na.rm = TRUE))
-tmin_wy   <- extract_concept(vars$tmin,   "tmin",   "value_min",    function(x) min(x,  na.rm = TRUE))
-precip_wy <- extract_concept(vars$precip, "precip", "weighted_mean",function(x) sum(x,  na.rm = TRUE))
-
-all_wy <- bind_rows(tmax_wy, tmin_wy, precip_wy)
-cat(sprintf("  Combined: %s rows (3 variables x ~%s areas)\n",
-            format(nrow(all_wy), big.mark = ","),
-            format(nrow(mpb_lookup), big.mark = ",")))
+climate_mpb <-
+  get_climate(vars$tmax,   "value_max",    max, "tmax_c") %>%
+  left_join(get_climate(vars$tmin,   "value_min",    min, "tmin_c"),    by = c("DAMAGE_AREA_ID", "water_year")) %>%
+  left_join(get_climate(vars$precip, "weighted_mean", sum, "precip_mm"), by = c("DAMAGE_AREA_ID", "water_year"))
 
 # ==============================================================================
-# Step 3: Join ACRES back and sanity check
+# Step 4: Build annual summaries
 # ==============================================================================
 
-cat("\nStep 3: Joining ACRES, validating...\n")
-t0 <- Sys.time()
-
-wy_climate <- all_wy %>%
-  inner_join(ids_attrs, by = c("DAMAGE_AREA_ID", "water_year" = "SURVEY_YEAR"))
-
-tick(t0, sprintf("%s rows after ACRES join", format(nrow(wy_climate), big.mark = ",")))
-cat(sprintf("  Concepts  : %s\n", paste(sort(unique(wy_climate$concept)), collapse = ", ")))
-cat(sprintf("  Year range: %d-%d\n",
-            min(wy_climate$water_year), max(wy_climate$water_year)))
-
-n_na <- sum(is.na(wy_climate$wy_value))
-cat(sprintf("  NAs in wy_value: %d %s\n", n_na,
-            if (n_na == 0) "(good)" else "<-- WARNING"))
-
-# ==============================================================================
-# Step 4: Build annual outbreak + climate summary
-# ==============================================================================
-
-cat("\nStep 4: Building annual summaries...\n")
-t0 <- Sys.time()
-
-outbreak <- ids %>%
-  st_drop_geometry() %>%
+annual <- mpb %>%
   group_by(SURVEY_YEAR) %>%
-  summarize(
-    total_acres = sum(ACRES, na.rm = TRUE),
-    n_obs = n(),
-    .groups = "drop"
+  summarize(total_acres = sum(ACRES, na.rm = TRUE),
+            n_obs       = n(),
+            .groups     = "drop") %>%
+  left_join(
+    climate_mpb %>%
+      group_by(SURVEY_YEAR = water_year) %>%
+      summarize(tmax_c    = mean(tmax_c,    na.rm = TRUE),
+                tmin_c    = mean(tmin_c,    na.rm = TRUE),
+                precip_mm = mean(precip_mm, na.rm = TRUE),
+                .groups   = "drop"),
+    by = "SURVEY_YEAR"
   )
 
-annual_climate <- wy_climate %>%
-  group_by(SURVEY_YEAR = water_year, concept) %>%
-  summarize(mean_value = mean(wy_value, na.rm = TRUE), .groups = "drop") %>%
-  pivot_wider(names_from = concept, values_from = mean_value)
-
-annual <- outbreak %>%
-  inner_join(annual_climate, by = "SURVEY_YEAR")
-
-tick(t0, sprintf("%d annual rows", nrow(annual)))
-cat(sprintf("  Columns: %s\n", paste(names(annual), collapse = ", ")))
-print(as.data.frame(head(annual, 5)))
+write.csv(annual, file.path(output_dir, "annual_summary.csv"), row.names = FALSE)
 
 # ==============================================================================
-# Figure 1: MPB outbreak timeline
+# Step 5: Figures
 # ==============================================================================
 
-cat("\nGenerating figures...\n")
-t0 <- Sys.time()
+# -- Figure 1: MPB damage extent over time ------------------------------------
 
-p1 <- ggplot(outbreak, aes(x = SURVEY_YEAR, y = total_acres / 1e6)) +
-  geom_col(fill = "#8B4513", alpha = 0.8) +
-  scale_x_continuous(breaks = seq(1997, 2024, by = 3)) +
+p1 <- ggplot(annual, aes(x = SURVEY_YEAR, y = total_acres / 1e6)) +
+  geom_col(fill = "#8B4513", alpha = 0.85) +
+  scale_x_continuous(breaks = seq(1997, 2024, 3)) +
   scale_y_continuous(labels = label_comma(suffix = "M")) +
   labs(
-    title = "Mountain Pine Beetle Damage (1997-2024)",
-    x = "Survey Year",
-    y = "Total Affected Acres (millions)",
-    caption = "Data: USDA Forest Service IDS"
+    title   = "Mountain Pine Beetle Damage Extent, 1997-2024",
+    x       = "Survey Year",
+    y       = "Affected Acres (millions)",
+    caption = "Source: USDA Forest Service Insect and Disease Survey (IDS)"
   ) +
-  theme_minimal(base_size = 12) +
+  theme_minimal(base_size = 13) +
   theme(plot.title = element_text(face = "bold"), panel.grid.minor = element_blank())
 
-ggsave(file.path(output_dir, "01_mpb_outbreak_timeline.png"),
+ggsave(file.path(output_dir, "01_outbreak_timeline.png"),
        p1, width = 10, height = 5, dpi = 150)
-tick(t0, "Saved: 01_mpb_outbreak_timeline.png")
 
-# ==============================================================================
-# Figure 2: Water-year climate at MPB sites over time (faceted)
-# ==============================================================================
+# -- Figure 2: Climate trends at MPB sites over time --------------------------
 
-concept_labels <- c(
-  tmax   = sprintf("Peak Max Temp (\u00b0C)  [%s]",   vars$tmax),
-  tmin   = sprintf("Lowest Min Temp (\u00b0C)  [%s]", vars$tmin),
-  precip = sprintf("Total Precip (mm)  [%s]",          vars$precip)
+climate_labels <- c(
+  tmax_c    = "Peak Max Temp (°C)",
+  tmin_c    = "Lowest Min Temp (°C)",
+  precip_mm = "Total Precipitation (mm)"
 )
 
-climate_long <- annual %>%
-  pivot_longer(cols = c(tmax, tmin, precip),
-               names_to = "concept", values_to = "value") %>%
-  mutate(concept = factor(concept,
-                          levels = c("tmax", "tmin", "precip"),
-                          labels = concept_labels))
-
-t0 <- Sys.time()
-p2 <- ggplot(climate_long, aes(x = SURVEY_YEAR, y = value)) +
-  geom_line(color = "#8B4513", linewidth = 0.8) +
-  geom_point(color = "#8B4513", size = 1.5) +
-  facet_wrap(~concept, ncol = 1, scales = "free_y") +
-  scale_x_continuous(breaks = seq(1997, 2024, by = 3)) +
+p2 <- annual %>%
+  select(SURVEY_YEAR, tmax_c, tmin_c, precip_mm) %>%
+  pivot_longer(-SURVEY_YEAR, names_to = "variable", values_to = "value") %>%
+  mutate(variable = factor(variable, names(climate_labels), climate_labels)) %>%
+  ggplot(aes(x = SURVEY_YEAR, y = value)) +
+  geom_line(color = "#8B4513", linewidth = 0.9) +
+  geom_point(color = "#8B4513", size = 2) +
+  facet_wrap(~variable, ncol = 1, scales = "free_y") +
+  scale_x_continuous(breaks = seq(1997, 2024, 3)) +
   labs(
-    title = sprintf("Water-Year Climate at MPB Damage Sites  [%s]", toupper(dataset)),
-    x = "Water Year",
-    caption = sprintf("Data: IDS + %s", toupper(dataset))
+    title   = sprintf("Water-Year Climate at MPB Damage Sites (%s)", toupper(dataset)),
+    x       = "Water Year",
+    caption = sprintf("Source: IDS + %s", toupper(dataset))
   ) +
-  theme_minimal(base_size = 12) +
+  theme_minimal(base_size = 13) +
   theme(
     plot.title       = element_text(face = "bold"),
     panel.grid.minor = element_blank(),
@@ -310,67 +196,37 @@ p2 <- ggplot(climate_long, aes(x = SURVEY_YEAR, y = value)) +
     axis.title.y     = element_blank()
   )
 
-ggsave(file.path(output_dir, "02_mpb_climate_timeseries.png"),
+ggsave(file.path(output_dir, "02_climate_timeseries.png"),
        p2, width = 10, height = 8, dpi = 150)
-tick(t0, "Saved: 02_mpb_climate_timeseries.png")
 
-# ==============================================================================
-# Figure 3: Outbreak severity vs climate (scatterplots)
-# ==============================================================================
+# -- Figure 3: Outbreak severity vs climate -----------------------------------
 
-scatter_data <- annual %>%
-  pivot_longer(cols = c(tmax, tmin, precip),
-               names_to = "concept", values_to = "value") %>%
-  mutate(concept = factor(concept,
-                          levels = c("tmax", "tmin", "precip"),
-                          labels = concept_labels))
-
-t0 <- Sys.time()
-p3 <- ggplot(scatter_data, aes(x = value, y = total_acres / 1e6)) +
-  geom_point(color = "#8B4513", size = 2.5, alpha = 0.7) +
+p3 <- annual %>%
+  select(SURVEY_YEAR, total_acres, tmax_c, tmin_c, precip_mm) %>%
+  pivot_longer(c(tmax_c, tmin_c, precip_mm), names_to = "variable", values_to = "value") %>%
+  mutate(variable = factor(variable, names(climate_labels), climate_labels)) %>%
+  ggplot(aes(x = value, y = total_acres / 1e6)) +
+  geom_point(color = "#8B4513", size = 2.5, alpha = 0.75) +
   geom_smooth(method = "lm", se = TRUE, color = "#D2691E", linewidth = 0.8) +
-  facet_wrap(~concept, scales = "free_x") +
+  facet_wrap(~variable, scales = "free_x") +
   scale_y_continuous(labels = label_comma(suffix = "M")) +
   labs(
-    title = sprintf("MPB Outbreak Severity vs Water-Year Climate  [%s]", toupper(dataset)),
-    x = NULL,
-    y = "Total Affected Acres (millions)",
-    caption = sprintf("Data: IDS + %s | Line = linear fit", toupper(dataset))
+    title   = sprintf("MPB Outbreak Severity vs Water-Year Climate (%s)", toupper(dataset)),
+    x       = NULL,
+    y       = "Affected Acres (millions)",
+    caption = sprintf("Source: IDS + %s | Line = linear fit with 95%% CI", toupper(dataset))
   ) +
-  theme_minimal(base_size = 12) +
+  theme_minimal(base_size = 13) +
   theme(
     plot.title       = element_text(face = "bold"),
     panel.grid.minor = element_blank(),
     strip.text       = element_text(face = "bold")
   )
 
-ggsave(file.path(output_dir, "03_mpb_climate_scatter.png"),
+ggsave(file.path(output_dir, "03_outbreak_vs_climate.png"),
        p3, width = 12, height = 5, dpi = 150)
-tick(t0, "Saved: 03_mpb_climate_scatter.png")
 
-# ==============================================================================
-# Summary
-# ==============================================================================
-
-total_elapsed <- as.numeric(difftime(Sys.time(), script_start, units = "secs"))
-
-cat("\n================================================================\n")
-cat(" COMPLETE\n")
-cat("================================================================\n")
-cat(sprintf("  Dataset        : %s\n", toupper(dataset)))
-cat(sprintf("  Variables used : tmax=%s  tmin=%s  precip=%s\n",
-            vars$tmax, vars$tmin, vars$precip))
-cat(sprintf("  Total runtime  : %.1fs (%.1f min)\n", total_elapsed, total_elapsed / 60))
-cat(sprintf("  Output         : %s\n", output_dir))
-cat(sprintf("  MPB obs        : %s\n", format(nrow(ids), big.mark = ",")))
-cat(sprintf("  Annual rows    : %d (%d-%d)\n",
-            nrow(annual), min(annual$SURVEY_YEAR), max(annual$SURVEY_YEAR)))
-cat("  Figures:\n")
-cat("    01_mpb_outbreak_timeline.png   - Damage acres by year (same for all datasets)\n")
-cat("    02_mpb_climate_timeseries.png  - tmax, tmin, precip at MPB sites over time\n")
-cat("    03_mpb_climate_scatter.png     - Outbreak severity vs climate\n")
-cat("================================================================\n\n")
-cat("To compare across datasets, run all three:\n")
-cat("  Rscript scripts/demo_mpb_climate_analysis.R terraclimate\n")
-cat("  Rscript scripts/demo_mpb_climate_analysis.R prism\n")
-cat("  Rscript scripts/demo_mpb_climate_analysis.R worldclim\n\n")
+cat(sprintf("\nFigures saved to %s/\n", output_dir))
+cat("  01_outbreak_timeline.png   — MPB damage acres by year\n")
+cat("  02_climate_timeseries.png  — temperature and precip at MPB sites over time\n")
+cat("  03_outbreak_vs_climate.png — outbreak severity vs water-year climate\n")
