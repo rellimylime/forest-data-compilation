@@ -132,6 +132,7 @@ def main() -> None:
 
     if uploaded_file is not None:
         # Save uploaded file to a temporary location
+<<<<<<< HEAD
       import tempfile
       
       suffix = os.path.splitext(uploaded_file.name)[1] or ".sqlite"
@@ -140,6 +141,12 @@ def main() -> None:
           tmp_path = tmp.name
       
       conn = sqlite3.connect(tmp_path)
+=======
+        tmp_path = os.path.join(st.experimental_get_query_params().get('tmpdir', ['/tmp'])[0], uploaded_file.name)
+        with open(tmp_path, 'wb') as f:
+            f.write(uploaded_file.read())
+        conn = sqlite3.connect(tmp_path)
+>>>>>>> 5e65cd4f6a4f99ad671f3b98624ae12354abe846
     else:
         # Create an empty in-memory database
         conn = sqlite3.connect(':memory:')
@@ -180,7 +187,11 @@ def main() -> None:
             # Ensure county code exists
             tree_counts = pd.read_sql_query(
                 """
+<<<<<<< HEAD
                 SELECT p.STATECD, p.COUNTYCD, COUNT(*) as NUM_TREES
+=======
+                SELECT p.STATECD, p.COUNTYCD, COUNT(t.PLTCN) as NUM_TREES
+>>>>>>> 5e65cd4f6a4f99ad671f3b98624ae12354abe846
                 FROM PLOT p
                 JOIN TREE t ON p.CN = t.PLT_CN
                 GROUP BY p.STATECD, p.COUNTYCD
