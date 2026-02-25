@@ -1,29 +1,65 @@
 # ==============================================================================
 # scripts/demo_mpb_climate_analysis.R
 #
-# Mountain Pine Beetle (Dendroctonus ponderosae) x Climate Conditions
+# Mountain Pine Beetle (Dendroctonus ponderosae) x Climate Analysis Demo
 #
-# Explores the relationship between MPB outbreak severity and water-year
-# climate using three variables common to all climate datasets:
-#   - tmax  : peak maximum temperature (max of monthly value_max)
-#   - tmin  : lowest minimum temperature (min of monthly value_min)
-#   - precip: total annual precipitation (sum of monthly weighted_mean)
+# PURPOSE
+# -------
+# Demonstrates the end-to-end workflow for linking IDS forest disturbance
+# observations to climate data. Uses Mountain Pine Beetle (MPB, DCA_CODE 11006)
+# as a case study to explore how outbreak severity relates to water-year climate.
 #
-# Usage:
+# PREREQUISITES
+# -------------
+# Before running, the following data must be available:
+#   - IDS processed output:   01_ids/data/processed/ids_layers_cleaned.gpkg
+#   - Climate summaries:      processed/climate/<dataset>/damage_areas_summaries/
+#     (generate with: Rscript scripts/build_climate_summaries.R <dataset>)
+#
+# USAGE
+# -----
 #   Rscript scripts/demo_mpb_climate_analysis.R                   # default: terraclimate
 #   Rscript scripts/demo_mpb_climate_analysis.R prism
 #   Rscript scripts/demo_mpb_climate_analysis.R worldclim
 #
-# Run all three and compare output/ directories to validate dataset agreement.
+# Run all three and compare the output/ directories to validate cross-dataset
+# agreement - if the datasets agree, relationships are robust.
 #
-# Variable name mapping across datasets:
-#   concept  | terraclimate | prism | worldclim
+# ANALYSIS STEPS
+# --------------
+# Step 1  Load IDS observations for Mountain Pine Beetle
+#         Filters the IDS GeoPackage to MPB (DCA_CODE = 11006) and extracts
+#         DAMAGE_AREA_ID, SURVEY_YEAR, and ACRES for each observation.
+#
+# Step 2  Extract water-year climate at MPB damage sites
+#         Opens the per-variable Arrow parquet dataset for the chosen climate
+#         source. Joins MPB damage areas to climate summaries (lazy, in Arrow)
+#         and computes three water-year aggregates per area:
+#           tmax   - peak maximum temperature  (max of monthly value_max)
+#           tmin   - lowest minimum temperature (min of monthly value_min)
+#           precip - total annual precipitation (sum of monthly weighted_mean)
+#
+# Step 3  Join ACRES and validate
+#         Attaches damage extent (ACRES) back to the climate-joined data and
+#         reports NA counts and year range as a sanity check.
+#
+# Step 4  Build annual outbreak + climate summaries
+#         Aggregates to survey-year level: total acres damaged, number of
+#         MPB observations, and mean water-year climate across all sites.
+#
+# OUTPUT FILES  (saved to output/demo_mpb_<dataset>/)
+# ------------
+#   01_mpb_outbreak_timeline.png   - MPB damage acres per survey year (bar chart)
+#   02_mpb_climate_timeseries.png  - tmax, tmin, and precip at MPB sites over time
+#   03_mpb_climate_scatter.png     - Outbreak severity vs. water-year climate
+#
+# VARIABLE NAME MAPPING ACROSS DATASETS
+# --------------------------------------
+#   Concept  | TerraClimate | PRISM | WorldClim
 #   ---------|--------------|-------|----------
 #   tmax     | tmmx         | tmax  | tmax
 #   tmin     | tmmn         | tmin  | tmin
 #   precip   | pr           | ppt   | prec
-#
-# Output: output/demo_mpb_<dataset>/
 # ==============================================================================
 
 library(here)
@@ -103,7 +139,7 @@ cat(sprintf("  Acres range: %.0f - %s\n",
             format(max(ids$ACRES, na.rm = TRUE), big.mark = ",")))
 
 # ==============================================================================
-# Step 2: Load climate summaries — join MPB lookup into Arrow BEFORE groupby
+# Step 2: Load climate summaries - join MPB lookup into Arrow BEFORE groupby
 # ==============================================================================
 # Strategy: build a small lookup of (DAMAGE_AREA_ID, water_year) for MPB obs,
 # join it into each Arrow query so only MPB rows enter the groupby.

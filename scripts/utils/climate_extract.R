@@ -1,7 +1,7 @@
 # ==============================================================================
 # scripts/utils/climate_extract.R
 # Core framework for pixel-level climate data extraction
-# Supports: TerraClimate (GEE), PRISM (GEE), WorldClim (local), ERA5 (local)
+# Supports: TerraClimate (GEE), PRISM (web service), WorldClim (local)
 # ==============================================================================
 
 library(sf)
@@ -104,7 +104,7 @@ build_ids_pixel_maps <- function(ids_path,
     output_file <- file.path(output_dir, paste0(layer, "_pixel_map.parquet"))
 
     if (file.exists(output_file)) {
-      cat("  Already complete — loading existing file\n")
+      cat("  Already complete - loading existing file\n")
       results[[layer]] <- read_parquet(output_file)
       next
     }
@@ -462,7 +462,7 @@ extract_climate_from_gee <- function(pixel_coords,
 
 
 # ==============================================================================
-# LOCAL RASTER EXTRACTION (WorldClim, ERA5)
+# LOCAL RASTER EXTRACTION (WorldClim)
 # ==============================================================================
 
 #' Extract climate data from local raster files at pixel coordinates

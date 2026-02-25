@@ -53,7 +53,7 @@ for (var in variables) {
       "wc2.1_cruts4.09_2.5m_%s_%s-12.tif", var, decade_end))
 
     # Check if already extracted (last month's TIF confirms full extraction)
-    # Note: do NOT check the first TIF — the 1950-1959 archive starts at 1951
+    # Note: do NOT check the first TIF - the 1950-1959 archive starts at 1951
     if (file.exists(last_tif)) {
       cat(sprintf("  %s %s: already extracted, skipping\n", var, decade))
       skipped <- skipped + 1

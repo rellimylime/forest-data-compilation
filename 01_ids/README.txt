@@ -36,14 +36,14 @@ Lookup tables: 01_ids/lookups/
   - legacy_severity_lookup.csv (4 severity levels)
   - region_lookup.csv (10 regions with state coverage)
 
-Scripts (production pipeline — run in order):
+Scripts (production pipeline - run in order):
   - scripts/01_download_ids.R         Download raw geodatabases
   - scripts/02_inspect_ids.R          Inspect structure, generate lookup tables
   - scripts/03_clean_ids.R            Merge and clean all regions
   - scripts/04_assign_surveyed_areas.R  Spatial join: damage areas to surveyed areas
   - scripts/05_compute_area_metrics.R   Compute area size and survey coverage fraction
 
-Scripts (QC / diagnostics — optional, not required to reproduce data):
+Scripts (QC / diagnostics - optional, not required to reproduce data):
   - scripts/qc/validate_ids.R         Validate cleaned output (console checks only)
   - scripts/qc/explore_ids_coverage.R Explore raw data coverage and era differences
 

@@ -4,16 +4,16 @@
 
 Scripts are split into two groups:
 
-**Production pipeline** — run in order to produce the cleaned data:
-- [x] `01_download_ids.R` — download raw geodatabases
-- [x] `02_inspect_ids.R` — inspect structure, generate lookup tables
-- [x] `03_clean_ids.R` — merge and clean all regions
-- [ ] `04_assign_surveyed_areas.R` — spatial join: damage areas → surveyed areas
-- [ ] `05_compute_area_metrics.R` — compute damage area size and survey fraction
+**Production pipeline** - run in order to produce the cleaned data:
+- [x] `01_download_ids.R` - download raw geodatabases
+- [x] `02_inspect_ids.R` - inspect structure, generate lookup tables
+- [x] `03_clean_ids.R` - merge and clean all regions
+- [ ] `04_assign_surveyed_areas.R` - spatial join: damage areas → surveyed areas
+- [ ] `05_compute_area_metrics.R` - compute damage area size and survey fraction
 
-**QC / diagnostics** (`scripts/qc/`) — one-time analysis, not required to reproduce data:
-- [x] `qc/validate_ids.R` — validate cleaned output (console checks only)
-- [x] `qc/explore_ids_coverage.R` — explore raw data coverage, era differences
+**QC / diagnostics** (`scripts/qc/`) - one-time analysis, not required to reproduce data:
+- [x] `qc/validate_ids.R` - validate cleaned output (console checks only)
+- [x] `qc/explore_ids_coverage.R` - explore raw data coverage, era differences
 
 ---
 
@@ -43,7 +43,7 @@ Selects fields, transforms CRS, and merges all regions for every IDS layer.
 - **Input:** 10 raw .gdb files in `data/raw/`
 - **Output:** `data/processed/ids_layers_cleaned.gpkg` (layers: `damage_areas`, `damage_points`, `surveyed_areas`)
 - **Actions:**
-  - Select layer-specific fields (damage layers keep 15 fields; surveyed areas keep 4 fields). Codes only — use lookups for names.
+  - Select layer-specific fields (damage layers keep 15 fields; surveyed areas keep 4 fields). Codes only - use lookups for names.
   - Transform all regions to EPSG:4326 (WGS84)
   - Standardize OBSERVATION_COUNT to uppercase (damage layers)
   - Recode PERCENT_AFFECTED_CODE -1 → NA (damage layers)
@@ -90,10 +90,10 @@ Validates cleaned output. Prints field checks, geometry counts, and summary stat
 Analyzes raw data for era differences, missingness, and regional temporal coverage.
 - **Input:** Raw .gdb files in `data/raw/`
 - **Output:** `data/processed/ids_exploration_raw/`
-  - `ids_columns_by_era.csv` — which columns have data pre/post 2015
-  - `ids_missing_by_era.csv` — fraction NA per column per era
+  - `ids_columns_by_era.csv` - which columns have data pre/post 2015
+  - `ids_missing_by_era.csv` - fraction NA per column per era
   - `ids_value_summary_pre_2015.csv` / `ids_value_summary_post_2015.csv`
-  - `ids_region_coverage.csv` — year range and gaps per region
+  - `ids_region_coverage.csv` - year range and gaps per region
 
 ---
 

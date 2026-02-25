@@ -20,11 +20,11 @@ This document covers PRISM-specific technical details. For the shared pixel deco
 **Coverage:** Contiguous United States only (CONUS)
 **Temporal Resolution:** Monthly, 1981-present
 **Variables:** 7 climate variables (ppt, tmean, tmin, tmax, tdmean, vpdmin, vpdmax)
-**Access Method:** Direct web service (services.nacse.org) — no GEE account required
+**Access Method:** Direct web service (services.nacse.org) - no GEE account required
 
 **Key Differences from TerraClimate:**
-- Much higher spatial resolution (800m vs 4km) — more pixels per observation
-- CONUS only — Alaska (R10) and Hawaii observations excluded
+- Much higher spatial resolution (800m vs 4km) - more pixels per observation
+- CONUS only - Alaska (R10) and Hawaii observations excluded
 - Fewer variables (6 vs 14)
 - Different interpolation methodology (station-based)
 
@@ -50,7 +50,7 @@ prism:
     vpdmax:   { units: "hPa" }
 ```
 
-All values are delivered in physical units by the web service — no scale factors needed.
+All values are delivered in physical units by the web service - no scale factors needed.
 
 ---
 
@@ -74,7 +74,7 @@ All values are delivered in physical units by the web service — no scale facto
 - Downloads each month's zip from services.nacse.org, extracts with terra::extract(), deletes immediately
 - One parquet per year saved to pixel_values/; safe to interrupt and resume (completed years skipped)
 - Temporal range: 1981-present (earlier than TerraClimate); IDS extraction covers 1997-2024
-- All values in physical units — no scale factors needed
+- All values in physical units - no scale factors needed
 - 0.5s courtesy delay between downloads; each file downloaded only once (within PRISM's 2/day limit)
 
 **Performance Notes:**
@@ -90,7 +90,6 @@ All values are delivered in physical units by the web service — no scale facto
 | **PRISM** | **800m** | **~156 pixels** |
 | TerraClimate | 4km | ~6 pixels |
 | WorldClim | 4.5km | ~5 pixels |
-| ERA5 | 28km | 1 pixel |
 
 **Implication:** PRISM captures much more within-polygon climate variation, but extraction and storage requirements are proportionally larger.
 
@@ -109,8 +108,8 @@ All values are delivered in physical units by the web service — no scale facto
 - Region 9 (Eastern)
 
 ### Excluded Regions (Outside CONUS)
-- Region 10 (Alaska) — not covered by PRISM
-- Region 5-HI (Hawaii) — not covered by PRISM
+- Region 10 (Alaska) - not covered by PRISM
+- Region 5-HI (Hawaii) - not covered by PRISM
 
 **Observations affected:** ~100k observations in Alaska + Hawaii excluded from PRISM extraction
 
@@ -166,4 +165,4 @@ For detailed workflow architecture, see [`docs/ARCHITECTURE.md`](../docs/ARCHITE
 
 ### Download failures
 **Cause:** Network interruption or PRISM server error.
-**Solution:** The script catches errors per-variable and stores NA; failed downloads are logged as WARNings. Re-run the script — completed years are skipped automatically.
+**Solution:** The script catches errors per-variable and stores NA; failed downloads are logged as WARNings. Re-run the script - completed years are skipped automatically.

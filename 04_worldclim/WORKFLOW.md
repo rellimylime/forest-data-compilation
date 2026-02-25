@@ -25,7 +25,7 @@ This document covers WorldClim-specific technical details. For the shared pixel 
 
 **Key Differences from TerraClimate:**
 - Similar resolution (~4.5km vs 4km)
-- Fewer variables (3 vs 14) — temperature and precipitation only
+- Fewer variables (3 vs 14) - temperature and precipitation only
 - Different interpolation methodology (station-based, CRU TS 4.09)
 - Full IDS coverage (1997-2024)
 - Local download required (not available via GEE)
@@ -96,7 +96,7 @@ wc2.1_cruts4.09_2.5m_tmin_1999-12.tif   (Dec 1999)
 - Extracts from local GeoTIFF files (not GEE)
 - Each month is a separate single-band TIF; no band index math needed
 - Looks up monthly TIF by name: `wc2.1_cruts4.09_2.5m_{var}_{YYYY}-{MM}.tif`
-- Values are in native units (°C, mm) — no scale factors applied
+- Values are in native units (°C, mm) - no scale factors applied
 - Covers full IDS range 1997-2024
 
 ---
@@ -141,7 +141,6 @@ To extract February 1995: just load `tmin_1995-02.tif` directly (band 1).
 | PRISM | 800m | ~156 pixels |
 | TerraClimate | 4km | ~6 pixels |
 | **WorldClim** | **4.5km** | **~5 pixels** |
-| ERA5 | 28km | 1 pixel |
 
 WorldClim and TerraClimate have similar spatial granularity.
 

@@ -38,7 +38,7 @@ if (!file.exists(ref_raster_path)) {
   dir.create(dirname(ref_raster_path), recursive = TRUE, showWarnings = FALSE)
 
   # Download one monthly raster to define the pixel grid.
-  # Any stable month/variable works — ppt Jan 2000 is well-QC'd.
+  # Any stable month/variable works - ppt Jan 2000 is well-QC'd.
   ref_var  <- "ppt"
   ref_date <- "200001"
   url <- sprintf("https://services.nacse.org/prism/data/get/us/800m/%s/%s",

@@ -65,7 +65,7 @@ pixel_coords <- bind_rows(all_pixels) %>%
 n_pixels <- nrow(pixel_coords)
 cat(sprintf("\nTotal unique pixels across all layers: %d\n", n_pixels))
 
-# Coordinate matrix passed to terra::extract() — row order matches pixel_coords
+# Coordinate matrix passed to terra::extract() - row order matches pixel_coords
 coords_matrix <- as.matrix(pixel_coords[, c("x", "y")])
 
 # ------------------------------------------------------------------------------
@@ -156,7 +156,7 @@ for (year in years) {
         r <- rast(raster_files[1])
 
         # terra::extract with a coordinate matrix returns a 1-column data.frame
-        # (no ID column — that's only added for SpatVector/sf input)
+        # (no ID column - that's only added for SpatVector/sf input)
         terra::extract(r, coords_matrix)[[1L]]
 
       }, error = function(e) {
@@ -223,7 +223,7 @@ if (length(output_files) > 0) {
   sample_yr   <- sub(".*_(\\d{4})\\.parquet$", "\\1",
                      basename(sample_file))
 
-  cat(sprintf("Value ranges (%s — %d pixels x 12 months):\n",
+  cat(sprintf("Value ranges (%s - %d pixels x 12 months):\n",
               sample_yr, n_pixels))
   cat(sprintf("  %-8s  %8s  %8s  %6s\n",
               "variable", "min", "max", "NA%"))
