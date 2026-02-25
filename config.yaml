@@ -213,6 +213,107 @@ raw:
         units: "mm"
         scale: 1
 
+  fia:
+    description: "USDA Forest Service Forest Inventory and Analysis (FIADB)"
+    source: "https://apps.fs.usda.gov/fia/datamart/CSV/"
+    citation: "Forest Inventory and Analysis National Program, USDA Forest Service"
+    format: "CSV (downloaded via rFIA package)"
+    access_method: "rFIA::getFIA() by state"
+    temporal_resolution: "annual survey cycle (INVYR)"
+    coverage: "All 50 US states"
+    local_dir: "05_fia/data/raw"
+    output_dir: "05_fia/data/processed"
+
+    states:
+      - AL
+      - AK
+      - AZ
+      - AR
+      - CA
+      - CO
+      - CT
+      - DE
+      - FL
+      - GA
+      - HI
+      - ID
+      - IL
+      - IN
+      - IA
+      - KS
+      - KY
+      - LA
+      - ME
+      - MD
+      - MA
+      - MI
+      - MN
+      - MS
+      - MO
+      - MT
+      - NE
+      - NV
+      - NH
+      - NJ
+      - NM
+      - NY
+      - NC
+      - ND
+      - OH
+      - OK
+      - OR
+      - PA
+      - RI
+      - SC
+      - SD
+      - TN
+      - TX
+      - UT
+      - VT
+      - VA
+      - WA
+      - WV
+      - WI
+      - WY
+
+    tables_required:
+      - PLOT
+      - COND
+      - TREE
+      - SEEDLING
+      - TREE_GRM_COMPONENT
+
+    # TREE filter parameters
+    tree_filters:
+      statuscd_include: [1, 2]     # 1=live, 2=standing dead
+      dia_min_inches: 1.0          # minimum DIA for inclusion
+
+    # Individual-tree size class boundaries (DIA in inches)
+    size_classes:
+      sapling:
+        min: 1.0
+        max: 4.9
+      intermediate:
+        min: 5.0
+        max: 11.9
+      mature:
+        min: 12.0
+
+    # Canopy layer assignment (from TREE.CCLCD)
+    canopy_layers:
+      overstory_codes: [1, 2, 3]   # open grown, dominant, codominant
+      understory_codes: [4, 5]     # intermediate, overtopped
+      fallback_dia_threshold: 5.0  # used when CCLCD is NA
+
+    # TREE_GRM_COMPONENT filter codes (MICR_COMPONENT_AL_FOREST)
+    mortality_codes:
+      natural: [MORTALITY1, MORTALITY2]
+      harvest: [CUT1, CUT2]
+
+    # Study period (FIA annual inventory modern era)
+    invyr_min: 2000
+    invyr_max: 2024
+
   # ERA5 is deferred from the current phase. Configuration retained in archive/05_era5/.
   # era5:
   #   description: "ERA5 hourly reanalysis on single levels (aggregated to daily)"
@@ -300,6 +401,33 @@ processed:
         filename: "damage_area_area_metrics.parquet"
         description: "Area metrics in EPSG:5070: damage_area_m2, survey_area_m2, damage_frac_of_survey"
         columns: "DAMAGE_AREA_ID, damage_area_m2, SURVEYED_AREA_ID, survey_area_m2, damage_frac_of_survey"
+
+  fia:
+    local_dir: "05_fia/data/processed"
+    trees:
+      output_dir: "05_fia/data/processed/trees"
+      description: "Tree-level BA and stem metrics, hive-partitioned by state"
+      columns: "PLT_CN, INVYR, SPCD, SFTWD_HRDWD, STATUSCD, size_class, canopy_layer, ba_sqft, ba_per_acre, n_trees_tpa, n_trees_raw"
+    seedlings:
+      output_dir: "05_fia/data/processed/seedlings"
+      description: "Seedling counts by species per plot visit, hive-partitioned by state"
+      columns: "PLT_CN, INVYR, SPCD, SFTWD_HRDWD, treecount_total"
+    mortality:
+      output_dir: "05_fia/data/processed/mortality"
+      description: "Between-measurement mortality from TREE_GRM_COMPONENT, hive-partitioned by state"
+      columns: "PLT_CN, INVYR, SPCD, SFTWD_HRDWD, AGENTCD, component_type, tpamort_per_acre"
+    cond:
+      output_dir: "05_fia/data/processed/cond"
+      description: "Condition-level attributes per plot visit (FORTYPCD, CONDPROP_UNADJ), hive-partitioned by state"
+      columns: "PLT_CN, INVYR, STATECD, CONDID, FORTYPCD, COND_STATUS_CD, CONDPROP_UNADJ"
+    summaries:
+      output_dir: "05_fia/data/processed/summaries"
+      description: "Plot-level aggregated metrics: BA totals, diversity indices, FORTYPCD time series"
+      files:
+        plot_tree_metrics: "plot_tree_metrics.parquet"
+        plot_seedling_metrics: "plot_seedling_metrics.parquet"
+        plot_mortality_metrics: "plot_mortality_metrics.parquet"
+        plot_cond_fortypcd: "plot_cond_fortypcd.parquet"
 
   # Standardized climate outputs (long format, dataset-agnostic)
   climate:

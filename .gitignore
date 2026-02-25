@@ -43,7 +43,9 @@ vignettes/*.pdf
 docs/
 !01_ids/docs
 !02_terraclimate/docs
-
+!05_fia/docs/
+05_fia/docs/*
+!05_fia/docs/fiadb_dashboard.py
 # translation temp files
 po/*~
 
