@@ -177,13 +177,13 @@ dataset_configs <- list(
     variables = names(config$raw$worldclim$variables),
     time_cols = c("year", "month")
   ),
-  era5 = list(
-    pixel_map = here("05_era5/data/processed/pixel_maps/damage_areas_pixel_map.parquet"),
-    source_dir = here("05_era5/data/processed/pixel_values"),
-    source_prefix = "era5",
-    variables = names(config$raw$era5$variables),
-    time_cols = c("year", "month", "day")
-  )
+  # era5 = list(  # deferred - see archive/05_era5/
+  #   pixel_map = here("05_era5/data/processed/pixel_maps/damage_areas_pixel_map.parquet"),
+  #   source_dir = here("05_era5/data/processed/pixel_values"),
+  #   source_prefix = "era5",
+  #   variables = names(config$raw$era5$variables),
+  #   time_cols = c("year", "month", "day")
+  # )
 )
 
 if (!dataset %in% names(dataset_configs)) {

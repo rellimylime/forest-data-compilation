@@ -104,14 +104,14 @@ annual_pr_wrong <- summarize(annual_mean = mean(value))  # INCORRECT for flux va
 
 ---
 
-### Issue #005: 10 IDS Observations Excluded — No Pixel Overlap
+### Issue #005: 10 IDS Observations Excluded - No Pixel Overlap
 
 **Date identified:** 2026-02-23
 **Records affected:** 10 observations (0.0002%)
 
 **Description:**
 The TerraClimate pixel map (`damage_areas_pixel_map.parquet`) contains 4,475,817 unique
-OBSERVATION_IDs, while the IDS damage_areas layer has 4,475,827 — a difference of exactly 10.
+OBSERVATION_IDs, while the IDS damage_areas layer has 4,475,827 - a difference of exactly 10.
 These 10 observations have geometries so degenerate (near-zero-area slivers or self-intersecting
 polygons) that `exactextractr::exact_extract()` returns zero rows for them. No TerraClimate
 pixel at ~4km resolution overlaps the geometry, so these observations have no pixel mapping
@@ -128,7 +128,7 @@ rows in any climate summaries output. Users joining on OBSERVATION_ID should be 
 10 observations will not match.
 
 **Impact:** Negligible (0.0002% of observations). The same 10 observations are likely absent
-from PRISM, WorldClim, and ERA5 pixel maps as well, since their geometries are dataset-agnostic.
+from PRISM and WorldClim pixel maps as well, since their geometries are dataset-agnostic.
 
 ---
 
@@ -179,7 +179,7 @@ Key decisions made during workflow development that affect data structure and us
 
 1. **Spatial resolution:** ~4km pixels are coarse for small IDS observations (<50 ha). Use PRISM (800m) for finer spatial detail.
 
-2. **Temporal resolution:** Monthly data may miss short-duration climate events. Use ERA5 (daily) for event-based analysis.
+2. **Temporal resolution:** Monthly data may miss short-duration climate events. Daily reanalysis data (e.g., ERA5) would be needed for event-based analysis.
 
 3. **NoData at coastlines/edges:** ~1,200 observations lack climate data due to proximity to ocean or dataset boundary.
 
@@ -193,7 +193,7 @@ Key decisions made during workflow development that affect data structure and us
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 1.0 | 2025-01-31 | Initial centroid-based extraction (CSV output, annual means) — deprecated |
+| 1.0 | 2025-01-31 | Initial centroid-based extraction (CSV output, annual means) - deprecated |
 | 2.0 | 2026-02-05 | Pixel decomposition workflow (parquet output, monthly values, coverage fractions) |
 | 2.1 | 2026-02-10 | Added monthly stacking optimization for GEE extraction efficiency |
 

@@ -7,9 +7,9 @@
 ## Cleaned Outputs
 All cleaned layers are stored in a single geopackage for easy access:
 - `01_ids/data/processed/ids_layers_cleaned.gpkg`
-  - `damage_areas` — polygon observations of damage
-  - `damage_points` — point observations of damage
-  - `surveyed_areas` — polygons for surveyed coverage
+  - `damage_areas` - polygon observations of damage
+  - `damage_points` - point observations of damage
+  - `surveyed_areas` - polygons for surveyed coverage
 
 ## Core Fields (Present Across Layers Where Applicable)
 | Field | Meaning | Notes |

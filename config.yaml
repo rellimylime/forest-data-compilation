@@ -213,272 +213,66 @@ raw:
         units: "mm"
         scale: 1
 
-  era5:
-    description: "ERA5 hourly reanalysis on single levels (aggregated to daily)"
-    source: "https://cds.climate.copernicus.eu/datasets/reanalysis-era5-single-levels"
-    citation: "Hersbach et al. 2020, Quarterly Journal of the Royal Meteorological Society"
-    format: "NetCDF"
-    access_method: "CDS API"
-    spatial_resolution: "~28km (0.25 degree)"
-    temporal_resolution: "daily"
-    coverage: "Global, 1940-present"
-    local_dir: "05_era5/data/raw"
-    output_dir: "05_era5/data/processed"
-    output_prefix: "era5"
-    # Bounding box for CDS API: [north, west, south, east]
-    cds_area: [72, -180, 17, -64]
-    variables:
-      t2m:
-        description: "2m temperature"
-        units: "°C"
-        scale: 1
-        era5_name: "2m_temperature"
-        convert_kelvin: true
-      d2m:
-        description: "2m dewpoint temperature"
-        units: "°C"
-        scale: 1
-        era5_name: "2m_dewpoint_temperature"
-        convert_kelvin: true
-      tp:
-        description: "Total precipitation"
-        units: "m"
-        scale: 1000  # Convert m to mm
-        era5_name: "total_precipitation"
-      sf:
-        description: "Snowfall"
-        units: "m water equivalent"
-        scale: 1000
-        era5_name: "snowfall"
-      sd:
-        description: "Snow depth"
-        units: "m water equivalent"
-        scale: 1
-        era5_name: "snow_depth"
-      sp:
-        description: "Surface pressure"
-        units: "Pa"
-        scale: 0.01  # Convert Pa to hPa
-        era5_name: "surface_pressure"
-      u10:
-        description: "10m u-component of wind"
-        units: "m/s"
-        scale: 1
-        era5_name: "10m_u_component_of_wind"
-      v10:
-        description: "10m v-component of wind"
-        units: "m/s"
-        scale: 1
-        era5_name: "10m_v_component_of_wind"
-      u100:
-        description: "100m u-component of wind"
-        units: "m/s"
-        scale: 1
-        era5_name: "100m_u_component_of_wind"
-      v100:
-        description: "100m v-component of wind"
-        units: "m/s"
-        scale: 1
-        era5_name: "100m_v_component_of_wind"
-      ssrd:
-        description: "Surface solar radiation downwards"
-        units: "J/m2"
-        scale: 0.000001  # Convert to MJ/m2
-        era5_name: "surface_solar_radiation_downwards"
-      ssr:
-        description: "Surface net solar radiation"
-        units: "J/m2"
-        scale: 0.000001
-        era5_name: "surface_net_solar_radiation"
-      str:
-        description: "Surface net thermal radiation"
-        units: "J/m2"
-        scale: 0.000001
-        era5_name: "surface_net_thermal_radiation"
-      stl1:
-        description: "Soil temperature level 1 (0-7cm)"
-        units: "°C"
-        scale: 1
-        era5_name: "soil_temperature_level_1"
-        convert_kelvin: true
-      stl2:
-        description: "Soil temperature level 2 (7-28cm)"
-        units: "°C"
-        scale: 1
-        era5_name: "soil_temperature_level_2"
-        convert_kelvin: true
-      swvl1:
-        description: "Volumetric soil water layer 1 (0-7cm)"
-        units: "m3/m3"
-        scale: 1
-        era5_name: "volumetric_soil_water_layer_1"
-      swvl2:
-        description: "Volumetric soil water layer 2 (7-28cm)"
-        units: "m3/m3"
-        scale: 1
-        era5_name: "volumetric_soil_water_layer_2"
-      e:
-        description: "Total evaporation"
-        units: "m"
-        scale: 1000  # Convert to mm
-        era5_name: "total_evaporation"
-        mars_short_name: "e"
-      pev:
-        description: "Potential evaporation"
-        units: "m"
-        scale: 1000
-        era5_name: "potential_evaporation"
-      lai_hv:
-        description: "Leaf area index, high vegetation"
-        units: "m2/m2"
-        scale: 1
-        era5_name: "leaf_area_index_high_vegetation"
-      lai_lv:
-        description: "Leaf area index, low vegetation"
-        units: "m2/m2"
-        scale: 1
-        era5_name: "leaf_area_index_low_vegetation"
-      skt:
-        description: "Skin temperature"
-        units: "°C"
-        scale: 1
-        era5_name: "skin_temperature"
-        convert_kelvin: true
-      mn2t:
-        description: "Minimum 2m temperature (daily minimum)"
-        units: "°C"
-        scale: 1
-        era5_name: "minimum_2m_temperature_since_previous_post_processing"
-        convert_kelvin: true
-      mx2t:
-        description: "Maximum 2m temperature (daily maximum)"
-        units: "°C"
-        scale: 1
-        era5_name: "maximum_2m_temperature_since_previous_post_processing"
-        convert_kelvin: true
-      stl3:
-        description: "Soil temperature level 3 (28-100cm)"
-        units: "°C"
-        scale: 1
-        era5_name: "soil_temperature_level_3"
-        convert_kelvin: true
-      stl4:
-        description: "Soil temperature level 4 (100-289cm)"
-        units: "°C"
-        scale: 1
-        era5_name: "soil_temperature_level_4"
-        convert_kelvin: true
-      swvl3:
-        description: "Volumetric soil water layer 3 (28-100cm)"
-        units: "m3/m3"
-        scale: 1
-        era5_name: "volumetric_soil_water_layer_3"
-      swvl4:
-        description: "Volumetric soil water layer 4 (100-289cm)"
-        units: "m3/m3"
-        scale: 1
-        era5_name: "volumetric_soil_water_layer_4"
-      smlt:
-        description: "Snowmelt"
-        units: "mm"
-        scale: 1000
-        era5_name: "snowmelt"
-      ro:
-        description: "Runoff (total)"
-        units: "mm"
-        scale: 1000
-        era5_name: "runoff"
-      sro:
-        description: "Surface runoff (overland flow)"
-        units: "mm"
-        scale: 1000
-        era5_name: "surface_runoff"
-      snowc:
-        description: "Snow cover fraction"
-        units: "fraction (0-1)"
-        scale: 0.01  # stored as percent (0-100)
-        era5_name: "snow_cover"
-        mars_short_name: "snowc"
-      strd:
-        description: "Surface thermal radiation downwards (longwave)"
-        units: "MJ/m2"
-        scale: 0.000001
-        era5_name: "surface_thermal_radiation_downwards"
-      i10fg:
-        description: "10m wind gust"
-        units: "m/s"
-        scale: 1
-        era5_name: "10m_wind_gust_since_previous_post_processing"
-      tcc:
-        description: "Total cloud cover"
-        units: "fraction (0-1)"
-        scale: 1
-        era5_name: "total_cloud_cover"
-      tcwv:
-        description: "Total column water vapour (precipitable water)"
-        units: "kg/m2"
-        scale: 1
-        era5_name: "total_column_water_vapour"
-      msl:
-        description: "Mean sea level pressure"
-        units: "hPa"
-        scale: 0.01
-        era5_name: "mean_sea_level_pressure"
-      cape:
-        description: "Convective available potential energy"
-        units: "J/kg"
-        scale: 1
-        era5_name: "convective_available_potential_energy"
-      blh:
-        description: "Boundary layer height"
-        units: "m"
-        scale: 1
-        era5_name: "boundary_layer_height"
-      cp:
-        description: "Convective precipitation (tp = cp + large-scale; large-scale = tp - cp)"
-        units: "mm"
-        scale: 1000
-        era5_name: "convective_precipitation"
-      sshf:
-        description: "Surface sensible heat flux"
-        units: "MJ/m2"
-        scale: 0.000001
-        era5_name: "surface_sensible_heat_flux"
-      slhf:
-        description: "Surface latent heat flux (energy used for evaporation; negative when evaporating, same sign convention as sshf and e)"
-        units: "MJ/m2"
-        scale: 0.000001
-        era5_name: "surface_latent_heat_flux"
-      fdir:
-        description: "Total sky direct solar radiation at surface (direct-beam only; diffuse = ssrd - fdir)"
-        units: "MJ/m2"
-        scale: 0.000001
-        era5_name: "total_sky_direct_solar_radiation_at_surface"
-      lcc:
-        description: "Low cloud cover (below ~800 hPa; stratus, fog)"
-        units: "fraction (0-1)"
-        scale: 1
-        era5_name: "low_cloud_cover"
-      mcc:
-        description: "Medium cloud cover (~400-800 hPa)"
-        units: "fraction (0-1)"
-        scale: 1
-        era5_name: "medium_cloud_cover"
-      hcc:
-        description: "High cloud cover (above ~400 hPa; cirrus)"
-        units: "fraction (0-1)"
-        scale: 1
-        era5_name: "high_cloud_cover"
-      fal:
-        description: "Forecast albedo (surface shortwave reflectance; increases under snow cover)"
-        units: "fraction (0-1)"
-        scale: 1
-        era5_name: "forecast_albedo"
-      rsn:
-        description: "Snow density (use with sd to get physical snow depth: physical_m = sd * 1000 / rsn)"
-        units: "kg/m3"
-        scale: 1
-        era5_name: "snow_density"
+  # ERA5 is deferred from the current phase. Configuration retained in archive/05_era5/.
+  # era5:
+  #   description: "ERA5 hourly reanalysis on single levels (aggregated to daily)"
+  #   source: "https://cds.climate.copernicus.eu/datasets/reanalysis-era5-single-levels"
+  #   citation: "Hersbach et al. 2020, Quarterly Journal of the Royal Meteorological Society"
+  #   format: "NetCDF"
+  #   access_method: "CDS API"
+  #   spatial_resolution: "~28km (0.25 degree)"
+  #   temporal_resolution: "daily"
+  #   coverage: "Global, 1940-present"
+  #   local_dir: "05_era5/data/raw"
+  #   output_dir: "05_era5/data/processed"
+  #   output_prefix: "era5"
+  #   # Bounding box for CDS API: [north, west, south, east]
+  #   cds_area: [72, -180, 17, -64]
+  #   variables:
+  #   t2m:    {description: "2m temperature", units: "°C", scale: 1, era5_name: "2m_temperature", convert_kelvin: true}
+  #   d2m:    {description: "2m dewpoint temperature", units: "°C", scale: 1, era5_name: "2m_dewpoint_temperature", convert_kelvin: true}
+  #   tp:     {description: "Total precipitation", units: "mm", scale: 1000, era5_name: "total_precipitation"}
+  #   sf:     {description: "Snowfall", units: "mm we", scale: 1000, era5_name: "snowfall"}
+  #   sd:     {description: "Snow depth", units: "m we", scale: 1, era5_name: "snow_depth"}
+  #   sp:     {description: "Surface pressure", units: "hPa", scale: 0.01, era5_name: "surface_pressure"}
+  #   u10:    {description: "10m u-component of wind", units: "m/s", scale: 1, era5_name: "10m_u_component_of_wind"}
+  #   v10:    {description: "10m v-component of wind", units: "m/s", scale: 1, era5_name: "10m_v_component_of_wind"}
+  #   u100:   {description: "100m u-component of wind", units: "m/s", scale: 1, era5_name: "100m_u_component_of_wind"}
+  #   v100:   {description: "100m v-component of wind", units: "m/s", scale: 1, era5_name: "100m_v_component_of_wind"}
+  #   ssrd:   {description: "Surface solar radiation downwards", units: "MJ/m2", scale: 0.000001, era5_name: "surface_solar_radiation_downwards"}
+  #   ssr:    {description: "Surface net solar radiation", units: "MJ/m2", scale: 0.000001, era5_name: "surface_net_solar_radiation"}
+  #   str:    {description: "Surface net thermal radiation", units: "MJ/m2", scale: 0.000001, era5_name: "surface_net_thermal_radiation"}
+  #   stl1:   {description: "Soil temperature level 1 (0-7cm)", units: "°C", scale: 1, era5_name: "soil_temperature_level_1", convert_kelvin: true}
+  #   stl2:   {description: "Soil temperature level 2 (7-28cm)", units: "°C", scale: 1, era5_name: "soil_temperature_level_2", convert_kelvin: true}
+  #   swvl1:  {description: "Volumetric soil water layer 1 (0-7cm)", units: "m3/m3", scale: 1, era5_name: "volumetric_soil_water_layer_1"}
+  #   swvl2:  {description: "Volumetric soil water layer 2 (7-28cm)", units: "m3/m3", scale: 1, era5_name: "volumetric_soil_water_layer_2"}
+  #   e:      {description: "Total evaporation", units: "mm", scale: 1000, era5_name: "total_evaporation"}
+  #   pev:    {description: "Potential evaporation", units: "mm", scale: 1000, era5_name: "potential_evaporation"}
+  #   lai_hv: {description: "Leaf area index, high vegetation", units: "m2/m2", scale: 1, era5_name: "leaf_area_index_high_vegetation"}
+  #   lai_lv: {description: "Leaf area index, low vegetation", units: "m2/m2", scale: 1, era5_name: "leaf_area_index_low_vegetation"}
+  #   skt:    {description: "Skin temperature", units: "°C", scale: 1, era5_name: "skin_temperature", convert_kelvin: true}
+  #   stl3:   {description: "Soil temperature level 3 (28-100cm)", units: "°C", scale: 1, era5_name: "soil_temperature_level_3", convert_kelvin: true}
+  #   stl4:   {description: "Soil temperature level 4 (100-289cm)", units: "°C", scale: 1, era5_name: "soil_temperature_level_4", convert_kelvin: true}
+  #   swvl3:  {description: "Volumetric soil water layer 3 (28-100cm)", units: "m3/m3", scale: 1, era5_name: "volumetric_soil_water_layer_3"}
+  #   swvl4:  {description: "Volumetric soil water layer 4 (100-289cm)", units: "m3/m3", scale: 1, era5_name: "volumetric_soil_water_layer_4"}
+  #   smlt:   {description: "Snowmelt", units: "mm", scale: 1000, era5_name: "snowmelt"}
+  #   ro:     {description: "Runoff (total)", units: "mm", scale: 1000, era5_name: "runoff"}
+  #   sro:    {description: "Surface runoff", units: "mm", scale: 1000, era5_name: "surface_runoff"}
+  #   strd:   {description: "Surface thermal radiation downwards", units: "MJ/m2", scale: 0.000001, era5_name: "surface_thermal_radiation_downwards"}
+  #   tcc:    {description: "Total cloud cover", units: "fraction (0-1)", scale: 1, era5_name: "total_cloud_cover"}
+  #   tcwv:   {description: "Total column water vapour", units: "kg/m2", scale: 1, era5_name: "total_column_water_vapour"}
+  #   msl:    {description: "Mean sea level pressure", units: "hPa", scale: 0.01, era5_name: "mean_sea_level_pressure"}
+  #   cape:   {description: "Convective available potential energy", units: "J/kg", scale: 1, era5_name: "convective_available_potential_energy"}
+  #   blh:    {description: "Boundary layer height", units: "m", scale: 1, era5_name: "boundary_layer_height"}
+  #   cp:     {description: "Convective precipitation", units: "mm", scale: 1000, era5_name: "convective_precipitation"}
+  #   sshf:   {description: "Surface sensible heat flux", units: "MJ/m2", scale: 0.000001, era5_name: "surface_sensible_heat_flux"}
+  #   slhf:   {description: "Surface latent heat flux", units: "MJ/m2", scale: 0.000001, era5_name: "surface_latent_heat_flux"}
+  #   fdir:   {description: "Total sky direct solar radiation at surface", units: "MJ/m2", scale: 0.000001, era5_name: "total_sky_direct_solar_radiation_at_surface"}
+  #   lcc:    {description: "Low cloud cover", units: "fraction (0-1)", scale: 1, era5_name: "low_cloud_cover"}
+  #   mcc:    {description: "Medium cloud cover", units: "fraction (0-1)", scale: 1, era5_name: "medium_cloud_cover"}
+  #   hcc:    {description: "High cloud cover", units: "fraction (0-1)", scale: 1, era5_name: "high_cloud_cover"}
+  #   fal:    {description: "Forecast albedo", units: "fraction (0-1)", scale: 1, era5_name: "forecast_albedo"}
+  #   rsn:    {description: "Snow density", units: "kg/m3", scale: 1, era5_name: "snow_density"}
 
 # ==============================================================================
 # PROCESSED DATA
@@ -534,10 +328,7 @@ processed:
         damage_areas: "worldclim_damage_areas_pixel_map.parquet"
         damage_points: "worldclim_damage_points_pixel_map.parquet"
         surveyed_areas: "worldclim_surveyed_areas_pixel_map.parquet"
-      era5:
-        damage_areas: "era5_damage_areas_pixel_map.parquet"
-        damage_points: "era5_damage_points_pixel_map.parquet"
-        surveyed_areas: "era5_surveyed_areas_pixel_map.parquet"
+      # era5: (deferred - see archive/05_era5/ for configuration)
 
   # Climate pixel values (climate data per pixel per time)
   pixel_values:

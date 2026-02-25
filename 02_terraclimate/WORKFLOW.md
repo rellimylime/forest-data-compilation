@@ -17,7 +17,7 @@ configuration, and design decisions.
 ## Architecture: Pixel Decomposition
 
 Climate-IDS integration uses a **pixel decomposition** pattern shared identically
-across TerraClimate, PRISM, WorldClim, and ERA5. Instead of clipping rasters per
+across TerraClimate, PRISM, and WorldClim. Instead of clipping rasters per
 observation, each observation is mapped to the raster pixels it overlaps, and
 climate values are extracted once per unique pixel.
 
@@ -177,7 +177,7 @@ Run as: `Rscript scripts/build_climate_summaries.R terraclimate`
 
 **Output:** `processed/climate/terraclimate/damage_areas_summaries/` (per-variable parquet files)
 
-The script reads directly from wide-format yearly source files — no intermediate reshape step required. For each variable × year chunk, it reads the relevant column, joins to the pixel map, and computes area-weighted aggregations. Output is one parquet file per variable, readable as a unified dataset via `open_dataset()`.
+The script reads directly from wide-format yearly source files - no intermediate reshape step required. For each variable × year chunk, it reads the relevant column, joins to the pixel map, and computes area-weighted aggregations. Output is one parquet file per variable, readable as a unified dataset via `open_dataset()`.
 
 **Weighted mean formula:**
 ```
@@ -189,7 +189,7 @@ Only pixels with non-NA values contribute to the denominator.
 
 **Summary columns:** weighted_mean, value_min, value_max, n_pixels, n_pixels_with_data, sum_coverage_fraction
 
-Water year columns (water_year, water_year_month) are computed inside this script during chunk processing — no separate reshape step is needed.
+Water year columns (water_year, water_year_month) are computed inside this script during chunk processing - no separate reshape step is needed.
 
 ---
 
@@ -275,7 +275,7 @@ gee_project: "your-gee-project-id"
 | Both calendar and water year retained | Different analyses need different time bases | 2026-02-06 |
 | IDS stays on SURVEY_YEAR (no water year) | Survey timing is administrative, not hydrological | 2026-02-06 |
 | Long format for standardized outputs | Dataset-agnostic; enables uniform joins | 2026-02-06 |
-| Shared reshape/summary scripts | Same pattern for TerraClimate, PRISM, WorldClim, ERA5 | 2026-02-06 |
+| Shared reshape/summary scripts | Same pattern for TerraClimate, PRISM, WorldClim | 2026-02-06 |
 
 ---
 

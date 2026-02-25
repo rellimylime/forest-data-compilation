@@ -20,7 +20,7 @@ RUNNING THE WORKFLOW
 ================================================================================
 Run scripts in order. Steps 1-2 are TerraClimate-specific (in this directory).
 Step 3 uses a shared script (in the top-level scripts/ directory) that works
-identically for all climate datasets (PRISM, WorldClim, ERA5).
+identically for all climate datasets (PRISM, WorldClim).
 
   Step 1: Rscript 02_terraclimate/scripts/01_build_pixel_maps.R
           Maps each IDS observation to the ~4km TerraClimate pixels it overlaps.

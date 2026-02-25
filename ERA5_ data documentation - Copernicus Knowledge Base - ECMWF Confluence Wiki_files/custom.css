@@ -1,8 +1,0 @@
-
-#main-header:not(.doctheme-no-override) #breadcrumb-section 
-#breadcrumbs li.first {display: none}
-#com-atlassian-confluence .page-metadata {
-    display:none;
- }
-
-

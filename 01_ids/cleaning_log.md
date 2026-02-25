@@ -25,9 +25,9 @@
 
 ### Layer Structure
 Each regional .gdb contains 3 layers with region-specific suffixes:
-- `DAMAGE_AREAS_FLAT_AllYears_<region>` — Polygons of observed damage
-- `DAMAGE_POINTS_FLAT_Allyears_<region>` — Points for small damage clusters
-- `SURVEYED_AREAS_FLAT_AllYears_<region>` — Survey boundary polygons
+- `DAMAGE_AREAS_FLAT_AllYears_<region>` - Polygons of observed damage
+- `DAMAGE_POINTS_FLAT_Allyears_<region>` - Points for small damage clusters
+- `SURVEYED_AREAS_FLAT_AllYears_<region>` - Survey boundary polygons
 
 ### Field Consistency
 All 10 regions have identical field structure (44 fields). No cross-region inconsistencies.
@@ -56,7 +56,7 @@ These are NOT directly comparable measures of damage intensity.
 
 **Verification (post-2015 sample, n=5000 from 2016):**
 - PERCENT_AFFECTED_CODE: 0% missing (populated as expected)
-- LEGACY_TPA: 83% non-zero (ALSO populated — both systems overlap)
+- LEGACY_TPA: 83% non-zero (ALSO populated - both systems overlap)
 
 **Finding:** The transition is not a clean break. Both measurement systems have data in 2016.
 
@@ -121,7 +121,7 @@ Per documentation, overlapping damage from multiple agents creates "pancake" fea
 
 **Quantified:** 14.7% of R5 features have OBSERVATION_COUNT = "MULTIPLE"
 
-**Decision:** Keep all rows (one per observation). ACRES should not be summed naively — group by DAMAGE_AREA_ID first if calculating total area. For TerraClimate extraction, use unique DAMAGE_AREA_ID geometries and join results back to observations.
+**Decision:** Keep all rows (one per observation). ACRES should not be summed naively - group by DAMAGE_AREA_ID first if calculating total area. For TerraClimate extraction, use unique DAMAGE_AREA_ID geometries and join results back to observations.
 
 ---
 
