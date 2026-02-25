@@ -100,6 +100,74 @@ TABLE_CATEGORIES: Dict[str, List[str]] = {
     ],
 }
 
+CATEGORY_DESCRIPTIONS: Dict[str, str] = {
+    "Location Level": (
+        "The core spatial hierarchy of the FIA sampling design. Every measurement starts here. "
+        "SURVEY groups states by inventory year. PLOT is the physical sample location visited by "
+        "field crews on a roughly 5-year cycle. COND (condition) records the land cover state of "
+        "each portion of the plot — a single plot can straddle a forest edge and have two or more "
+        "conditions with different forest types, owner classes, or stand sizes."
+    ),
+    "Tree Level": (
+        "All individual-tree records. TREE contains every stem tallied at ≥1.0\" diameter on the "
+        "subplot. SEEDLING tracks young trees (<1\" DBH) counted on the smaller microplot. "
+        "The TREE_GRM_* tables (Growth/Removal/Mortality) record what happened to each tree "
+        "between visits — whether it survived, grew into the tally, was harvested, or died "
+        "naturally — along with per-acre expansion factors for each outcome."
+    ),
+    "Invasive / Understory Vegetation": (
+        "Records of non-tree plant species observed on a subset of FIA plots. "
+        "INVASIVE_SUBPLOT_SPP captures presence and cover class of invasive plants by subplot. "
+        "The P2VEG tables record general understory and shrub-layer cover estimates. "
+        "These are Phase 2 protocols collected on intensified plots, not every plot."
+    ),
+    "Down Woody Material": (
+        "Measurements of dead wood on the forest floor — coarse logs, fine branches, duff, "
+        "and litter. Collected via line-intercept transects and fixed-area plots. Used for "
+        "carbon accounting, wildfire fuel load estimation, and coarse woody debris habitat "
+        "assessment. The DWM_VISIT table records the transect layout; other DWM_ tables "
+        "record the actual material by type."
+    ),
+    "NRS Tree Regeneration": (
+        "Enhanced regeneration monitoring tables collected by the Northern Research Station (NRS). "
+        "Provides additional detail on seedling and sapling recruitment beyond what the standard "
+        "SEEDLING table captures — useful for studying post-disturbance forest recovery in "
+        "the northeastern and north-central U.S."
+    ),
+    "Ground Cover (PNWRS)": (
+        "Ground-layer vegetation and cover type data collected by the Pacific Northwest Research "
+        "Station (PNWRS). Includes percent cover by functional group (mosses, lichens, forbs, "
+        "grasses) and microquadrat-level detail. Relevant for studies of understory composition "
+        "and carbon in Pacific Northwest forests."
+    ),
+    "Soils (PNWRS)": (
+        "Soil sample data collected by the Pacific Northwest Research Station. Records sample "
+        "location, depth horizon, bulk density, texture, and carbon content. These tables are "
+        "key inputs for below-ground carbon stock estimation and soil health assessment in "
+        "PNWRS-region forests."
+    ),
+    "Population": (
+        "Statistical design tables used to scale plot-level measurements up to area-wide "
+        "(population-level) estimates — for example, the total forested acres in a state or "
+        "the total volume of live timber. Most analysts working with raw plot data do not need "
+        "these tables. They are required for EVALIDator-style estimates that account for the "
+        "stratified sampling design and adjustment factors."
+    ),
+    "Plot Geometry / Snapshot": (
+        "PLOTGEOM stores higher-precision, non-fuzzed plot coordinates available to authorized "
+        "researchers (access may be restricted). PLOTSNAP is a pre-computed summary of "
+        "plot-level attributes used in population estimation workflows — essentially a cached "
+        "version of key PLOT fields aligned to specific evaluation periods."
+    ),
+    "Reference": (
+        "Lookup and decode tables for coded fields throughout the database. These tables translate "
+        "numeric codes into meaningful labels. Always join REF_SPECIES (on SPCD) to get species "
+        "common names, genus, and softwood/hardwood designation. Join REF_FOREST_TYPE (on FORTYPCD) "
+        "to decode forest type names. Other REF_ tables decode damage agents, owner groups, "
+        "vegetation classifications (NVCS), FVS model variants, and more."
+    ),
+}
+
 TABLE_DESCRIPTIONS: Dict[str, str] = {
     "SURVEY": (
         "One record per state per inventory year. Root administrative table. "
@@ -872,7 +940,7 @@ _TABLE_TO_CAT: Dict[str, str] = {
 
 
 def build_pyvis_graph(db_tables: List[str]) -> str:
-    net = Network(height="580px", width="100%", directed=True, notebook=False)
+    net = Network(height="440px", width="100%", directed=True, notebook=False)
     net.set_options("""{
       "physics": {
         "barnesHut": {"gravitationalConstant": -8000, "springLength": 120},
@@ -1017,19 +1085,17 @@ def main() -> None:
         if selected_sidebar_cat != "— select a group —":
             s_color  = CATEGORY_COLORS.get(selected_sidebar_cat, "#888")
             s_tables = TABLE_CATEGORIES.get(selected_sidebar_cat, [])
+            s_desc   = CATEGORY_DESCRIPTIONS.get(selected_sidebar_cat, "")
             st.markdown(
                 f'<span style="background:{s_color};color:white;padding:3px 10px;'
                 f'border-radius:4px;font-size:0.85em">{selected_sidebar_cat}</span>',
                 unsafe_allow_html=True,
             )
-            st.caption(f"{len(s_tables)} tables")
+            if s_desc:
+                st.markdown(s_desc)
+            st.markdown(f"**Tables in this group** ({len(s_tables)}):")
             for t in s_tables:
-                desc    = TABLE_DESCRIPTIONS.get(t, "")
-                in_db   = t in db_tables if db_tables else None
-                tick    = " ✓" if in_db else (" ✗" if in_db is False else "")
-                st.markdown(f"**`{t}`**{tick}")
-                if desc:
-                    st.caption(desc[:130] + ("…" if len(desc) > 130 else ""))
+                st.markdown(f"- `{t}`")
 
     # ── Database connection ──────────────────────────────────────────────────
     conn: Optional[sqlite3.Connection] = None
@@ -1240,7 +1306,7 @@ The color of each node shows which group the table belongs to (see the color key
 
         if _PYVIS_AVAILABLE:
             html = build_pyvis_graph(db_tables)
-            components.html(html, height=680, scrolling=False)
+            components.html(html, height=720, scrolling=False)
         elif _GRAPHVIZ_AVAILABLE:
             st.info(
                 "pyvis not installed — showing a static core-table diagram. "
