@@ -356,21 +356,11 @@ def main():
     st.title("FIA Compiled Data — Explorer")
     st.caption("Visualizes processed parquets from the 05_fia pipeline.")
 
-    # ── Sidebar ──────────────────────────────────────────────────────────────
-    with st.sidebar:
-        st.header("Data")
-        default_dir = os.environ.get(
-            "FIA_DATA_DIR",
-            str(Path(__file__).parent.parent / "data" / "processed" / "summaries")
-        )
-        data_dir = st.text_input(
-            "Summaries directory",
-            value=default_dir,
-            help="Path to 05_fia/data/processed/summaries/"
-        )
-        st.markdown("---")
-        st.markdown("**Filters**")
-        st.caption("Applied on Forests, Disturbance, and Mortality tabs.")
+    # Data directory (env override or default path relative to this script)
+    data_dir = os.environ.get(
+        "FIA_DATA_DIR",
+        str(Path(__file__).parent.parent / "data" / "processed" / "summaries")
+    )
 
     # Pre-load all datasets (fast cache hits after first load)
     with st.spinner("Loading data…"):
@@ -381,27 +371,22 @@ def main():
         seed_df,    seed_err    = load_parquet(data_path(data_dir, "plot_seedling_metrics.parquet"))
         cond_df,    cond_err    = load_parquet(data_path(data_dir, "plot_cond_fortypcd.parquet"))
 
-    # Sidebar filters (populated after loading)
+    # ── Sidebar: state filter ─────────────────────────────────────────────────
     with st.sidebar:
+        st.header("Filter by State")
         all_states = sorted(tree_df["state"].dropna().unique().tolist()) if tree_df is not None else []
         sel_states = st.multiselect("States", all_states, placeholder="All states")
-
-        if tree_df is not None and "INVYR" in tree_df.columns:
-            yr_min = int(tree_df["INVYR"].min())
-            yr_max = int(tree_df["INVYR"].max())
-            sel_years = st.slider("Inventory years", yr_min, yr_max, (yr_min, yr_max))
+        if sel_states:
+            st.caption(f"{len(sel_states)} state(s) selected — applied to all analysis tabs.")
         else:
-            sel_years = (2000, 2024)
+            st.caption("Showing all states.")
 
     def apply_filters(df):
         if df is None:
             return None
-        out = df.copy()
-        if sel_states and "state" in out.columns:
-            out = out[out["state"].isin(sel_states)]
-        if "INVYR" in out.columns:
-            out = out[(out["INVYR"] >= sel_years[0]) & (out["INVYR"] <= sel_years[1])]
-        return out
+        if sel_states and "state" in df.columns:
+            return df[df["state"].isin(sel_states)]
+        return df
 
     tree_f    = apply_filters(tree_df)
     disturb_f = apply_filters(disturb_df)
@@ -410,10 +395,13 @@ def main():
     seed_f    = apply_filters(seed_df)
     cond_f    = apply_filters(cond_df)
 
+    # Colour helper used across multiple tabs
+    def color_status(val):
+        return "color: #3fb950" if val == "✓" else "color: #f85149"
+
     # ── Tabs ─────────────────────────────────────────────────────────────────
-    tab_overview, tab_explore, tab_forests, tab_disturb, tab_agents, tab_mort = st.tabs([
-        "📋 Overview",
-        "🔍 Explore",
+    tab_overview, tab_forests, tab_disturb, tab_agents, tab_mort = st.tabs([
+        "📂 Overview",
         "🌲 Forests",
         "🔥 Disturbance",
         "🪲 Damage Agents",
@@ -421,12 +409,11 @@ def main():
     ])
 
     # ==========================================================================
-    # TAB 1 — OVERVIEW
+    # TAB 1 — OVERVIEW (data availability + schema explorer)
     # ==========================================================================
     with tab_overview:
-        st.subheader("Data Availability")
 
-        # File availability table
+        # ── File availability table ───────────────────────────────────────────
         rows = []
         for fname, desc in EXPECTED_FILES.items():
             fpath = data_path(data_dir, fname)
@@ -434,93 +421,54 @@ def main():
             if exists:
                 df_tmp, _ = load_parquet(fpath)
                 size_mb = os.path.getsize(fpath) / 1e6
-                n_rows = len(df_tmp) if df_tmp is not None else "—"
-                n_states = (df_tmp["state"].nunique()
-                            if df_tmp is not None and "state" in df_tmp.columns else "—")
-                yr_range = (
+                n_rows_tmp = len(df_tmp) if df_tmp is not None else "—"
+                n_states_tmp = (df_tmp["state"].nunique()
+                                if df_tmp is not None and "state" in df_tmp.columns else "—")
+                yr_range_tmp = (
                     f"{int(df_tmp['INVYR'].min())}–{int(df_tmp['INVYR'].max())}"
                     if df_tmp is not None and "INVYR" in df_tmp.columns else "—"
                 )
             else:
-                size_mb, n_rows, n_states, yr_range = None, "—", "—", "—"
+                size_mb, n_rows_tmp, n_states_tmp, yr_range_tmp = None, "—", "—", "—"
 
             rows.append({
                 "File":        fname,
                 "Description": desc,
                 "Status":      "✓" if exists else "✗",
                 "Size (MB)":   f"{size_mb:.1f}" if size_mb is not None else "—",
-                "Rows":        f"{n_rows:,}" if isinstance(n_rows, int) else n_rows,
-                "States":      n_states,
-                "Years":       yr_range,
+                "Rows":        f"{n_rows_tmp:,}" if isinstance(n_rows_tmp, int) else n_rows_tmp,
+                "States":      n_states_tmp,
+                "Years":       yr_range_tmp,
             })
 
         avail_df = pd.DataFrame(rows)
-
-        # Colour the Status column
-        def color_status(val):
-            return "color: #3fb950" if val == "✓" else "color: #f85149"
-
         st.dataframe(
             avail_df.style.applymap(color_status, subset=["Status"]),
             use_container_width=True,
             hide_index=True,
         )
 
-        # Summary stat cards
+        # ── Corpus stat cards (from tree_metrics as the primary dataset) ──────
         if tree_df is not None:
-            n_plots  = tree_df["PLT_CN"].nunique()
-            n_states = tree_df["state"].nunique() if "state" in tree_df.columns else "—"
-            yr_min_v = int(tree_df["INVYR"].min())
-            yr_max_v = int(tree_df["INVYR"].max())
-            n_visits = len(tree_df["PLT_CN"])
+            n_plots_v  = tree_df["PLT_CN"].nunique()
+            n_states_v = tree_df["state"].nunique() if "state" in tree_df.columns else "—"
+            yr_min_v   = int(tree_df["INVYR"].min())
+            yr_max_v   = int(tree_df["INVYR"].max())
+            n_visits_v = len(tree_df)
 
             cols = st.columns(4)
-            cols[0].markdown(metric_card("Unique Plots", f"{n_plots:,}",
-                                         "distinct PLT_CN"), unsafe_allow_html=True)
-            cols[1].markdown(metric_card("States", str(n_states),
-                                         "with tree data"), unsafe_allow_html=True)
-            cols[2].markdown(metric_card("Year Range",
-                                         f"{yr_min_v}–{yr_max_v}",
-                                         "INVYR"), unsafe_allow_html=True)
-            cols[3].markdown(metric_card("Plot Visits", f"{n_visits:,}",
-                                         "PLT_CN × INVYR rows"), unsafe_allow_html=True)
-
-            # INVYR distribution
-            st.markdown("**Plot visits by inventory year**")
-            yr_counts = tree_df.groupby("INVYR")["PLT_CN"].nunique().reset_index()
-            yr_counts.columns = ["INVYR", "n_plots"]
-            if PLOTLY_AVAILABLE:
-                fig = px.bar(yr_counts, x="INVYR", y="n_plots",
-                             labels={"INVYR": "Inventory Year", "n_plots": "Unique Plots"},
-                             color_discrete_sequence=["#4e79a7"])
-                st.plotly_chart(dark_fig(fig), use_container_width=True)
-            else:
-                st.bar_chart(yr_counts.set_index("INVYR"))
-
-            # State coverage
-            if "state" in tree_df.columns:
-                st.markdown("**Plots per state**")
-                state_counts = (tree_df.groupby("state")["PLT_CN"]
-                                .nunique().reset_index()
-                                .rename(columns={"PLT_CN": "n_plots"})
-                                .sort_values("n_plots", ascending=False))
-                if PLOTLY_AVAILABLE:
-                    fig2 = px.bar(state_counts, x="state", y="n_plots",
-                                  labels={"state": "State", "n_plots": "Unique Plots"},
-                                  color_discrete_sequence=["#59a14f"])
-                    st.plotly_chart(dark_fig(fig2), use_container_width=True)
-                else:
-                    st.bar_chart(state_counts.set_index("state"))
+            cols[0].markdown(metric_card("Unique Plots", f"{n_plots_v:,}",  "distinct PLT_CN"),      unsafe_allow_html=True)
+            cols[1].markdown(metric_card("States",        str(n_states_v),   "with tree data"),       unsafe_allow_html=True)
+            cols[2].markdown(metric_card("Year Range",    f"{yr_min_v}–{yr_max_v}", "INVYR"),         unsafe_allow_html=True)
+            cols[3].markdown(metric_card("Plot Visits",   f"{n_visits_v:,}", "PLT_CN × INVYR rows"), unsafe_allow_html=True)
         else:
             st.info("Run `Rscript 05_fia/scripts/05_build_fia_summaries.R` to generate the summary parquets.")
 
-    # ==========================================================================
-    # TAB 2 — EXPLORE
-    # ==========================================================================
-    with tab_explore:
-        st.subheader("Datasets & Schema")
+        st.markdown("---")
 
-        # Map filename → loaded dataframe
+        # ── Dataset explorer ──────────────────────────────────────────────────
+        st.subheader("Dataset Explorer")
+
         _all_dfs = {
             "plot_tree_metrics.parquet":        tree_df,
             "plot_disturbance_history.parquet": disturb_df,
@@ -532,7 +480,7 @@ def main():
         available_keys = [k for k, v in _all_dfs.items() if v is not None]
 
         if not available_keys:
-            st.info("No datasets loaded. Run `Rscript 05_fia/scripts/05_build_fia_summaries.R` first.")
+            st.info("No datasets loaded yet.")
         else:
             sel_key = st.selectbox(
                 "Dataset",
@@ -547,24 +495,23 @@ def main():
             df_sel = _all_dfs[sel_key]
             meta   = DATASET_META.get(sel_key, {})
 
-            # ── At-a-glance stats ────────────────────────────────────────────
-            n_rows    = len(df_sel)
-            n_plots   = df_sel["PLT_CN"].nunique()  if "PLT_CN" in df_sel.columns else None
-            n_states  = df_sel["state"].nunique()   if "state"  in df_sel.columns else None
-            yr_range  = (
+            # Stats
+            n_rows   = len(df_sel)
+            n_plots  = df_sel["PLT_CN"].nunique() if "PLT_CN" in df_sel.columns else None
+            n_states = df_sel["state"].nunique()  if "state"  in df_sel.columns else None
+            yr_range = (
                 f"{int(df_sel['INVYR'].min())}–{int(df_sel['INVYR'].max())}"
                 if "INVYR" in df_sel.columns and df_sel["INVYR"].notna().any() else "—"
             )
             n_cols = len(df_sel.columns)
 
             c1, c2, c3, c4, c5 = st.columns(5)
-            c1.markdown(metric_card("Rows",          f"{n_rows:,}",                        "total records"),    unsafe_allow_html=True)
-            c2.markdown(metric_card("Unique Plots",  f"{n_plots:,}" if n_plots else "—",  "distinct PLT_CN"),  unsafe_allow_html=True)
-            c3.markdown(metric_card("States",        str(n_states) if n_states else "—",  ""),                 unsafe_allow_html=True)
-            c4.markdown(metric_card("Year Range",    yr_range,                             "INVYR"),            unsafe_allow_html=True)
-            c5.markdown(metric_card("Columns",       str(n_cols),                          ""),                 unsafe_allow_html=True)
+            c1.markdown(metric_card("Rows",         f"{n_rows:,}",                       "total records"),   unsafe_allow_html=True)
+            c2.markdown(metric_card("Unique Plots", f"{n_plots:,}" if n_plots else "—", "distinct PLT_CN"), unsafe_allow_html=True)
+            c3.markdown(metric_card("States",       str(n_states) if n_states else "—", ""),                unsafe_allow_html=True)
+            c4.markdown(metric_card("Year Range",   yr_range,                            "INVYR"),           unsafe_allow_html=True)
+            c5.markdown(metric_card("Columns",      str(n_cols),                         ""),                unsafe_allow_html=True)
 
-            # ── Description ──────────────────────────────────────────────────
             if meta.get("description"):
                 st.markdown(f"**About:** {meta['description']}")
             if meta.get("join"):
@@ -572,7 +519,6 @@ def main():
 
             st.markdown("---")
 
-            # ── Column reference ─────────────────────────────────────────────
             with st.expander("📋 Column Reference", expanded=True):
                 if meta.get("columns"):
                     col_rows = []
@@ -602,12 +548,11 @@ def main():
                         hide_index=True, use_container_width=True,
                     )
 
-            # ── Data preview ─────────────────────────────────────────────────
             with st.expander("🔎 Data Preview", expanded=False):
                 n_preview = st.slider("Rows to show", 5, 200, 20, key="explore_preview_n")
                 st.dataframe(df_sel.head(n_preview), use_container_width=True)
 
-        # ── How datasets connect ─────────────────────────────────────────────
+        # ── How datasets connect ──────────────────────────────────────────────
         st.markdown("---")
         st.markdown("### How Datasets Connect")
         st.markdown(
@@ -634,7 +579,7 @@ def main():
         )
 
     # ==========================================================================
-    # TAB 3 — FORESTS
+    # TAB 2 — FORESTS
     # ==========================================================================
     with tab_forests:
         if tree_f is None or len(tree_f) == 0:
@@ -750,7 +695,7 @@ def main():
                     st.plotly_chart(dark_fig(fig), use_container_width=True)
 
     # ==========================================================================
-    # TAB 4 — DISTURBANCE
+    # TAB 3 — DISTURBANCE
     # ==========================================================================
     with tab_disturb:
         if disturb_f is None or len(disturb_f) == 0:
@@ -839,7 +784,7 @@ def main():
                 st.plotly_chart(fig, use_container_width=True)
 
     # ==========================================================================
-    # TAB 5 — DAMAGE AGENTS
+    # TAB 4 — DAMAGE AGENTS
     # ==========================================================================
     with tab_agents:
         if agents_f is None or len(agents_f) == 0:
@@ -934,7 +879,7 @@ def main():
                     st.caption("LAT/LON not yet available — re-run the pipeline to add coordinates.")
 
     # ==========================================================================
-    # TAB 6 — MORTALITY & REGENERATION
+    # TAB 5 — MORTALITY & REGENERATION
     # ==========================================================================
     with tab_mort:
         mort_col, seed_col = st.columns(2)
