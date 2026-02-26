@@ -35,6 +35,13 @@ annual <- lapply(datasets, function(ds) {
   bind_rows() %>%
   mutate(dataset = factor(dataset, levels = datasets))
 
+# Note: TerraClimate uses WorldClim climatological normals as its
+# bias-correction baseline, so the two datasets share a common reference
+# and typically agree within ~5% for precipitation and fractions of a
+# degree for temperature. Close agreement between TerraClimate and
+# WorldClim lines is expected. PRISM uses an independent orographic
+# model and will diverge more noticeably, particularly at high-elevation
+# sites where orographic precipitation enhancement is significant.
 dataset_colors <- c(terraclimate = "#2166AC", prism = "#1A9641", worldclim = "#D73027")
 
 climate_labels <- c(

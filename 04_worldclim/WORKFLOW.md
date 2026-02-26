@@ -30,6 +30,14 @@ This document covers WorldClim-specific technical details. For the shared pixel 
 - Full IDS coverage (1997-2024)
 - Local download required (not available via GEE)
 
+**Note on TerraClimate/WorldClim agreement:** TerraClimate uses WorldClim climatological
+normals as its bias-correction baseline, so the two datasets share a common reference and
+will produce very similar values — typically within 5% for precipitation and fractions of a
+degree for temperature. This is expected, not a sign that the pipelines are redundant: they
+differ in interpolation method, variable availability, and how they handle year-to-year
+anomalies. PRISM, which has an independent orographic model, will diverge more noticeably
+(especially in complex mountain terrain).
+
 ---
 
 ## WorldClim-Specific Parameters
