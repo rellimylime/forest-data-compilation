@@ -274,7 +274,7 @@ for (i in seq_along(states)) {
 
 elapsed_total <- as.numeric(difftime(Sys.time(), t_total, units = "mins"))
 
-cat(glue("\n{'='*50}\n"))
+cat(glue("\n{strrep('=', 50)}\n"))
 cat("Tree extraction complete.\n\n")
 cat(glue("  Processed: {n_done} state(s)\n"))
 cat(glue("  Skipped:   {n_skipped} state(s) (output already exists)\n"))

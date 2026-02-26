@@ -155,7 +155,6 @@ if (file_exists(out_tree_metrics)) {
       setnames(shannon, "shannon_h", "shannon_h_ba")
 
       # -- Join all metrics into one row per plot x INVYR ----------------------
-      plot_keys <- .(PLT_CN, INVYR)
       result <- Reduce(function(a, b) merge(a, b, by = c("PLT_CN", "INVYR"), all = TRUE),
                        list(ba_live, ba_dead, ba_soft, ba_hard,
                             ba_sz, ba_ly, richness, shannon))
