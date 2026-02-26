@@ -10,7 +10,9 @@ user explicitly requests a preview.
 Usage:
   streamlit run fiadb_dashboard.py
 
-  Then paste the full path to your FIADB SQLite file in the sidebar.
+  Local use: optionally paste the full path to your FIADB SQLite file in the sidebar.
+  Hosted use (e.g., Streamlit Cloud): set FIADB_DB_PATH on the server and the app
+  will connect automatically without showing a public path textbox.
 
 Requires:
   pip install streamlit pandas pyvis   # pyvis recommended for interactive graph
@@ -940,12 +942,13 @@ _TABLE_TO_CAT: Dict[str, str] = {
 
 
 def build_pyvis_graph(db_tables: List[str]) -> str:
+    # Reserve 460 px for the graph; the info panel sits below it in the same iframe.
     net = Network(
-        height="520px",
+        height="460px",
         width="100%",
         directed=True,
         notebook=False,
-        bgcolor="#000000",
+        bgcolor="#0e1117",
         font_color="#ffffff",
     )
     net.set_options("""{
@@ -958,9 +961,17 @@ def build_pyvis_graph(db_tables: List[str]) -> str:
         "color": {"color": "#555"},
         "font": {"size": 9, "align": "top", "color": "#aaa", "strokeWidth": 0}
       },
-      "nodes": {"font": {"size": 12, "color": "#fff"}, "borderWidth": 1.5},
+      "nodes": {
+        "font": {"size": 12, "color": "#fff"},
+        "borderWidth": 1.5,
+        "scaling": {"label": {"enabled": false, "drawThreshold": 3}}
+      },
       "interaction": {"hover": true, "tooltipDelay": 100}
     }""")
+
+    # Core hub tables get a larger font so their labels stay readable when
+    # the graph is auto-fitted to show all nodes at once.
+    _CORE_NODES = {"PLOT", "TREE", "COND"}
 
     present = set(db_tables) if db_tables else set(_TABLE_TO_CAT.keys())
     nodes_added: set = set()
@@ -971,11 +982,11 @@ def build_pyvis_graph(db_tables: List[str]) -> str:
             if t in present and t not in nodes_added:
                 cat   = _TABLE_TO_CAT.get(t, "Unknown")
                 color = CATEGORY_COLORS.get(cat, "#cccccc")
-                size  = 25 if t in ("PLOT", "TREE", "COND") else 16
+                size  = 25 if t in _CORE_NODES else 16
                 desc  = TABLE_DESCRIPTIONS.get(t, "No description available.")
-                # Plain text title for hover (avoids HTML-as-plaintext rendering bug);
-                # full description is shown in the click panel below the graph.
-                net.add_node(t, label=t, color=color, size=size, title=t)
+                font  = ({"size": 16, "color": "#fff"} if t in _CORE_NODES
+                         else {"size": 11, "color": "#fff"})
+                net.add_node(t, label=t, color=color, size=size, title=t, font=font)
                 table_info[t] = {"category": cat, "description": desc, "color": color}
                 nodes_added.add(t)
 
@@ -986,29 +997,39 @@ def build_pyvis_graph(db_tables: List[str]) -> str:
 
     html_str = net.generate_html()
 
-    # ── Inject click-info panel + JS event handler ───────────────────────────
+    # ── Inject info panel (below graph) + JS event handler ───────────────────
     table_info_json = json.dumps(table_info, ensure_ascii=False)
 
     injection = f"""
 <style>
-  html, body {{ margin:0; padding:0; background:#000000; overflow:hidden; }}
-  #mynetwork {{ background:#000000 !important; }}
+  html, body {{
+    margin: 0; padding: 0; background: #0e1117;
+    display: flex; flex-direction: column; height: auto; overflow-x: hidden;
+  }}
+  #mynetwork {{ background: #0e1117 !important; flex: 0 0 460px; }}
+  #fia-node-panel {{
+    flex: 0 0 auto;
+    padding: 12px 18px 10px;
+    background: #0d1117;
+    border-top: 3px solid #333;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 13px; line-height: 1.5; color: #ddd;
+    transition: border-top-color 0.25s;
+    min-height: 72px;
+  }}
 </style>
-<div id="fia-node-panel" style="
-    display:none; position:fixed; top:10px; right:10px; z-index:9999;
-    width:320px; max-height:420px; overflow-y:auto;
-    padding:14px 18px; background:#1c2333ee; border-radius:6px;
-    box-shadow:0 4px 20px rgba(0,0,0,0.7);
-    font-family:-apple-system,BlinkMacSystemFont,sans-serif;
-    font-size:13px; line-height:1.5; border-left:5px solid #ccc;
-    color:#ddd;
-">
-  <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-    <span id="fia-node-name" style="font-weight:700;font-size:15px;color:#fff;"></span>
-    <span id="fia-node-cat"  style="padding:2px 10px;border-radius:4px;color:white;font-size:11px;flex-shrink:0;"></span>
+<div id="fia-node-panel">
+  <p id="fia-placeholder" style="margin:6px 0;color:#555;font-style:italic;">
+    &#8593; Click any node to see its description.
+  </p>
+  <div id="fia-info" style="display:none;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+      <span id="fia-node-name" style="font-weight:700;font-size:15px;color:#fff;"></span>
+      <span id="fia-node-cat"  style="padding:2px 10px;border-radius:4px;color:white;font-size:11px;flex-shrink:0;"></span>
+    </div>
+    <div id="fia-node-desc" style="color:#bbb;border-top:1px solid #2a2a2a;padding-top:8px;font-size:12px;"></div>
+    <div style="margin-top:6px;font-size:10px;color:#444;">Click empty space to clear.</div>
   </div>
-  <div id="fia-node-desc" style="color:#bbb;border-top:1px solid #333;padding-top:8px;font-size:12px;"></div>
-  <div style="margin-top:8px;font-size:10px;color:#555;">Click empty space to dismiss</div>
 </div>
 <script>
 var FIA_TABLE_INFO = {table_info_json};
@@ -1020,7 +1041,9 @@ var FIA_TABLE_INFO = {table_info_json};
     }});
     setTimeout(function() {{ network.fit(); }}, 1800);
     network.on("click", function(params) {{
-        var panel = document.getElementById("fia-node-panel");
+        var panel       = document.getElementById("fia-node-panel");
+        var placeholder = document.getElementById("fia-placeholder");
+        var infoEl      = document.getElementById("fia-info");
         if (params.nodes.length > 0) {{
             var nodeId = params.nodes[0];
             var info = FIA_TABLE_INFO[nodeId];
@@ -1030,10 +1053,13 @@ var FIA_TABLE_INFO = {table_info_json};
             catEl.textContent = info.category;
             catEl.style.background = info.color;
             document.getElementById("fia-node-desc").textContent = info.description;
-            panel.style.borderLeftColor = info.color;
-            panel.style.display = "block";
+            panel.style.borderTopColor = info.color;
+            placeholder.style.display = "none";
+            infoEl.style.display = "block";
         }} else {{
-            panel.style.display = "none";
+            placeholder.style.display = "block";
+            infoEl.style.display = "none";
+            panel.style.borderTopColor = "#333";
         }}
     }});
 }})();
@@ -1077,43 +1103,26 @@ def main() -> None:
         "FIADB v9.4 · August 2025 · Schema browsing via PRAGMA — zero bulk data loading"
     )
 
-    # ── Sidebar ─────────────────────────────────────────────────────────────
+    # ── Sidebar — database path (must come first so we can connect before buttons) ──
     with st.sidebar:
         st.header("Database")
-        db_path = st.text_input(
-            "Path to FIADB SQLite file",
-            placeholder="/path/to/FIADB_NATIONAL.db",
-            help="Full absolute path. Schema metadata is read instantly via PRAGMA.",
-        )
-        st.markdown("---")
-        st.markdown("**Table groups**")
-        for cat, color in CATEGORY_COLORS.items():
-            st.markdown(
-                f'<span style="background:{color};color:white;padding:2px 8px;'
-                f'border-radius:3px;display:inline-block;margin:2px;font-size:0.8em">'
-                f'{cat}</span>',
-                unsafe_allow_html=True,
+        hosted_db_path = os.getenv("FIADB_DB_PATH", "").strip()
+        allow_local_path_input = os.getenv("FIADB_ENABLE_LOCAL_PATH_INPUT", "").strip().lower() in {
+            "1", "true", "yes", "on"
+        }
+
+        db_path = hosted_db_path
+        if hosted_db_path:
+            st.success("Using server-side FIADB database (FIADB_DB_PATH).")
+        elif allow_local_path_input:
+            db_path = st.text_input(
+                "Path to FIADB SQLite file",
+                placeholder="/path/to/FIADB_NATIONAL.db",
+                help="Full absolute path. Schema metadata is read instantly via PRAGMA.",
             )
-        st.markdown("---")
-        st.markdown("**Explore a group**")
-        cat_options = ["— select a group —"] + list(CATEGORY_COLORS.keys())
-        selected_sidebar_cat = st.selectbox(
-            "Group", cat_options, label_visibility="collapsed", key="sidebar_cat"
-        )
-        if selected_sidebar_cat != "— select a group —":
-            s_color  = CATEGORY_COLORS.get(selected_sidebar_cat, "#888")
-            s_tables = TABLE_CATEGORIES.get(selected_sidebar_cat, [])
-            s_desc   = CATEGORY_DESCRIPTIONS.get(selected_sidebar_cat, "")
-            st.markdown(
-                f'<span style="background:{s_color};color:white;padding:3px 10px;'
-                f'border-radius:4px;font-size:0.85em">{selected_sidebar_cat}</span>',
-                unsafe_allow_html=True,
-            )
-            if s_desc:
-                st.markdown(s_desc)
-            st.markdown(f"**Tables in this group** ({len(s_tables)}):")
-            for t in s_tables:
-                st.markdown(f"- `{t}`")
+        else:
+            st.info("Metadata-only mode (no database connected).")
+            st.caption("Set `FIADB_DB_PATH` to enable live schema introspection.")
 
     # ── Database connection ──────────────────────────────────────────────────
     conn: Optional[sqlite3.Connection] = None
@@ -1128,6 +1137,83 @@ def main() -> None:
             st.sidebar.error(f"Cannot open: {e}")
     elif db_path:
         st.sidebar.warning("File not found — showing static metadata only")
+
+    # ── Sidebar — table group buttons ────────────────────────────────────────
+    with st.sidebar:
+        st.markdown("---")
+        st.markdown("**Table groups**")
+
+        if "sidebar_cat" not in st.session_state:
+            st.session_state["sidebar_cat"] = None
+
+        for cat, color in CATEGORY_COLORS.items():
+            is_active = st.session_state["sidebar_cat"] == cat
+            if st.button(
+                cat,
+                key=f"btn_{cat}",
+                use_container_width=True,
+                type="secondary",
+            ):
+                # Toggle off if already selected, otherwise select
+                st.session_state["sidebar_cat"] = None if is_active else cat
+                st.rerun()
+
+            if is_active:
+                s_tables = TABLE_CATEGORIES.get(cat, [])
+                s_desc   = CATEGORY_DESCRIPTIONS.get(cat, "")
+                in_db    = [t for t in s_tables if t in db_tables] if db_tables else []
+                label    = (f"{len(in_db)}/{len(s_tables)} in DB"
+                            if db_tables else f"{len(s_tables)} tables")
+                st.markdown(
+                    f'<div style="margin:-4px 0 8px;padding:10px 12px;'
+                    f'background:{color}22;border-left:3px solid {color};'
+                    f'border-radius:0 4px 4px 0;font-size:0.82em;color:#ccc;">'
+                    f'<strong style="color:#fff;font-size:0.95em;">{cat}</strong>'
+                    f'&nbsp;&nbsp;<span style="color:#888;">{label}</span>'
+                    f'<br><br>{s_desc}</div>',
+                    unsafe_allow_html=True,
+                )
+                for t in s_tables:
+                    prefix = "✓ " if t in db_tables else "&nbsp;&nbsp;&nbsp;"
+                    st.markdown(
+                        f'<span style="font-size:0.85em;">{prefix}`{t}`</span>',
+                        unsafe_allow_html=True,
+                    )
+
+        # ── JS: colour each sidebar button with its category colour ──────────
+        # components.html runs in a sandboxed iframe; window.parent gives access
+        # to the Streamlit page so we can style the real sidebar buttons.
+        _color_map_js = json.dumps({cat: clr for cat, clr in CATEGORY_COLORS.items()})
+        _active_js    = json.dumps(st.session_state.get("sidebar_cat"))
+        components.html(
+            f"""<script>
+var _CM = {_color_map_js};
+var _AC = {_active_js};
+function _applyBtnColors() {{
+    var sb = window.parent.document.querySelector('section[data-testid="stSidebar"]');
+    if (!sb) return;
+    sb.querySelectorAll('button').forEach(function(b) {{
+        var lbl = b.innerText.trim();
+        var col = _CM[lbl];
+        if (!col) return;
+        var active = (lbl === _AC);
+        b.style.setProperty('background-color', active ? col : col + '55', 'important');
+        b.style.setProperty('color', 'white', 'important');
+        b.style.setProperty('border', '2px solid ' + col + (active ? '' : '88'), 'important');
+        b.style.setProperty('font-weight', active ? '600' : '400', 'important');
+    }});
+}}
+_applyBtnColors();
+[150, 500, 1200].forEach(function(t) {{ setTimeout(_applyBtnColors, t); }});
+var _sb = window.parent.document.querySelector('section[data-testid="stSidebar"]');
+if (_sb) {{
+    new MutationObserver(_applyBtnColors).observe(
+        _sb, {{childList: true, subtree: true, attributeFilter: ['class', 'style']}}
+    );
+}}
+</script>""",
+            height=0,
+        )
 
     tabs = st.tabs([
         "Overview",
@@ -1324,7 +1410,7 @@ The color of each node shows which group the table belongs to (see the color key
 
         if _PYVIS_AVAILABLE:
             html = build_pyvis_graph(db_tables)
-            components.html(html, height=535, scrolling=False)
+            components.html(html, height=640, scrolling=False)
         elif _GRAPHVIZ_AVAILABLE:
             st.info(
                 "pyvis not installed — showing a static core-table diagram. "
