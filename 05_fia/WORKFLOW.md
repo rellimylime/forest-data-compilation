@@ -133,7 +133,7 @@ trees gives per-acre basal area without needing to know subplot areas directly.
 
 **Inputs:** Per-state partitioned parquets from scripts 03 and 04
 
-**Outputs:** `data/processed/summaries/` (4 national parquet files)
+**Outputs:** `data/processed/summaries/` (6 national parquet files)
 
 **Processing:**
 - Uses `open_dataset(..., partitioning="state")` to read partitioned parquets lazily
@@ -141,7 +141,7 @@ trees gives per-acre basal area without needing to know subplot areas directly.
 - Shannon H computed with custom `compute_shannon_h()` in data.table (Arrow cannot compute `log()` lazily)
 
 **plot_tree_metrics columns:**
-- `PLT_CN`, `INVYR`, `state`
+- `PLT_CN`, `INVYR`, `state`, `LAT`, `LON`
 - `ba_live_total`, `ba_dead_total` (sum of ba_per_acre by STATUSCD)
 - `ba_live_softwood`, `ba_live_hardwood` (by SFTWD_HRDWD)
 - `ba_live_sapling`, `ba_live_intermediate`, `ba_live_mature` (by size_class)
@@ -151,11 +151,28 @@ trees gives per-acre basal area without needing to know subplot areas directly.
 - `shannon_h_ba` (BA-weighted Shannon H, live trees only)
 - `species_temp_optima_mean` (placeholder NA - thermophilization join TBD)
 
+**plot_disturbance_history columns:**
+
+- `PLT_CN`, `INVYR`, `STATECD`, `CONDID`, `CONDPROP_UNADJ`, `LAT`, `LON`
+- `disturbance_slot` (1, 2, or 3 — DSTRBCD1/2/3 ranked most-to-least important)
+- `DSTRBCD` (raw FIA v9.4 code), `DSTRBYR` (year; 9999 = continuous)
+- `disturbance_label` (human-readable, e.g. "Ground fire", "Crown fire")
+- `disturbance_category` (fire / insects / disease / weather / animal / vegetation / geologic / other)
+- Rows with DSTRBCD == 0 (no disturbance) are excluded
+
+**plot_damage_agents columns:**
+
+- `PLT_CN`, `INVYR`, `CONDID`, `SPCD`, `SFTWD_HRDWD`, `state`
+- `DAMAGE_AGENT_CD` (5-digit PTIPS/FHAAST code from Appendix H)
+- `agent_label` (e.g. "Mountain pine beetle", "Spruce budworm") — NA for unlabelled codes
+- `agent_category` (bark beetles / defoliators / sucking insects / boring insects / root/butt disease / canker/rust / foliage/wilt disease / fire / other)
+- `ba_per_acre`, `n_trees_tpa` (BA and TPA of live trees carrying that damage code)
+
 ---
 
 ## Data Flow
 
-```
+```text
 FIA DataMart (50 state CSVs)
          |
          v 01_download_fia.R
@@ -169,13 +186,16 @@ lookups/ref_species.parquet + schema checks
          v            v                  v
 03_extract_trees.R  04_extract_...     04_extract_...
 trees/{state=ST}/   seedlings/{state=ST}/ mortality/{state=ST}/
-cond/{state=ST}/
+cond/{state=ST}/    (DSTRBCD + LAT/LON)
+damage_agents/{state=ST}/
          |
          v 05_build_fia_summaries.R
-summaries/plot_tree_metrics.parquet
+summaries/plot_tree_metrics.parquet       (+ LAT/LON)
 summaries/plot_seedling_metrics.parquet
 summaries/plot_mortality_metrics.parquet
 summaries/plot_cond_fortypcd.parquet
+summaries/plot_disturbance_history.parquet  (NEW)
+summaries/plot_damage_agents.parquet        (NEW)
 ```
 
 ---
@@ -217,6 +237,9 @@ Key fields confirmed from User Guide v9.4 (see `docs/FIADB_field_reference.md` f
 | CONDPROP_UNADJ | COND | Proportion of plot area in this condition |
 | SFTWD_HRDWD | REF_SPECIES | "S"=softwood, "H"=hardwood |
 | WOODLAND | REF_SPECIES | "Y"=woodland species (root collar measurement), "N"=standard |
+| DSTRBCD1 | COND | Disturbance code 1 (most important); 10-12=insects, 20-22=disease, 30-32=fire (31=ground, 32=crown), 50-54=weather; codes 2 & 3 (DSTRBCD2/3) for additional disturbances |
+| DSTRBYR1 | COND | Year of disturbance 1; 9999 = continuous; DSTRBYR2/3 parallel DSTRBCD2/3 |
+| DAMAGE_AGENT_CD1 | TREE | 5-digit PTIPS/FHAAST damage agent code on live trees (Appendix H); up to 3 per tree; 11000s=bark beetles, 12000s=defoliators, 14000s=sucking insects, 15000s=borers, 21000s=root disease, 22000s=cankers |
 
 ---
 

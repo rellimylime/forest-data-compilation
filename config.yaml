@@ -418,16 +418,22 @@ processed:
       columns: "PLT_CN, INVYR, SPCD, SFTWD_HRDWD, AGENTCD, component_type, tpamort_per_acre"
     cond:
       output_dir: "05_fia/data/processed/cond"
-      description: "Condition-level attributes per plot visit (FORTYPCD, CONDPROP_UNADJ), hive-partitioned by state"
-      columns: "PLT_CN, INVYR, STATECD, CONDID, FORTYPCD, COND_STATUS_CD, CONDPROP_UNADJ"
+      description: "Condition-level attributes per plot visit, hive-partitioned by state"
+      columns: "PLT_CN, INVYR, STATECD, CONDID, FORTYPCD, COND_STATUS_CD, CONDPROP_UNADJ, LAT, LON, DSTRBCD1, DSTRBCD2, DSTRBCD3, DSTRBYR1, DSTRBYR2, DSTRBYR3"
+    damage_agents:
+      output_dir: "05_fia/data/processed/damage_agents"
+      description: "Live-tree damage agent codes (DAMAGE_AGENT_CD1/2/3) aggregated to plot x INVYR x CONDID x species, hive-partitioned by state"
+      columns: "PLT_CN, INVYR, CONDID, SPCD, SFTWD_HRDWD, DAMAGE_AGENT_CD, ba_per_acre, n_trees_tpa"
     summaries:
       output_dir: "05_fia/data/processed/summaries"
-      description: "Plot-level aggregated metrics: BA totals, diversity indices, FORTYPCD time series"
+      description: "Plot-level aggregated metrics: BA totals, diversity indices, disturbance history, damage agents"
       files:
         plot_tree_metrics: "plot_tree_metrics.parquet"
         plot_seedling_metrics: "plot_seedling_metrics.parquet"
         plot_mortality_metrics: "plot_mortality_metrics.parquet"
         plot_cond_fortypcd: "plot_cond_fortypcd.parquet"
+        plot_disturbance_history: "plot_disturbance_history.parquet"
+        plot_damage_agents: "plot_damage_agents.parquet"
 
   # Standardized climate outputs (long format, dataset-agnostic)
   climate:

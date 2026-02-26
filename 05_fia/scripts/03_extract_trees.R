@@ -30,7 +30,10 @@
 #              canopy_layer, ba_sqft, ba_per_acre, n_trees_tpa, n_trees_raw
 #   05_fia/data/processed/cond/state={ST}/cond_{ST}.parquet
 #     Columns: PLT_CN, INVYR, STATECD, CONDID, FORTYPCD, COND_STATUS_CD,
-#              CONDPROP_UNADJ
+#              CONDPROP_UNADJ, LAT, LON, DSTRBCD1-3, DSTRBYR1-3
+#   05_fia/data/processed/damage_agents/state={ST}/damage_agents_{ST}.parquet
+#     Columns: PLT_CN, INVYR, CONDID, SPCD, SFTWD_HRDWD, DAMAGE_AGENT_CD,
+#              ba_per_acre, n_trees_tpa
 # ==============================================================================
 
 source("scripts/utils/load_config.R")
@@ -46,10 +49,11 @@ library(arrow)
 # Setup
 # ------------------------------------------------------------------------------
 
-fia_config <- config$raw$fia
-raw_dir    <- here(fia_config$local_dir)
-out_trees  <- here(config$processed$fia$trees$output_dir)
-out_cond   <- here(config$processed$fia$cond$output_dir)
+fia_config    <- config$raw$fia
+raw_dir       <- here(fia_config$local_dir)
+out_trees     <- here(config$processed$fia$trees$output_dir)
+out_cond      <- here(config$processed$fia$cond$output_dir)
+out_damage_ag <- here(config$processed$fia$damage_agents$output_dir)
 lookup_dir <- here("05_fia/lookups")
 
 args   <- commandArgs(trailingOnly = TRUE)
@@ -66,18 +70,22 @@ fallback_dia      <- fia_config$canopy_layers$fallback_dia_threshold
 
 cat("FIA Tree Extraction\n")
 cat("===================\n\n")
-cat(glue("Output (trees): {out_trees}\n"))
-cat(glue("Output (cond):  {out_cond}\n"))
+cat(glue("Output (trees):   {out_trees}\n"))
+cat(glue("Output (cond):    {out_cond}\n"))
+cat(glue("Output (damage):  {out_damage_ag}\n"))
 cat(glue("States: {length(states)}\n"))
 cat(glue("INVYR range: {invyr_min}-{invyr_max}\n\n"))
 
 # Required columns
 tree_cols <- c("CN", "PLT_CN", "CONDID", "SUBP", "SPCD", "STATUSCD",
-               "DIA", "TPA_UNADJ", "CCLCD", "AGENTCD", "INVYR")
+               "DIA", "TPA_UNADJ", "CCLCD", "AGENTCD", "INVYR",
+               "DAMAGE_AGENT_CD1", "DAMAGE_AGENT_CD2", "DAMAGE_AGENT_CD3")
 plot_cols <- c("CN", "STATECD", "UNITCD", "COUNTYCD", "PLOT", "INVYR",
                "LAT", "LON", "ELEV")
 cond_cols <- c("PLT_CN", "CONDID", "FORTYPCD", "COND_STATUS_CD",
-               "CONDPROP_UNADJ", "INVYR")
+               "CONDPROP_UNADJ", "INVYR",
+               "DSTRBCD1", "DSTRBCD2", "DSTRBCD3",
+               "DSTRBYR1", "DSTRBYR2", "DSTRBYR3")
 
 # Load REF_SPECIES once (small, national)
 ref_sp_path <- file.path(lookup_dir, "ref_species.parquet")
@@ -98,12 +106,13 @@ t_total <- Sys.time()
 n_done <- 0; n_skipped <- 0; n_failed <- 0
 
 for (i in seq_along(states)) {
-  st         <- states[i]
-  state_dir  <- file.path(raw_dir, st)
-  trees_out  <- file.path(out_trees, glue("state={st}/trees_{st}.parquet"))
-  cond_out   <- file.path(out_cond,  glue("state={st}/cond_{st}.parquet"))
+  st              <- states[i]
+  state_dir       <- file.path(raw_dir, st)
+  trees_out       <- file.path(out_trees,     glue("state={st}/trees_{st}.parquet"))
+  cond_out        <- file.path(out_cond,      glue("state={st}/cond_{st}.parquet"))
+  damage_ag_out   <- file.path(out_damage_ag, glue("state={st}/damage_agents_{st}.parquet"))
 
-  if (file_exists(trees_out) && file_exists(cond_out)) {
+  if (file_exists(trees_out) && file_exists(cond_out) && file_exists(damage_ag_out)) {
     cat(glue("[{i}/{length(states)}] {st}: output exists - skipping\n"))
     n_skipped <- n_skipped + 1
     next
@@ -193,22 +202,56 @@ for (i in seq_along(states)) {
     # ------ Save trees parquet ------------------------------------------------
     dir_create(dirname(trees_out))
     write_parquet(as_tibble(trees_agg), trees_out, compression = "snappy")
-    cat(glue("  Trees: {format(nrow(trees_agg), big.mark=',')} rows -> {file_size(trees_out)}\n"))
+    cat(glue("  Trees:   {format(nrow(trees_agg), big.mark=',')} rows -> {file_size(trees_out)}\n"))
 
-    # ------ COND: filter and add STATECD from PLOT ---------------------------
+    # ------ Damage agents: pivot DAMAGE_AGENT_CD1/2/3 to long ----------------
+    # Only live trees (STATUSCD == 1) with at least one non-zero damage code
+    has_damage <- tree_dt[STATUSCD == 1 &
+      (!is.na(DAMAGE_AGENT_CD1) & DAMAGE_AGENT_CD1 != 0 |
+       !is.na(DAMAGE_AGENT_CD2) & DAMAGE_AGENT_CD2 != 0 |
+       !is.na(DAMAGE_AGENT_CD3) & DAMAGE_AGENT_CD3 != 0)]
+
+    if (nrow(has_damage) > 0) {
+      da_long <- melt(
+        has_damage[, .(PLT_CN, INVYR, CONDID, SPCD, SFTWD_HRDWD,
+                       ba_sqft_tree, TPA_UNADJ,
+                       DAMAGE_AGENT_CD1, DAMAGE_AGENT_CD2, DAMAGE_AGENT_CD3)],
+        id.vars       = c("PLT_CN", "INVYR", "CONDID", "SPCD", "SFTWD_HRDWD",
+                          "ba_sqft_tree", "TPA_UNADJ"),
+        measure.vars  = c("DAMAGE_AGENT_CD1", "DAMAGE_AGENT_CD2", "DAMAGE_AGENT_CD3"),
+        variable.name = "agent_slot",
+        value.name    = "DAMAGE_AGENT_CD"
+      )
+      da_long <- da_long[!is.na(DAMAGE_AGENT_CD) & DAMAGE_AGENT_CD != 0]
+      da_agg <- da_long[, .(
+        ba_per_acre = sum(TPA_UNADJ * ba_sqft_tree, na.rm = TRUE),
+        n_trees_tpa = sum(TPA_UNADJ, na.rm = TRUE)
+      ), by = .(PLT_CN, INVYR, CONDID, SPCD, SFTWD_HRDWD, DAMAGE_AGENT_CD)]
+    } else {
+      da_agg <- data.table(
+        PLT_CN = integer(0), INVYR = integer(0), CONDID = integer(0),
+        SPCD = integer(0), SFTWD_HRDWD = character(0),
+        DAMAGE_AGENT_CD = integer(0), ba_per_acre = numeric(0),
+        n_trees_tpa = numeric(0)
+      )
+    }
+    dir_create(dirname(damage_ag_out))
+    write_parquet(as_tibble(da_agg), damage_ag_out, compression = "snappy")
+    cat(glue("  Damage:  {format(nrow(da_agg), big.mark=',')} rows -> {file_size(damage_ag_out)}\n"))
+
+    # ------ COND: filter and add STATECD + LAT/LON from PLOT -----------------
     cond_filt <- cond_dt[INVYR >= invyr_min & INVYR <= invyr_max]
 
-    # Add STATECD from PLOT table
     setkey(plot_dt, CN)
-    statecd_map <- plot_dt[, .(CN, STATECD)]
-    setnames(statecd_map, "CN", "PLT_CN")
+    plot_map <- plot_dt[, .(CN, STATECD, LAT, LON)]
+    setnames(plot_map, "CN", "PLT_CN")
     setkey(cond_filt, PLT_CN)
-    setkey(statecd_map, PLT_CN)
-    cond_filt <- statecd_map[cond_filt, on = "PLT_CN"]
+    setkey(plot_map, PLT_CN)
+    cond_filt <- plot_map[cond_filt, on = "PLT_CN"]
 
     dir_create(dirname(cond_out))
     write_parquet(as_tibble(cond_filt), cond_out, compression = "snappy")
-    cat(glue("  Cond:  {format(nrow(cond_filt), big.mark=',')} rows -> {file_size(cond_out)}\n"))
+    cat(glue("  Cond:    {format(nrow(cond_filt), big.mark=',')} rows -> {file_size(cond_out)}\n"))
 
     elapsed <- as.numeric(difftime(Sys.time(), t_st, units = "secs"))
     cat(glue("  Time: {sprintf('%.1fs', elapsed)}\n"))
@@ -219,7 +262,9 @@ for (i in seq_along(states)) {
     n_failed <- n_failed + 1
   })
 
-  rm(tree_dt, plot_dt, cond_dt, trees_agg, cond_filt)
+  rm(tree_dt, plot_dt, cond_dt, trees_agg, cond_filt, da_agg)
+  if (exists("has_damage")) rm(has_damage)
+  if (exists("da_long"))    rm(da_long)
   gc(verbose = FALSE)
 }
 
