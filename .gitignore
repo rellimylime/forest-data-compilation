@@ -46,6 +46,7 @@ docs/
 !05_fia/docs/
 05_fia/docs/*
 !05_fia/docs/fiadb_dashboard.py
+!05_fia/docs/fia_data_dashboard.py
 !05_fia/docs/build_fiadb_user_guide_index.py
 !05_fia/docs/fiadb_user_guide_index_v94.json
 
