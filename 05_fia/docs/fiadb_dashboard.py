@@ -940,7 +940,7 @@ _TABLE_TO_CAT: Dict[str, str] = {
 
 
 def build_pyvis_graph(db_tables: List[str]) -> str:
-    net = Network(height="440px", width="100%", directed=True, notebook=False)
+    net = Network(height="520px", width="100%", directed=True, notebook=False)
     net.set_options("""{
       "physics": {
         "barnesHut": {"gravitationalConstant": -8000, "springLength": 120},
@@ -948,10 +948,10 @@ def build_pyvis_graph(db_tables: List[str]) -> str:
       },
       "edges": {
         "arrows": {"to": {"enabled": true, "scaleFactor": 0.5}},
-        "color": {"color": "#999"},
-        "font": {"size": 9, "align": "top"}
+        "color": {"color": "#555"},
+        "font": {"size": 9, "align": "top", "color": "#aaa", "strokeWidth": 0}
       },
-      "nodes": {"font": {"size": 12}, "borderWidth": 1.5},
+      "nodes": {"font": {"size": 12, "color": "#fff"}, "borderWidth": 1.5},
       "interaction": {"hover": true, "tooltipDelay": 100}
     }""")
 
@@ -983,24 +983,35 @@ def build_pyvis_graph(db_tables: List[str]) -> str:
     table_info_json = json.dumps(table_info, ensure_ascii=False)
 
     injection = f"""
+<style>
+  html, body {{ margin:0; padding:0; background:#000000; overflow:hidden; }}
+  #mynetwork {{ background:#000000 !important; }}
+</style>
 <div id="fia-node-panel" style="
-    display:none; margin:10px 4px 4px 4px; padding:14px 18px;
-    background:#ffffff; border-radius:6px;
-    box-shadow:0 2px 8px rgba(0,0,0,0.15);
+    display:none; position:fixed; top:10px; right:10px; z-index:9999;
+    width:320px; max-height:420px; overflow-y:auto;
+    padding:14px 18px; background:#1c2333ee; border-radius:6px;
+    box-shadow:0 4px 20px rgba(0,0,0,0.7);
     font-family:-apple-system,BlinkMacSystemFont,sans-serif;
     font-size:13px; line-height:1.5; border-left:5px solid #ccc;
+    color:#ddd;
 ">
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-    <span id="fia-node-name" style="font-weight:700;font-size:16px;"></span>
-    <span id="fia-node-cat"  style="padding:2px 10px;border-radius:4px;color:white;font-size:11px;"></span>
+    <span id="fia-node-name" style="font-weight:700;font-size:15px;color:#fff;"></span>
+    <span id="fia-node-cat"  style="padding:2px 10px;border-radius:4px;color:white;font-size:11px;flex-shrink:0;"></span>
   </div>
-  <div id="fia-node-desc" style="color:#333;border-top:1px solid #eee;padding-top:8px;"></div>
-  <div style="margin-top:8px;font-size:11px;color:#aaa;">Click on empty space to dismiss</div>
+  <div id="fia-node-desc" style="color:#bbb;border-top:1px solid #333;padding-top:8px;font-size:12px;"></div>
+  <div style="margin-top:8px;font-size:10px;color:#555;">Click empty space to dismiss</div>
 </div>
 <script>
 var FIA_TABLE_INFO = {table_info_json};
 (function waitForNetwork() {{
     if (typeof network === 'undefined') {{ setTimeout(waitForNetwork, 100); return; }}
+    // Fit on stabilized event, plus a belt-and-suspenders timeout fallback
+    network.once("stabilized", function() {{
+        network.fit({{animation: {{duration: 600, easingFunction: "easeInOutQuad"}}}});
+    }});
+    setTimeout(function() {{ network.fit(); }}, 1800);
     network.on("click", function(params) {{
         var panel = document.getElementById("fia-node-panel");
         if (params.nodes.length > 0) {{
@@ -1306,7 +1317,7 @@ The color of each node shows which group the table belongs to (see the color key
 
         if _PYVIS_AVAILABLE:
             html = build_pyvis_graph(db_tables)
-            components.html(html, height=720, scrolling=False)
+            components.html(html, height=535, scrolling=False)
         elif _GRAPHVIZ_AVAILABLE:
             st.info(
                 "pyvis not installed — showing a static core-table diagram. "
