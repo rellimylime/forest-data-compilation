@@ -50,21 +50,35 @@ docs/
 !05_fia/docs/fia_data_dashboard.py
 !05_fia/docs/build_fiadb_user_guide_index.py
 !05_fia/docs/fiadb_user_guide_index_v94.json
-!05_fia/data/processed/summaries/*.parquet
-
 # translation temp files
 po/*~
 
 # RStudio Connect folder
 rsconnect/
 
-# Data folder
+# Data folder (raw and intermediate processed files)
 **/data/
+!05_fia/data/
+
+# FIA raw CSVs too large for GitHub (TREE tables are 100MB-840MB per state)
+05_fia/data/raw/**/*_TREE.csv
+05_fia/data/raw/**/*_TREE_GRM_COMPONENT.csv
 
 # Processed outputs (cross-dataset derived products)
 processed/
+!05_fia/data/processed/
+05_fia/data/processed/*
+!05_fia/data/processed/summaries/
+!05_fia/data/processed/summaries/*.parquet
 
-# User specifc
+# Large binary file types (safety net for files outside data/ dirs)
+*.nc
+*.gpkg
+*.db
+*.sqlite
+*.gdb.zip
+
+# User specific
 local/
 
 # Claude settings
