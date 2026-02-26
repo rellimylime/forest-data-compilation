@@ -940,7 +940,14 @@ _TABLE_TO_CAT: Dict[str, str] = {
 
 
 def build_pyvis_graph(db_tables: List[str]) -> str:
-    net = Network(height="520px", width="100%", directed=True, notebook=False)
+    net = Network(
+        height="520px",
+        width="100%",
+        directed=True,
+        notebook=False,
+        bgcolor="#000000",
+        font_color="#ffffff",
+    )
     net.set_options("""{
       "physics": {
         "barnesHut": {"gravitationalConstant": -8000, "springLength": 120},
