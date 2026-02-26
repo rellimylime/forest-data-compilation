@@ -66,4 +66,4 @@ processed/
 local/
 
 # Claude settings
-.claude/settings.local.json
+.claude/*
