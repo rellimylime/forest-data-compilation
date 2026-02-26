@@ -1510,8 +1510,10 @@ def render_newbie_concept_diagrams() -> None:
         ref_label = "Code lookups / names"
 
     st.markdown("**Field scene (what crews actually see before it becomes rows in tables)**")
-    st.markdown(
-        f"""
+    scene_col, mapping_col = st.columns([3, 2])
+    with scene_col:
+        st.markdown(
+            """
 <div style="position:relative;border:1px solid #334e36;border-radius:14px;overflow:hidden;
 background:linear-gradient(180deg,#0d1c26 0 26%, #203f2f 26% 58%, #3f5c2b 58% 74%, #4a3b22 74% 86%, #2d261f 86% 100%);
 height:240px;padding:12px;">
@@ -1545,29 +1547,35 @@ height:240px;padding:12px;">
 
   <div style="position:absolute;left:310px;top:152px;width:46px;height:10px;background:#8d6a45;border-radius:5px;transform:rotate(-11deg);"></div>
   <div style="position:absolute;left:320px;top:168px;width:34px;height:8px;background:#9d7750;border-radius:4px;transform:rotate(13deg);"></div>
-
-  <div style="position:absolute;right:12px;top:14px;width:255px;border-radius:10px;padding:10px;
-    background:#101820cc;border:1px solid #4d5f66;">
-    <div style="color:#ecf7f8;font-weight:700;font-size:11px;margin-bottom:6px;">How this becomes FIADB tables</div>
-    <div style="display:grid;grid-template-columns:1fr;gap:6px;font-size:10px;">
-      <div style="padding:6px 8px;border-radius:7px;background:#1f3550;color:#dcecff;border:1px solid #4c79a5;"><strong>{plot_label}</strong><br>location, date, design context</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
-        <div style="padding:6px 8px;border-radius:7px;background:#274029;color:#ddf6dc;border:1px solid #64a46f;"><strong>{tree_label}</strong><br>measured stems</div>
-        <div style="padding:6px 8px;border-radius:7px;background:#3b3220;color:#f6e9cf;border:1px solid #c39c5d;"><strong>{seedling_label}</strong><br>smaller stems + vegetation</div>
-      </div>
-      <div style="padding:6px 8px;border-radius:7px;background:#402c3e;color:#f0dff0;border:1px solid #a67fa1;"><strong>{condition_label}</strong><br>land-cover splits and boundaries</div>
-      <div style="padding:6px 8px;border-radius:7px;background:#293047;color:#dfe7ff;border:1px solid #7f92cd;"><strong>{ref_label}</strong><br>translate numeric codes into names</div>
+</div>
+            """,
+            unsafe_allow_html=True,
+        )
+    with mapping_col:
+        st.markdown(
+            f"""
+<div style="border:1px solid #4d5f66;border-radius:12px;padding:12px;min-height:240px;
+background:linear-gradient(180deg,#101820,#121f28);">
+  <div style="color:#ecf7f8;font-weight:700;font-size:12px;margin-bottom:8px;">How this becomes FIADB tables</div>
+  <div style="display:grid;grid-template-columns:1fr;gap:8px;font-size:11px;">
+    <div style="padding:8px;border-radius:7px;background:#1f3550;color:#dcecff;border:1px solid #4c79a5;"><strong>{plot_label}</strong><br>location, date, design context</div>
+    <div style="display:grid;grid-template-columns:1fr;gap:8px;">
+      <div style="padding:8px;border-radius:7px;background:#274029;color:#ddf6dc;border:1px solid #64a46f;"><strong>{tree_label}</strong><br>measured stems</div>
+      <div style="padding:8px;border-radius:7px;background:#3b3220;color:#f6e9cf;border:1px solid #c39c5d;"><strong>{seedling_label}</strong><br>smaller stems + vegetation</div>
     </div>
+    <div style="padding:8px;border-radius:7px;background:#402c3e;color:#f0dff0;border:1px solid #a67fa1;"><strong>{condition_label}</strong><br>land-cover splits and boundaries</div>
+    <div style="padding:8px;border-radius:7px;background:#293047;color:#dfe7ff;border:1px solid #7f92cd;"><strong>{ref_label}</strong><br>translate numeric codes into names</div>
   </div>
 </div>
-        """,
-        unsafe_allow_html=True,
-    )
+            """,
+            unsafe_allow_html=True,
+        )
     st.caption(
         "The field scene is one visit, but the database stores each measurement layer separately so analyses can combine them correctly."
     )
 
-    d1, d2, d3 = st.columns(3)
+    d1, d2 = st.columns(2)
+    d3 = st.container()
 
     with d1:
         st.markdown("**1. Plot and subplot layout**")
