@@ -105,6 +105,159 @@ AGENT_COLORS = {
 }
 
 # ------------------------------------------------------------------------------
+# Dataset metadata for the Explore tab
+# ------------------------------------------------------------------------------
+
+DATASET_META = {
+    "plot_tree_metrics.parquet": {
+        "name": "Forest Metrics",
+        "icon": "🌲",
+        "description": (
+            "One row per **plot × inventory year**. Core forest health summary: "
+            "basal area by functional group (soft/hardwood), size class (sapling/intermediate/mature), "
+            "and canopy layer (overstory/understory). Includes species richness and "
+            "Shannon diversity (BA-weighted)."
+        ),
+        "join": "PLT_CN + INVYR",
+        "columns": [
+            ("PLT_CN",                   "Plot control number — unique FIA plot identifier",            "int"),
+            ("INVYR",                    "FIA inventory year",                                          "int"),
+            ("state",                    "State abbreviation (2-letter USPS code)",                    "str"),
+            ("LAT",                      "Plot latitude (WGS84)",                                       "float"),
+            ("LON",                      "Plot longitude (WGS84)",                                      "float"),
+            ("ba_live_total",            "Total live basal area",                                       "ft²/acre"),
+            ("n_trees_live",             "Live trees per acre (TPA expansion factor)",                  "TPA"),
+            ("ba_dead_total",            "Total dead (snag) basal area",                               "ft²/acre"),
+            ("n_trees_dead",             "Dead trees per acre",                                         "TPA"),
+            ("ba_live_softwood",         "Live BA — softwood / gymnosperms",                            "ft²/acre"),
+            ("ba_live_hardwood",         "Live BA — hardwood / angiosperms",                            "ft²/acre"),
+            ("ba_live_sapling",          "Live BA — saplings (DBH 1.0–4.9 in)",                        "ft²/acre"),
+            ("ba_live_intermediate",     "Live BA — intermediate trees (DBH 5.0–11.9 in)",             "ft²/acre"),
+            ("ba_live_mature",           "Live BA — mature trees (DBH ≥ 12.0 in)",                     "ft²/acre"),
+            ("ba_live_overstory",        "Live BA — overstory layer (CCLCD 1–3)",                      "ft²/acre"),
+            ("ba_live_understory",       "Live BA — understory layer (CCLCD 4–5)",                     "ft²/acre"),
+            ("n_species_live",           "Live tree species richness (unique SPCD with BA > 0)",       "count"),
+            ("shannon_h_ba",             "Shannon-Wiener H′ (BA-weighted, live trees only)",           "index"),
+            ("species_temp_optima_mean", "Mean species temperature optima — join TBD",                  "°C"),
+        ],
+    },
+    "plot_disturbance_history.parquet": {
+        "name": "Disturbance History",
+        "icon": "🔥",
+        "description": (
+            "**Long format** — one row per disturbance event. Sourced from the COND table "
+            "(DSTRBCD1/2/3 + DSTRBYR1/2/3). Each plot condition can record up to three "
+            "disturbance events; only non-zero, non-missing codes are retained."
+        ),
+        "join": "PLT_CN + INVYR + CONDID",
+        "columns": [
+            ("PLT_CN",               "Plot control number",                                             "int"),
+            ("INVYR",                "FIA inventory year",                                              "int"),
+            ("STATECD",              "Numeric state FIPS code",                                         "int"),
+            ("CONDID",               "Condition identifier (1–5 within a plot)",                       "int"),
+            ("CONDPROP_UNADJ",       "Unadjusted condition proportion (fraction of plot area)",        "0–1"),
+            ("LAT",                  "Plot latitude (WGS84)",                                           "float"),
+            ("LON",                  "Plot longitude (WGS84)",                                          "float"),
+            ("disturbance_slot",     "Which COND disturbance slot (1, 2, or 3)",                       "int"),
+            ("DSTRBCD",              "FIA disturbance code (from COND.DSTRBCD1/2/3)",                  "int"),
+            ("DSTRBYR",              "Year of disturbance (from COND.DSTRBYR1/2/3)",                   "int"),
+            ("disturbance_label",    "Human-readable disturbance type",                                 "str"),
+            ("disturbance_category", "Broad category: fire/insects/disease/weather/animal/geologic",   "str"),
+        ],
+    },
+    "plot_damage_agents.parquet": {
+        "name": "Damage Agents",
+        "icon": "🪲",
+        "description": (
+            "**Long format** — one row per tree × damage agent. Sourced from DAMAGE_AGENT_CD1/2/3 "
+            "on live TREE records, pivoted to long form. Uses FHAAST/PTIPS agent codes. "
+            "~30 high-profile species are labeled; unknown codes have NA agent_label."
+        ),
+        "join": "PLT_CN + INVYR",
+        "columns": [
+            ("PLT_CN",           "Plot control number",                                                 "int"),
+            ("INVYR",            "FIA inventory year",                                                  "int"),
+            ("CONDID",           "Condition identifier",                                                "int"),
+            ("SPCD",             "FIA species code",                                                    "int"),
+            ("SFTWD_HRDWD",      "S = softwood (gymnosperm), H = hardwood (angiosperm)",               "S/H"),
+            ("DAMAGE_AGENT_CD",  "FHAAST/PTIPS damage agent code",                                     "int"),
+            ("ba_per_acre",      "Basal area of trees bearing this agent",                             "ft²/acre"),
+            ("n_trees_tpa",      "Trees per acre bearing this agent",                                   "TPA"),
+            ("agent_label",      "Human-readable agent name (NA for uncatalogued codes)",               "str"),
+            ("agent_category",   "Broad category: bark beetles/defoliators/disease/fire/etc.",         "str"),
+            ("state",            "State abbreviation",                                                  "str"),
+        ],
+    },
+    "plot_mortality_metrics.parquet": {
+        "name": "Mortality & Harvest",
+        "icon": "💀",
+        "description": (
+            "Between-measurement mortality per plot × year, sourced from TREE_GRM_COMPONENT. "
+            "Includes both natural mortality and harvest removal, broken out by mortality "
+            "agent code (AGENTCD)."
+        ),
+        "join": "PLT_CN + INVYR",
+        "columns": [
+            ("PLT_CN",           "Plot control number",                                                 "int"),
+            ("INVYR",            "FIA inventory year (end of measurement period)",                     "int"),
+            ("AGENTCD",          "Mortality agent (10=Insect, 20=Disease, 30=Fire, 80=Harvest, …)",   "int"),
+            ("component_type",   "'natural' or 'harvest'",                                             "str"),
+            ("tpamort_per_acre", "Mortality trees per acre",                                            "TPA"),
+            ("state",            "State abbreviation",                                                  "str"),
+        ],
+    },
+    "plot_seedling_metrics.parquet": {
+        "name": "Seedling Regeneration",
+        "icon": "🌱",
+        "description": (
+            "One row per **plot × inventory year**. Seedling counts from the SEEDLING table, "
+            "summarised by functional group (softwood/hardwood) with species richness "
+            "and Shannon diversity (count-weighted)."
+        ),
+        "join": "PLT_CN + INVYR",
+        "columns": [
+            ("PLT_CN",             "Plot control number",                                               "int"),
+            ("INVYR",              "FIA inventory year",                                                "int"),
+            ("treecount_total",    "Total seedling tally count",                                       "count"),
+            ("count_softwood",     "Softwood seedling count",                                           "count"),
+            ("count_hardwood",     "Hardwood seedling count",                                           "count"),
+            ("n_species_seedling", "Seedling species richness (unique SPCD)",                           "count"),
+            ("shannon_h_count",    "Shannon-Wiener H′ (count-weighted, all seedlings)",                "index"),
+            ("state",              "State abbreviation",                                                 "str"),
+        ],
+    },
+    "plot_cond_fortypcd.parquet": {
+        "name": "Condition / Forest Type",
+        "icon": "🗺️",
+        "description": (
+            "One row per **condition** (up to 5 per plot × year). Pass-through of the COND table "
+            "with forest type (FORTYPCD), disturbance codes, condition status, and plot "
+            "coordinates. Useful for forest-type transition analysis or joining forest type "
+            "to tree metrics."
+        ),
+        "join": "PLT_CN + INVYR + CONDID",
+        "columns": [
+            ("PLT_CN",         "Plot control number",                                                   "int"),
+            ("INVYR",          "FIA inventory year",                                                    "int"),
+            ("STATECD",        "Numeric state FIPS code",                                               "int"),
+            ("CONDID",         "Condition identifier (1–5 within a plot)",                             "int"),
+            ("FORTYPCD",       "Forest type code (FIA national classification)",                       "int"),
+            ("COND_STATUS_CD", "Condition status (1=accessible forest, 2=non-forest, …)",              "int"),
+            ("CONDPROP_UNADJ", "Unadjusted condition proportion (fraction of plot area)",              "0–1"),
+            ("LAT",            "Plot latitude (WGS84)",                                                 "float"),
+            ("LON",            "Plot longitude (WGS84)",                                                "float"),
+            ("DSTRBCD1",       "First disturbance code (COND.DSTRBCD1)",                               "int"),
+            ("DSTRBYR1",       "Year of first disturbance",                                             "int"),
+            ("DSTRBCD2",       "Second disturbance code",                                               "int"),
+            ("DSTRBYR2",       "Year of second disturbance",                                            "int"),
+            ("DSTRBCD3",       "Third disturbance code",                                                "int"),
+            ("DSTRBYR3",       "Year of third disturbance",                                             "int"),
+            ("state",          "State abbreviation",                                                    "str"),
+        ],
+    },
+}
+
+# ------------------------------------------------------------------------------
 # Expected output files
 # ------------------------------------------------------------------------------
 
@@ -226,6 +379,7 @@ def main():
         agents_df,  agents_err  = load_parquet(data_path(data_dir, "plot_damage_agents.parquet"))
         mort_df,    mort_err    = load_parquet(data_path(data_dir, "plot_mortality_metrics.parquet"))
         seed_df,    seed_err    = load_parquet(data_path(data_dir, "plot_seedling_metrics.parquet"))
+        cond_df,    cond_err    = load_parquet(data_path(data_dir, "plot_cond_fortypcd.parquet"))
 
     # Sidebar filters (populated after loading)
     with st.sidebar:
@@ -254,10 +408,12 @@ def main():
     agents_f  = apply_filters(agents_df)
     mort_f    = apply_filters(mort_df)
     seed_f    = apply_filters(seed_df)
+    cond_f    = apply_filters(cond_df)
 
     # ── Tabs ─────────────────────────────────────────────────────────────────
-    tab_overview, tab_forests, tab_disturb, tab_agents, tab_mort = st.tabs([
+    tab_overview, tab_explore, tab_forests, tab_disturb, tab_agents, tab_mort = st.tabs([
         "📋 Overview",
+        "🔍 Explore",
         "🌲 Forests",
         "🔥 Disturbance",
         "🪲 Damage Agents",
@@ -359,7 +515,126 @@ def main():
             st.info("Run `Rscript 05_fia/scripts/05_build_fia_summaries.R` to generate the summary parquets.")
 
     # ==========================================================================
-    # TAB 2 — FORESTS
+    # TAB 2 — EXPLORE
+    # ==========================================================================
+    with tab_explore:
+        st.subheader("Datasets & Schema")
+
+        # Map filename → loaded dataframe
+        _all_dfs = {
+            "plot_tree_metrics.parquet":        tree_df,
+            "plot_disturbance_history.parquet": disturb_df,
+            "plot_damage_agents.parquet":       agents_df,
+            "plot_mortality_metrics.parquet":   mort_df,
+            "plot_seedling_metrics.parquet":    seed_df,
+            "plot_cond_fortypcd.parquet":       cond_df,
+        }
+        available_keys = [k for k, v in _all_dfs.items() if v is not None]
+
+        if not available_keys:
+            st.info("No datasets loaded. Run `Rscript 05_fia/scripts/05_build_fia_summaries.R` first.")
+        else:
+            sel_key = st.selectbox(
+                "Dataset",
+                available_keys,
+                format_func=lambda k: (
+                    f"{DATASET_META[k]['icon']}  {DATASET_META[k]['name']}  —  {k}"
+                    if k in DATASET_META else k
+                ),
+                key="explore_dataset",
+            )
+
+            df_sel = _all_dfs[sel_key]
+            meta   = DATASET_META.get(sel_key, {})
+
+            # ── At-a-glance stats ────────────────────────────────────────────
+            n_rows    = len(df_sel)
+            n_plots   = df_sel["PLT_CN"].nunique()  if "PLT_CN" in df_sel.columns else None
+            n_states  = df_sel["state"].nunique()   if "state"  in df_sel.columns else None
+            yr_range  = (
+                f"{int(df_sel['INVYR'].min())}–{int(df_sel['INVYR'].max())}"
+                if "INVYR" in df_sel.columns and df_sel["INVYR"].notna().any() else "—"
+            )
+            n_cols = len(df_sel.columns)
+
+            c1, c2, c3, c4, c5 = st.columns(5)
+            c1.markdown(metric_card("Rows",          f"{n_rows:,}",                        "total records"),    unsafe_allow_html=True)
+            c2.markdown(metric_card("Unique Plots",  f"{n_plots:,}" if n_plots else "—",  "distinct PLT_CN"),  unsafe_allow_html=True)
+            c3.markdown(metric_card("States",        str(n_states) if n_states else "—",  ""),                 unsafe_allow_html=True)
+            c4.markdown(metric_card("Year Range",    yr_range,                             "INVYR"),            unsafe_allow_html=True)
+            c5.markdown(metric_card("Columns",       str(n_cols),                          ""),                 unsafe_allow_html=True)
+
+            # ── Description ──────────────────────────────────────────────────
+            if meta.get("description"):
+                st.markdown(f"**About:** {meta['description']}")
+            if meta.get("join"):
+                st.markdown(f"**Primary join key:** `{meta['join']}`")
+
+            st.markdown("---")
+
+            # ── Column reference ─────────────────────────────────────────────
+            with st.expander("📋 Column Reference", expanded=True):
+                if meta.get("columns"):
+                    col_rows = []
+                    for col_name, col_desc, col_unit in meta["columns"]:
+                        present = col_name in df_sel.columns
+                        dtype   = str(df_sel[col_name].dtype) if present else "—"
+                        col_rows.append({
+                            "Column":      col_name,
+                            "Type":        dtype,
+                            "Unit":        col_unit,
+                            "Description": col_desc,
+                            "In data":     "✓" if present else "✗",
+                        })
+                    col_df = pd.DataFrame(col_rows)
+                    st.dataframe(
+                        col_df.style.applymap(color_status, subset=["In data"]),
+                        hide_index=True,
+                        use_container_width=True,
+                    )
+                    extra = [c for c in df_sel.columns if c not in {r[0] for r in meta["columns"]}]
+                    if extra:
+                        st.caption(f"Additional columns not documented above: {', '.join(extra)}")
+                else:
+                    st.dataframe(
+                        pd.DataFrame({"Column": df_sel.columns,
+                                      "Type":   [str(t) for t in df_sel.dtypes]}),
+                        hide_index=True, use_container_width=True,
+                    )
+
+            # ── Data preview ─────────────────────────────────────────────────
+            with st.expander("🔎 Data Preview", expanded=False):
+                n_preview = st.slider("Rows to show", 5, 200, 20, key="explore_preview_n")
+                st.dataframe(df_sel.head(n_preview), use_container_width=True)
+
+        # ── How datasets connect ─────────────────────────────────────────────
+        st.markdown("---")
+        st.markdown("### How Datasets Connect")
+        st.markdown(
+            "All datasets share **`PLT_CN`** (plot control number) as the primary identifier, "
+            "and most also join on **`INVYR`** (inventory year).\n\n"
+            "| Dataset | Grain | Join key |\n"
+            "|---------|-------|----------|\n"
+            "| `plot_tree_metrics` | 1 row per plot × year | `PLT_CN, INVYR` |\n"
+            "| `plot_seedling_metrics` | 1 row per plot × year | `PLT_CN, INVYR` |\n"
+            "| `plot_disturbance_history` | 1+ rows per plot × year (one per disturbance event) | `PLT_CN, INVYR, CONDID` |\n"
+            "| `plot_damage_agents` | 1+ rows per plot × year (one per agent × species) | `PLT_CN, INVYR, CONDID` |\n"
+            "| `plot_mortality_metrics` | 1+ rows per plot × year (one per mortality agent) | `PLT_CN, INVYR` |\n"
+            "| `plot_cond_fortypcd` | 1+ rows per plot × year (one per forest condition) | `PLT_CN, INVYR, CONDID` |\n"
+        )
+        st.markdown("**Example join (Python):**")
+        st.code(
+            'import pandas as pd\n'
+            'tree = pd.read_parquet("plot_tree_metrics.parquet")\n'
+            'seed = pd.read_parquet("plot_seedling_metrics.parquet")\n'
+            '\n'
+            '# One row per plot × year with both tree and seedling data\n'
+            'combined = tree.merge(seed, on=["PLT_CN", "INVYR", "state"], how="left")',
+            language="python",
+        )
+
+    # ==========================================================================
+    # TAB 3 — FORESTS
     # ==========================================================================
     with tab_forests:
         if tree_f is None or len(tree_f) == 0:
@@ -475,7 +750,7 @@ def main():
                     st.plotly_chart(dark_fig(fig), use_container_width=True)
 
     # ==========================================================================
-    # TAB 3 — DISTURBANCE
+    # TAB 4 — DISTURBANCE
     # ==========================================================================
     with tab_disturb:
         if disturb_f is None or len(disturb_f) == 0:
@@ -564,7 +839,7 @@ def main():
                 st.plotly_chart(fig, use_container_width=True)
 
     # ==========================================================================
-    # TAB 4 — DAMAGE AGENTS
+    # TAB 5 — DAMAGE AGENTS
     # ==========================================================================
     with tab_agents:
         if agents_f is None or len(agents_f) == 0:
@@ -659,7 +934,7 @@ def main():
                     st.caption("LAT/LON not yet available — re-run the pipeline to add coordinates.")
 
     # ==========================================================================
-    # TAB 5 — MORTALITY & REGENERATION
+    # TAB 6 — MORTALITY & REGENERATION
     # ==========================================================================
     with tab_mort:
         mort_col, seed_col = st.columns(2)
