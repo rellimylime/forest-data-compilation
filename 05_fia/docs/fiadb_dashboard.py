@@ -23,8 +23,11 @@ Source: FIADB User Guide v9.4, August 2025
 
 import json
 import os
+import re
 import sqlite3
-from typing import Dict, List, Optional, Tuple
+from collections import defaultdict
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
 import streamlit as st
@@ -886,6 +889,401 @@ PIPELINE_TEMPLATES = [
 
 
 # =============================================================================
+# USER GUIDE (PDF INDEX CACHE) HELPERS
+# =============================================================================
+
+USER_GUIDE_INDEX_JSON = Path(__file__).with_name("fiadb_user_guide_index_v94.json")
+_JOIN_EXPR_RE = re.compile(r"([A-Z0-9_]+\.[A-Z0-9_]+)\s*=\s*([A-Z0-9_]+\.[A-Z0-9_]+)")
+
+VARIABLE_FAMILY_ORDER = [
+    "Identifiers / Join keys",
+    "Time / Dates",
+    "Geography / Location",
+    "Species / Taxonomy",
+    "Codes / Classifications",
+    "Sampling / Estimation",
+    "Measurements / Counts",
+    "Derived metrics / Carbon / Volume",
+    "Provenance / Audit / Metadata",
+    "Text / Labels",
+    "Other",
+]
+
+VARIABLE_FAMILY_DESCRIPTIONS: Dict[str, str] = {
+    "Identifiers / Join keys": "Primary keys, foreign keys, sequence IDs, and row-linking fields.",
+    "Time / Dates": "Inventory years, measurement dates, disturbance years, and longitudinal timing fields.",
+    "Geography / Location": "State/county/unit codes, coordinates, aspect/slope/azimuth, and plot location descriptors.",
+    "Species / Taxonomy": "Species codes and names, taxonomic groupings, and vegetation identifiers.",
+    "Codes / Classifications": "Categorical code fields (often ending in _CD or CD) that require a lookup/codebook.",
+    "Sampling / Estimation": "Evaluation, stratum, expansion, and adjustment factor fields used in population estimation.",
+    "Measurements / Counts": "Raw observed dimensions, counts, percentages, proportions, and sampled quantities.",
+    "Derived metrics / Carbon / Volume": "Calculated or modeled values (growth, volume, biomass, carbon, basal area, rates).",
+    "Provenance / Audit / Metadata": "Created/modified/version/source/active fields and process metadata.",
+    "Text / Labels": "Human-readable names, meanings, descriptions, citations, and free-text labels.",
+    "Other": "Fields that do not fit cleanly in the categories above.",
+}
+
+CONCEPT_LOCATORS: List[Dict[str, Any]] = [
+    {
+        "name": "Plot identity and revisit chain",
+        "what": "Find the physical plot ID, visit year, and links to previous visits of the same location.",
+        "tables": ["PLOT", "SURVEY", "COUNTY"],
+        "columns": ["CN", "STATECD", "UNITCD", "COUNTYCD", "PLOT", "INVYR", "PREV_PLT_CN", "SRV_CN", "CTY_CN"],
+        "notes": "PLOT is the hub. The physical location is tracked by STATECD+UNITCD+COUNTYCD+PLOT across INVYR.",
+    },
+    {
+        "name": "Forest condition classification (per plot portions)",
+        "what": "Find condition-level forest type, ownership, stand size, and area proportion fields.",
+        "tables": ["COND", "SUBP_COND", "BOUNDARY", "REF_FOREST_TYPE", "REF_OWNGRPCD"],
+        "columns": ["PLT_CN", "CONDID", "COND_STATUS_CD", "FORTYPCD", "OWNGRPCD", "STDSZCD", "CONDPROP_UNADJ"],
+        "notes": "A single plot may have multiple COND records. CONDPROP_UNADJ proportions sum to 1.0 by plot.",
+    },
+    {
+        "name": "Live tree measurements (species, diameter, status)",
+        "what": "Find individual-tree observations and the fields needed for most plot-level tree analyses.",
+        "tables": ["TREE", "REF_SPECIES", "COND"],
+        "columns": ["PLT_CN", "CONDID", "SUBP", "TREE", "SPCD", "DIA", "HT", "STATUSCD", "TPA_UNADJ", "CCLCD"],
+        "notes": "Join TREE.SPCD -> REF_SPECIES.SPCD for names. Filter STATUSCD=1 for live trees in many analyses.",
+    },
+    {
+        "name": "Tree mortality / growth / removals between visits",
+        "what": "Find GRM component and estimate tables that describe what happened between inventories.",
+        "tables": ["TREE_GRM_COMPONENT", "TREE_GRM_ESTN", "TREE_GRM_BEGIN", "TREE", "BEGINEND"],
+        "columns": ["TRE_CN", "MICR_COMPONENT_AL_FOREST", "MICR_TPAMORT_UNADJ_AL_FOREST", "ANN_NET_GROWTH", "INVYR"],
+        "notes": "GRM tables link through TRE_CN to TREE.CN (generally the T2/end record). TREE supplies INVYR/SPCD.",
+    },
+    {
+        "name": "Seedlings and regeneration",
+        "what": "Find seedling counts and enhanced NRS regeneration indicators.",
+        "tables": ["SEEDLING", "PLOT_REGEN", "SUBPLOT_REGEN", "SEEDLING_REGEN", "REF_SPECIES"],
+        "columns": ["PLT_CN", "CONDID", "SUBP", "SPCD", "TREECOUNT", "BROWSE_IMPACT"],
+        "notes": "SEEDLING is the standard national table; NRS regeneration tables add regional detail.",
+    },
+    {
+        "name": "Disturbance and treatment history",
+        "what": "Find condition-level disturbance and treatment codes/years and decode where needed.",
+        "tables": ["COND", "REF_DAMAGE_AGENT", "REF_DAMAGE_AGENT_GROUP"],
+        "columns": ["DSTRBCD1", "DSTRBYR1", "DSTRBCD2", "DSTRBYR2", "DSTRBCD3", "DSTRBYR3", "TRTCD1", "TRTYR1"],
+        "notes": "COND stores up to 3 disturbance and 3 treatment events per condition.",
+    },
+    {
+        "name": "Down woody material / fuels / floor carbon",
+        "what": "Find dead wood, duff/litter, and transect-based fuels measurements.",
+        "tables": [
+            "DWM_VISIT", "DWM_COARSE_WOODY_DEBRIS", "DWM_DUFF_LITTER_FUEL",
+            "DWM_FINE_WOODY_DEBRIS", "DWM_MICROPLOT_FUEL", "DWM_RESIDUAL_PILE",
+            "DWM_TRANSECT_SEGMENT", "COND_DWM_CALC",
+        ],
+        "columns": ["PLT_CN", "CONDID", "TRANSECT", "CARBON", "CARBON_AC_UNADJ", "DECAYCD"],
+        "notes": "Most DWM tables join to PLOT via PLT_CN and many also align to COND via PLT_CN+CONDID.",
+    },
+    {
+        "name": "Population estimation factors (EVALIDator-style workflows)",
+        "what": "Find the evaluation/stratum tables and adjustment/expansion factors used in statistical estimation.",
+        "tables": [
+            "POP_EVAL", "POP_EVAL_GRP", "POP_EVAL_TYP", "POP_ESTN_UNIT",
+            "POP_STRATUM", "POP_PLOT_STRATUM_ASSGN", "PLOTSNAP",
+        ],
+        "columns": ["EVAL_CN", "EVAL_GRP_CN", "STRATUM_CN", "ESTN_UNIT_CN", "EXPNS", "ADJ_FACTOR_SUBP"],
+        "notes": "These tables are essential for population estimates but not required for many plot-level analyses.",
+    },
+    {
+        "name": "Reference lookups / code decoding",
+        "what": "Find code->label tables for species, forest type, owner groups, damage agents, and more.",
+        "tables": [
+            "REF_SPECIES", "REF_FOREST_TYPE", "REF_FOREST_TYPE_GROUP", "REF_OWNGRPCD",
+            "REF_DAMAGE_AGENT", "REF_DAMAGE_AGENT_GROUP", "REF_GRM_TYPE", "REF_UNIT",
+        ],
+        "columns": ["SPCD", "FORTYPCD", "TYPGRPCD", "CODE", "VALUE", "MEANING", "COMMON_NAME"],
+        "notes": "Reference tables make coded fields readable. Join them early when building exploratory outputs.",
+    },
+]
+
+
+def classify_variable_family(column_name: str, descriptive_name: str = "") -> str:
+    c = (column_name or "").upper()
+    d = (descriptive_name or "").lower()
+
+    if (
+        c == "CN" or c.endswith("_CN") or c.endswith("_ID") or c in {
+            "PLTID", "CONDID", "SUBP", "TREE", "EVALID", "INVYR", "PLOT"
+        }
+    ):
+        # Keep INVYR and PLOT in other categories if more specific rules apply below.
+        if c not in {"INVYR", "PLOT"}:
+            return "Identifiers / Join keys"
+
+    if any(tok in c for tok in ["DATE", "_DT", "YEAR", "_YR", "INVYR", "MEASYEAR", "MEASMON", "MEASDAY"]):
+        return "Time / Dates"
+
+    if (
+        c in {"STATECD", "COUNTYCD", "UNITCD", "LAT", "LON", "AZIMUTH", "ASPECT", "SLOPE", "ELEV", "ELEVATION"}
+        or any(tok in c for tok in ["LAT", "LON", "AZIMUTH", "ASPECT", "SLOPE", "ELEV", "COUNTY", "STATE", "UNIT"])
+        or any(tok in d for tok in ["county", "state", "latitude", "longitude", "azimuth", "aspect", "slope"])
+    ):
+        return "Geography / Location"
+
+    if (
+        "SPCD" in c or "SPECIES" in c or "GENUS" in c or c in {
+            "COMMON_NAME", "SCIENTIFIC_NAME", "SYMBOL", "ITIS_TSN", "PLANTS_CD"
+        }
+        or "species" in d or "taxon" in d
+    ):
+        return "Species / Taxonomy"
+
+    if any(tok in c for tok in ["EVAL", "ESTN", "STRATUM", "EXPNS", "ADJ_FACTOR", "EXP_", "ADJ_"]):
+        return "Sampling / Estimation"
+    if "expansion factor" in d or "adjustment factor" in d or "estimation" in d or "evaluation" in d:
+        return "Sampling / Estimation"
+
+    if (
+        any(tok in c for tok in ["CARBON", "BIOMASS", "VOLUME", "_VOL", "GROWTH", "MORT", "REMV", "BA", "BASAL"])
+        or any(tok in d for tok in ["carbon", "biomass", "volume", "growth", "mortality", "removal", "basal area"])
+    ):
+        return "Derived metrics / Carbon / Volume"
+
+    if (
+        c.endswith("CD") or "_CD" in c or c.endswith("CLASS") or "CLASS" in c or "TYPE" in c or "STATUS" in c
+        or any(tok in d for tok in [" code", "classification", "status code", "type code"])
+    ):
+        return "Codes / Classifications"
+
+    if (
+        any(tok in c for tok in [
+            "DIA", "HT", "HEIGHT", "COUNT", "TREECOUNT", "PCT", "PROP", "RATIO",
+            "AREA", "DENSITY", "LENGTH", "WIDTH", "DEPTH", "WT", "WEIGHT", "TPA",
+        ])
+        or any(tok in d for tok in [
+            "diameter", "height", "count", "percent", "proportion", "area", "density",
+            "length", "depth", "weight", "per acre",
+        ])
+    ):
+        return "Measurements / Counts"
+
+    if (
+        any(tok in c for tok in ["CREATED", "MODIFIED", "INSTANCE", "VERSION", "ACTIVE", "SOURCE", "CITATION"])
+        or any(tok in d for tok in ["created", "modified", "version", "source", "citation"])
+    ):
+        return "Provenance / Audit / Metadata"
+
+    if (
+        any(tok in c for tok in ["NAME", "MEANING", "DESCR", "DESCRIPTION", "ABBR", "AUTHOR", "TITLE"])
+        or any(tok in d for tok in ["name", "description", "meaning", "author", "citation"])
+    ):
+        return "Text / Labels"
+
+    if c in {"CN", "PLOT", "CONDID"}:
+        return "Identifiers / Join keys"
+    return "Other"
+
+
+def _parse_num_tuple(value: str) -> Tuple[int, ...]:
+    try:
+        return tuple(int(x) for x in str(value).split("."))
+    except Exception:
+        return (999999,)
+
+
+def _split_guide_description(text: str) -> Tuple[str, List[str]]:
+    lines = [ln.strip() for ln in (text or "").splitlines() if ln.strip()]
+    intro_parts: List[str] = []
+    bullets: List[str] = []
+    for ln in lines:
+        if ln.startswith("- "):
+            bullets.append(ln[2:].strip())
+        else:
+            intro_parts.append(ln)
+    intro = " ".join(intro_parts).strip()
+    return intro, bullets
+
+
+def _extract_join_examples_from_text(text: str) -> List[str]:
+    pairs = []
+    for left, right in _JOIN_EXPR_RE.findall(text or ""):
+        pairs.append(f"{left} = {right}")
+    # Keep order, de-duplicate
+    seen = set()
+    out = []
+    for p in pairs:
+        if p not in seen:
+            seen.add(p)
+            out.append(p)
+    return out
+
+
+@st.cache_data(show_spinner=False)
+def load_user_guide_index() -> Dict[str, Any]:
+    if not USER_GUIDE_INDEX_JSON.exists():
+        return {}
+    try:
+        return json.loads(USER_GUIDE_INDEX_JSON.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def prepare_user_guide_lookup(guide_data: Dict[str, Any]) -> Dict[str, Any]:
+    if not guide_data:
+        return {
+            "source": {},
+            "summary": {},
+            "toc": [],
+            "chapters": [],
+            "tables_by_name": {},
+            "table_rows": [],
+            "columns_rows": [],
+            "columns_by_table": {},
+            "columns_by_name": {},
+            "families": [],
+        }
+
+    table_sections = guide_data.get("table_sections", {}) or {}
+    table_rows: List[Dict[str, Any]] = []
+    tables_by_name: Dict[str, Dict[str, Any]] = {}
+
+    for row in (guide_data.get("tables_index", []) or []):
+        t = dict(row)
+        t.update(table_sections.get(row.get("oracle_table", ""), {}))
+        t["table_category"] = _TABLE_TO_CAT.get(t.get("oracle_table", ""), "Unknown")
+        intro, bullets = _split_guide_description(t.get("description", ""))
+        t["official_summary"] = intro
+        t["official_bullets"] = bullets
+        t["documented_joins"] = _extract_join_examples_from_text(t.get("description", ""))
+        table_rows.append(t)
+        if t.get("oracle_table"):
+            tables_by_name[t["oracle_table"]] = t
+
+    table_rows.sort(key=lambda r: _parse_num_tuple(r.get("section", "")))
+
+    columns_rows: List[Dict[str, Any]] = []
+    columns_by_table: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    columns_by_name: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+
+    for row in (guide_data.get("columns_index", []) or []):
+        r = dict(row)
+        r["guide_section"] = ".".join(str(r.get("subsection", "")).split(".")[:2])
+        r["table_category"] = _TABLE_TO_CAT.get(r.get("oracle_table", ""), "Unknown")
+        r["variable_family"] = classify_variable_family(
+            r.get("column_name", ""),
+            r.get("descriptive_name", ""),
+        )
+
+        table_meta = tables_by_name.get(r.get("oracle_table", ""))
+        if table_meta:
+            r["guide_start_page"] = table_meta.get("guide_start_page")
+            r["guide_end_page"] = table_meta.get("guide_end_page")
+            r["table_section"] = table_meta.get("section")
+        else:
+            r["guide_start_page"] = None
+            r["guide_end_page"] = None
+            r["table_section"] = r["guide_section"]
+
+        columns_rows.append(r)
+        if r.get("oracle_table"):
+            columns_by_table[r["oracle_table"]].append(r)
+        if r.get("column_name"):
+            columns_by_name[r["column_name"]].append(r)
+
+    for table, rows in columns_by_table.items():
+        rows.sort(key=lambda r: (_parse_num_tuple(r.get("subsection", "")), r.get("column_name", "")))
+    for col, rows in columns_by_name.items():
+        rows.sort(key=lambda r: (r.get("oracle_table", ""), _parse_num_tuple(r.get("subsection", ""))))
+
+    toc = guide_data.get("toc", []) or []
+    chapters = [r for r in toc if r.get("level") == 1]
+
+    families = sorted(
+        {r["variable_family"] for r in columns_rows},
+        key=lambda name: VARIABLE_FAMILY_ORDER.index(name) if name in VARIABLE_FAMILY_ORDER else 999,
+    )
+
+    return {
+        "source": guide_data.get("source", {}) or {},
+        "summary": guide_data.get("summary", {}) or {},
+        "toc": toc,
+        "chapters": chapters,
+        "tables_by_name": tables_by_name,
+        "table_rows": table_rows,
+        "columns_rows": columns_rows,
+        "columns_by_table": dict(columns_by_table),
+        "columns_by_name": dict(columns_by_name),
+        "families": families,
+    }
+
+
+def filter_guide_columns(
+    rows: List[Dict[str, Any]],
+    *,
+    query: str = "",
+    search_desc: bool = True,
+    exact: bool = False,
+    table_filter: Optional[str] = None,
+    table_category_filter: Optional[str] = None,
+    family_filter: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    q = (query or "").strip().upper()
+    out = []
+    for r in rows:
+        if table_filter and table_filter != "All" and r.get("oracle_table") != table_filter:
+            continue
+        if table_category_filter and table_category_filter != "All" and r.get("table_category") != table_category_filter:
+            continue
+        if family_filter and family_filter != "All" and r.get("variable_family") != family_filter:
+            continue
+
+        if q:
+            col = str(r.get("column_name", "")).upper()
+            desc = str(r.get("descriptive_name", "")).upper()
+            tbl = str(r.get("oracle_table", "")).upper()
+            if exact:
+                matched = (col == q) or (tbl == q)
+                if search_desc:
+                    matched = matched or (desc == q)
+            else:
+                matched = (q in col) or (q in tbl)
+                if search_desc:
+                    matched = matched or (q in desc)
+            if not matched:
+                continue
+        out.append(r)
+    return out
+
+
+def guide_rows_to_df(rows: List[Dict[str, Any]], include_table: bool = True) -> pd.DataFrame:
+    if not rows:
+        return pd.DataFrame()
+    data = []
+    for r in rows:
+        row = {
+            "Column": r.get("column_name"),
+            "Guide name": r.get("descriptive_name"),
+            "Family": r.get("variable_family"),
+            "Guide subsection": r.get("subsection"),
+            "Field Guide": r.get("field_guide_section") or "",
+        }
+        if include_table:
+            row["Table"] = r.get("oracle_table")
+            row["Table group"] = r.get("table_category", "Unknown")
+            if r.get("guide_start_page"):
+                row["Guide pages"] = (
+                    f"{r['guide_start_page']}-{r['guide_end_page']}"
+                    if r.get("guide_end_page") and r.get("guide_end_page") != r.get("guide_start_page")
+                    else str(r["guide_start_page"])
+                )
+            else:
+                row["Guide pages"] = ""
+        data.append(row)
+    df = pd.DataFrame(data)
+    order = [
+        "Column", "Guide name", "Family", "Table", "Table group",
+        "Guide subsection", "Field Guide", "Guide pages",
+    ] if include_table else [
+        "Column", "Guide name", "Family", "Guide subsection", "Field Guide"
+    ]
+    cols = [c for c in order if c in df.columns]
+    return df[cols]
+
+
+# =============================================================================
 # SCHEMA HELPERS
 # =============================================================================
 
@@ -1099,6 +1497,15 @@ def build_graphviz_graph(db_tables: List[str]) -> "Digraph":
 def main() -> None:
     st.set_page_config(page_title="FIA Schema Navigator", layout="wide")
     st.title("FIA Database Schema Navigator")
+    guide_data = load_user_guide_index()
+    guide_lookup = prepare_user_guide_lookup(guide_data)
+    guide_summary = guide_lookup.get("summary", {})
+    guide_loaded = bool(guide_lookup.get("columns_rows"))
+    if guide_loaded:
+        st.caption(
+            f"User Guide index cache loaded: {guide_summary.get('tables_index_rows', '?')} tables, "
+            f"{guide_summary.get('column_index_rows', '?')} table-column entries"
+        )
     st.caption(
         "FIADB v9.4 · August 2025 · Schema browsing via PRAGMA — zero bulk data loading"
     )
@@ -1219,7 +1626,7 @@ if (_sb) {{
         "Overview",
         "Schema Browser",
         "Relationship Map",
-        "Column Search",
+        "Variable Explorer",
         "Analysis Pipelines",
     ])
 
@@ -1247,6 +1654,15 @@ ready-to-run analysis code.
         if db_tables:
             c2.metric("Tables in your DB", len(db_tables))
             c3.metric("Tables recognised", len(set(db_tables) & set(_TABLE_TO_CAT)))
+        elif guide_loaded:
+            c2.metric("Guide tables indexed", guide_summary.get("tables_index_rows", 0))
+            c3.metric("Guide variable names", guide_summary.get("unique_column_names", 0))
+
+        if guide_loaded:
+            g1, g2, g3 = st.columns(3)
+            g1.metric("Guide column entries", guide_summary.get("column_index_rows", 0))
+            g2.metric("Guide TOC entries", guide_summary.get("toc_entries", 0))
+            g3.metric("PDF pages", guide_summary.get("pdf_page_count", 0))
 
         st.markdown("---")
         st.subheader("Table groups")
@@ -1268,6 +1684,41 @@ ready-to-run analysis code.
                     st.markdown(
                         f"`{prefix}{t}` — {desc[:130]}{'…' if len(desc) > 130 else ''}"
                     )
+
+        if guide_loaded:
+            with st.expander("User Guide chapter map (TOC)", expanded=False):
+                toc_rows = []
+                for ch in guide_lookup.get("chapters", []):
+                    toc_rows.append(
+                        {
+                            "Section": ch.get("title"),
+                            "Guide pages": (
+                                f"{ch.get('start_page')}-{ch.get('end_page')}"
+                                if ch.get("end_page") and ch.get("end_page") != ch.get("start_page")
+                                else str(ch.get("start_page", ""))
+                            ),
+                        }
+                    )
+                if toc_rows:
+                    st.dataframe(pd.DataFrame(toc_rows), use_container_width=True, hide_index=True)
+                    st.caption(
+                        "Page numbers above are the User Guide's printed page numbers. "
+                        "Use them to jump directly to the right chapter in the PDF."
+                    )
+
+            with st.expander("Where common values live", expanded=False):
+                concept_names = [c["name"] for c in CONCEPT_LOCATORS]
+                concept_name = st.selectbox(
+                    "Pick a concept",
+                    concept_names,
+                    key="overview_concept_locator",
+                )
+                concept = next((c for c in CONCEPT_LOCATORS if c["name"] == concept_name), None)
+                if concept:
+                    st.markdown(f"**What this helps you find:** {concept['what']}")
+                    st.markdown("**Start with tables:** " + ", ".join(f"`{t}`" for t in concept["tables"]))
+                    st.markdown("**Key columns:** " + ", ".join(f"`{c}`" for c in concept["columns"]))
+                    st.caption(concept["notes"])
 
         st.markdown("---")
         st.subheader("Key design rules")
@@ -1312,12 +1763,14 @@ tables it links to and which tables link back to it.
         st.markdown("---")
 
         all_known = [t for cat in TABLE_CATEGORIES.values() for t in cat]
-        choices   = db_tables if db_tables else all_known
+        choices   = sorted(set(all_known) | set(db_tables)) if db_tables else all_known
         selected  = st.selectbox("Select a table", choices)
 
         if selected:
             cat  = _TABLE_TO_CAT.get(selected, "Unknown")
             desc = TABLE_DESCRIPTIONS.get(selected, "No description available.")
+            guide_table_meta = guide_lookup.get("tables_by_name", {}).get(selected)
+            guide_table_cols = guide_lookup.get("columns_by_table", {}).get(selected, [])
 
             col_badge, col_desc = st.columns([1, 4])
             color = CATEGORY_COLORS.get(cat, "#888")
@@ -1328,31 +1781,169 @@ tables it links to and which tables link back to it.
             )
             col_desc.info(desc)
 
-            # Column list
-            if conn:
-                col_df = get_columns(conn, selected)
-                if not col_df.empty:
-                    st.subheader("Columns")
-                    st.dataframe(col_df, use_container_width=True, hide_index=True)
-                    st.caption(f"{len(col_df)} columns  ·  ✓ in Codebook = annotated coded field")
-                else:
-                    st.warning(f"`{selected}` not present in the connected database.")
-            else:
-                st.info("Connect a database file (sidebar) to see column details.")
+            if guide_table_meta:
+                page_span = ""
+                if guide_table_meta.get("guide_start_page"):
+                    if (
+                        guide_table_meta.get("guide_end_page")
+                        and guide_table_meta.get("guide_end_page") != guide_table_meta.get("guide_start_page")
+                    ):
+                        page_span = f"{guide_table_meta['guide_start_page']}-{guide_table_meta['guide_end_page']}"
+                    else:
+                        page_span = str(guide_table_meta["guide_start_page"])
+                guide_line = (
+                    f"User Guide section `{guide_table_meta.get('section', '')}`"
+                    f" - {guide_table_meta.get('official_table_name', selected)}"
+                )
+                if page_span:
+                    guide_line += f" (pages {page_span})"
+                st.caption(guide_line)
 
-            # Codebook for this table's coded columns
-            if conn and not (col_df := get_columns(conn, selected)).empty:
-                coded_cols = [c for c in col_df["Column"] if c in FIELD_CODEBOOK]
-                if coded_cols:
-                    st.subheader("Coded columns reference")
-                    for col in coded_cols:
-                        cb = FIELD_CODEBOOK[col]
-                        with st.expander(f"`{col}` — {cb['description']}"):
+                with st.expander("Official User Guide summary (Index of Tables)", expanded=False):
+                    if guide_table_meta.get("official_summary"):
+                        st.markdown(guide_table_meta["official_summary"])
+                    bullets = guide_table_meta.get("official_bullets", [])
+                    if bullets:
+                        st.markdown("**Documented relationships / notes from the guide:**")
+                        for bullet in bullets:
+                            st.markdown(f"- {bullet}")
+                    joins = guide_table_meta.get("documented_joins", [])
+                    if joins:
+                        st.markdown("**Join expressions parsed from the guide text:**")
+                        for expr in joins:
+                            st.markdown(f"- `{expr}`")
+
+            # Column list (live schema + User Guide variable index for this table)
+            col_df = get_columns(conn, selected) if conn else pd.DataFrame()
+            st.subheader("Columns")
+
+            filter_col1, filter_col2 = st.columns([2, 1])
+            table_col_query = filter_col1.text_input(
+                "Filter variables in this table",
+                placeholder="e.g. SPCD, status, carbon, owner",
+                key=f"schema_table_col_query_{selected}",
+            )
+            table_family_options = ["All"] + [
+                fam for fam in guide_lookup.get("families", [])
+                if any(r.get("variable_family") == fam for r in guide_table_cols)
+            ]
+            table_family_filter = filter_col2.selectbox(
+                "Variable family",
+                table_family_options if table_family_options else ["All"],
+                key=f"schema_table_family_{selected}",
+            )
+
+            filtered_guide_table_cols = filter_guide_columns(
+                guide_table_cols,
+                query=table_col_query,
+                search_desc=True,
+                exact=False,
+                family_filter=table_family_filter,
+            )
+
+            if conn and not col_df.empty:
+                live_display = col_df.copy()
+                guide_by_col = {r["column_name"]: r for r in guide_table_cols}
+                live_display["Guide name"] = live_display["Column"].map(
+                    lambda c: guide_by_col.get(c, {}).get("descriptive_name", "")
+                )
+                live_display["Family"] = live_display["Column"].map(
+                    lambda c: guide_by_col.get(c, {}).get("variable_family", "")
+                )
+                live_display["Guide subsection"] = live_display["Column"].map(
+                    lambda c: guide_by_col.get(c, {}).get("subsection", "")
+                )
+                live_display["Field Guide"] = live_display["Column"].map(
+                    lambda c: guide_by_col.get(c, {}).get("field_guide_section") or ""
+                )
+
+                if table_col_query:
+                    q = table_col_query.upper()
+                    live_display = live_display[
+                        live_display["Column"].str.upper().str.contains(q, na=False)
+                        | live_display["Guide name"].str.upper().str.contains(q, na=False)
+                    ]
+                if table_family_filter != "All":
+                    live_display = live_display[live_display["Family"] == table_family_filter]
+
+                live_cols_order = [
+                    "Column", "Type", "Key", "Not Null", "Codebook",
+                    "Guide name", "Family", "Guide subsection", "Field Guide",
+                ]
+                live_display = live_display[[c for c in live_cols_order if c in live_display.columns]]
+
+                st.dataframe(live_display, use_container_width=True, hide_index=True)
+                guide_match_count = int((live_display["Guide name"] != "").sum()) if "Guide name" in live_display else 0
+                st.caption(
+                    f"{len(live_display)} displayed columns from connected DB for `{selected}` "
+                    f"(Guide metadata matched for {guide_match_count})"
+                )
+
+                if guide_table_cols:
+                    live_names = set(col_df["Column"].tolist())
+                    guide_only = [r for r in filtered_guide_table_cols if r["column_name"] not in live_names]
+                    if guide_only:
+                        with st.expander(
+                            f"Guide-indexed variables not present in connected `{selected}` table ({len(guide_only)})",
+                            expanded=False,
+                        ):
                             st.dataframe(
-                                pd.DataFrame([{"Code": k, "Meaning": v} for k, v in cb["codes"].items()]),
+                                guide_rows_to_df(guide_only, include_table=False),
                                 use_container_width=True,
                                 hide_index=True,
                             )
+                else:
+                    st.caption("No User Guide column-index entries found for this table in the cached PDF index.")
+
+            elif conn and col_df.empty:
+                st.warning(f"`{selected}` not present in the connected database.")
+                if filtered_guide_table_cols:
+                    st.markdown("**User Guide indexed variables for this table (from the PDF):**")
+                    st.dataframe(
+                        guide_rows_to_df(filtered_guide_table_cols, include_table=False),
+                        use_container_width=True,
+                        hide_index=True,
+                    )
+                    st.caption(
+                        f"{len(filtered_guide_table_cols)} guide-indexed entries shown (table absent in connected DB)."
+                    )
+            else:
+                if filtered_guide_table_cols:
+                    st.dataframe(
+                        guide_rows_to_df(filtered_guide_table_cols, include_table=False),
+                        use_container_width=True,
+                        hide_index=True,
+                    )
+                    st.caption(
+                        f"{len(filtered_guide_table_cols)} variables indexed from the User Guide for `{selected}`. "
+                        "Connect a database file to see SQLite types, PK flags, and nullability."
+                    )
+                elif guide_loaded and guide_table_meta and selected == "BOUNDARY":
+                    st.info(
+                        "The cached User Guide column index has no entries for `BOUNDARY` (the table is documented in the "
+                        "Index of Tables / chapter sections, but not listed in the extracted Index of Column Names rows). "
+                        "Connect a database file to inspect the actual columns."
+                    )
+                else:
+                    st.info("Connect a database file (sidebar) to see column details.")
+
+            # Codebook for this table's coded columns (works from live schema or guide index)
+            if not col_df.empty:
+                codebook_source_cols = col_df["Column"].tolist()
+            else:
+                codebook_source_cols = [r["column_name"] for r in guide_table_cols]
+
+            coded_cols = [c for c in codebook_source_cols if c in FIELD_CODEBOOK]
+            if coded_cols:
+                st.subheader("Coded columns reference")
+                for col in coded_cols:
+                    cb = FIELD_CODEBOOK[col]
+                    with st.expander(f"`{col}` - {cb['description']}"):
+                        st.dataframe(
+                            pd.DataFrame([{"Code": k, "Meaning": v} for k, v in cb["codes"].items()]),
+                            use_container_width=True,
+                            hide_index=True,
+                        )
 
             # Relationships
             outgoing = [(c, ck, p, pk, lb) for c, ck, p, pk, lb in RELATIONSHIPS if c == selected]
@@ -1440,36 +2031,206 @@ The color of each node shows which group the table belongs to (see the color key
     # TAB 4 · COLUMN SEARCH
     # ────────────────────────────────────────────────────────────────────────
     with tabs[3]:
-        st.header("Column Search")
+        st.header("Variable Explorer")
         st.markdown("""
-FIA uses consistent column names across tables — for example, `SPCD` (species code) appears in
-TREE, SEEDLING, and REF_SPECIES, which is how you join them together. Use this tab to find
-every table that contains a column you're interested in.
+Use this tab to answer questions like **Where does this value live?** and **Which tables use this variable name?**
 
-Type any column name (or part of one) in the box below to see where it appears.
-The *Universal join keys* table at the bottom lists the most important shared columns and what they're for.
+The explorer is powered by the FIADB User Guide's *Index of Column Names* (cached from the PDF), so it works
+**even when no SQLite database is connected**. When a database is connected, you can also run a live PRAGMA-based
+schema search to compare the guide index with the tables actually present in your file.
         """)
 
-        query = st.text_input("Column name (partial match OK)", placeholder="e.g. SPCD, PLT_CN, AGENTCD")
+        if guide_loaded:
+            with st.expander("Where do I find... ? (concept locator)", expanded=False):
+                concept_names = [c["name"] for c in CONCEPT_LOCATORS]
+                concept_name = st.selectbox(
+                    "Choose a concept",
+                    concept_names,
+                    key="variable_explorer_concept",
+                )
+                concept = next((c for c in CONCEPT_LOCATORS if c["name"] == concept_name), None)
+                if concept:
+                    st.markdown(f"**What to look for:** {concept['what']}")
+                    st.markdown("**Start with tables:** " + ", ".join(f"`{t}`" for t in concept["tables"]))
+                    st.markdown("**Key columns to search:** " + ", ".join(f"`{c}`" for c in concept["columns"]))
+                    st.caption(concept["notes"])
 
-        if query and conn:
-            results = []
-            for table in db_tables:
-                try:
-                    cur = conn.execute(f"PRAGMA table_info({table})")
-                    for row in cur.fetchall():
-                        if query.upper() in row[1].upper():
-                            results.append({"Table": table, "Column": row[1], "Type": row[2]})
-                except Exception:
-                    pass
-            if results:
-                res_df = pd.DataFrame(results)
-                st.dataframe(res_df, use_container_width=True, hide_index=True)
-                st.caption(f"{len(results)} matches across {res_df['Table'].nunique()} tables")
+            q1, q2, q3 = st.columns([2, 1, 1])
+            query = q1.text_input(
+                "Variable / column / table search",
+                placeholder="e.g. SPCD, AGENTCD, PREV_PLT_CN, carbon, owner group",
+                key="guide_var_query",
+            )
+            exact = q2.checkbox("Exact column match", value=False, key="guide_var_exact")
+            search_desc = q3.checkbox("Search descriptions", value=True, key="guide_var_desc")
+
+            f1, f2, f3 = st.columns(3)
+            table_groups = sorted(TABLE_CATEGORIES.keys())
+            table_category_filter = f1.selectbox(
+                "Table group",
+                ["All"] + table_groups,
+                key="guide_var_table_group",
+            )
+            family_filter = f2.selectbox(
+                "Variable family",
+                ["All"] + guide_lookup.get("families", []),
+                key="guide_var_family",
+            )
+            table_filter = f3.selectbox(
+                "Table",
+                ["All"] + sorted(guide_lookup.get("tables_by_name", {}).keys()),
+                key="guide_var_table",
+            )
+
+            view_mode = st.radio(
+                "View",
+                ["Occurrences", "Grouped by variable name"],
+                horizontal=True,
+                key="guide_var_view_mode",
+            )
+
+            filters_active = any([
+                bool((query or "").strip()),
+                table_category_filter != "All",
+                family_filter != "All",
+                table_filter != "All",
+            ])
+
+            if filters_active:
+                filtered_rows = filter_guide_columns(
+                    guide_lookup.get("columns_rows", []),
+                    query=query,
+                    search_desc=search_desc,
+                    exact=exact,
+                    table_filter=table_filter,
+                    table_category_filter=table_category_filter,
+                    family_filter=family_filter,
+                )
             else:
-                st.info("No matches found.")
-        elif query:
-            st.info("Connect a database file (sidebar) to search columns.")
+                filtered_rows = []
+
+            if filters_active and filtered_rows:
+                unique_columns = len({r["column_name"] for r in filtered_rows})
+                unique_tables = len({r["oracle_table"] for r in filtered_rows})
+                m1, m2, m3 = st.columns(3)
+                m1.metric("Matches (occurrences)", len(filtered_rows))
+                m2.metric("Unique variable names", unique_columns)
+                m3.metric("Tables covered", unique_tables)
+
+                if view_mode == "Occurrences":
+                    df = guide_rows_to_df(filtered_rows, include_table=True)
+                    if db_tables:
+                        df["In connected DB"] = df["Table"].apply(lambda t: "Yes" if t in db_tables else "No")
+                        cols = list(df.columns)
+                        if "In connected DB" in cols:
+                            cols = cols[:-1] + ["In connected DB"]
+                            df = df[cols]
+                    st.dataframe(df, use_container_width=True, hide_index=True)
+                else:
+                    grouped = []
+                    by_name = defaultdict(list)
+                    for r in filtered_rows:
+                        by_name[r["column_name"]].append(r)
+                    for col_name, rows in sorted(by_name.items()):
+                        tables = sorted({r["oracle_table"] for r in rows})
+                        groups = sorted({r.get("table_category", "Unknown") for r in rows})
+                        guide_names = sorted({r.get("descriptive_name", "") for r in rows if r.get("descriptive_name")})
+                        families = sorted({r.get("variable_family", "Other") for r in rows})
+                        grouped.append(
+                            {
+                                "Column": col_name,
+                                "Occurrences": len(rows),
+                                "Tables": ", ".join(tables),
+                                "Table groups": ", ".join(groups),
+                                "Guide names": " | ".join(guide_names[:3]) + (" ..." if len(guide_names) > 3 else ""),
+                                "Family": ", ".join(families),
+                            }
+                        )
+                    st.dataframe(pd.DataFrame(grouped), use_container_width=True, hide_index=True)
+                    st.caption(
+                        "Grouped view helps you see reuse patterns (for example, one variable name appearing in TREE, "
+                        "SEEDLING, and reference tables)."
+                    )
+            elif filters_active:
+                st.info("No matches found in the cached User Guide column index.")
+            else:
+                st.info(
+                    "Enter a search term or apply a filter to explore the User Guide variable index. "
+                    "Examples: `SPCD`, `PLT_CN`, `owner`, `carbon`, `dstrb`, `evaluation`."
+                )
+                common_rows = []
+                for col_name, rows in guide_lookup.get("columns_by_name", {}).items():
+                    common_rows.append(
+                        {
+                            "Column": col_name,
+                            "Occurrences": len(rows),
+                            "Tables": len({r["oracle_table"] for r in rows}),
+                            "Example tables": ", ".join(sorted({r["oracle_table"] for r in rows})[:4]),
+                            "Family": rows[0].get("variable_family", "Other"),
+                        }
+                    )
+                if common_rows:
+                    common_df = pd.DataFrame(common_rows).sort_values(
+                        ["Occurrences", "Tables", "Column"], ascending=[False, False, True]
+                    ).head(25)
+                    st.markdown("**Frequently reused variable names (from the guide index)**")
+                    st.dataframe(common_df, use_container_width=True, hide_index=True)
+
+            if conn and (query or filters_active):
+                with st.expander("Connected DB schema search (live PRAGMA)", expanded=False):
+                    live_results = []
+                    q_live = (query or "").strip()
+                    if q_live:
+                        for table in db_tables:
+                            try:
+                                cur = conn.execute(f"PRAGMA table_info({table})")
+                                for row in cur.fetchall():
+                                    col_name = row[1]
+                                    if q_live.upper() in col_name.upper():
+                                        live_results.append(
+                                            {
+                                                "Table": table,
+                                                "Column": col_name,
+                                                "Type": row[2],
+                                                "Table group": _TABLE_TO_CAT.get(table, "Unknown"),
+                                            }
+                                        )
+                            except Exception:
+                                pass
+                    if live_results:
+                        st.dataframe(pd.DataFrame(live_results), use_container_width=True, hide_index=True)
+                        st.caption(
+                            f"{len(live_results)} live schema matches across "
+                            f"{pd.DataFrame(live_results)['Table'].nunique()} tables in the connected database"
+                        )
+                    else:
+                        st.caption("No live PRAGMA matches (or no text query provided).")
+        else:
+            st.warning(
+                "User Guide index cache not found (`fiadb_user_guide_index_v94.json`). "
+                "The advanced variable explorer is unavailable until that file is present."
+            )
+            query = st.text_input(
+                "Column name (partial match OK)",
+                placeholder="e.g. SPCD, PLT_CN, AGENTCD",
+                key="legacy_column_search_query",
+            )
+            if query and conn:
+                results = []
+                for table in db_tables:
+                    try:
+                        cur = conn.execute(f"PRAGMA table_info({table})")
+                        for row in cur.fetchall():
+                            if query.upper() in row[1].upper():
+                                results.append({"Table": table, "Column": row[1], "Type": row[2]})
+                    except Exception:
+                        pass
+                if results:
+                    st.dataframe(pd.DataFrame(results), use_container_width=True, hide_index=True)
+                else:
+                    st.info("No matches found.")
+            elif query:
+                st.info("Connect a database file (sidebar) to search columns.")
 
         st.markdown("---")
         st.subheader("Universal join keys")
@@ -1477,21 +2238,30 @@ The *Universal join keys* table at the bottom lists the most important shared co
 | Column | Role | Key tables |
 |--------|------|------------|
 | `CN` | Primary key (sequence number) | **Every** table |
-| `PLT_CN` | → PLOT.CN — links child records to the plot | COND, TREE, SEEDLING, SUBPLOT, DWM_*, POP_PLOT_STRATUM_ASSGN, … |
-| `TRE_CN` | → TREE.CN — links GRM/woodland records to the tree | TREE_GRM_COMPONENT, TREE_WOODLAND_STEMS, TREE_GRM_* |
+| `PLT_CN` | -> PLOT.CN - links child records to the plot | COND, TREE, SEEDLING, SUBPLOT, DWM_*, POP_PLOT_STRATUM_ASSGN, ... |
+| `TRE_CN` | -> TREE.CN - links GRM/woodland records to the tree | TREE_GRM_COMPONENT, TREE_WOODLAND_STEMS, TREE_GRM_* |
 | `SPCD` | FIA species code | TREE, SEEDLING, REF_SPECIES, SITETREE |
 | `FORTYPCD` | Forest type code | COND, REF_FOREST_TYPE |
-| `CONDID` | Condition number within a plot (1, 2, 3…) | COND, TREE, SEEDLING, SUBPLOT, SUBP_COND |
-| `STATECD` | FIPS state code | PLOT, COND, TREE, SURVEY, COUNTY, … |
-| `INVYR` | Inventory year (visit year) | PLOT, COND, TREE, SEEDLING, SURVEY, … |
-| `EVAL_CN` | → POP_EVAL.CN | POP_ESTN_UNIT, POP_EVAL_ATTRIBUTE, POP_EVAL_TYP |
-| `STRATUM_CN` | → POP_STRATUM.CN | POP_PLOT_STRATUM_ASSGN |
-| `SRV_CN` | → SURVEY.CN | PLOT |
-| `CTY_CN` | → COUNTY.CN | PLOT |
-| `PRJ_CN` | → PROJECT.CN | SURVEY |
+| `CONDID` | Condition number within a plot (1, 2, 3...) | COND, TREE, SEEDLING, SUBPLOT, SUBP_COND |
+| `STATECD` | FIPS state code | PLOT, COND, TREE, SURVEY, COUNTY, ... |
+| `INVYR` | Inventory year (visit year) | PLOT, COND, TREE, SEEDLING, SURVEY, ... |
+| `EVAL_CN` | -> POP_EVAL.CN | POP_ESTN_UNIT, POP_EVAL_ATTRIBUTE, POP_EVAL_TYP |
+| `STRATUM_CN` | -> POP_STRATUM.CN | POP_PLOT_STRATUM_ASSGN |
+| `SRV_CN` | -> SURVEY.CN | PLOT |
+| `CTY_CN` | -> COUNTY.CN | PLOT |
+| `PRJ_CN` | -> PROJECT.CN | SURVEY |
         """)
 
-    # ────────────────────────────────────────────────────────────────────────
+        if guide_loaded:
+            st.markdown("---")
+            st.subheader("Variable families used in this explorer")
+            fam_rows = [
+                {"Family": fam, "Meaning": VARIABLE_FAMILY_DESCRIPTIONS.get(fam, "")}
+                for fam in VARIABLE_FAMILY_ORDER
+                if fam in set(guide_lookup.get("families", []))
+            ]
+            st.dataframe(pd.DataFrame(fam_rows), use_container_width=True, hide_index=True)
+
     # TAB 5 · ANALYSIS PIPELINES
     # ────────────────────────────────────────────────────────────────────────
     with tabs[4]:
