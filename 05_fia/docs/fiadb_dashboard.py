@@ -1287,6 +1287,7 @@ def guide_rows_to_df(rows: List[Dict[str, Any]], include_table: bool = True) -> 
 # ANALYSIS PIPELINE CODE RENDERING HELPERS
 # =============================================================================
 
+APP_UI_MODES = ["Newbie", "Expert"]
 PIPELINE_CODE_LANGUAGES = ["SQL", "Python", "R"]
 
 
@@ -1340,17 +1341,111 @@ def build_pipeline_r_wrapper(sql: str) -> str:
     )
 
 
-def render_pipeline_code(tmpl: Dict[str, Any], selected_language: str) -> Tuple[str, str, str]:
+def _pipeline_lang_code_block_name(lang: str) -> str:
+    lang_key = (lang or "SQL").strip().upper()
+    if lang_key == "PYTHON":
+        return "python"
+    if lang_key == "R":
+        return "r"
+    return "sql"
+
+
+def _get_native_pipeline_example(tmpl: Dict[str, Any], selected_language: str) -> Optional[Dict[str, Any]]:
+    examples = tmpl.get("examples")
+    if not isinstance(examples, dict):
+        return None
+
+    requested = (selected_language or "SQL").strip().upper()
+    match = None
+    for key, value in examples.items():
+        if str(key).strip().upper() == requested:
+            match = value
+            break
+    if match is None:
+        return None
+
+    default_block_lang = _pipeline_lang_code_block_name(selected_language)
+    default_label = f"Sample {(selected_language or 'SQL').strip() or 'SQL'}"
+
+    if isinstance(match, str):
+        return {
+            "label": default_label,
+            "code": match,
+            "code_lang": default_block_lang,
+            "source_kind": "native",
+            "note": None,
+        }
+
+    if isinstance(match, dict):
+        code = match.get("code", "")
+        if not isinstance(code, str) or not code.strip():
+            return None
+        return {
+            "label": str(match.get("label", default_label)),
+            "code": code,
+            "code_lang": str(match.get("code_lang", default_block_lang)),
+            "source_kind": str(match.get("source_kind", "native")),
+            "note": str(match.get("note")) if match.get("note") is not None else None,
+        }
+
+    return None
+
+
+def render_pipeline_code(tmpl: Dict[str, Any], selected_language: str) -> Dict[str, Any]:
+    native_example = _get_native_pipeline_example(tmpl, selected_language)
+    if native_example:
+        return native_example
+
     sql = build_pipeline_sql_code(tmpl)
     if not sql.strip():
-        return ("Sample Code", "-- No SQL example is available for this pipeline.", "sql")
+        return {
+            "label": "Sample Code",
+            "code": "-- No example is available for this pipeline yet.",
+            "code_lang": "sql",
+            "source_kind": "missing",
+            "note": None,
+        }
 
     lang = (selected_language or "SQL").strip().upper()
     if lang == "PYTHON":
-        return ("Sample Python", build_pipeline_python_wrapper(sql), "python")
+        return {
+            "label": "Sample Python",
+            "code": build_pipeline_python_wrapper(sql),
+            "code_lang": "python",
+            "source_kind": "wrapper",
+            "note": "This Python example is a wrapper around the canonical SQL.",
+        }
     if lang == "R":
-        return ("Sample R", build_pipeline_r_wrapper(sql), "r")
-    return ("Sample SQL", sql, "sql")
+        return {
+            "label": "Sample R",
+            "code": build_pipeline_r_wrapper(sql),
+            "code_lang": "r",
+            "source_kind": "wrapper",
+            "note": "This R example is a wrapper around the canonical SQL.",
+        }
+    return {
+        "label": "Sample SQL",
+        "code": sql,
+        "code_lang": "sql",
+        "source_kind": "canonical_sql",
+        "note": None,
+    }
+
+
+def _first_sentence(text: str) -> str:
+    text = (text or "").strip()
+    if not text:
+        return ""
+    first = re.split(r"(?<=[.!?])\s+", text, maxsplit=1)[0]
+    return first.strip()
+
+
+def describe_table_for_newbie(table_name: str) -> str:
+    desc = TABLE_DESCRIPTIONS.get(table_name, "")
+    summary = _first_sentence(desc)
+    if summary:
+        return summary
+    return f"FIA table `{table_name}`."
 
 
 # =============================================================================
@@ -1567,6 +1662,25 @@ def build_graphviz_graph(db_tables: List[str]) -> "Digraph":
 def main() -> None:
     st.set_page_config(page_title="FIA Schema Navigator", layout="wide")
     st.title("FIA Database Schema Navigator")
+    if "ui_mode" not in st.session_state:
+        st.session_state["ui_mode"] = "Newbie"
+
+    selected_ui_mode = st.radio(
+        "Experience mode",
+        APP_UI_MODES,
+        horizontal=True,
+        key="ui_mode",
+        help=(
+            "Newbie mode hides FIA field names/codes in some views until you opt in. "
+            "Expert mode shows technical details up front."
+        ),
+    )
+    is_newbie_mode = selected_ui_mode == "Newbie"
+    st.caption(
+        "Mode applies across the app. This first pass makes the Analysis Pipelines tab "
+        "progressively reveal technical FIA field names, codes, and code examples."
+    )
+
     guide_data = load_user_guide_index()
     guide_lookup = prepare_user_guide_lookup(guide_data)
     guide_summary = guide_lookup.get("summary", {})
@@ -2336,18 +2450,38 @@ schema search to compare the guide index with the tables actually present in you
     # ────────────────────────────────────────────────────────────────────────
     with tabs[4]:
         st.header("Analysis Pipelines")
-        st.markdown("""
+        if is_newbie_mode:
+            st.markdown("""
+These are beginner-friendly FIA analysis recipes. Start with the **question** each analysis answers,
+then optionally reveal the FIA-specific table names, column names, codes, and runnable code examples.
+
+Use the **language selector** below to pick which code examples to show when technical details are enabled.
+`SQL` is the canonical query. `Python` and `R` may be native examples (when provided) or wrappers around SQL.
+
+Click any pipeline below to expand it.
+            """)
+        else:
+            st.markdown("""
 These are step-by-step recipes for the most common FIA analyses. Each one explains the goal in plain
 language, lists the tables you need to pull from and why, and includes a ready-to-run code example.
 
 Use the **language selector** below to switch code examples for all pipelines in this tab.
-`SQL` is the canonical query. `Python` and `R` views are wrappers around the same SQL.
+`SQL` is the canonical query. `Python` and `R` may be native examples (when provided) or wrappers around SQL.
 
 Click any pipeline below to expand it.
-        """)
+            """)
 
         if "analysis_pipeline_language" not in st.session_state:
             st.session_state["analysis_pipeline_language"] = "SQL"
+
+        technical_default = not is_newbie_mode
+        if "analysis_pipeline_last_ui_mode" not in st.session_state:
+            st.session_state["analysis_pipeline_last_ui_mode"] = selected_ui_mode
+        if st.session_state["analysis_pipeline_last_ui_mode"] != selected_ui_mode:
+            st.session_state["analysis_pipeline_show_technical"] = technical_default
+            st.session_state["analysis_pipeline_last_ui_mode"] = selected_ui_mode
+        elif "analysis_pipeline_show_technical" not in st.session_state:
+            st.session_state["analysis_pipeline_show_technical"] = technical_default
 
         selected_pipeline_language = st.radio(
             "Code example language",
@@ -2356,41 +2490,69 @@ Click any pipeline below to expand it.
             key="analysis_pipeline_language",
         )
         st.caption("Global selector: applies to every pipeline card in this tab.")
+        show_pipeline_technical = st.toggle(
+            "Show FIA table names, column names, codes, and code examples",
+            value=technical_default,
+            key="analysis_pipeline_show_technical",
+            help=(
+                "Turn this on to reveal detailed joins, FIA variable names, coded fields, and runnable examples."
+            ),
+        )
 
         for tmpl in PIPELINE_TEMPLATES:
             with st.expander(f"**{tmpl['name']}**  -  *{tmpl['goal']}*"):
-                st.markdown(
-                    "**Tables:** " + " &rarr; ".join(f"`{t}`" for t in tmpl["tables"])
-                )
-                st.markdown("**Steps:**")
-                for i, step in enumerate(tmpl["steps"], 1):
-                    st.markdown(f"{i}. {step}")
+                st.markdown("**What this answers:** " + tmpl["goal"])
 
-                if "key_columns" in tmpl:
-                    st.markdown("**Key columns per table:**")
-                    for tbl, cols in tmpl["key_columns"].items():
-                        st.markdown(f"- `{tbl}`: {', '.join(f'`{c}`' for c in cols)}")
-
-                code_label, code_str, code_lang = render_pipeline_code(
-                    tmpl, selected_pipeline_language
-                )
-                st.markdown(f"**{code_label}:**")
-                st.code(code_str, language=code_lang)
-                if selected_pipeline_language != "SQL":
-                    st.caption(
-                        "This is a language wrapper around the canonical SQL shown in the SQL view."
+                if is_newbie_mode and not show_pipeline_technical:
+                    st.markdown("**Data you will use (concepts first):**")
+                    for t in tmpl.get("tables", []):
+                        st.markdown(
+                            f"- **{t.replace('_', ' ').title()}**: {describe_table_for_newbie(t)}"
+                        )
+                    st.info(
+                        "Technical FIA table names, join steps, field codes, and runnable SQL/Python/R examples "
+                        "are hidden in Newbie mode. Turn on the toggle above to reveal them."
                     )
+                else:
+                    st.markdown(
+                        "**Tables:** " + " &rarr; ".join(f"`{t}`" for t in tmpl["tables"])
+                    )
+                    st.markdown("**Steps:**")
+                    for i, step in enumerate(tmpl["steps"], 1):
+                        st.markdown(f"{i}. {step}")
+
+                    if "key_columns" in tmpl:
+                        st.markdown("**Key columns per table:**")
+                        for tbl, cols in tmpl["key_columns"].items():
+                            st.markdown(f"- `{tbl}`: {', '.join(f'`{c}`' for c in cols)}")
+
+                    code_example = render_pipeline_code(tmpl, selected_pipeline_language)
+                    st.markdown(f"**{code_example['label']}:**")
+                    st.code(code_example["code"], language=code_example["code_lang"])
+                    if code_example.get("note"):
+                        st.caption(str(code_example["note"]))
 
         st.markdown("---")
         st.subheader("Field codebook")
-        st.caption("All coded fields used in analyses — with code → meaning lookup")
-        for field, cb in FIELD_CODEBOOK.items():
-            with st.expander(f"`{field}` — {cb['description']}"):
-                st.dataframe(
-                    pd.DataFrame([{"Code": k, "Meaning": v} for k, v in cb["codes"].items()]),
-                    use_container_width=True,
-                    hide_index=True,
-                )
+        if is_newbie_mode and not show_pipeline_technical:
+            st.caption("Field codes are hidden in Newbie mode until you enable technical details.")
+            with st.expander("Show FIA field codebook (technical)"):
+                for field, cb in FIELD_CODEBOOK.items():
+                    with st.expander(f"`{field}` — {cb['description']}"):
+                        st.dataframe(
+                            pd.DataFrame([{"Code": k, "Meaning": v} for k, v in cb["codes"].items()]),
+                            use_container_width=True,
+                            hide_index=True,
+                        )
+        else:
+            st.caption("All coded fields used in analyses — with code → meaning lookup")
+            for field, cb in FIELD_CODEBOOK.items():
+                with st.expander(f"`{field}` — {cb['description']}"):
+                    st.dataframe(
+                        pd.DataFrame([{"Code": k, "Meaning": v} for k, v in cb["codes"].items()]),
+                        use_container_width=True,
+                        hide_index=True,
+                    )
 
 
 if __name__ == "__main__":
