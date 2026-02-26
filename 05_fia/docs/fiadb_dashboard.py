@@ -1284,6 +1284,76 @@ def guide_rows_to_df(rows: List[Dict[str, Any]], include_table: bool = True) -> 
 
 
 # =============================================================================
+# ANALYSIS PIPELINE CODE RENDERING HELPERS
+# =============================================================================
+
+PIPELINE_CODE_LANGUAGES = ["SQL", "Python", "R"]
+
+
+def _sql_to_python_string_literal(sql: str) -> str:
+    """Return a safe Python string literal for embedding SQL."""
+    sql = sql or ""
+    # Prefer triple quotes for readability when possible.
+    if '"""' not in sql:
+        return f'"""{sql}"""'
+    # Fallback to JSON escaping (valid Python double-quoted string literal).
+    return json.dumps(sql)
+
+
+def _sql_to_r_string_literal(sql: str) -> str:
+    """Return a safe R string literal with escaped characters."""
+    sql = sql or ""
+    # JSON escaping is compatible with a regular R double-quoted string for our use.
+    return json.dumps(sql)
+
+
+def build_pipeline_sql_code(tmpl: Dict[str, Any]) -> str:
+    sql = tmpl.get("sql", "")
+    if not isinstance(sql, str):
+        return ""
+    return sql
+
+
+def build_pipeline_python_wrapper(sql: str) -> str:
+    sql_literal = _sql_to_python_string_literal(sql)
+    return (
+        "import sqlite3\n"
+        "import pandas as pd\n\n"
+        'db_path = "/path/to/FIADB.db"\n'
+        'conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)\n\n'
+        f"sql = {sql_literal}\n\n"
+        "df = pd.read_sql_query(sql, conn)\n"
+        "print(df.head())\n"
+    )
+
+
+def build_pipeline_r_wrapper(sql: str) -> str:
+    sql_literal = _sql_to_r_string_literal(sql)
+    return (
+        "library(DBI)\n"
+        "library(RSQLite)\n\n"
+        'db_path <- "/path/to/FIADB.db"\n'
+        "con <- DBI::dbConnect(RSQLite::SQLite(), dbname = db_path)\n\n"
+        f"sql <- {sql_literal}\n\n"
+        "df <- DBI::dbGetQuery(con, sql)\n"
+        "head(df)\n"
+    )
+
+
+def render_pipeline_code(tmpl: Dict[str, Any], selected_language: str) -> Tuple[str, str, str]:
+    sql = build_pipeline_sql_code(tmpl)
+    if not sql.strip():
+        return ("Sample Code", "-- No SQL example is available for this pipeline.", "sql")
+
+    lang = (selected_language or "SQL").strip().upper()
+    if lang == "PYTHON":
+        return ("Sample Python", build_pipeline_python_wrapper(sql), "python")
+    if lang == "R":
+        return ("Sample R", build_pipeline_r_wrapper(sql), "r")
+    return ("Sample SQL", sql, "sql")
+
+
+# =============================================================================
 # SCHEMA HELPERS
 # =============================================================================
 
@@ -2268,14 +2338,27 @@ schema search to compare the guide index with the tables actually present in you
         st.header("Analysis Pipelines")
         st.markdown("""
 These are step-by-step recipes for the most common FIA analyses. Each one explains the goal in plain
-language, lists the tables you need to pull from and why, and includes a ready-to-run SQL query you
-can paste directly into a SQLite viewer, R (`DBI::dbGetQuery()`), or Python (`pd.read_sql()`).
+language, lists the tables you need to pull from and why, and includes a ready-to-run code example.
+
+Use the **language selector** below to switch code examples for all pipelines in this tab.
+`SQL` is the canonical query. `Python` and `R` views are wrappers around the same SQL.
 
 Click any pipeline below to expand it.
         """)
 
+        if "analysis_pipeline_language" not in st.session_state:
+            st.session_state["analysis_pipeline_language"] = "SQL"
+
+        selected_pipeline_language = st.radio(
+            "Code example language",
+            PIPELINE_CODE_LANGUAGES,
+            horizontal=True,
+            key="analysis_pipeline_language",
+        )
+        st.caption("Global selector: applies to every pipeline card in this tab.")
+
         for tmpl in PIPELINE_TEMPLATES:
-            with st.expander(f"**{tmpl['name']}**  —  *{tmpl['goal']}*"):
+            with st.expander(f"**{tmpl['name']}**  -  *{tmpl['goal']}*"):
                 st.markdown(
                     "**Tables:** " + " &rarr; ".join(f"`{t}`" for t in tmpl["tables"])
                 )
@@ -2288,8 +2371,15 @@ Click any pipeline below to expand it.
                     for tbl, cols in tmpl["key_columns"].items():
                         st.markdown(f"- `{tbl}`: {', '.join(f'`{c}`' for c in cols)}")
 
-                st.markdown("**Sample SQL:**")
-                st.code(tmpl["sql"], language="sql")
+                code_label, code_str, code_lang = render_pipeline_code(
+                    tmpl, selected_pipeline_language
+                )
+                st.markdown(f"**{code_label}:**")
+                st.code(code_str, language=code_lang)
+                if selected_pipeline_language != "SQL":
+                    st.caption(
+                        "This is a language wrapper around the canonical SQL shown in the SQL view."
+                    )
 
         st.markdown("---")
         st.subheader("Field codebook")
