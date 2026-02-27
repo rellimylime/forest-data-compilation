@@ -371,13 +371,20 @@ def main():
         seed_df,    seed_err    = load_parquet(data_path(data_dir, "plot_seedling_metrics.parquet"))
         cond_df,    cond_err    = load_parquet(data_path(data_dir, "plot_cond_fortypcd.parquet"))
 
-    # ── Sidebar: state filter ─────────────────────────────────────────────────
+    # ── Sidebar: navigation + state filter ───────────────────────────────────
     with st.sidebar:
+        active_section = st.radio(
+            "Section",
+            ["📂 Overview", "🌲 Forests", "🔥 Disturbance", "🪲 Damage Agents", "💀 Mortality & Regeneration"],
+            label_visibility="collapsed",
+            key="active_section",
+        )
+        st.divider()
         st.header("Filter by State")
         all_states = sorted(tree_df["state"].dropna().unique().tolist()) if tree_df is not None else []
         sel_states = st.multiselect("States", all_states, placeholder="All states")
         if sel_states:
-            st.caption(f"{len(sel_states)} state(s) selected — applied to all analysis tabs.")
+            st.caption(f"{len(sel_states)} state(s) selected — applied to all sections.")
         else:
             st.caption("Showing all states.")
 
@@ -399,19 +406,10 @@ def main():
     def color_status(val):
         return "color: #3fb950" if val == "✓" else "color: #f85149"
 
-    # ── Tabs ─────────────────────────────────────────────────────────────────
-    tab_overview, tab_forests, tab_disturb, tab_agents, tab_mort = st.tabs([
-        "📂 Overview",
-        "🌲 Forests",
-        "🔥 Disturbance",
-        "🪲 Damage Agents",
-        "💀 Mortality & Regeneration",
-    ])
-
     # ==========================================================================
-    # TAB 1 — OVERVIEW (data availability + schema explorer)
+    # SECTION 1 — OVERVIEW (data availability + schema explorer)
     # ==========================================================================
-    with tab_overview:
+    if active_section == "📂 Overview":
 
         # ── File availability table ───────────────────────────────────────────
         rows = []
@@ -579,9 +577,9 @@ def main():
         )
 
     # ==========================================================================
-    # TAB 2 — FORESTS
+    # SECTION 2 — FORESTS
     # ==========================================================================
-    with tab_forests:
+    elif active_section == "🌲 Forests":
         if tree_f is None or len(tree_f) == 0:
             st.info("plot_tree_metrics.parquet not available or no rows match the current filter.")
         else:
@@ -695,9 +693,9 @@ def main():
                     st.plotly_chart(dark_fig(fig), use_container_width=True)
 
     # ==========================================================================
-    # TAB 3 — DISTURBANCE
+    # SECTION 3 — DISTURBANCE
     # ==========================================================================
-    with tab_disturb:
+    elif active_section == "🔥 Disturbance":
         if disturb_f is None or len(disturb_f) == 0:
             st.info("plot_disturbance_history.parquet not available or no rows match the current filter.\n\n"
                     "This file is produced by Step 5 of `05_build_fia_summaries.R`, which requires "
@@ -784,9 +782,9 @@ def main():
                 st.plotly_chart(fig, use_container_width=True)
 
     # ==========================================================================
-    # TAB 4 — DAMAGE AGENTS
+    # SECTION 4 — DAMAGE AGENTS
     # ==========================================================================
-    with tab_agents:
+    elif active_section == "🪲 Damage Agents":
         if agents_f is None or len(agents_f) == 0:
             st.info("plot_damage_agents.parquet not available or no rows match the current filter.\n\n"
                     "This file requires re-running `03_extract_trees.R` (adds DAMAGE_AGENT_CD1/2/3) "
@@ -879,9 +877,9 @@ def main():
                     st.caption("LAT/LON not yet available — re-run the pipeline to add coordinates.")
 
     # ==========================================================================
-    # TAB 5 — MORTALITY & REGENERATION
+    # SECTION 5 — MORTALITY & REGENERATION
     # ==========================================================================
-    with tab_mort:
+    elif active_section == "💀 Mortality & Regeneration":
         mort_col, seed_col = st.columns(2)
 
         with mort_col:
