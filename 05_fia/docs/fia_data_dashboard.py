@@ -371,29 +371,6 @@ def main():
         seed_df,    seed_err    = load_parquet(data_path(data_dir, "plot_seedling_metrics.parquet"))
         cond_df,    cond_err    = load_parquet(data_path(data_dir, "plot_cond_fortypcd.parquet"))
 
-    # ── State filter (compact, above tabs) ───────────────────────────────────
-    all_states = sorted(tree_df["state"].dropna().unique().tolist()) if tree_df is not None else []
-    sel_states = st.multiselect(
-        "Filter by state",
-        all_states,
-        placeholder="All states",
-        label_visibility="collapsed",
-    )
-
-    def apply_filters(df):
-        if df is None:
-            return None
-        if sel_states and "state" in df.columns:
-            return df[df["state"].isin(sel_states)]
-        return df
-
-    tree_f    = apply_filters(tree_df)
-    disturb_f = apply_filters(disturb_df)
-    agents_f  = apply_filters(agents_df)
-    mort_f    = apply_filters(mort_df)
-    seed_f    = apply_filters(seed_df)
-    cond_f    = apply_filters(cond_df)
-
     # Colour helper used across multiple tabs
     def color_status(val):
         return "color: #3fb950" if val == "✓" else "color: #f85149"
@@ -581,25 +558,37 @@ def main():
     # TAB 2 — FORESTS
     # ==========================================================================
     with tab_forests:
-        if tree_f is None or len(tree_f) == 0:
+        if tree_df is None or len(tree_df) == 0:
             st.info("plot_tree_metrics.parquet not available or no rows match the current filter.")
         else:
             if not PLOTLY_AVAILABLE:
                 st.warning("Install `plotly` for interactive charts.")
 
             # Map
-            if "LAT" in tree_f.columns and "LON" in tree_f.columns and PLOTLY_AVAILABLE:
+            if "LAT" in tree_df.columns and "LON" in tree_df.columns and PLOTLY_AVAILABLE:
                 st.subheader("Plot Locations")
-                map_metric = st.radio(
-                    "Color by",
-                    ["ba_live_total", "shannon_h_ba", "n_species_live"],
-                    horizontal=True,
-                    key="forest_map_metric",
-                )
-                map_df = tree_f.dropna(subset=["LAT", "LON", map_metric])
-                # Sample for performance if large
-                if len(map_df) > 50_000:
+                map_ctrl_l, map_ctrl_r = st.columns([2, 1])
+                with map_ctrl_l:
+                    map_metric = st.radio(
+                        "Color by",
+                        ["ba_live_total", "shannon_h_ba", "n_species_live"],
+                        horizontal=True,
+                        key="forest_map_metric",
+                    )
+                with map_ctrl_r:
+                    all_map_states = sorted(tree_df["state"].dropna().unique().tolist())
+                    map_state = st.selectbox(
+                        "Zoom to state",
+                        ["All states"] + all_map_states,
+                        key="forest_map_state",
+                    )
+
+                map_df = tree_df.dropna(subset=["LAT", "LON", map_metric])
+                if map_state != "All states":
+                    map_df = map_df[map_df["state"] == map_state]
+                elif len(map_df) > 50_000:
                     map_df = map_df.sample(50_000, random_state=42)
+
                 labels = {
                     "ba_live_total": "Live BA (ft²/acre)",
                     "shannon_h_ba":  "Shannon H (BA-weighted)",
@@ -610,16 +599,23 @@ def main():
                     lat="LAT", lon="LON",
                     color=map_metric,
                     color_continuous_scale="Viridis",
-                    scope="usa",
                     labels={map_metric: labels.get(map_metric, map_metric)},
                     opacity=0.6,
                 )
-                fig.update_traces(marker_size=3)
+                fig.update_traces(marker_size=5 if map_state != "All states" else 3)
+                geo_cfg = dict(
+                    bgcolor="#0e1117", landcolor="#1c2128",
+                    lakecolor="#0e1117", coastlinecolor="#444",
+                    showland=True, showlakes=True, showcoastlines=True,
+                )
+                if map_state != "All states":
+                    geo_cfg["fitbounds"] = "locations"
+                    geo_cfg["resolution"] = 50
+                else:
+                    geo_cfg["scope"] = "usa"
                 fig.update_layout(
                     paper_bgcolor="#0e1117",
-                    geo=dict(bgcolor="#0e1117", landcolor="#1c2128",
-                             lakecolor="#0e1117", coastlinecolor="#444",
-                             showland=True, showlakes=True, showcoastlines=True),
+                    geo=geo_cfg,
                     font_color="#ddd",
                     coloraxis_colorbar=dict(bgcolor="#161b22",
                                             tickcolor="#ddd", title_font_color="#ddd"),
@@ -632,9 +628,9 @@ def main():
 
             with col1:
                 st.subheader("Live Basal Area distribution")
-                if "ba_live_total" in tree_f.columns and PLOTLY_AVAILABLE:
+                if "ba_live_total" in tree_df.columns and PLOTLY_AVAILABLE:
                     fig = px.histogram(
-                        tree_f[tree_f["ba_live_total"] > 0],
+                        tree_df[tree_df["ba_live_total"] > 0],
                         x="ba_live_total", nbins=60,
                         labels={"ba_live_total": "Live BA (ft²/acre)"},
                         color_discrete_sequence=["#59a14f"],
@@ -643,9 +639,9 @@ def main():
 
             with col2:
                 st.subheader("Shannon Diversity (BA-weighted)")
-                if "shannon_h_ba" in tree_f.columns and PLOTLY_AVAILABLE:
+                if "shannon_h_ba" in tree_df.columns and PLOTLY_AVAILABLE:
                     fig = px.histogram(
-                        tree_f[tree_f["shannon_h_ba"] > 0],
+                        tree_df[tree_df["shannon_h_ba"] > 0],
                         x="shannon_h_ba", nbins=50,
                         labels={"shannon_h_ba": "Shannon H"},
                         color_discrete_sequence=["#4e79a7"],
@@ -653,9 +649,9 @@ def main():
                     st.plotly_chart(dark_fig(fig), use_container_width=True)
 
             # Softwood vs hardwood by state
-            if all(c in tree_f.columns for c in ["ba_live_softwood", "ba_live_hardwood", "state"]):
+            if all(c in tree_df.columns for c in ["ba_live_softwood", "ba_live_hardwood", "state"]):
                 st.subheader("Softwood vs. Hardwood BA by state")
-                sw_hw = (tree_f.groupby("state")[["ba_live_softwood", "ba_live_hardwood"]]
+                sw_hw = (tree_df.groupby("state")[["ba_live_softwood", "ba_live_hardwood"]]
                          .mean().reset_index()
                          .rename(columns={"ba_live_softwood": "Softwood", "ba_live_hardwood": "Hardwood"})
                          .sort_values("Softwood", ascending=False))
@@ -671,10 +667,10 @@ def main():
 
             # Size class by state
             size_cols = [c for c in ["ba_live_sapling", "ba_live_intermediate", "ba_live_mature"]
-                         if c in tree_f.columns]
-            if size_cols and "state" in tree_f.columns:
+                         if c in tree_df.columns]
+            if size_cols and "state" in tree_df.columns:
                 st.subheader("Size class BA by state")
-                sz = (tree_f.groupby("state")[size_cols].mean().reset_index())
+                sz = (tree_df.groupby("state")[size_cols].mean().reset_index())
                 rename_map = {"ba_live_sapling": "Sapling",
                               "ba_live_intermediate": "Intermediate",
                               "ba_live_mature": "Mature"}
@@ -697,7 +693,7 @@ def main():
     # TAB 3 — DISTURBANCE
     # ==========================================================================
     with tab_disturb:
-        if disturb_f is None or len(disturb_f) == 0:
+        if disturb_df is None or len(disturb_df) == 0:
             st.info("plot_disturbance_history.parquet not available or no rows match the current filter.\n\n"
                     "This file is produced by Step 5 of `05_build_fia_summaries.R`, which requires "
                     "that `03_extract_trees.R` has been re-run to include DSTRBCD fields.")
@@ -706,7 +702,7 @@ def main():
 
             with col1:
                 st.subheader("Disturbance events by category")
-                cat_counts = (disturb_f.groupby("disturbance_category")
+                cat_counts = (disturb_df.groupby("disturbance_category")
                               .size().reset_index(name="count")
                               .sort_values("count", ascending=False))
                 if PLOTLY_AVAILABLE:
@@ -722,7 +718,7 @@ def main():
 
             with col2:
                 st.subheader("Fire type breakdown")
-                fire_df = disturb_f[disturb_f["disturbance_category"] == "fire"]
+                fire_df = disturb_df[disturb_df["disturbance_category"] == "fire"]
                 if len(fire_df) > 0:
                     fire_counts = (fire_df.groupby("disturbance_label")
                                    .size().reset_index(name="count"))
@@ -738,9 +734,9 @@ def main():
                     st.caption("No fire disturbance records in current filter.")
 
             # Disturbance year histogram
-            if "DSTRBYR" in disturb_f.columns:
+            if "DSTRBYR" in disturb_df.columns:
                 st.subheader("Year of disturbance")
-                yr_df = disturb_f[disturb_f["DSTRBYR"].notna() & (disturb_f["DSTRBYR"] != 9999)]
+                yr_df = disturb_df[disturb_df["DSTRBYR"].notna() & (disturb_df["DSTRBYR"] != 9999)]
                 if len(yr_df) > 0 and PLOTLY_AVAILABLE:
                     fig = px.histogram(
                         yr_df, x="DSTRBYR", color="disturbance_category",
@@ -752,7 +748,7 @@ def main():
 
             # Top labels
             st.subheader("Top disturbance types")
-            label_counts = (disturb_f.groupby(["disturbance_label", "disturbance_category"])
+            label_counts = (disturb_df.groupby(["disturbance_label", "disturbance_category"])
                             .size().reset_index(name="count")
                             .sort_values("count", ascending=False)
                             .head(20))
@@ -769,10 +765,10 @@ def main():
                 st.plotly_chart(dark_fig(fig), use_container_width=True)
 
             # Map
-            if (all(c in disturb_f.columns for c in ["LAT", "LON", "disturbance_category"])
+            if (all(c in disturb_df.columns for c in ["LAT", "LON", "disturbance_category"])
                     and PLOTLY_AVAILABLE):
                 st.subheader("Disturbance event locations")
-                map_df = disturb_f.dropna(subset=["LAT", "LON"])
+                map_df = disturb_df.dropna(subset=["LAT", "LON"])
                 if len(map_df) > 50_000:
                     map_df = map_df.sample(50_000, random_state=42)
                 fig = scatter_map(
@@ -786,7 +782,7 @@ def main():
     # TAB 4 — DAMAGE AGENTS
     # ==========================================================================
     with tab_agents:
-        if agents_f is None or len(agents_f) == 0:
+        if agents_df is None or len(agents_df) == 0:
             st.info("plot_damage_agents.parquet not available or no rows match the current filter.\n\n"
                     "This file requires re-running `03_extract_trees.R` (adds DAMAGE_AGENT_CD1/2/3) "
                     "and `05_build_fia_summaries.R` Step 6.")
@@ -795,7 +791,7 @@ def main():
 
             with col1:
                 st.subheader("Top 20 damage agents (by affected TPA)")
-                has_label = agents_f[agents_f["agent_label"].notna()]
+                has_label = agents_df[agents_df["agent_label"].notna()]
                 if len(has_label) > 0:
                     top_agents = (has_label.groupby(["agent_label", "agent_category"])
                                   ["n_trees_tpa"].sum().reset_index()
@@ -814,7 +810,7 @@ def main():
 
             with col2:
                 st.subheader("BA affected by agent category")
-                cat_ba = (agents_f[agents_f["agent_category"].notna()]
+                cat_ba = (agents_df[agents_df["agent_category"].notna()]
                           .groupby("agent_category")["ba_per_acre"].sum().reset_index()
                           .sort_values("ba_per_acre", ascending=False))
                 if PLOTLY_AVAILABLE:
@@ -830,9 +826,9 @@ def main():
                     st.plotly_chart(dark_fig(fig), use_container_width=True)
 
             # Agent × state heatmap
-            if "state" in agents_f.columns and PLOTLY_AVAILABLE:
+            if "state" in agents_df.columns and PLOTLY_AVAILABLE:
                 st.subheader("Damage agent category × state heatmap")
-                heat_df = (agents_f[agents_f["agent_category"].notna()]
+                heat_df = (agents_df[agents_df["agent_category"].notna()]
                            .groupby(["state", "agent_category"])
                            ["n_trees_tpa"].sum().reset_index())
                 if len(heat_df) > 0:
@@ -853,9 +849,9 @@ def main():
                     st.plotly_chart(fig, use_container_width=True)
 
             # Map
-            if all(c in agents_f.columns for c in ["LAT", "LON", "agent_category"]) and PLOTLY_AVAILABLE:
+            if all(c in agents_df.columns for c in ["LAT", "LON", "agent_category"]) and PLOTLY_AVAILABLE:
                 st.subheader("Damage agent locations")
-                map_df = agents_f.dropna(subset=["LAT", "LON", "agent_category"])
+                map_df = agents_df.dropna(subset=["LAT", "LON", "agent_category"])
                 if len(map_df) > 50_000:
                     map_df = map_df.sample(50_000, random_state=42)
 
@@ -863,7 +859,7 @@ def main():
                 # (damage_agents parquet doesn't carry coordinates directly)
                 if tree_df is not None and "LAT" in tree_df.columns:
                     coord = tree_df[["PLT_CN", "LAT", "LON"]].drop_duplicates("PLT_CN")
-                    map_df2 = agents_f[agents_f["agent_category"].notna()].merge(
+                    map_df2 = agents_df[agents_df["agent_category"].notna()].merge(
                         coord, on="PLT_CN", how="left"
                     ).dropna(subset=["LAT", "LON"])
                     if len(map_df2) > 50_000:
@@ -885,7 +881,7 @@ def main():
 
         with mort_col:
             st.subheader("Mortality by agent")
-            if mort_f is None or len(mort_f) == 0:
+            if mort_df is None or len(mort_df) == 0:
                 st.info("plot_mortality_metrics.parquet not available.")
             else:
                 AGENTCD_LABELS = {
@@ -893,7 +889,7 @@ def main():
                     40: "Animal", 50: "Weather", 60: "Vegetation",
                     70: "Unknown", 80: "Harvest",
                 }
-                mort_plot = mort_f.copy()
+                mort_plot = mort_df.copy()
                 mort_plot["agent_label"] = (mort_plot["AGENTCD"]
                                             .map(AGENTCD_LABELS)
                                             .fillna("Other"))
@@ -928,14 +924,14 @@ def main():
 
         with seed_col:
             st.subheader("Seedling regeneration")
-            if seed_f is None or len(seed_f) == 0:
+            if seed_df is None or len(seed_df) == 0:
                 st.info("plot_seedling_metrics.parquet not available.")
             else:
-                if "state" in seed_f.columns:
+                if "state" in seed_df.columns:
                     sw_cols = [c for c in ["count_softwood", "count_hardwood"]
-                               if c in seed_f.columns]
+                               if c in seed_df.columns]
                     if sw_cols:
-                        seed_state = (seed_f.groupby("state")[sw_cols]
+                        seed_state = (seed_df.groupby("state")[sw_cols]
                                       .sum().reset_index()
                                       .rename(columns={"count_softwood": "Softwood",
                                                         "count_hardwood": "Hardwood"})
@@ -957,8 +953,8 @@ def main():
                             )
                             st.plotly_chart(dark_fig(fig), use_container_width=True)
 
-                if "shannon_h_count" in seed_f.columns and "state" in seed_f.columns and PLOTLY_AVAILABLE:
-                    seed_div = (seed_f.groupby("state")["shannon_h_count"]
+                if "shannon_h_count" in seed_df.columns and "state" in seed_df.columns and PLOTLY_AVAILABLE:
+                    seed_div = (seed_df.groupby("state")["shannon_h_count"]
                                 .mean().reset_index()
                                 .rename(columns={"shannon_h_count": "Mean Shannon H"})
                                 .sort_values("Mean Shannon H", ascending=False))
