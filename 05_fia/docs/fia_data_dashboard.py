@@ -371,15 +371,8 @@ def main():
         seed_df,    seed_err    = load_parquet(data_path(data_dir, "plot_seedling_metrics.parquet"))
         cond_df,    cond_err    = load_parquet(data_path(data_dir, "plot_cond_fortypcd.parquet"))
 
-    # ── Sidebar: navigation + state filter ───────────────────────────────────
+    # ── Sidebar: state filter ─────────────────────────────────────────────────
     with st.sidebar:
-        active_section = st.radio(
-            "Section",
-            ["📂 Overview", "🌲 Forests", "🔥 Disturbance", "🪲 Damage Agents", "💀 Mortality & Regeneration"],
-            label_visibility="collapsed",
-            key="active_section",
-        )
-        st.divider()
         st.header("Filter by State")
         all_states = sorted(tree_df["state"].dropna().unique().tolist()) if tree_df is not None else []
         sel_states = st.multiselect("States", all_states, placeholder="All states")
@@ -387,6 +380,16 @@ def main():
             st.caption(f"{len(sel_states)} state(s) selected — applied to all sections.")
         else:
             st.caption("Showing all states.")
+
+    # ── Navigation (horizontal pills — persists state across reruns) ──────────
+    active_section = st.radio(
+        "Section",
+        ["📂 Overview", "🌲 Forests", "🔥 Disturbance", "🪲 Damage Agents", "💀 Mortality & Regeneration"],
+        horizontal=True,
+        label_visibility="collapsed",
+        key="active_section",
+    )
+    st.divider()
 
     def apply_filters(df):
         if df is None:
