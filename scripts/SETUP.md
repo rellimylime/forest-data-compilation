@@ -44,3 +44,16 @@ Restart R, then:
 ```r
 source("scripts/00_setup.R")
 ```
+
+### 6. Install dashboard dependencies (optional)
+The unified dashboard requires Python packages. Install from the repo root:
+```bash
+pip install -r requirements.txt
+```
+
+Launch the dashboard:
+```bash
+streamlit run docs/dashboard/app.py
+```
+
+The dashboard covers all datasets (IDS, TerraClimate, PRISM, WorldClim, FIA) with interactive schemas, pixel grid maps, and load code snippets.

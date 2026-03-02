@@ -151,6 +151,19 @@ def parquet_meta(path: str) -> dict:
         return {"exists": True, "rows": None, "columns": [], "size_mb": None, "error": str(e)}
 
 
+@st.cache_data(show_spinner=False)
+def load_sample(path: str, n: int = 5):
+    """Read first n rows from a parquet without loading the whole file."""
+    if not PYARROW_AVAILABLE or not os.path.isfile(path):
+        return None
+    try:
+        pf = pq.ParquetFile(path)
+        batch = pf.read_row_group(0)
+        return batch.to_pandas().head(n)
+    except Exception:
+        return None
+
+
 def file_status(path: str) -> str:
     """Return '✅' if file exists, '❌' otherwise."""
     return "✅" if os.path.isfile(path) else "❌"

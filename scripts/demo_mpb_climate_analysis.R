@@ -1,5 +1,14 @@
 # ==============================================================================
-# Mountain Pine Beetle x Climate — Example Analysis
+# DEPRECATED — replaced by focused demo scripts. See below.
+#
+#   scripts/demo_01_ids_climate.R   — IDS disturbance + gridded climate (replaces main body)
+#   scripts/demo_02_fia_forest.R    — FIA plot/condition data, exclusion flags, disturbance
+#   scripts/demo_03_site_climate.R  — Point-based TerraClimate for FIA sites and custom CSVs
+#
+# This file is kept for reference only.
+# ==============================================================================
+#
+# Mountain Pine Beetle x Climate — Example Analysis (original combined script)
 # ==============================================================================
 #
 # Demonstrates how the compiled datasets from this project can be used:

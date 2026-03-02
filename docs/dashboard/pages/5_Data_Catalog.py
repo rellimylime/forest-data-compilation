@@ -11,7 +11,7 @@ import pandas as pd
 import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from utils import apply_dark_css, parquet_meta, repo_path, color_status
+from utils import apply_dark_css, parquet_meta, load_sample, repo_path, color_status
 
 st.set_page_config(page_title="Data Catalog", page_icon="📋", layout="wide")
 apply_dark_css()
@@ -33,10 +33,13 @@ CATALOG = {
             "path":    "01_ids/data/processed/ids_layers_cleaned.gpkg",
             "format":  "GeoPackage",
             "desc":    "Merged and cleaned IDS data from 10 USFS regions. "
-                       "Three layers: damage_areas (4.4M), damage_points (1.2M), surveyed_areas (74.5K).",
+                       "Three layers: damage_areas (4.4M rows), damage_points (1.2M rows), "
+                       "surveyed_areas (74.5K rows). Key columns: DAMAGE_AREA_ID, SURVEY_YEAR, "
+                       "DCA_CODE, HOST_CODE, ACRES, geometry.",
             "r_code":  (
                 'library(sf)\n'
                 'gpkg <- "01_ids/data/processed/ids_layers_cleaned.gpkg"\n'
+                '# Filter to MPB only at read time — avoids loading 4.4M rows\n'
                 'damage_areas <- st_read(gpkg, layer = "damage_areas",\n'
                 '  query = "SELECT * FROM damage_areas WHERE DCA_CODE = 11006")\n'
                 'surveyed_areas <- st_read(gpkg, layer = "surveyed_areas")'
@@ -45,25 +48,9 @@ CATALOG = {
                 'import geopandas as gpd\n'
                 'damage_areas = gpd.read_file(\n'
                 '    "01_ids/data/processed/ids_layers_cleaned.gpkg",\n'
-                '    layer="damage_areas")'
+                '    layer="damage_areas",\n'
+                '    where="DCA_CODE = 11006")  # SQL filter at read time'
             ),
-        },
-        {
-            "label":   "Damage area → surveyed area",
-            "path":    "processed/ids/damage_area_to_surveyed_area.parquet",
-            "format":  "Parquet",
-            "desc":    "Spatial assignment of each damage area to its enclosing survey footprint. "
-                       "Key columns: DAMAGE_AREA_ID, SURVEY_ID, overlap_fraction.",
-            "r_code":  'library(arrow)\ndf <- read_parquet("processed/ids/damage_area_to_surveyed_area.parquet")',
-            "py_code": 'import pandas as pd\ndf = pd.read_parquet("processed/ids/damage_area_to_surveyed_area.parquet")',
-        },
-        {
-            "label":   "Damage area metrics",
-            "path":    "processed/ids/damage_area_area_metrics.parquet",
-            "format":  "Parquet",
-            "desc":    "Area sizes (ha), survey coverage fractions per damage area.",
-            "r_code":  'df <- arrow::read_parquet("processed/ids/damage_area_area_metrics.parquet")',
-            "py_code": 'df = pd.read_parquet("processed/ids/damage_area_area_metrics.parquet")',
         },
     ],
     "TerraClimate": [
@@ -72,15 +59,16 @@ CATALOG = {
             "path":    "02_terraclimate/data/processed/pixel_maps/damage_areas_pixel_map.parquet",
             "format":  "Parquet",
             "desc":    "Links each IDS damage area to its overlapping TerraClimate 4km pixels "
-                       "with coverage_fraction weights.",
+                       "with coverage_fraction weights (0–1). "
+                       "Columns: DAMAGE_AREA_ID, pixel_id, x (lon), y (lat), coverage_fraction.",
             "r_code":  'pm <- arrow::read_parquet(\n  "02_terraclimate/data/processed/pixel_maps/damage_areas_pixel_map.parquet")',
             "py_code": 'pm = pd.read_parquet("02_terraclimate/data/processed/pixel_maps/damage_areas_pixel_map.parquet")',
         },
         {
-            "label":   "Summaries — tmmx (max temp)",
+            "label":   "Summaries — tmmx (monthly max temp)",
             "path":    "processed/climate/terraclimate/damage_areas_summaries/tmmx.parquet",
-            "format":  "Parquet (~10 GB)",
-            "desc":    "Monthly area-weighted max temperature per IDS damage area. "
+            "format":  "Parquet (~10–13 GB)",
+            "desc":    "Monthly area-weighted maximum temperature (°C) per IDS damage area. "
                        "Columns: DAMAGE_AREA_ID, calendar_year, calendar_month, water_year, "
                        "water_year_month, variable, weighted_mean, value_min, value_max.",
             "r_code":  (
@@ -90,31 +78,116 @@ CATALOG = {
                 'df <- ds |> filter(calendar_year == 2020) |> collect()'
             ),
             "py_code": (
-                'import pyarrow.parquet as pq, pyarrow.compute as pc\n'
-                '# Schema only (instant)\n'
-                'schema = pq.read_schema("processed/climate/terraclimate/damage_areas_summaries/tmmx.parquet")\n'
-                '# Filter before loading\n'
-                'import pyarrow.dataset as ds\n'
+                'import pyarrow.dataset as ds, pyarrow.compute as pc\n'
+                '# Filter before loading (avoids reading full ~10 GB)\n'
                 'dataset = ds.dataset("processed/climate/terraclimate/damage_areas_summaries/tmmx.parquet")\n'
                 'df = dataset.to_table(filter=pc.equal(pc.field("calendar_year"), 2020)).to_pandas()'
             ),
         },
         {
-            "label":   "Summaries — other variables (12 more)",
-            "path":    "processed/climate/terraclimate/damage_areas_summaries/",
-            "format":  "Directory of parquets",
-            "desc":    "One parquet per variable: tmmn, pr, srad, vs, vap, vpd, pet, aet, def, soil, swe, ro, pdsi. "
-                       "Same schema as tmmx above. ~10–13 GB each.",
-            "r_code":  (
-                '# Load all variables lazily as a single multi-file dataset\n'
-                'library(arrow)\n'
-                'all_vars <- open_dataset(\n'
-                '  "processed/climate/terraclimate/damage_areas_summaries/")'
-            ),
-            "py_code": (
-                'import pyarrow.dataset as ds\n'
-                'all_vars = ds.dataset("processed/climate/terraclimate/damage_areas_summaries/")'
-            ),
+            "label":   "Summaries — tmmn (monthly min temp)",
+            "path":    "processed/climate/terraclimate/damage_areas_summaries/tmmn.parquet",
+            "format":  "Parquet (~10–13 GB)",
+            "desc":    "Monthly area-weighted minimum temperature (°C) per IDS damage area. Same schema as tmmx.",
+            "r_code":  'ds <- arrow::open_dataset("processed/climate/terraclimate/damage_areas_summaries/tmmn.parquet")',
+            "py_code": 'import pyarrow.dataset as ds\ndataset = ds.dataset("processed/climate/terraclimate/damage_areas_summaries/tmmn.parquet")',
+        },
+        {
+            "label":   "Summaries — pr (monthly precipitation)",
+            "path":    "processed/climate/terraclimate/damage_areas_summaries/pr.parquet",
+            "format":  "Parquet (~10–13 GB)",
+            "desc":    "Monthly area-weighted precipitation (mm) per IDS damage area. Same schema as tmmx.",
+            "r_code":  'ds <- arrow::open_dataset("processed/climate/terraclimate/damage_areas_summaries/pr.parquet")',
+            "py_code": 'import pyarrow.dataset as ds\ndataset = ds.dataset("processed/climate/terraclimate/damage_areas_summaries/pr.parquet")',
+        },
+        {
+            "label":   "Summaries — def (climate water deficit)",
+            "path":    "processed/climate/terraclimate/damage_areas_summaries/def.parquet",
+            "format":  "Parquet (~10–13 GB)",
+            "desc":    "Monthly area-weighted climate water deficit / CWD (mm) per IDS damage area. "
+                       "CWD = PET − AET; key drought stress predictor. Same schema as tmmx.",
+            "r_code":  'ds <- arrow::open_dataset("processed/climate/terraclimate/damage_areas_summaries/def.parquet")',
+            "py_code": 'import pyarrow.dataset as ds\ndataset = ds.dataset("processed/climate/terraclimate/damage_areas_summaries/def.parquet")',
+        },
+        {
+            "label":   "Summaries — pet (reference ET)",
+            "path":    "processed/climate/terraclimate/damage_areas_summaries/pet.parquet",
+            "format":  "Parquet (~10–13 GB)",
+            "desc":    "Monthly area-weighted reference evapotranspiration (mm). Same schema as tmmx.",
+            "r_code":  'ds <- arrow::open_dataset("processed/climate/terraclimate/damage_areas_summaries/pet.parquet")',
+            "py_code": 'import pyarrow.dataset as ds\ndataset = ds.dataset("processed/climate/terraclimate/damage_areas_summaries/pet.parquet")',
+        },
+        {
+            "label":   "Summaries — aet (actual ET)",
+            "path":    "processed/climate/terraclimate/damage_areas_summaries/aet.parquet",
+            "format":  "Parquet (~10–13 GB)",
+            "desc":    "Monthly area-weighted actual evapotranspiration (mm). Same schema as tmmx.",
+            "r_code":  'ds <- arrow::open_dataset("processed/climate/terraclimate/damage_areas_summaries/aet.parquet")',
+            "py_code": 'import pyarrow.dataset as ds\ndataset = ds.dataset("processed/climate/terraclimate/damage_areas_summaries/aet.parquet")',
+        },
+        {
+            "label":   "Summaries — pdsi (Palmer Drought)",
+            "path":    "processed/climate/terraclimate/damage_areas_summaries/pdsi.parquet",
+            "format":  "Parquet (~10–13 GB)",
+            "desc":    "Monthly area-weighted Palmer Drought Severity Index (unitless). Same schema as tmmx.",
+            "r_code":  'ds <- arrow::open_dataset("processed/climate/terraclimate/damage_areas_summaries/pdsi.parquet")',
+            "py_code": 'import pyarrow.dataset as ds\ndataset = ds.dataset("processed/climate/terraclimate/damage_areas_summaries/pdsi.parquet")',
+        },
+        {
+            "label":   "Summaries — soil (soil moisture)",
+            "path":    "processed/climate/terraclimate/damage_areas_summaries/soil.parquet",
+            "format":  "Parquet (~10–13 GB)",
+            "desc":    "Monthly area-weighted soil moisture (mm). Same schema as tmmx.",
+            "r_code":  'ds <- arrow::open_dataset("processed/climate/terraclimate/damage_areas_summaries/soil.parquet")',
+            "py_code": 'import pyarrow.dataset as ds\ndataset = ds.dataset("processed/climate/terraclimate/damage_areas_summaries/soil.parquet")',
+        },
+        {
+            "label":   "Summaries — swe (snow water equiv)",
+            "path":    "processed/climate/terraclimate/damage_areas_summaries/swe.parquet",
+            "format":  "Parquet (~10–13 GB)",
+            "desc":    "Monthly area-weighted snow water equivalent (mm). Same schema as tmmx.",
+            "r_code":  'ds <- arrow::open_dataset("processed/climate/terraclimate/damage_areas_summaries/swe.parquet")',
+            "py_code": 'import pyarrow.dataset as ds\ndataset = ds.dataset("processed/climate/terraclimate/damage_areas_summaries/swe.parquet")',
+        },
+        {
+            "label":   "Summaries — ro (runoff)",
+            "path":    "processed/climate/terraclimate/damage_areas_summaries/ro.parquet",
+            "format":  "Parquet (~10–13 GB)",
+            "desc":    "Monthly area-weighted runoff (mm). Same schema as tmmx.",
+            "r_code":  'ds <- arrow::open_dataset("processed/climate/terraclimate/damage_areas_summaries/ro.parquet")',
+            "py_code": 'import pyarrow.dataset as ds\ndataset = ds.dataset("processed/climate/terraclimate/damage_areas_summaries/ro.parquet")',
+        },
+        {
+            "label":   "Summaries — srad (shortwave radiation)",
+            "path":    "processed/climate/terraclimate/damage_areas_summaries/srad.parquet",
+            "format":  "Parquet (~10–13 GB)",
+            "desc":    "Monthly area-weighted downward shortwave radiation (W/m²). Same schema as tmmx.",
+            "r_code":  'ds <- arrow::open_dataset("processed/climate/terraclimate/damage_areas_summaries/srad.parquet")',
+            "py_code": 'import pyarrow.dataset as ds\ndataset = ds.dataset("processed/climate/terraclimate/damage_areas_summaries/srad.parquet")',
+        },
+        {
+            "label":   "Summaries — vap (vapor pressure)",
+            "path":    "processed/climate/terraclimate/damage_areas_summaries/vap.parquet",
+            "format":  "Parquet (~10–13 GB)",
+            "desc":    "Monthly area-weighted vapor pressure (kPa). Same schema as tmmx.",
+            "r_code":  'ds <- arrow::open_dataset("processed/climate/terraclimate/damage_areas_summaries/vap.parquet")',
+            "py_code": 'import pyarrow.dataset as ds\ndataset = ds.dataset("processed/climate/terraclimate/damage_areas_summaries/vap.parquet")',
+        },
+        {
+            "label":   "Summaries — vpd (vapor pressure deficit)",
+            "path":    "processed/climate/terraclimate/damage_areas_summaries/vpd.parquet",
+            "format":  "Parquet (~10–13 GB)",
+            "desc":    "Monthly area-weighted vapor pressure deficit (kPa). Same schema as tmmx.",
+            "r_code":  'ds <- arrow::open_dataset("processed/climate/terraclimate/damage_areas_summaries/vpd.parquet")',
+            "py_code": 'import pyarrow.dataset as ds\ndataset = ds.dataset("processed/climate/terraclimate/damage_areas_summaries/vpd.parquet")',
+        },
+        {
+            "label":   "Summaries — vs (wind speed)",
+            "path":    "processed/climate/terraclimate/damage_areas_summaries/vs.parquet",
+            "format":  "Parquet (~10–13 GB)",
+            "desc":    "Monthly area-weighted wind speed (m/s). Same schema as tmmx.",
+            "r_code":  'ds <- arrow::open_dataset("processed/climate/terraclimate/damage_areas_summaries/vs.parquet")',
+            "py_code": 'import pyarrow.dataset as ds\ndataset = ds.dataset("processed/climate/terraclimate/damage_areas_summaries/vs.parquet")',
         },
     ],
     "PRISM": [
@@ -122,25 +195,69 @@ CATALOG = {
             "label":   "IDS damage area pixel map",
             "path":    "03_prism/data/processed/pixel_maps/damage_areas_pixel_map.parquet",
             "format":  "Parquet",
-            "desc":    "Links each IDS damage area to PRISM 800m pixels (CONUS only).",
+            "desc":    "Links each IDS damage area to PRISM 800m pixels (CONUS only). "
+                       "Columns: DAMAGE_AREA_ID, pixel_id, x (lon), y (lat), coverage_fraction.",
             "r_code":  'pm <- arrow::read_parquet("03_prism/data/processed/pixel_maps/damage_areas_pixel_map.parquet")',
             "py_code": 'pm = pd.read_parquet("03_prism/data/processed/pixel_maps/damage_areas_pixel_map.parquet")',
         },
         {
-            "label":   "Summaries — all 7 variables",
-            "path":    "processed/climate/prism/damage_areas_summaries/",
-            "format":  "Directory of parquets",
-            "desc":    "ppt, tmean, tmin, tmax, tdmean, vpdmin, vpdmax. ~19–23 GB each. "
-                       "CONUS only — AK/HI rows have NaN values.",
-            "r_code":  (
-                'library(arrow)\n'
-                'prism_ppt <- open_dataset(\n'
-                '  "processed/climate/prism/damage_areas_summaries/ppt.parquet")'
-            ),
-            "py_code": (
-                'import pyarrow.dataset as ds\n'
-                'prism_ppt = ds.dataset("processed/climate/prism/damage_areas_summaries/ppt.parquet")'
-            ),
+            "label":   "Summaries — ppt (monthly precipitation)",
+            "path":    "processed/climate/prism/damage_areas_summaries/ppt.parquet",
+            "format":  "Parquet (~19–23 GB)",
+            "desc":    "Monthly area-weighted precipitation (mm) per IDS damage area. "
+                       "CONUS only — AK/HI damage areas have NaN values. "
+                       "Columns: DAMAGE_AREA_ID, calendar_year, calendar_month, water_year, "
+                       "water_year_month, variable, weighted_mean, value_min, value_max.",
+            "r_code":  'ds <- arrow::open_dataset("processed/climate/prism/damage_areas_summaries/ppt.parquet")',
+            "py_code": 'import pyarrow.dataset as ds\ndataset = ds.dataset("processed/climate/prism/damage_areas_summaries/ppt.parquet")',
+        },
+        {
+            "label":   "Summaries — tmax (monthly max temp)",
+            "path":    "processed/climate/prism/damage_areas_summaries/tmax.parquet",
+            "format":  "Parquet (~19–23 GB)",
+            "desc":    "Monthly area-weighted maximum temperature (°C). CONUS only. Same schema as ppt.",
+            "r_code":  'ds <- arrow::open_dataset("processed/climate/prism/damage_areas_summaries/tmax.parquet")',
+            "py_code": 'import pyarrow.dataset as ds\ndataset = ds.dataset("processed/climate/prism/damage_areas_summaries/tmax.parquet")',
+        },
+        {
+            "label":   "Summaries — tmin (monthly min temp)",
+            "path":    "processed/climate/prism/damage_areas_summaries/tmin.parquet",
+            "format":  "Parquet (~19–23 GB)",
+            "desc":    "Monthly area-weighted minimum temperature (°C). CONUS only. Same schema as ppt.",
+            "r_code":  'ds <- arrow::open_dataset("processed/climate/prism/damage_areas_summaries/tmin.parquet")',
+            "py_code": 'import pyarrow.dataset as ds\ndataset = ds.dataset("processed/climate/prism/damage_areas_summaries/tmin.parquet")',
+        },
+        {
+            "label":   "Summaries — tmean (monthly mean temp)",
+            "path":    "processed/climate/prism/damage_areas_summaries/tmean.parquet",
+            "format":  "Parquet (~19–23 GB)",
+            "desc":    "Monthly area-weighted mean temperature (°C). CONUS only. Same schema as ppt.",
+            "r_code":  'ds <- arrow::open_dataset("processed/climate/prism/damage_areas_summaries/tmean.parquet")',
+            "py_code": 'import pyarrow.dataset as ds\ndataset = ds.dataset("processed/climate/prism/damage_areas_summaries/tmean.parquet")',
+        },
+        {
+            "label":   "Summaries — tdmean (mean dew point)",
+            "path":    "processed/climate/prism/damage_areas_summaries/tdmean.parquet",
+            "format":  "Parquet (~19–23 GB)",
+            "desc":    "Monthly area-weighted mean dew point temperature (°C). CONUS only. Same schema as ppt.",
+            "r_code":  'ds <- arrow::open_dataset("processed/climate/prism/damage_areas_summaries/tdmean.parquet")',
+            "py_code": 'import pyarrow.dataset as ds\ndataset = ds.dataset("processed/climate/prism/damage_areas_summaries/tdmean.parquet")',
+        },
+        {
+            "label":   "Summaries — vpdmax (max vapor pressure deficit)",
+            "path":    "processed/climate/prism/damage_areas_summaries/vpdmax.parquet",
+            "format":  "Parquet (~19–23 GB)",
+            "desc":    "Monthly area-weighted maximum VPD (hPa). CONUS only. Same schema as ppt.",
+            "r_code":  'ds <- arrow::open_dataset("processed/climate/prism/damage_areas_summaries/vpdmax.parquet")',
+            "py_code": 'import pyarrow.dataset as ds\ndataset = ds.dataset("processed/climate/prism/damage_areas_summaries/vpdmax.parquet")',
+        },
+        {
+            "label":   "Summaries — vpdmin (min vapor pressure deficit)",
+            "path":    "processed/climate/prism/damage_areas_summaries/vpdmin.parquet",
+            "format":  "Parquet (~19–23 GB)",
+            "desc":    "Monthly area-weighted minimum VPD (hPa). CONUS only. Same schema as ppt.",
+            "r_code":  'ds <- arrow::open_dataset("processed/climate/prism/damage_areas_summaries/vpdmin.parquet")',
+            "py_code": 'import pyarrow.dataset as ds\ndataset = ds.dataset("processed/climate/prism/damage_areas_summaries/vpdmin.parquet")',
         },
     ],
     "WorldClim": [
@@ -148,24 +265,37 @@ CATALOG = {
             "label":   "IDS damage area pixel map",
             "path":    "04_worldclim/data/processed/pixel_maps/damage_areas_pixel_map.parquet",
             "format":  "Parquet",
-            "desc":    "Links each IDS damage area to WorldClim 4.5km pixels (global).",
+            "desc":    "Links each IDS damage area to WorldClim 4.5km pixels (global). "
+                       "Columns: DAMAGE_AREA_ID, pixel_id, x (lon), y (lat), coverage_fraction.",
             "r_code":  'pm <- arrow::read_parquet("04_worldclim/data/processed/pixel_maps/damage_areas_pixel_map.parquet")',
             "py_code": 'pm = pd.read_parquet("04_worldclim/data/processed/pixel_maps/damage_areas_pixel_map.parquet")',
         },
         {
-            "label":   "Summaries — tmin, tmax, prec",
-            "path":    "processed/climate/worldclim/damage_areas_summaries/",
-            "format":  "Directory of parquets",
-            "desc":    "Three variables: tmin, tmax, prec. ~9–13 GB each. Global coverage 1950–2024.",
-            "r_code":  (
-                'library(arrow)\n'
-                'wc_prec <- open_dataset(\n'
-                '  "processed/climate/worldclim/damage_areas_summaries/prec.parquet")'
-            ),
-            "py_code": (
-                'import pyarrow.dataset as ds\n'
-                'wc_prec = ds.dataset("processed/climate/worldclim/damage_areas_summaries/prec.parquet")'
-            ),
+            "label":   "Summaries — prec (monthly precipitation)",
+            "path":    "processed/climate/worldclim/damage_areas_summaries/prec.parquet",
+            "format":  "Parquet (~9–13 GB)",
+            "desc":    "Monthly area-weighted precipitation (mm) per IDS damage area. "
+                       "Global coverage 1950–2024. "
+                       "Columns: DAMAGE_AREA_ID, calendar_year, calendar_month, water_year, "
+                       "water_year_month, variable, weighted_mean, value_min, value_max.",
+            "r_code":  'ds <- arrow::open_dataset("processed/climate/worldclim/damage_areas_summaries/prec.parquet")',
+            "py_code": 'import pyarrow.dataset as ds\ndataset = ds.dataset("processed/climate/worldclim/damage_areas_summaries/prec.parquet")',
+        },
+        {
+            "label":   "Summaries — tmax (monthly max temp)",
+            "path":    "processed/climate/worldclim/damage_areas_summaries/tmax.parquet",
+            "format":  "Parquet (~9–13 GB)",
+            "desc":    "Monthly area-weighted maximum temperature (°C). Global. Same schema as prec.",
+            "r_code":  'ds <- arrow::open_dataset("processed/climate/worldclim/damage_areas_summaries/tmax.parquet")',
+            "py_code": 'import pyarrow.dataset as ds\ndataset = ds.dataset("processed/climate/worldclim/damage_areas_summaries/tmax.parquet")',
+        },
+        {
+            "label":   "Summaries — tmin (monthly min temp)",
+            "path":    "processed/climate/worldclim/damage_areas_summaries/tmin.parquet",
+            "format":  "Parquet (~9–13 GB)",
+            "desc":    "Monthly area-weighted minimum temperature (°C). Global. Same schema as prec.",
+            "r_code":  'ds <- arrow::open_dataset("processed/climate/worldclim/damage_areas_summaries/tmin.parquet")',
+            "py_code": 'import pyarrow.dataset as ds\ndataset = ds.dataset("processed/climate/worldclim/damage_areas_summaries/tmin.parquet")',
         },
     ],
     "FIA": [
@@ -338,6 +468,15 @@ for tab, (section, entries) in zip(section_tabs, CATALOG.items()):
                     st.dataframe(schema_df, use_container_width=True, hide_index=True,
                                  height=min(400, 35 * len(cols_list) + 40))
 
+                # Sample rows (parquets only; skipped for large files not present locally)
+                if exists and entry["path"].endswith(".parquet"):
+                    sample = load_sample(full_path)
+                    if sample is not None:
+                        st.markdown("**Sample rows (first 5):**")
+                        st.dataframe(sample, use_container_width=True, hide_index=True)
+                    elif size_str != "—":
+                        st.caption(f"Sample not available for large file ({size_str})")
+
                 r_tab, py_tab = st.tabs(["R", "Python"])
                 with r_tab:
                     st.code(entry["r_code"], language="r")
@@ -373,7 +512,7 @@ for section, entries in CATALOG.items():
 
 inv_df = pd.DataFrame(all_rows)
 st.dataframe(
-    inv_df.style.applymap(color_status, subset=["Status"]),
+    inv_df.style.map(color_status, subset=["Status"]),
     use_container_width=True,
     hide_index=True,
 )
