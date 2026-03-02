@@ -134,7 +134,7 @@ with tab_overview:
             "Rows": f"{n_rows:,}" if isinstance(n_rows, int) else n_rows,
         })
     st.dataframe(
-        pd.DataFrame(rows).style.applymap(color_status, subset=["Status"]),
+        pd.DataFrame(rows).style.map(color_status, subset=["Status"]),
         use_container_width=True, hide_index=True,
     )
 
