@@ -13,14 +13,17 @@ import streamlit as st
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from utils import (
     apply_dark_css, metric_card, dark_fig, parquet_meta,
-    load_parquet, repo_path, PLOTLY_AVAILABLE
+    load_parquet, repo_path,
 )
 
 st.set_page_config(page_title="Climate Data", page_icon="🌡️", layout="wide")
 apply_dark_css()
 
-if PLOTLY_AVAILABLE:
+try:
     import plotly.express as px
+    PLOTLY_AVAILABLE = True
+except ImportError:
+    PLOTLY_AVAILABLE = False
 
 st.title("🌡️ Climate Datasets")
 st.markdown(
@@ -368,15 +371,27 @@ with grid_tab:
                     f"showing {len(unique_px):,} on map"
                 )
 
-                fig = px.scatter_mapbox(
-                    unique_px,
-                    lat=y_col, lon=x_col,
-                    color_discrete_sequence=color_seq,
-                    mapbox_style="open-street-map",
-                    zoom=3, center={"lat": 44, "lon": -105},
-                    opacity=0.6,
-                    title=title_suffix,
-                )
+                # scatter_map is the Plotly 5.17+ / 6.x API (scatter_mapbox removed in 6.0)
+                try:
+                    fig = px.scatter_map(
+                        unique_px,
+                        lat=y_col, lon=x_col,
+                        color_discrete_sequence=color_seq,
+                        map_style="open-street-map",
+                        zoom=3, center={"lat": 44, "lon": -105},
+                        opacity=0.6,
+                        title=title_suffix,
+                    )
+                except AttributeError:
+                    fig = px.scatter_mapbox(
+                        unique_px,
+                        lat=y_col, lon=x_col,
+                        color_discrete_sequence=color_seq,
+                        mapbox_style="open-street-map",
+                        zoom=3, center={"lat": 44, "lon": -105},
+                        opacity=0.6,
+                        title=title_suffix,
+                    )
                 fig.update_traces(marker_size=4)
                 fig.update_layout(
                     paper_bgcolor="#0e1117", font_color="#ddd",

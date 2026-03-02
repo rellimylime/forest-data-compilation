@@ -13,14 +13,17 @@ import streamlit as st
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from utils import (
     apply_dark_css, metric_card, dark_fig, scatter_geo_usa,
-    load_parquet, parquet_meta, load_csv, repo_path, PLOTLY_AVAILABLE
+    load_parquet, parquet_meta, load_csv, repo_path,
 )
 
 st.set_page_config(page_title="IDS Survey", page_icon="🗺️", layout="wide")
 apply_dark_css()
 
-if PLOTLY_AVAILABLE:
+try:
     import plotly.express as px
+    PLOTLY_AVAILABLE = True
+except ImportError:
+    PLOTLY_AVAILABLE = False
 
 st.title("🗺️ IDS Aerial Detection Survey")
 st.markdown(
@@ -283,15 +286,25 @@ with tab_map:
             st.markdown("**Showing FIA site pixel map as a proxy** (6,956 points):")
             pm_df, pm_err = load_parquet(fia_pm)
             if pm_df is not None and PLOTLY_AVAILABLE:
-                fig = px.scatter_mapbox(
-                    pm_df.rename(columns={"y": "lat", "x": "lon"}),
-                    lat="lat", lon="lon",
-                    color_discrete_sequence=["#4e79a7"],
-                    mapbox_style="open-street-map",
-                    zoom=3, center={"lat": 44, "lon": -105},
-                    opacity=0.7,
-                    title="FIA site pixel centroids (4km TerraClimate grid)",
-                )
+                _df = pm_df.rename(columns={"y": "lat", "x": "lon"})
+                try:
+                    fig = px.scatter_map(
+                        _df, lat="lat", lon="lon",
+                        color_discrete_sequence=["#4e79a7"],
+                        map_style="open-street-map",
+                        zoom=3, center={"lat": 44, "lon": -105},
+                        opacity=0.7,
+                        title="FIA site pixel centroids (4km TerraClimate grid)",
+                    )
+                except AttributeError:
+                    fig = px.scatter_mapbox(
+                        _df, lat="lat", lon="lon",
+                        color_discrete_sequence=["#4e79a7"],
+                        mapbox_style="open-street-map",
+                        zoom=3, center={"lat": 44, "lon": -105},
+                        opacity=0.7,
+                        title="FIA site pixel centroids (4km TerraClimate grid)",
+                    )
                 fig.update_traces(marker_size=5)
                 fig.update_layout(paper_bgcolor="#0e1117", font_color="#ddd",
                                   margin=dict(l=0, r=0, t=30, b=0))
@@ -322,15 +335,23 @@ with tab_map:
                     col_y = "y" if "y" in unique_pixels.columns else None
 
                     if col_x and col_y:
-                        fig = px.scatter_mapbox(
-                            unique_pixels,
-                            lat=col_y, lon=col_x,
-                            color_discrete_sequence=["#e15759"],
-                            mapbox_style="open-street-map",
-                            zoom=3, center={"lat": 44, "lon": -105},
-                            opacity=0.5,
-                            title=f"TerraClimate 4km pixel centroids (IDS coverage, n={len(unique_pixels):,})",
-                        )
+                        _title = f"TerraClimate 4km pixel centroids (IDS coverage, n={len(unique_pixels):,})"
+                        try:
+                            fig = px.scatter_map(
+                                unique_pixels, lat=col_y, lon=col_x,
+                                color_discrete_sequence=["#e15759"],
+                                map_style="open-street-map",
+                                zoom=3, center={"lat": 44, "lon": -105},
+                                opacity=0.5, title=_title,
+                            )
+                        except AttributeError:
+                            fig = px.scatter_mapbox(
+                                unique_pixels, lat=col_y, lon=col_x,
+                                color_discrete_sequence=["#e15759"],
+                                mapbox_style="open-street-map",
+                                zoom=3, center={"lat": 44, "lon": -105},
+                                opacity=0.5, title=_title,
+                            )
                         fig.update_traces(marker_size=3)
                         fig.update_layout(paper_bgcolor="#0e1117", font_color="#ddd",
                                           margin=dict(l=0, r=0, t=30, b=0))
