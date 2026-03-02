@@ -1,5 +1,6 @@
-streamlit
-pandas
-pyvis
-plotly
-pyarrow
+streamlit>=1.30
+pandas>=2.0
+plotly>=5.17
+pyarrow>=14.0
+# pyvis is only needed for 05_fia/docs/dashboard/fiadb_dashboard.py (standalone FIADB schema tool)
+# Omitted here to avoid install failures on Streamlit Cloud; install manually if needed
