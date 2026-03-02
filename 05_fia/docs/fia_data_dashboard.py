@@ -226,6 +226,67 @@ DATASET_META = {
             ("state",              "State abbreviation",                                                 "str"),
         ],
     },
+    "plot_treatment_history.parquet": {
+        "name": "Treatment History",
+        "icon": "🪚",
+        "description": (
+            "One row per **condition × treatment slot** where TRTCD ≠ 0. "
+            "Covers all active silvicultural treatments recorded in COND.TRTCD1/2/3, "
+            "including cutting (harvest), site prep, artificial regeneration, natural "
+            "regeneration, and other silvicultural treatments. Includes treatment year (TRTYR) "
+            "for temporal filtering. Join on `PLT_CN + INVYR` to other tables."
+        ),
+        "join": "PLT_CN + INVYR",
+        "columns": [
+            ("PLT_CN",             "Plot control number",                                               "int"),
+            ("INVYR",              "FIA inventory year",                                                "int"),
+            ("STATECD",            "Numeric state FIPS code",                                           "int"),
+            ("CONDID",             "Condition ID within plot",                                          "int"),
+            ("CONDPROP_UNADJ",     "Proportion of plot in this condition",                              "0–1"),
+            ("LAT",                "Plot latitude (fuzzed ±1 mile)",                                    "float"),
+            ("LON",                "Plot longitude (fuzzed ±1 mile)",                                   "float"),
+            ("treatment_slot",     "Which TRTCD slot (1, 2, or 3)",                                     "int"),
+            ("TRTCD",              "Raw FIA treatment code (10/20/30/40/50)",                           "int"),
+            ("TRTYR",              "Year treatment occurred; 9999 = continuous or unknown",              "int"),
+            ("treatment_label",    "Human-readable label: Cutting / Site preparation / "
+                                   "Artificial regeneration / Natural regeneration / "
+                                   "Other silvicultural treatment",                                      "str"),
+            ("treatment_category", "Broad class: harvest / site_prep / regeneration / other_silv",      "str"),
+        ],
+    },
+    "plot_exclusion_flags.parquet": {
+        "name": "Plot Exclusion Flags",
+        "icon": "🚩",
+        "description": (
+            "One row per **plot × inventory year**. Pre-built filter flags for removing "
+            "non-forested, deforested, harvested, and human-disturbed plots. "
+            "Join on `PLT_CN + INVYR` to any other summary table. "
+            "Always filter `pct_forested >= 0.5` first — FIA samples all US land and ~59% "
+            "of plot×year rows are non-forest plots."
+        ),
+        "join": "PLT_CN + INVYR",
+        "columns": [
+            ("PLT_CN",                 "Plot control number — unique FIA plot identifier",               "int"),
+            ("INVYR",                  "FIA inventory year",                                             "int"),
+            ("STATECD",                "Numeric state FIPS code",                                        "int"),
+            ("n_conditions",           "Number of COND records for this plot × year",                   "count"),
+            ("pct_forested",           "Sum of CONDPROP_UNADJ where COND_STATUS_CD == 1 (0–1). "
+                                       "Primary gate: filter ≥ 0.5 before using other flags.",          "0–1"),
+            ("exclude_nonforest",      "Any COND_STATUS_CD == 5 (non-forest land with trees; "
+                                       "deforested/converted plots retaining some trees)",               "logical"),
+            ("exclude_human_dist",     "Any DSTRBCD1/2/3 == 80 (human-induced disturbance: "
+                                       "logging, clearing, development)",                               "logical"),
+            ("exclude_harvest",        "Any TRTCD1/2/3 == 10 (cutting treatment, condition-level). "
+                                       "Requires --force-cond re-run of 03_extract_trees.R.",           "logical"),
+            ("exclude_harvest_agent",  "Any TREE record has AGENTCD 80–89 (incidental harvest, "
+                                       "tree-level cause-of-death). More sensitive than TRTCD flag.",   "logical"),
+            ("exclude_any",            "OR of all four exclude_* flags. Use as the standard "
+                                       "clean-plot filter (after pct_forested >= 0.5).",                "logical"),
+            ("has_fire",               "Any DSTRBCD1/2/3 in {30,31,32} — positive filter, "
+                                       "not an exclusion. Use to select fire-affected plots.",          "logical"),
+            ("has_insect",             "Any DSTRBCD1/2/3 in {10,11,12} — positive filter.",            "logical"),
+        ],
+    },
     "plot_cond_fortypcd.parquet": {
         "name": "Condition / Forest Type",
         "icon": "🗺️",
@@ -268,6 +329,8 @@ EXPECTED_FILES = {
     "plot_mortality_metrics.parquet":   "Mortality (natural & harvest)",
     "plot_seedling_metrics.parquet":    "Seedling regeneration",
     "plot_cond_fortypcd.parquet":       "Condition / forest type",
+    "plot_treatment_history.parquet":   "Treatment history (cutting, regen, site prep)",
+    "plot_exclusion_flags.parquet":     "Plot exclusion & disturbance flags",
 }
 
 # US state abbreviations → FIPS numeric codes for plotly choropleth
@@ -370,14 +433,17 @@ def main():
         mort_df,    mort_err    = load_parquet(data_path(data_dir, "plot_mortality_metrics.parquet"))
         seed_df,    seed_err    = load_parquet(data_path(data_dir, "plot_seedling_metrics.parquet"))
         cond_df,    cond_err    = load_parquet(data_path(data_dir, "plot_cond_fortypcd.parquet"))
+        treat_df,   treat_err   = load_parquet(data_path(data_dir, "plot_treatment_history.parquet"))
+        flags_df,   flags_err   = load_parquet(data_path(data_dir, "plot_exclusion_flags.parquet"))
 
     # Colour helper used across multiple tabs
     def color_status(val):
         return "color: #3fb950" if val == "✓" else "color: #f85149"
 
     # ── Tabs ──────────────────────────────────────────────────────────────────
-    tab_overview, tab_forests, tab_disturb, tab_agents, tab_mort = st.tabs([
+    tab_overview, tab_filters, tab_forests, tab_disturb, tab_agents, tab_mort = st.tabs([
         "📂 Overview",
+        "🚩 Plot Filters",
         "🌲 Forests",
         "🔥 Disturbance",
         "🪲 Damage Agents",
@@ -452,6 +518,8 @@ def main():
             "plot_mortality_metrics.parquet":   mort_df,
             "plot_seedling_metrics.parquet":    seed_df,
             "plot_cond_fortypcd.parquet":       cond_df,
+            "plot_treatment_history.parquet":   treat_df,
+            "plot_exclusion_flags.parquet":     flags_df,
         }
         available_keys = [k for k, v in _all_dfs.items() if v is not None]
 
@@ -555,7 +623,186 @@ def main():
         )
 
     # ==========================================================================
-    # TAB 2 — FORESTS
+    # TAB 2 — PLOT FILTERS (exclusion flags)
+    # ==========================================================================
+    with tab_filters:
+        st.markdown(
+            "**`plot_exclusion_flags.parquet`** — one row per plot × inventory year. "
+            "Join on `PLT_CN + INVYR` to any other summary table to apply standard "
+            "analysis filters. Produced by Step 7 of `05_build_fia_summaries.R`."
+        )
+
+        if flags_df is None or len(flags_df) == 0:
+            st.info(
+                "`plot_exclusion_flags.parquet` not found.\n\n"
+                "Generate it with Step 7 of `05_build_fia_summaries.R`. "
+                "Requires that `03_extract_trees.R` has been run to produce "
+                "harvest_flags partitions and that COND parquets include TRTCD columns "
+                "(run `03_extract_trees.R --force-cond` to backfill)."
+            )
+        else:
+            n_total  = len(flags_df)
+            pct_excl = 100.0 * flags_df["exclude_any"].mean()
+            pct_nf   = 100.0 * flags_df["exclude_nonforest"].mean()
+            pct_hd   = 100.0 * flags_df["exclude_human_dist"].mean()
+            pct_harv = (100.0 * flags_df["exclude_harvest"].dropna().mean()
+                        if "exclude_harvest" in flags_df.columns
+                           and flags_df["exclude_harvest"].notna().any() else None)
+            pct_ha   = (100.0 * flags_df["exclude_harvest_agent"].dropna().mean()
+                        if "exclude_harvest_agent" in flags_df.columns
+                           and flags_df["exclude_harvest_agent"].notna().any() else None)
+            pct_fire = 100.0 * flags_df["has_fire"].mean()
+            pct_ins  = 100.0 * flags_df["has_insect"].mean()
+
+            # ── Summary metric cards ───────────────────────────────────────
+            c1, c2, c3, c4 = st.columns(4)
+            c1.markdown(metric_card("Plot×Year Rows",  f"{n_total:,}",      "total PLT_CN × INVYR"),  unsafe_allow_html=True)
+            c2.markdown(metric_card("Excluded (any)",  f"{pct_excl:.1f}%",  "exclude_any = TRUE"),    unsafe_allow_html=True)
+            c3.markdown(metric_card("Has Fire",        f"{pct_fire:.1f}%",  "DSTRBCD 30/31/32"),      unsafe_allow_html=True)
+            c4.markdown(metric_card("Has Insects",     f"{pct_ins:.1f}%",   "DSTRBCD 10/11/12"),      unsafe_allow_html=True)
+
+            st.markdown("---")
+            col_l, col_r = st.columns(2)
+
+            with col_l:
+                st.subheader("Flag rates")
+                flag_rows = [
+                    ("exclude_nonforest",     pct_nf,   "COND_STATUS_CD = 5", "#f85149"),
+                    ("exclude_human_dist",    pct_hd,   "DSTRBCD = 80",       "#f28e2b"),
+                    ("exclude_harvest",       pct_harv, "TRTCD = 10",         "#4e79a7"),
+                    ("exclude_harvest_agent", pct_ha,   "AGENTCD 80–89",      "#a371f7"),
+                    ("has_fire",              pct_fire, "DSTRBCD 30/31/32",   "#e15759"),
+                    ("has_insect",            pct_ins,  "DSTRBCD 10/11/12",   "#59a14f"),
+                ]
+                flag_df_plot = pd.DataFrame(
+                    [(name, rate, basis, color)
+                     for name, rate, basis, color in flag_rows if rate is not None],
+                    columns=["Flag", "Rate (%)", "Basis", "_color"],
+                )
+                if PLOTLY_AVAILABLE and len(flag_df_plot) > 0:
+                    fig = px.bar(
+                        flag_df_plot,
+                        y="Flag", x="Rate (%)", orientation="h",
+                        color="Flag",
+                        color_discrete_map=dict(zip(flag_df_plot["Flag"], flag_df_plot["_color"])),
+                        hover_data={"Basis": True, "Rate (%)": ":.2f", "_color": False},
+                        labels={"Rate (%)": "% of all plot×year rows"},
+                    )
+                    fig.update_layout(showlegend=False, yaxis=dict(autorange="reversed"))
+                    st.plotly_chart(dark_fig(fig), use_container_width=True)
+
+            with col_r:
+                st.subheader("What each flag means")
+                st.markdown(
+                    "| Flag | Source | Meaning |\n"
+                    "|------|--------|---------|\n"
+                    "| `exclude_nonforest` | `COND_STATUS_CD = 5` | Non-forest land with trees — deforested/converted plots retaining some trees |\n"
+                    "| `exclude_human_dist` | `DSTRBCD = 80` | Human-induced disturbance: logging, clearing, development |\n"
+                    "| `exclude_harvest` | `TRTCD = 10` | Cutting treatment recorded on condition |\n"
+                    "| `exclude_harvest_agent` | `AGENTCD 80–89` | Tree-level harvest cause-of-death (more sensitive than TRTCD) |\n"
+                    "| `exclude_any` | OR of all four | Convenience — standard clean-plot filter |\n"
+                    "| `has_fire` | `DSTRBCD 30/31/32` | Fire disturbance — **positive filter**, not excluded |\n"
+                    "| `has_insect` | `DSTRBCD 10/11/12` | Insect damage — **positive filter** |\n"
+                    "| `pct_forested` | `CONDPROP_UNADJ` | Fraction of plot in forested conditions (0–1) |\n"
+                )
+                st.info(
+                    "**FIA samples ALL US land.** About 59% of plot×year rows have "
+                    "`pct_forested = 0` (non-forest land). Always filter "
+                    "`pct_forested >= 0.5` as the **primary gate** before applying "
+                    "the exclusion flags."
+                )
+
+            st.markdown("---")
+            st.subheader("How to apply these flags")
+
+            r_code_tab, py_code_tab = st.tabs(["R", "Python"])
+
+            with r_code_tab:
+                st.code(
+                    'library(arrow); library(dplyr)\n'
+                    '\n'
+                    'flags <- read_parquet("05_fia/data/processed/summaries/plot_exclusion_flags.parquet")\n'
+                    'trees <- read_parquet("05_fia/data/processed/summaries/plot_tree_metrics.parquet")\n'
+                    '\n'
+                    '# ── Standard clean-plot filter ──────────────────────────────────────\n'
+                    '# Primary gate: keep only plots where ≥50% of area is forested\n'
+                    '# Then drop deforested / harvested / human-disturbed plots\n'
+                    'clean <- flags |> filter(pct_forested >= 0.5, !exclude_any)\n'
+                    'trees_clean <- trees |> inner_join(clean, by = c("PLT_CN", "INVYR"))\n'
+                    '\n'
+                    '# ── Select only burned plots ────────────────────────────────────────\n'
+                    'trees_fire <- trees |>\n'
+                    '  inner_join(\n'
+                    '    flags |> filter(pct_forested >= 0.5, has_fire),\n'
+                    '    by = c("PLT_CN", "INVYR")\n'
+                    '  )\n'
+                    '\n'
+                    '# ── See what fraction of plots are non-forest ───────────────────────\n'
+                    'mean(flags$pct_forested == 0)  # ~0.59 nationally\n'
+                    'table(flags$exclude_any)        # TRUE = excluded by any flag\n',
+                    language="r",
+                )
+
+            with py_code_tab:
+                st.code(
+                    'import pandas as pd\n'
+                    '\n'
+                    'flags = pd.read_parquet("05_fia/data/processed/summaries/plot_exclusion_flags.parquet")\n'
+                    'trees = pd.read_parquet("05_fia/data/processed/summaries/plot_tree_metrics.parquet")\n'
+                    '\n'
+                    '# Standard clean-plot filter\n'
+                    'clean = flags[(flags["pct_forested"] >= 0.5) & ~flags["exclude_any"]]\n'
+                    'trees_clean = trees.merge(clean[["PLT_CN", "INVYR"]], on=["PLT_CN", "INVYR"])\n'
+                    '\n'
+                    '# Burned plots only\n'
+                    'fire = flags[(flags["pct_forested"] >= 0.5) & flags["has_fire"]]\n'
+                    'trees_fire = trees.merge(fire[["PLT_CN", "INVYR"]], on=["PLT_CN", "INVYR"])\n'
+                    '\n'
+                    '# Check flag rates\n'
+                    'flag_cols = ["exclude_nonforest", "exclude_human_dist",\n'
+                    '             "exclude_harvest", "exclude_harvest_agent",\n'
+                    '             "exclude_any", "has_fire", "has_insect"]\n'
+                    'flags[flag_cols].mean().mul(100).round(1)  # % of plot×year rows\n',
+                    language="python",
+                )
+
+            # ── pct_forested histogram ────────────────────────────────────
+            if "pct_forested" in flags_df.columns and PLOTLY_AVAILABLE:
+                st.markdown("---")
+                st.subheader("pct_forested distribution")
+                st.caption(
+                    "Sum of CONDPROP_UNADJ for COND_STATUS_CD == 1 conditions within each plot × year. "
+                    "The spike at 0 represents non-forest FIA plots — FIA covers all land, not just forests."
+                )
+                fig = px.histogram(
+                    flags_df,
+                    x="pct_forested", nbins=30,
+                    labels={"pct_forested": "pct_forested (fraction of plot in forested conditions)"},
+                    color_discrete_sequence=["#59a14f"],
+                )
+                st.plotly_chart(dark_fig(fig), use_container_width=True)
+
+            # ── Map: excluded vs. clean ───────────────────────────────────
+            if tree_df is not None and "LAT" in tree_df.columns and PLOTLY_AVAILABLE:
+                st.markdown("---")
+                st.subheader("Excluded vs. clean plot locations")
+                coord = tree_df[["PLT_CN", "LAT", "LON"]].drop_duplicates("PLT_CN")
+                map_flags = flags_df.merge(coord, on="PLT_CN", how="left").dropna(subset=["LAT", "LON"])
+                map_flags["Plot status"] = map_flags["exclude_any"].map(
+                    {True: "Excluded", False: "Clean"}
+                )
+                map_flags = map_flags[map_flags["pct_forested"] >= 0.5]
+                if len(map_flags) > 50_000:
+                    map_flags = map_flags.sample(50_000, random_state=42)
+                fig = scatter_map(
+                    map_flags, "LAT", "LON", "Plot status",
+                    color_map={"Excluded": "#f85149", "Clean": "#59a14f"},
+                    title="Forested plots (pct_forested ≥ 0.5): excluded vs. clean",
+                )
+                st.plotly_chart(fig, use_container_width=True)
+
+    # ==========================================================================
+    # TAB 3 — FORESTS
     # ==========================================================================
     with tab_forests:
         if tree_df is None or len(tree_df) == 0:
@@ -690,7 +937,7 @@ def main():
                     st.plotly_chart(dark_fig(fig), use_container_width=True)
 
     # ==========================================================================
-    # TAB 3 — DISTURBANCE
+    # TAB 4 — DISTURBANCE
     # ==========================================================================
     with tab_disturb:
         if disturb_df is None or len(disturb_df) == 0:
@@ -779,7 +1026,7 @@ def main():
                 st.plotly_chart(fig, use_container_width=True)
 
     # ==========================================================================
-    # TAB 4 — DAMAGE AGENTS
+    # TAB 5 — DAMAGE AGENTS
     # ==========================================================================
     with tab_agents:
         if agents_df is None or len(agents_df) == 0:
@@ -874,7 +1121,7 @@ def main():
                     st.caption("LAT/LON not yet available — re-run the pipeline to add coordinates.")
 
     # ==========================================================================
-    # TAB 5 — MORTALITY & REGENERATION
+    # TAB 6 — MORTALITY & REGENERATION
     # ==========================================================================
     with tab_mort:
         mort_col, seed_col = st.columns(2)
