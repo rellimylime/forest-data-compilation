@@ -230,3 +230,109 @@ cat(sprintf("\nFigures saved to %s/\n", output_dir))
 cat("  01_outbreak_timeline.png   — MPB damage acres by year\n")
 cat("  02_climate_timeseries.png  — temperature and precip at MPB sites over time\n")
 cat("  03_outbreak_vs_climate.png — outbreak severity vs water-year climate\n")
+
+# ==============================================================================
+# Appendix: FIA plot filtering and site-level climate extraction
+# ==============================================================================
+#
+# The following examples show two common operations for FIA-based analyses:
+#   A. Filter out non-forested / human-disturbed plots before analysis
+#   B. Query long-term TerraClimate data at FIA site locations
+#
+# These require the FIA pipeline to have been run through
+# 05_build_fia_summaries.R (for A) and 06_extract_site_climate.R (for B).
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# A. FIA clean-plot filtering using plot_exclusion_flags.parquet
+# ------------------------------------------------------------------------------
+#
+# ~12% of FIA plots have been deforested or are non-forested.  Most analyses
+# should remove these plots, plus any with human-induced disturbance (DSTRBCD 80).
+# Use the pre-built exclusion flags parquet for a single join:
+#
+# Key flags:
+#   exclude_nonforest   — COND_STATUS_CD != 1 in any condition (deforested)
+#   exclude_human_dist  — DSTRBCD 80 in any slot (human-induced, e.g. logging)
+#   exclude_harvest     — TRTCD 10 in any slot (cutting treatment)
+#   exclude_any         — OR of all three above  ← use this for standard cleaning
+#   has_fire            — DSTRBCD 30/31/32        ← identify burned plots
+#   has_insect          — DSTRBCD 10/11/12        ← identify insect-damaged plots
+
+if (FALSE) {  # Set to TRUE once FIA pipeline has been run
+
+  flags <- read_parquet(
+    here("05_fia/data/processed/summaries/plot_exclusion_flags.parquet")
+  )
+
+  tree_metrics <- read_parquet(
+    here("05_fia/data/processed/summaries/plot_tree_metrics.parquet")
+  )
+
+  # Standard filter: remove deforested, human-disturbed, and harvested plots
+  clean_plots <- tree_metrics |>
+    inner_join(
+      flags |> filter(!exclude_any) |> select(PLT_CN, INVYR),
+      by = c("PLT_CN", "INVYR")
+    )
+
+  cat(sprintf("Original: %s plot-years\n", format(nrow(tree_metrics), big.mark = ",")))
+  cat(sprintf("After clean filter: %s plot-years (%.1f%% retained)\n",
+              format(nrow(clean_plots), big.mark = ","),
+              100 * nrow(clean_plots) / nrow(tree_metrics)))
+
+  # Separately: plots that burned (for fire-effects analyses)
+  burned_plots <- tree_metrics |>
+    inner_join(
+      flags |> filter(has_fire) |> select(PLT_CN, INVYR, has_fire),
+      by = c("PLT_CN", "INVYR")
+    )
+
+  cat(sprintf("Burned plots: %s plot-years\n", format(nrow(burned_plots), big.mark = ",")))
+}
+
+# ------------------------------------------------------------------------------
+# B. FIA site-level TerraClimate (1958-present)
+# ------------------------------------------------------------------------------
+#
+# fia_site_climate.parquet contains monthly tmmx, tmmn, pr, def, pet, aet for
+# all sites in all_site_locations.csv.  The 'def' variable is climate water
+# deficit (CWD = PET - AET) — a key predictor of drought stress and disturbance.
+#
+# Schema: site_id | year | month | water_year | water_year_month | variable | value
+
+if (FALSE) {  # Set to TRUE once 06_extract_site_climate.R has been run
+
+  site_clim <- read_parquet(
+    here("05_fia/data/processed/site_climate/fia_site_climate.parquet")
+  )
+
+  cat(sprintf("Site climate rows: %s\n", format(nrow(site_clim), big.mark = ",")))
+  cat(sprintf("Sites: %d  |  Years: %d-%d  |  Variables: %s\n",
+              n_distinct(site_clim$site_id),
+              min(site_clim$year), max(site_clim$year),
+              paste(unique(site_clim$variable), collapse = ", ")))
+
+  # Annual water-year CWD (deficit) per site
+  annual_cwd <- site_clim |>
+    filter(variable == "def") |>
+    group_by(site_id, water_year) |>
+    summarise(cwd_mm = sum(value, na.rm = TRUE), .groups = "drop")
+
+  # Summer (JJA) mean max temperature per site-year
+  summer_tmax <- site_clim |>
+    filter(variable == "tmmx", month %in% 6:8) |>
+    group_by(site_id, year) |>
+    summarise(tmax_jja_c = mean(value, na.rm = TRUE), .groups = "drop")
+
+  # Long-term mean annual CWD per site (all years available)
+  ltm_cwd <- annual_cwd |>
+    group_by(site_id) |>
+    summarise(cwd_ltm_mm = mean(cwd_mm, na.rm = TRUE), .groups = "drop")
+
+  cat(sprintf("Annual CWD computed for %d site-years\n",
+              nrow(annual_cwd)))
+  cat(sprintf("Long-term mean CWD range: %.0f - %.0f mm\n",
+              min(ltm_cwd$cwd_ltm_mm, na.rm = TRUE),
+              max(ltm_cwd$cwd_ltm_mm, na.rm = TRUE)))
+}

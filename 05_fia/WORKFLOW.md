@@ -6,7 +6,8 @@
 - [ ] Inspect schema, generate lookup parquets (`02_inspect_fia.R`)
 - [ ] Extract tree/BA/condition metrics (`03_extract_trees.R`)
 - [ ] Extract seedlings and mortality (`04_extract_seedlings_mortality.R`)
-- [ ] Build plot-level summaries (`05_build_fia_summaries.R`)
+- [ ] Build plot-level summaries + exclusion flags (`05_build_fia_summaries.R`)
+- [ ] Extract TerraClimate at FIA site locations (`06_extract_site_climate.R`)
 
 ---
 
@@ -168,34 +169,129 @@ trees gives per-acre basal area without needing to know subplot areas directly.
 - `agent_category` (bark beetles / defoliators / sucking insects / boring insects / root/butt disease / canker/rust / foliage/wilt disease / fire / other)
 - `ba_per_acre`, `n_trees_tpa` (BA and TPA of live trees carrying that damage code)
 
+**plot_treatment_history columns (Step 5b):**
+
+One row per **condition × treatment slot** where TRTCD ≠ 0. Mirrors `plot_disturbance_history` but for active management treatments recorded in COND.TRTCD1/2/3. Requires TRTCD columns in cond parquets (run `03_extract_trees.R --force-cond` if missing).
+
+- `PLT_CN`, `INVYR`, `STATECD`, `CONDID`, `CONDPROP_UNADJ`, `LAT`, `LON`
+- `treatment_slot` (1, 2, or 3 — TRTCD1/2/3)
+- `TRTCD` (raw FIA code), `TRTYR` (year of treatment; 9999 = continuous)
+- `treatment_label` — human-readable: "Cutting", "Site preparation", "Artificial regeneration", "Natural regeneration", "Other silvicultural treatment"
+- `treatment_category` — broad class: harvest / site_prep / regeneration / other_silv
+
+| TRTCD | Label | Category |
+|-------|-------|----------|
+| 10 | Cutting | harvest |
+| 20 | Site preparation | site_prep |
+| 30 | Artificial regeneration | regeneration |
+| 40 | Natural regeneration | regeneration |
+| 50 | Other silvicultural treatment | other_silv |
+
+**plot_exclusion_flags columns (Step 7):**
+
+- `PLT_CN`, `INVYR`, `STATECD`, `n_conditions` (number of conditions in plot)
+- `pct_forested` (sum of CONDPROP_UNADJ where COND_STATUS_CD == 1; 0–1)
+  - FIA samples **all US land**; ~59% of plot×year rows have `pct_forested == 0`.
+    Filter `pct_forested >= 0.5` (or similar) as the **primary gate** for forested analyses
+    before applying any of the boolean exclusion flags.
+- `exclude_nonforest` (logical: any condition has COND_STATUS_CD == 5 — non-forest land
+  with trees, meaning converted/deforested plots that still carry some trees)
+- `exclude_human_dist` (logical: any DSTRBCD1/2/3 == 80 "Human-induced")
+- `exclude_harvest` (logical: any TRTCD1/2/3 == 10 "Cutting", condition-level)
+- `exclude_harvest_agent` (logical: any TREE record has AGENTCD 80–89, tree-level
+  incidental harvest mortality; more sensitive than the condition-level TRTCD flag.
+  Requires harvest_flags parquets from `03_extract_trees.R`.)
+- `exclude_any` (logical: OR of all four `exclude_*` flags above — use for standard clean-plot filter)
+- `has_fire` (logical: any DSTRBCD1/2/3 in {30,31,32} — **positive filter**, not an exclusion)
+- `has_insect` (logical: any DSTRBCD1/2/3 in {10,11,12} — **positive filter**)
+
+**Key disturbance codes (FIADB v9.4 COND.DSTRBCD):**
+
+| Code | Meaning |
+|------|---------|
+| 10   | Insect damage (general) |
+| 11   | Insect damage — understory |
+| 12   | Insect damage — trees |
+| 30   | Fire (general) |
+| 31   | Ground fire |
+| 32   | Crown fire |
+| 80   | **Human-induced** (logging, development, clearing — exclude most analyses) |
+| COND_STATUS_CD = 1 | Forested condition (keep); != 1 means deforested/non-forest |
+| TRTCD = 10 | Cutting treatment (deforestation/harvest) |
+
+---
+
+### 06_extract_site_climate.R
+
+**Inputs:**
+- `all_site_locations.csv` (root of repo): site_id, latitude, longitude, source
+- TerraClimate pixel_values parquets (reference raster reconstructed from these)
+- GEE credentials (`local/user_config.yaml`)
+
+**Outputs:**
+- `data/processed/site_climate/fia_site_pixel_map.parquet` — site_id → pixel_id
+- `data/processed/site_climate/fia_site_climate.parquet` — long-format monthly climate
+
+**Schema (fia_site_climate.parquet):**
+
+| Column | Type | Description |
+|--------|------|-------------|
+| site_id | character | From all_site_locations.csv |
+| year | int | Calendar year |
+| month | int | Calendar month (1-12) |
+| water_year | int | Oct–Sep water year (month≥10: year+1) |
+| water_year_month | int | Month within water year (Oct=1 … Sep=12) |
+| variable | character | tmmx / tmmn / pr / def / pet / aet |
+| value | double | Scale factors already applied (°C for temp, mm for water) |
+
+**Variable scale factors:** tmmx=0.1, tmmn=0.1, pr=1.0, def=0.1, pet=0.1, aet=0.1
+
+**Processing:**
+1. `st_as_sf()` converts lat/lon to sf POINT object
+2. `build_pixel_map()` (from `scripts/utils/climate_extract.R`) finds containing TerraClimate pixel for each site using `terra::cellFromXY()`; coverage_fraction = 1.0 for all points
+3. `extract_climate_from_gee()` extracts 1958–present from `IDAHO_EPSCOR/TERRACLIMATE` GEE asset
+4. Annual parquets consolidated, joined to site_id, pivoted to long format
+5. Water year added via `calendar_to_water_year()` from `scripts/utils/time_utils.R`
+
+**Note on coordinate fuzz:** FIA coordinates are fuzzed ~1 mile for privacy, which is well within TerraClimate's ~4km pixel. Multiple nearby FIA plots may map to the same pixel; this is expected and documented in `fia_site_pixel_map.parquet`.
+
+**Note on year range:** TerraClimate begins in 1958. The GEE extraction uses 1958–`config.raw.terraclimate.end_year`. This is a ~66-year range, much larger than the IDS-driven extraction (1997–present), but since FIA site pixels are small in number (~a few thousand unique pixels), GEE processing is fast.
+
 ---
 
 ## Data Flow
 
 ```text
-FIA DataMart (50 state CSVs)
-         |
-         v 01_download_fia.R
-05_fia/data/raw/{STATE}/*.csv
-         |
-         v 02_inspect_fia.R
-lookups/ref_species.parquet + schema checks
-         |
-         +------------+------------------+
-         |            |                  |
-         v            v                  v
+FIA DataMart (50 state CSVs)          all_site_locations.csv
+         |                                      |
+         v 01_download_fia.R                    |
+05_fia/data/raw/{STATE}/*.csv                   |
+         |                                      |
+         v 02_inspect_fia.R                     |
+lookups/ref_species.parquet + schema checks     |
+         |                                      |
+         +------------+------------------+      |
+         |            |                  |      |
+         v            v                  v      |
 03_extract_trees.R  04_extract_...     04_extract_...
 trees/{state=ST}/   seedlings/{state=ST}/ mortality/{state=ST}/
-cond/{state=ST}/    (DSTRBCD + LAT/LON)
+cond/{state=ST}/    (DSTRBCD/TRTCD + LAT/LON)
 damage_agents/{state=ST}/
-         |
-         v 05_build_fia_summaries.R
-summaries/plot_tree_metrics.parquet       (+ LAT/LON)
-summaries/plot_seedling_metrics.parquet
-summaries/plot_mortality_metrics.parquet
-summaries/plot_cond_fortypcd.parquet
-summaries/plot_disturbance_history.parquet  (NEW)
-summaries/plot_damage_agents.parquet        (NEW)
+         |                                      |
+         v 05_build_fia_summaries.R             |
+summaries/plot_tree_metrics.parquet             |
+summaries/plot_seedling_metrics.parquet         |
+summaries/plot_mortality_metrics.parquet        |
+summaries/plot_cond_fortypcd.parquet            |
+summaries/plot_disturbance_history.parquet      |
+summaries/plot_damage_agents.parquet            |
+summaries/plot_exclusion_flags.parquet  <-------+---GEE (TerraClimate)
+                                                |       |
+                                                v 06_extract_site_climate.R
+                                        site_climate/fia_site_pixel_map.parquet
+                                        site_climate/fia_site_climate.parquet
+                                          (tmmx, tmmn, pr, def, pet, aet
+                                           1958-present, monthly, long format)
 ```
 
 ---
@@ -214,6 +310,10 @@ summaries/plot_damage_agents.parquet        (NEW)
 | Join TREE_GRM_COMPONENT to TREE for INVYR | GRM table records measurement periods, not calendar years directly; TREE.INVYR is the T2 year | 2026-02 |
 | species_temp_optima_mean placeholder column | Schema designed to accept thermophilization join when boss provides species temperature optima dataset | 2026-02 |
 | STATUSCD 1 and 2 in same extraction pass | Live and standing dead trees are in the same TREE table; filtering both in one pass avoids reading the file twice | 2026-02 |
+| Added TRTCD1/2/3 to cond_cols | Needed for `exclude_harvest` flag in Step 7; requires re-run of 03_extract_trees.R to populate cond parquets | 2026-03 |
+| plot_exclusion_flags as separate parquet | Downstream analyses join this once per analysis rather than re-deriving filters from raw DSTRBCD/TRTCD; mirrors R4 staff recommendation to remove human-disturbed plots upfront | 2026-03 |
+| FIA site climate: 1958-present | TerraClimate begins in 1958 and FIA sites need the full historical record; IDS pixel_values (1997–) not reused because site pixel set is much smaller and a fresh GEE query is faster | 2026-03 |
+| def for CWD | TerraClimate's `def` band = PET − AET = climate water deficit (CWD); same concept as annual CWD used in disturbance risk models | 2026-03 |
 
 ---
 
@@ -237,8 +337,11 @@ Key fields confirmed from User Guide v9.4 (see `docs/FIADB_field_reference.md` f
 | CONDPROP_UNADJ | COND | Proportion of plot area in this condition |
 | SFTWD_HRDWD | REF_SPECIES | "S"=softwood, "H"=hardwood |
 | WOODLAND | REF_SPECIES | "Y"=woodland species (root collar measurement), "N"=standard |
-| DSTRBCD1 | COND | Disturbance code 1 (most important); 10-12=insects, 20-22=disease, 30-32=fire (31=ground, 32=crown), 50-54=weather; codes 2 & 3 (DSTRBCD2/3) for additional disturbances |
+| DSTRBCD1 | COND | Disturbance code 1 (most important); **80=human-induced**, 10-12=insects, 20-22=disease, 30-32=fire (31=ground, 32=crown), 50-54=weather; codes 2 & 3 (DSTRBCD2/3) for additional disturbances |
 | DSTRBYR1 | COND | Year of disturbance 1; 9999 = continuous; DSTRBYR2/3 parallel DSTRBCD2/3 |
+| TRTCD1 | COND | Treatment code 1; **10=Cutting** (deforestation/harvest), 20=Site prep, 30=Artificial regen, 40=Natural regen, 50=Other silvicultural; TRTCD2/3 for additional treatments |
+| TRTYR1 | COND | Year of treatment 1; TRTYR2/3 parallel TRTCD2/3 |
+| COND_STATUS_CD | COND | **1=Forested** (keep for most analyses), 2=Non-forested, 3=Water, 4=Non-census water, 5=Non-forest land with trees |
 | DAMAGE_AGENT_CD1 | TREE | 5-digit PTIPS/FHAAST damage agent code on live trees (Appendix H); up to 3 per tree; 11000s=bark beetles, 12000s=defoliators, 14000s=sucking insects, 15000s=borers, 21000s=root disease, 22000s=cankers |
 
 ---

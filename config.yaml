@@ -424,6 +424,10 @@ processed:
       output_dir: "05_fia/data/processed/damage_agents"
       description: "Live-tree damage agent codes (DAMAGE_AGENT_CD1/2/3) aggregated to plot x INVYR x CONDID x species, hive-partitioned by state"
       columns: "PLT_CN, INVYR, CONDID, SPCD, SFTWD_HRDWD, DAMAGE_AGENT_CD, ba_per_acre, n_trees_tpa"
+    harvest_flags:
+      output_dir: "05_fia/data/processed/harvest_flags"
+      description: "Per-plot flags for incidental harvest based on AGENTCD 80-89 (cause-of-death codes on dead trees), hive-partitioned by state"
+      columns: "PLT_CN, INVYR, STATECD"
     summaries:
       output_dir: "05_fia/data/processed/summaries"
       description: "Plot-level aggregated metrics: BA totals, diversity indices, disturbance history, damage agents"

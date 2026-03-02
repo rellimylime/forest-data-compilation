@@ -212,9 +212,10 @@ extract_climate_from_gee <- function(pixel_coords,
 
   dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
-  # Ensure unique pixels only
+  # Ensure unique pixels only — dedup on pixel_id alone; x/y from first occurrence
+  # (distinct on all three can keep float near-duplicates for the same pixel)
   pixel_coords <- pixel_coords %>%
-    distinct(pixel_id, x, y)
+    distinct(pixel_id, .keep_all = TRUE)
 
   n_pixels <- nrow(pixel_coords)
 
@@ -247,17 +248,32 @@ extract_climate_from_gee <- function(pixel_coords,
     if (monthly) {
       # Build a single image with all 12 months stacked as separate bands
       # Band names: {variable}_{month:02d} (e.g., tmmx_01, tmmx_02, ...)
-      stacked_img <- .build_yearly_stacked_image(year, gee_asset, variables, ee)
+      stacked_img <- tryCatch(
+        .build_yearly_stacked_image(year, gee_asset, variables, ee),
+        error = function(e) {
+          cat(sprintf("skipped (no GEE data: %s)\n", conditionMessage(e)))
+          NULL
+        }
+      )
+      if (is.null(stacked_img)) next
 
       # Extract all 168 bands in batched sampleRegions() calls
-      stacked_result <- .extract_gee_batches(
-        pixel_coords, stacked_img, ee, scale, stacked_batch_size,
-        verbose = FALSE
+      # (GEE errors surface here at execution time, not at image-build time)
+      stacked_result <- tryCatch(
+        .extract_gee_batches(
+          pixel_coords, stacked_img, ee, scale, stacked_batch_size,
+          verbose = FALSE
+        ),
+        error = function(e) {
+          cat(sprintf("skipped (no GEE data for %d)\n", year))
+          NULL
+        }
       )
+      if (is.null(stacked_result)) next
 
       # Unstack: wide (168 cols) -> long-ish (14 var cols + year + month)
       # Pass pixel_coords so x/y can be joined (sampleRegions only returns pixel_id)
-      if (!is.null(stacked_result) && nrow(stacked_result) > 0) {
+      if (nrow(stacked_result) > 0) {
         year_data <- .unstack_yearly_result(stacked_result, variables, year, pixel_coords)
       } else {
         year_data <- data.frame()
