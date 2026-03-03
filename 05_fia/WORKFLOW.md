@@ -224,7 +224,7 @@ One row per **condition × treatment slot** where TRTCD ≠ 0. Mirrors `plot_dis
 ### 06_extract_site_climate.R
 
 **Inputs:**
-- `all_site_locations.csv` (root of repo): site_id, latitude, longitude, source
+- `data/processed/site_climate/all_site_locations.csv`: site_id, latitude, longitude, source
 - TerraClimate pixel_values parquets (reference raster reconstructed from these)
 - GEE credentials (`local/user_config.yaml`)
 
@@ -262,7 +262,7 @@ One row per **condition × treatment slot** where TRTCD ≠ 0. Mirrors `plot_dis
 ## Data Flow
 
 ```text
-FIA DataMart (50 state CSVs)          all_site_locations.csv
+FIA DataMart (50 state CSVs)          data/processed/site_climate/all_site_locations.csv
          |                                      |
          v 01_download_fia.R                    |
 05_fia/data/raw/{STATE}/*.csv                   |

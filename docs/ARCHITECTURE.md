@@ -240,12 +240,12 @@ Google Earth Engine utilities (for GEE-based datasets).
 
 ## Point-Based Extraction at Arbitrary Locations
 
-The `build_pixel_map()` function in `scripts/utils/climate_extract.R` handles both polygon and point geometries. For **point observations** (e.g., FIA site coordinates from `all_site_locations.csv`), it uses `terra::cellFromXY()` to find the containing pixel, and sets `coverage_fraction = 1.0`.
+The `build_pixel_map()` function in `scripts/utils/climate_extract.R` handles both polygon and point geometries. For **point observations** (e.g., FIA site coordinates from `05_fia/data/processed/site_climate/all_site_locations.csv`), it uses `terra::cellFromXY()` to find the containing pixel, and sets `coverage_fraction = 1.0`.
 
 This means the full pixel decomposition pattern works for any set of lat/lon points — not just IDS polygons. The FIA site climate extraction (`05_fia/scripts/06_extract_site_climate.R`) uses exactly this pattern:
 
 ```
-all_site_locations.csv          TerraClimate GEE (1958-present)
+05_fia/data/processed/site_climate/all_site_locations.csv    TerraClimate GEE (1958-present)
   (site_id, lat, lon)                    |
           |                              |
           v build_pixel_map()            |

@@ -249,7 +249,7 @@ Output: `output/demo_02_fia_forest/` — figures + CSV summaries
 
 ### demo_03_site_climate.R — Point-Based TerraClimate
 
-Queries `fia_site_climate.parquet` to compute annual CWD, summer temperatures, and long-term climatologies. Also shows how to add custom lat/lon locations to `all_site_locations.csv` for extraction.
+Queries `fia_site_climate.parquet` to compute annual CWD, summer temperatures, and long-term climatologies. Also shows how to add custom lat/lon locations to `05_fia/data/processed/site_climate/all_site_locations.csv` for extraction.
 
 ```bash
 Rscript scripts/demo_03_site_climate.R
@@ -265,7 +265,6 @@ Output: `output/demo_03_site_climate/` — 3 figures + CSV summaries
 forest-data-compilation/
 ├── README.md                        # Project overview (this file)
 ├── config.yaml                      # Central configuration
-├── all_site_locations.csv           # FIA plot lat/lon — input to 06_extract_site_climate.R
 ├── .gitignore
 ├── renv.lock                        # R package dependencies
 │
@@ -301,8 +300,10 @@ forest-data-compilation/
 │   ├── WORKFLOW.md
 │   ├── scripts/                     # 01_download → 06_extract_site_climate
 │   ├── lookups/                     # ref_species.parquet, ref_forest_type.parquet
+│   ├── reference/                   # Lab reference code (not part of pipeline)
+│   │   └── fia_disturbance_harvest_checks.R
 │   ├── data/processed/summaries/    # 8 plot-level parquets (tracked in git)
-│   └── data/processed/site_climate/ # fia_site_climate.parquet (tracked in git)
+│   └── data/processed/site_climate/ # fia_site_climate.parquet + all_site_locations.csv
 │
 └── archive/                         # Previous work not part of current pipeline
 ```

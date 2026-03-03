@@ -55,7 +55,8 @@ Scripts (run in order)
 
 06_extract_site_climate.R       Extract TerraClimate monthly climate data
                                 (1958-present) for all sites in
-                                all_site_locations.csv via GEE. Variables:
+                                data/processed/site_climate/all_site_locations.csv
+                                via GEE. Variables:
                                 tmmx, tmmn, pr, def (CWD), pet, aet.
                                 Output: data/processed/site_climate/.
 
