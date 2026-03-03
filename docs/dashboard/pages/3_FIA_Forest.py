@@ -225,7 +225,7 @@ with tab_filters:
             st.markdown(
                 "| Flag | Source | Meaning |\n"
                 "|------|--------|---------|\n"
-                "| `exclude_nonforest` | `COND_STATUS_CD = 5` | Code 5 = "Nonsampled — possible forest land" per FIADB v9.4 (definition TBC with PI) |\n"
+                "| `exclude_nonforest` | `COND_STATUS_CD = 5` | Nonsampled portion of a forest land plot (denied access, hazard, etc.) — flag name is a misnomer; code 5 IS forest land |\n"
                 "| `exclude_human_dist` | `DSTRBCD = 80` | Human-induced disturbance: logging, clearing, development |\n"
                 "| `exclude_harvest` | `TRTCD = 10` | Cutting treatment recorded on condition |\n"
                 "| `exclude_harvest_agent` | `AGENTCD 80–89` | Tree-level harvest cause-of-death (more sensitive) |\n"

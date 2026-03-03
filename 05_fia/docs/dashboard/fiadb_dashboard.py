@@ -554,7 +554,7 @@ FIELD_CODEBOOK: Dict[str, Dict] = {
             "2": "Nonforest land",
             "3": "Noncensus water (30–200 ft wide / 1.0–4.5 acres)",
             "4": "Census water (≥200 ft wide or ≥4.5 acres)",
-            "5": "Nonsampled — possible forest land",
+            "5": "Nonsampled, possibility of forest land — unsampled portion of accessible forest land plot (denied access, hazard, etc.); reason in COND_NONSAMPLE_REASN_CD",
         },
     },
     "PLOT_STATUS_CD": {

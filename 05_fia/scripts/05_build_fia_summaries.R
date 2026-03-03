@@ -564,8 +564,13 @@ if (file_exists(out_damage_ag)) {
 #   pct_forested         - proportion of plot area in forested conditions
 #                          (COND_STATUS_CD == 1); useful for restricting analyses
 #                          to forest-dominated plots (e.g. pct_forested >= 0.5)
-#   exclude_nonforest    - any condition has COND_STATUS_CD == 5 (non-forest land
-#                          with trees = converted/deforested land retaining trees).
+#   exclude_nonforest    - any condition has COND_STATUS_CD == 5 ("nonsampled,
+#                          possibility of forest land" per FIADB v9.4 §2.5.9).
+#                          These are portions of accessible forest land plots that
+#                          could NOT be measured (denied access, hazard, etc.);
+#                          the reason is recorded in COND_NONSAMPLE_REASN_CD.
+#                          Flag name is a misnomer (code 5 IS forest land, not
+#                          non-forest) but kept for backward compatibility.
 #                          Note: FIA samples all land types; COND_STATUS_CD 2/3/4
 #                          (bare non-forest, water) are excluded via pct_forested.
 #   exclude_human_dist   - any DSTRBCD1/2/3 == 80 (human-induced disturbance)
@@ -612,9 +617,11 @@ if (file_exists(out_excl_flags)) {
 
   # --- Condition-level flags (one row per PLT_CN x INVYR x CONDID) ---
 
-  # Non-forest land with trees (COND_STATUS_CD == 5): converted/deforested plots
-  # that retain some trees.  Codes 2/3/4 (bare non-forest, water) are better
-  # handled by filtering on pct_forested rather than a binary exclusion flag.
+  # COND_STATUS_CD == 5: "Nonsampled, possibility of forest land" (FIADB v9.4 §2.5.9).
+  # These are unsampled portions of accessible forest land plots — crew was denied
+  # access, faced a hazard, etc.  NOT "non-forest land with trees" (that is code 2).
+  # Flagging these is reasonable (no data available), but the flag name is a misnomer.
+  # Codes 2/3/4 (bare non-forest, water) are handled by filtering on pct_forested.
   cond_excl[, is_forested  := COND_STATUS_CD == 1L]
   cond_excl[, cond5        := COND_STATUS_CD == 5L]
 

@@ -55,7 +55,7 @@ Joan's reference R script (disturbance and harvest checks) has been added to the
 | Reference check | Implementation |
 |---|---|
 | Incidental harvest flag (AGENTCD 80–89) | [`05_build_fia_summaries.R` lines 665–683](05_fia/scripts/05_build_fia_summaries.R#L665) — `exclude_harvest_agent` |
-| COND_STATUS_CD = 5 (non-forest land with trees) | [`05_build_fia_summaries.R` lines 615–619](05_fia/scripts/05_build_fia_summaries.R#L615) — `exclude_nonforest` |
+| COND_STATUS_CD = 5 (nonsampled forest land — see item 5 below) | [`05_build_fia_summaries.R` lines 615–619](05_fia/scripts/05_build_fia_summaries.R#L615) — `exclude_nonforest` ⚠️ name is a misnomer |
 | TRTCD check (harvest/treatment) | [`05_build_fia_summaries.R` lines 643–651](05_fia/scripts/05_build_fia_summaries.R#L643) — `exclude_harvest` |
 | DSTRBCD check (disturbance history) | [`05_build_fia_summaries.R` lines 621–640](05_fia/scripts/05_build_fia_summaries.R#L621) — `has_fire`, `has_insect` |
 
@@ -65,22 +65,18 @@ Joan's reference R script (disturbance and harvest checks) has been added to the
 
 ---
 
-## 5. COND_STATUS_CD = 5 — Definition Discrepancy
+## 5. `exclude_nonforest` Flag — Name is a Misnomer
 
-The `exclude_nonforest` flag in the pipeline flags any condition with `COND_STATUS_CD == 5`. There are two conflicting definitions of what code 5 means:
+**Resolved from FIADB v9.4 §2.5.9:** `COND_STATUS_CD = 5` = **"Nonsampled, possibility of forest land"** — a portion of an accessible forest land plot that could NOT be measured (denied access, hazard, lost data, etc.). The reason is stored in `COND_NONSAMPLE_REASN_CD`.
 
-| Source | Definition of COND_STATUS_CD = 5 |
-|--------|----------------------------------|
-| FIADB v9.4 documentation | "Nonsampled — possible forest land" (crew could not access; believed to be forest) |
-| Sara's reference R script (line 43) | "Non-Forest Land with Trees" (converted/deforested land retaining trees) |
+This is **not** "non-forest land with trees" as Sara's reference script comment states. Code 5 is forest land FIA could not access. Code 2 = Nonforest land.
 
-These are scientifically different:
-- **Nonsampled forest** → should probably be excluded because we have no data, but it's NOT non-forest
-- **Non-forest with trees** → should be excluded because the land is converted/deforested
+**Consequence:** The flag `exclude_nonforest` is a misnomer — it actually flags **unsampled forest conditions**, not non-forest ones. The flag logic (excluding these plots) is arguably still valid (no data available), but:
+- The flag name implies the wrong thing
+- Any publication using `exclude_nonforest` should describe it accurately
+- Code comments in the R script have been corrected
 
-If FIADB v9.4 is correct, the flag `exclude_nonforest` is misnamed and the exclusion rationale in the code comments is wrong (though the flag still works).
-
-**Ask:** What does COND_STATUS_CD = 5 actually mean? Can Sara clarify?
+**Ask:** Should the flag be renamed (e.g., `exclude_nonsampled`) in a future pipeline run? Or keep the name with a corrected description for backward compatibility?
 
 **Location:** [`05_fia/scripts/05_build_fia_summaries.R` lines 615–619](05_fia/scripts/05_build_fia_summaries.R#L615) — `cond5`, `exclude_nonforest`
 
