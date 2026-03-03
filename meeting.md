@@ -65,7 +65,28 @@ Joan's reference R script (disturbance and harvest checks) has been added to the
 
 ---
 
-## 5. ITRDB Sites — Confirm Scope
+## 5. COND_STATUS_CD = 5 — Definition Discrepancy
+
+The `exclude_nonforest` flag in the pipeline flags any condition with `COND_STATUS_CD == 5`. There are two conflicting definitions of what code 5 means:
+
+| Source | Definition of COND_STATUS_CD = 5 |
+|--------|----------------------------------|
+| FIADB v9.4 documentation | "Nonsampled — possible forest land" (crew could not access; believed to be forest) |
+| Sara's reference R script (line 43) | "Non-Forest Land with Trees" (converted/deforested land retaining trees) |
+
+These are scientifically different:
+- **Nonsampled forest** → should probably be excluded because we have no data, but it's NOT non-forest
+- **Non-forest with trees** → should be excluded because the land is converted/deforested
+
+If FIADB v9.4 is correct, the flag `exclude_nonforest` is misnamed and the exclusion rationale in the code comments is wrong (though the flag still works).
+
+**Ask:** What does COND_STATUS_CD = 5 actually mean? Can Sara clarify?
+
+**Location:** [`05_fia/scripts/05_build_fia_summaries.R` lines 615–619](05_fia/scripts/05_build_fia_summaries.R#L615) — `cond5`, `exclude_nonforest`
+
+---
+
+## 6. ITRDB Sites — Confirm Scope
 
 `all_site_locations.csv` contains both FIA plot locations and ITRDB (International Tree Ring Data Bank) sites. I'm not sure if ITRDB sites are intentional for the current analysis scope.
 

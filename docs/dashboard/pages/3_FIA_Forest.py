@@ -119,7 +119,7 @@ with tab_overview:
         ("plot_seedling_metrics.parquet",     seed_df,    "Seedling regeneration"),
         ("plot_treatment_history.parquet",    treat_df,   "Treatment history (cutting, regen, site prep)"),
         ("plot_cond_fortypcd.parquet",        None,       "Condition / forest type (not pre-loaded)"),
-        ("fia_site_climate.parquet",          None,    "Site climate (TerraClimate 1958–2024)"),
+        ("fia_site_climate.parquet",          None,    "Point climate — FIA plots + ITRDB sites (TerraClimate 1958–2024)"),
     ]
     rows = []
     for fname, df, desc in files_info:
@@ -158,7 +158,7 @@ with tab_overview:
         "| `plot_damage_agents` | 1+ rows per plot × year | `PLT_CN, INVYR, CONDID` |\n"
         "| `plot_mortality_metrics` | 1+ rows per plot × year | `PLT_CN, INVYR` |\n"
         "| `plot_treatment_history` | 1+ rows per condition × treatment slot | `PLT_CN, INVYR` |\n"
-        "| `fia_site_climate` | 1 row per site × year × month × variable | `site_id` |\n"
+        "| `fia_site_climate` | 1 row per site × year × month × variable | `site_id` (numeric = FIA, alphanumeric = ITRDB) |\n"
     )
 
 # ==============================================================================
@@ -225,7 +225,7 @@ with tab_filters:
             st.markdown(
                 "| Flag | Source | Meaning |\n"
                 "|------|--------|---------|\n"
-                "| `exclude_nonforest` | `COND_STATUS_CD = 5` | Non-forest land with trees — deforested/converted plots |\n"
+                "| `exclude_nonforest` | `COND_STATUS_CD = 5` | Code 5 = "Nonsampled — possible forest land" per FIADB v9.4 (definition TBC with PI) |\n"
                 "| `exclude_human_dist` | `DSTRBCD = 80` | Human-induced disturbance: logging, clearing, development |\n"
                 "| `exclude_harvest` | `TRTCD = 10` | Cutting treatment recorded on condition |\n"
                 "| `exclude_harvest_agent` | `AGENTCD 80–89` | Tree-level harvest cause-of-death (more sensitive) |\n"
@@ -615,8 +615,10 @@ with tab_treatments:
 # ==============================================================================
 with tab_climate:
     st.markdown(
-        "TerraClimate monthly data extracted for each of **6,956 FIA plot locations** "
-        "via Google Earth Engine. 6 variables, 1958–2024."
+        "Point-based TerraClimate extraction for **6,956 site locations** — "
+        "2,070 FIA plots and 4,886 ITRDB chronology sites — via Google Earth Engine. "
+        "6 variables, 1958–2024. This is a secondary/example product separate from "
+        "the main FIA forest inventory analysis above."
     )
 
     clim_path = cp("fia_site_climate.parquet")
@@ -633,7 +635,7 @@ with tab_climate:
 
         c1, c2, c3, c4 = st.columns(4)
         c1.markdown(metric_card("Rows",   n_rows,    "site×yr×month×variable"), unsafe_allow_html=True)
-        c2.markdown(metric_card("Sites",  "6,956",   "FIA plot locations"),      unsafe_allow_html=True)
+        c2.markdown(metric_card("Sites",  "6,956",   "2,070 FIA + 4,886 ITRDB"), unsafe_allow_html=True)
         c3.markdown(metric_card("Period", "1958–2024", "calendar years"),        unsafe_allow_html=True)
         c4.markdown(metric_card("Vars",   "6",       "tmmx tmmn pr def pet aet"), unsafe_allow_html=True)
 
