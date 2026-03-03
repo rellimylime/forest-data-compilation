@@ -2,7 +2,7 @@
 # 06_extract_site_climate.R
 # Extract TerraClimate monthly data for FIA site locations (1958-present)
 #
-# Reads all_site_locations.csv (lat/lon for each FIA site), maps each site to
+# Reads data/processed/site_climate/all_site_locations.csv (lat/lon for each FIA site), maps each site to
 # its containing TerraClimate pixel (~4km), then extracts monthly climate values
 # via Google Earth Engine for the full TerraClimate record (1958-present).
 #
@@ -66,7 +66,8 @@ cat(sprintf("Scale factors: %s\n\n",
 # ------------------------------------------------------------------------------
 
 cat("Step 1: Loading site locations...\n")
-sites <- read.csv(here("all_site_locations.csv"), stringsAsFactors = FALSE)
+sites <- read.csv(here("05_fia/data/processed/site_climate/all_site_locations.csv"),
+                  stringsAsFactors = FALSE)
 cat(sprintf("  %d sites loaded from all_site_locations.csv\n", nrow(sites)))
 
 sites_sf <- st_as_sf(
