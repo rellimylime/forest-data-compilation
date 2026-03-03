@@ -7,7 +7,7 @@
 # monthly TerraClimate (1958–present) for 6,956 FIA plot locations.
 #
 # The same pipeline can extract climate for ANY lat/lon CSV using
-# all_site_locations.csv as the input template.
+# 05_fia/data/processed/site_climate/all_site_locations.csv as the input template.
 #
 #   Part A  Understand the site list (all_site_locations.csv)
 #   Part B  Explore fia_site_climate.parquet structure
@@ -47,8 +47,8 @@ cat("=====================\n\n")
 # Part A: Understand the site list
 # ==============================================================================
 #
-# all_site_locations.csv defines the sites for which climate was extracted.
-# It is the *input* to 06_extract_site_climate.R; the output is
+# 05_fia/data/processed/site_climate/all_site_locations.csv defines the sites
+# for which climate was extracted. It is the *input* to 06_extract_site_climate.R; the output is
 # fia_site_climate.parquet.
 #
 # Schema: site_id, latitude, longitude, source
@@ -56,7 +56,7 @@ cat("=====================\n\n")
 #   source    — origin of the point ("FIA" for all current rows)
 #
 
-sites <- read.csv(here("all_site_locations.csv"))
+sites <- read.csv(here("05_fia/data/processed/site_climate/all_site_locations.csv"))
 
 cat(sprintf("Site locations: %s  |  Source(s): %s\n",
             format(nrow(sites), big.mark = ","),
@@ -246,7 +246,7 @@ write.csv(co_annual_cwd, file.path(output_dir, "colorado_annual_cwd.csv"), row.n
 #
 # To extract TerraClimate for additional lat/lon locations:
 #
-#   1. Append rows to all_site_locations.csv:
+#   1. Append rows to 05_fia/data/processed/site_climate/all_site_locations.csv:
 #
 #      custom_sites <- data.frame(
 #        site_id   = c("my_site_01", "my_site_02"),
@@ -255,7 +255,7 @@ write.csv(co_annual_cwd, file.path(output_dir, "colorado_annual_cwd.csv"), row.n
 #        source    = "custom"
 #      )
 #      write.csv(rbind(existing_sites, custom_sites),
-#                here("all_site_locations.csv"), row.names = FALSE)
+#                here("05_fia/data/processed/site_climate/all_site_locations.csv"), row.names = FALSE)
 #
 #   2. Re-run the extraction script:
 #
