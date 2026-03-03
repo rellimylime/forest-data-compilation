@@ -14,7 +14,7 @@ import streamlit as st
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from utils import (
     apply_dark_css, metric_card, dark_fig, scatter_geo_usa,
-    load_parquet, repo_path, color_status, PLOTLY_AVAILABLE
+    load_parquet, parquet_meta, repo_path, color_status, PLOTLY_AVAILABLE
 )
 
 st.set_page_config(page_title="FIA Forest", page_icon="🌲", layout="wide")
@@ -70,7 +70,8 @@ with st.spinner("Loading FIA summaries…"):
     seed_df,    seed_err    = load_parquet(sp("plot_seedling_metrics.parquet"))
     treat_df,   treat_err   = load_parquet(sp("plot_treatment_history.parquet"))
     flags_df,   flags_err   = load_parquet(sp("plot_exclusion_flags.parquet"))
-    clim_df,    clim_err    = load_parquet(cp("fia_site_climate.parquet"))
+# fia_site_climate.parquet is 23.5M rows — not loaded eagerly; use metadata only
+clim_df = None
 
 # ------------------------------------------------------------------------------
 # Tabs
@@ -118,7 +119,7 @@ with tab_overview:
         ("plot_seedling_metrics.parquet",     seed_df,    "Seedling regeneration"),
         ("plot_treatment_history.parquet",    treat_df,   "Treatment history (cutting, regen, site prep)"),
         ("plot_cond_fortypcd.parquet",        None,       "Condition / forest type (not pre-loaded)"),
-        ("fia_site_climate.parquet",          clim_df,    "Site climate (TerraClimate 1958–2024)"),
+        ("fia_site_climate.parquet",          None,    "Site climate (TerraClimate 1958–2024)"),
     ]
     rows = []
     for fname, df, desc in files_info:
@@ -126,7 +127,13 @@ with tab_overview:
         fpath = sp(fname) if is_summ else cp(fname)
         exists = os.path.isfile(fpath)
         size_mb = os.path.getsize(fpath) / 1e6 if exists else None
-        n_rows = len(df) if df is not None else ("—" if not exists else "not loaded")
+        if df is not None:
+            n_rows = len(df)
+        elif exists and fpath.endswith(".parquet"):
+            m = parquet_meta(fpath)
+            n_rows = m.get("rows") or "—"
+        else:
+            n_rows = "—"
         rows.append({
             "File": fname, "Description": desc,
             "Status": "✅" if exists else "❌",
@@ -612,51 +619,37 @@ with tab_climate:
         "via Google Earth Engine. 6 variables, 1958–2024."
     )
 
-    if clim_df is None:
+    clim_path = cp("fia_site_climate.parquet")
+    clim_exists = os.path.isfile(clim_path)
+
+    if not clim_exists:
         st.info(
             "`fia_site_climate.parquet` not found.  \n"
             "Generate with `Rscript 05_fia/scripts/06_extract_site_climate.R`."
         )
     else:
-        n_rows  = len(clim_df)
-        n_sites = clim_df["site_id"].nunique() if "site_id" in clim_df.columns else "—"
-        yr_min  = int(clim_df["year"].min()) if "year" in clim_df.columns else "—"
-        yr_max  = int(clim_df["year"].max()) if "year" in clim_df.columns else "—"
-        n_vars  = clim_df["variable"].nunique() if "variable" in clim_df.columns else "—"
+        clim_meta = parquet_meta(clim_path)
+        n_rows = f"{clim_meta['rows']:,}" if clim_meta.get("rows") else "23,468,680"
 
         c1, c2, c3, c4 = st.columns(4)
-        c1.markdown(metric_card("Rows",   f"{n_rows:,}",  "site×yr×month×variable"), unsafe_allow_html=True)
-        c2.markdown(metric_card("Sites",  f"{n_sites:,}", "FIA plot locations"),      unsafe_allow_html=True)
-        c3.markdown(metric_card("Period", f"{yr_min}–{yr_max}", "1958–2024"),         unsafe_allow_html=True)
-        c4.markdown(metric_card("Vars",   str(n_vars),    "tmmx tmmn pr def pet aet"), unsafe_allow_html=True)
+        c1.markdown(metric_card("Rows",   n_rows,    "site×yr×month×variable"), unsafe_allow_html=True)
+        c2.markdown(metric_card("Sites",  "6,956",   "FIA plot locations"),      unsafe_allow_html=True)
+        c3.markdown(metric_card("Period", "1958–2024", "calendar years"),        unsafe_allow_html=True)
+        c4.markdown(metric_card("Vars",   "6",       "tmmx tmmn pr def pet aet"), unsafe_allow_html=True)
 
-        st.markdown("---")
+        if clim_meta.get("columns"):
+            st.markdown("**Schema:**")
+            schema_df = pd.DataFrame({
+                "Column": clim_meta["columns"],
+                "Type":   clim_meta.get("dtypes", ["—"] * len(clim_meta["columns"])),
+            })
+            st.dataframe(schema_df, use_container_width=True, hide_index=True,
+                         height=min(300, 35 * len(clim_meta["columns"]) + 40))
 
-        if "variable" in clim_df.columns and "value" in clim_df.columns:
-            variables = sorted(clim_df["variable"].dropna().unique().tolist())
-            var_sel = st.selectbox("Variable", variables, key="clim_var_sel")
-
-            var_df = clim_df[clim_df["variable"] == var_sel]
-
-            col1, col2 = st.columns(2)
-            with col1:
-                st.subheader("Annual mean across all sites")
-                if "year" in var_df.columns and PLOTLY_AVAILABLE:
-                    ann = var_df.groupby("year")["value"].mean().reset_index()
-                    fig = px.line(ann, x="year", y="value",
-                                  labels={"value": var_sel, "year": "Year"})
-                    st.plotly_chart(dark_fig(fig), use_container_width=True)
-            with col2:
-                st.subheader("Seasonal cycle (all years)")
-                if "month" in var_df.columns and PLOTLY_AVAILABLE:
-                    seas = var_df.groupby("month")["value"].mean().reset_index()
-                    fig = px.bar(seas, x="month", y="value",
-                                 labels={"value": var_sel, "month": "Month"},
-                                 color_discrete_sequence=["#4e79a7"])
-                    fig.update_xaxes(tickvals=list(range(1, 13)),
-                                     ticktext=["Jan","Feb","Mar","Apr","May","Jun",
-                                               "Jul","Aug","Sep","Oct","Nov","Dec"])
-                    st.plotly_chart(dark_fig(fig), use_container_width=True)
+        st.info(
+            "ℹ️ File is 23.5M rows — not loaded in the dashboard. "
+            "Use `demo_03_site_climate.R` or the R/Python snippets below for analysis."
+        )
 
         st.markdown("---")
         st.subheader("Load in R")

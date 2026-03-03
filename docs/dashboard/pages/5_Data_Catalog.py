@@ -11,7 +11,7 @@ import pandas as pd
 import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from utils import apply_dark_css, parquet_meta, load_sample, repo_path, color_status
+from utils import apply_dark_css, parquet_meta, repo_path, color_status
 
 st.set_page_config(page_title="Data Catalog", page_icon="📋", layout="wide")
 apply_dark_css()
@@ -468,20 +468,10 @@ for tab, (section, entries) in zip(section_tabs, CATALOG.items()):
                     st.dataframe(schema_df, use_container_width=True, hide_index=True,
                                  height=min(400, 35 * len(cols_list) + 40))
 
-                # Sample rows (parquets only; skipped for large files not present locally)
-                if exists and entry["path"].endswith(".parquet"):
-                    sample = load_sample(full_path)
-                    if sample is not None:
-                        st.markdown("**Sample rows (first 5):**")
-                        st.dataframe(sample, use_container_width=True, hide_index=True)
-                    elif size_str != "—":
-                        st.caption(f"Sample not available for large file ({size_str})")
-
-                r_tab, py_tab = st.tabs(["R", "Python"])
-                with r_tab:
-                    st.code(entry["r_code"], language="r")
-                with py_tab:
-                    st.code(entry["py_code"], language="python")
+                st.markdown("**Load code — R:**")
+                st.code(entry["r_code"], language="r")
+                st.markdown("**Load code — Python:**")
+                st.code(entry["py_code"], language="python")
 
 # ------------------------------------------------------------------------------
 # Summary inventory table

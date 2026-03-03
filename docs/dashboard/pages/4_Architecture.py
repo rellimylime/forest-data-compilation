@@ -174,7 +174,7 @@ PIPELINE_HTML = """
         site_id · latitude · longitude<br>
         Single point per plot
       </div>
-      <div class="box-filename">all_site_locations.csv<br>(from FIA PLOT table)</div>
+      <div class="box-filename">05_fia/data/processed/site_climate/<br>all_site_locations.csv</div>
     </td>
     <td class="pipe-arrow">→</td>
     <td class="box-fia">
@@ -292,7 +292,7 @@ with tab_fia:
 
     fia_steps = [
         ("Step 1", "Compile FIA site locations",
-         "`all_site_locations.csv` — 6,956 unique FIA plot locations (lat/lon + site_id) "
+         "`05_fia/data/processed/site_climate/all_site_locations.csv` — 6,956 unique FIA plot locations (lat/lon + site_id) "
          "compiled from the FIA PLOT table across all 50 states. "
          "Each row is a unique geographic plot location (not a visit — INVYR not included here).",
          "`05_fia/scripts/03_extract_trees.R` (LAT/LON extracted from PLOT table)"),
