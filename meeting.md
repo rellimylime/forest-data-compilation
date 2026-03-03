@@ -149,6 +149,29 @@ Output: `output/demo_03_site_climate/` — figures + CSVs *(run `06_extract_site
 
 ---
 
+### Cross-Dataset Comparison ([`scripts/compare_mpb_climate_datasets.R`](scripts/compare_mpb_climate_datasets.R))
+
+Plots TerraClimate, PRISM, and WorldClim results on the same axes for direct comparison. Run all three `demo_01` variants first.
+
+```bash
+Rscript scripts/demo_01_ids_climate.R terraclimate
+Rscript scripts/demo_01_ids_climate.R prism
+Rscript scripts/demo_01_ids_climate.R worldclim
+Rscript scripts/compare_mpb_climate_datasets.R
+```
+
+Output: `output/demo_mpb_comparison/` — 2 figures
+
+**Figure 1 — Climate time series, all three datasets on the same axes**
+
+![Climate comparison](output/demo_mpb_comparison/01_climate_comparison.png)
+
+**Figure 2 — Outbreak severity vs. climate, all three datasets**
+
+![Outbreak vs climate comparison](output/demo_mpb_comparison/02_outbreak_vs_climate_comparison.png)
+
+---
+
 ## 7. Dashboard Demo
 
 Unified Streamlit dashboard is ready — shows pipeline status, data schemas, and load code for all datasets.
