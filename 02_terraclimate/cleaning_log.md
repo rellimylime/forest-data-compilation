@@ -1,10 +1,10 @@
 # TerraClimate Extraction Log
 
-**Dataset:** TerraClimate extracted at IDS observation centroids  
-**Data Manager:** Emily Miller  
-**Institution:** UCSB, Bren School, Landscapes of Change Lab  
-**Log Created:** 2026-01-31  
-**Last Updated:** 2026-02-03  
+**Dataset:** TerraClimate extracted at IDS observation locations
+**Data Manager:** Emily Miller
+**Institution:** UCSB, Bren School, Landscapes of Change Lab
+**Log Created:** 2026-01-31
+**Last Updated:** 2026-02-23
 
 ---
 
@@ -13,280 +13,179 @@
 - **Source:** TerraClimate via Google Earth Engine
 - **GEE Asset:** IDAHO_EPSCOR/TERRACLIMATE
 - **Native Resolution:** ~4km (1/24th degree)
-- **Temporal Resolution:** Monthly → aggregated to annual means
-- **Variables Extracted:** 14 climate/water balance variables
-- **Extraction Method:** Point sampling at IDS polygon centroids
-- **Total Observations:** 4,475,817
-- **Output Format:** CSV files (one per region-year batch)
-
----
-
-## Extraction Methodology
-
-### Why Point Extraction (Not Raster Download)?
-
-TerraClimate is a global raster dataset (~4km resolution). Downloading raw tiles for the entire US would require:
-- ~500+ GB of data
-- Complex raster processing pipeline
-- Substantial storage and compute resources
-
-Instead, we used Google Earth Engine to extract values **only at the locations we need** (IDS observation centroids). This is:
-- Fast (~25 minutes for 4.5M points)
-- Storage-efficient (~500 MB of CSVs vs 500+ GB of rasters)
-- Directly joinable to IDS data via OBSERVATION_ID
-
-### Extraction Steps
-
-1. Load IDS polygon for each observation
-2. Compute centroid using `st_point_on_surface()` (guarantees point inside polygon)
-3. Transform to WGS84 (EPSG:4326) to match TerraClimate CRS
-4. Query TerraClimate for SURVEY_YEAR (Jan 1 to Dec 31)
-5. Calculate annual mean across 12 monthly images
-6. Extract pixel value at centroid using `sampleRegions(scale=4000)`
-7. Save to CSV with OBSERVATION_ID as join key
-
-### Batching Strategy
-
-- **Primary batches:** REGION_ID × SURVEY_YEAR (251 combinations)
-- **Sub-batches:** 5000 features max per GEE request (API limit)
-- **Resumable:** Script checks for existing CSVs and skips completed batches
+- **Temporal Resolution:** Monthly (all 12 months preserved per year)
+- **Variables Extracted:** 14 climate/water balance variables (see `data_dictionary.csv`)
+- **Extraction Method:** Pixel decomposition via exactextractr (polygons) and cellFromXY (points)
+- **Output Format:** Parquet files (pixel maps + yearly pixel value files)
 
 ---
 
 ## Data Quality Issues
 
+Issues identified during TerraClimate extraction and processing that affect the current workflow (v2.0).
+
 ### Issue #001: Raw Values Require Scaling
 
-**Date identified:** 2025-01-31  
-**Fields affected:** All 14 climate variables  
+**Date identified:** 2025-01-31
+**Fields affected:** All 14 climate variables
 
-**Description:**  
+**Description:**
 TerraClimate stores values as integers for storage efficiency. Each variable has a scale factor that must be applied to convert to physical units.
 
-| Variable | Scale Factor | Raw Example | Scaled Value | Units |
-|----------|--------------|-------------|--------------|-------|
-| tmmx | 0.1 | 254 | 25.4 | °C |
-| tmmn | 0.1 | 89 | 8.9 | °C |
-| pr | 1 | 45 | 45 | mm |
-| pet | 0.1 | 1200 | 120.0 | mm |
-| vpd | 0.01 | 850 | 8.5 | kPa |
-| pdsi | 0.01 | -150 | -1.50 | unitless |
+**Example:**
+- Raw tmmx value: 254
+- Scale factor: 0.1
+- Physical value: 25.4°C
 
-**Decision:** Keep raw values in extraction CSVs. Apply scale factors during merge/processing step using `apply_terraclimate_scales()` function.
+**Decision:** Scale factors are applied during extraction ([02_extract_terraclimate.R](scripts/02_extract_terraclimate.R)). Output parquet files contain values in physical units. Scale factors are defined in `config.yaml`.
+
+**Impact:** Output data is immediately usable; users do not need to apply scale factors.
 
 ---
 
-### Issue #002: Annual Means vs Annual Totals
+### Issue #002: Coastal/Edge NoData Pixels
 
-**Date identified:** 2025-01-31  
-**Fields affected:** pr, aet, pet, def, ro (flux variables)  
+**Date identified:** 2025-01-31
+**Records affected:** ~1,200 observations (0.03%)
 
-**Description:**  
-Extraction calculates the **mean** of 12 monthly values. For some variables, the annual **total** is more scientifically meaningful:
-- Precipitation (pr): Annual total rainfall is standard
-- Evapotranspiration (aet, pet): Often reported as annual flux
-- Runoff (ro): Cumulative annual value
-
-For other variables, annual mean is appropriate:
-- Temperature (tmmx, tmmn): Mean annual temperature
-- Soil moisture (soil): Mean state variable
-- Drought index (pdsi): Mean annual conditions
-
-**Decision:** Document this clearly. Processing scripts should multiply flux variables by 12 to get annual totals if needed for analysis.
-
----
-
-### Issue #003: Invalid Centroid Coordinates
-
-**Date identified:** 2025-01-31  
-**Records affected:** 10 out of 4,475,827 (0.0002%)  
-
-**Description:**  
-Ten IDS observations produced NaN coordinates when computing centroids with `st_point_on_surface()`. These were likely degenerate geometries (e.g., slivers, self-intersecting polygons) that passed `st_is_valid()` but failed centroid computation.
-
-**Console output:**
-```
-Removing 10 features with invalid coordinates...
-```
-
-**Decision:** Exclude these 10 observations from extraction. They can be identified by missing OBSERVATION_IDs in the TerraClimate output when joined to IDS data.
-
----
-
-### Issue #004: TerraClimate Temporal Lag
-
-**Date identified:** 2025-01-31  
-**Potential impact:** 2024 data  
-
-**Description:**  
-TerraClimate data release lags by several months to over a year. As of extraction date, 2024 data appeared to be available and extracted successfully.
-
-**Verification:**
-```r
-# Test extraction for 2024
-tc_2024 <- get_terraclimate_annual(2024, "pr", ee)
-# Result: pr = 49.83 (valid value, not NULL)
-```
-
-**Decision:** 2024 extraction succeeded. If future analysis reveals data quality issues for 2024, consider using 2023 climate as proxy or checking for data updates.
-
----
-
-### Issue #005: Coastal/Edge NoData Pixels
-
-**Date identified:** 2025-01-31  
-**Potential impact:** Unknown (not quantified)  
-
-**Description:**  
-TerraClimate has NoData values over oceans and at dataset edges. IDS observations near coastlines (especially Alaska, Hawaii, Pacific Northwest) may fall in NoData pixels if the centroid lands slightly offshore or in an unmapped area.
-
-**Symptoms:** NULL or NA values for all climate variables for specific observations.
-
-**Decision:** Check for systematic missingness in coastal regions during merge step. If significant, consider using polygon-mean extraction instead of centroid-point extraction for affected regions.
-
----
-
-### Issue #006: st_point_on_surface Warning
-
-**Date identified:** 2025-01-31  
-**Type:** Warning (not error)  
-
-**Description:**  
-R generates a warning when using `st_point_on_surface()` on geodetic (lat/lon) coordinates:
-```
-st_point_on_surface may not give correct results for longitude/latitude data
-```
-
-This occurs because the function uses planar geometry algorithms on spherical coordinates. At the scale of individual IDS polygons (typically <1km) and TerraClimate resolution (~4km), this introduces negligible error.
-
-**Decision:** Ignore warning. The extracted climate values are at 4km resolution, so sub-kilometer centroid precision is not meaningful.
-
----
-
-### Issue #007: Duplicate OBSERVATION_IDs in TerraClimate Output
-
-**Date identified:** 2025-02-03  
-**Records affected:** 3,499 duplicate pairs (6,998 rows total)
-
-**Description:**  
-Extraction produced duplicate rows for ~3,499 OBSERVATION_IDs, all within the same region-year batch. Likely caused by off-by-one error at sub-batch boundaries (features at positions 5000, 10000, etc. extracted twice).
-
-**Verification:** All duplicates have identical climate values.
-
-**Decision:** Deduplicate with `distinct(OBSERVATION_ID, .keep_all = TRUE)` during merge. Root cause in extraction script not fixed (low priority given duplicates are identical).
-
----
-
-### Issue #008: NA OBSERVATION_IDs in Region 9, 2024
-
-**Date identified:** 2025-02-03  
-**Records affected:** 15
-
-**Description:**  
-15 rows from Region 9, Year 2024 batch have NA OBSERVATION_IDs. The ID column was not passed through GEE correctly for these features.
-
-**Decision:** Filter out during merge. Too few to investigate further.
-
----
-
-### Issue #009: Join Type Mismatch
-
-**Date identified:** 2025-02-03  
-**Impact:** 896,929 false NA matches initially
-
-**Description:**  
-Original merge joined on OBSERVATION_ID, REGION_ID, and SURVEY_YEAR. TerraClimate CSVs stored REGION_ID and SURVEY_YEAR as numeric (double), while IDS geopackage stored them as integer. This caused join failures.
-
-**Decision:** Join on OBSERVATION_ID only (unique identifier). Drop REGION_ID and SURVEY_YEAR from TerraClimate data before join.
-
----
-
-### Issue #010: Missing Climate Data (NoData Pixels)
-
-**Date identified:** 2025-02-03  
-**Records affected:** 1,235 (0.03%)
-
-**Description:**  
-1,235 IDS observations have no climate data because their centroids fall in TerraClimate NoData pixels (ocean, dataset edges).
+**Description:**
+TerraClimate has NoData values over oceans and at dataset edges. IDS observations near coastlines may overlap NoData pixels, resulting in missing climate data.
 
 **Distribution by region:**
-- Region 10 (Alaska): 694
-- Region 9 (Pacific NW): 152
-- Region 6: 269
-- Region 8: 41
-- Region 5: 35
-- Region 2: 44
+- Region 10 (Alaska): ~700 observations (most affected, dataset edges)
+- Region 6 (Pacific NW): ~270 observations (coastal)
+- Region 9 (Eastern): ~150 observations (coastal)
+- Other regions: <50 observations each
 
-**Decision:** Accept as missing. Too few to warrant polygon-mean extraction.
+**Decision:** Accepted as missing data. The pixel decomposition workflow maps all overlapping pixels, so coastal observations may have partial coverage (some pixels valid, some NoData).
 
----
+**Mitigation:** Summaries output includes `n_pixels_with_data` diagnostic. Users can filter observations with insufficient pixel coverage.
 
-## Variables Extracted
-
-| Variable | Description | Units | Scale Factor | Notes |
-|----------|-------------|-------|--------------|-------|
-| tmmx | Maximum temperature | °C | 0.1 | Monthly mean of daily max |
-| tmmn | Minimum temperature | °C | 0.1 | Monthly mean of daily min |
-| pr | Precipitation | mm | 1 | Monthly accumulation |
-| srad | Shortwave radiation | W/m² | 0.1 | Downward surface flux |
-| vs | Wind speed at 10m | m/s | 0.01 | Monthly mean |
-| vap | Vapor pressure | kPa | 0.001 | Monthly mean |
-| vpd | Vapor pressure deficit | kPa | 0.01 | Monthly mean |
-| pet | Reference ET (Penman-Monteith) | mm | 0.1 | Monthly accumulation |
-| aet | Actual evapotranspiration | mm | 0.1 | Monthly accumulation |
-| def | Climate water deficit | mm | 0.1 | pet - aet |
-| soil | Soil moisture | mm | 0.1 | Monthly mean |
-| swe | Snow water equivalent | mm | 1 | Monthly mean |
-| ro | Runoff | mm | 1 | Monthly accumulation |
-| pdsi | Palmer Drought Severity Index | unitless | 0.01 | Monthly mean |
+**Impact:** Small coastal or edge-proximal observations may have no valid climate data. Check `n_pixels_with_data` column in summaries.
 
 ---
 
-## Output Files
+### Issue #003: TerraClimate Temporal Lag
 
-**Raw extraction CSVs:**
-- Location: `02_terraclimate/data/raw/`
-- Naming: `tc_r{REGION_ID}_{SURVEY_YEAR}.csv`
-- Total files: 251
-- Total size: ~500 MB
+**Date identified:** 2025-01-31
+**Potential impact:** Recent years (2024+)
 
-**Example file structure (tc_r10_2020.csv):**
+**Description:**
+TerraClimate data release lags by several months to over a year behind real-time. At extraction time (2026-02), 2024 data was available and extracted successfully.
+
+**Decision:** Use available data as-is. If future analysis reveals data quality issues for the most recent year, consider using prior year as proxy.
+
+**Impact:** Most recent year may be provisional or subject to revision. Check TerraClimate data version notes if using for time-sensitive applications.
+
+---
+
+### Issue #004: Flux Variables Need Annual Summation
+
+**Date identified:** 2025-01-31
+**Variables affected:** pr, aet, pet, def, ro, soil (flux variables)
+
+**Description:**
+Flux variables (precipitation, evapotranspiration, runoff, deficit, soil moisture) are monthly accumulations. For annual totals, these should be summed across 12 months, not averaged.
+
+**Decision:** The current workflow preserves individual monthly values in long format. Users calculate annual totals as needed:
+
+```r
+# Annual precipitation total (correct):
+annual_pr <- pixel_values %>%
+  filter(variable == "pr") %>%
+  group_by(pixel_id, calendar_year) %>%
+  summarize(annual_total = sum(value, na.rm = TRUE))
+
+# NOT this (would be mean monthly, not annual total):
+annual_pr_wrong <- summarize(annual_mean = mean(value))  # INCORRECT for flux vars
 ```
-OBSERVATION_ID,aet,def,pdsi,pet,pr,ro,soil,srad,swe,tmmn,tmmx,vap,vpd,vs,REGION_ID,SURVEY_YEAR
-{083df988-...},379.67,55.92,-38.83,435.58,80.75,34.00,1091.75,1011.25,92.25,4.42,77.42,657.67,34.75,328.33,10,2020
-```
 
-**Merged GeoPackage:**
-- Location: `02_terraclimate/data/processed/ids_terraclimate_merged.gpkg`
-- Size: 4.2 GB
-- Contents: IDS geometries + 14 scaled climate variables
-- Scale factors: Applied
+**Impact:** Users must be aware of flux vs. state variable distinction when aggregating.
 
 ---
 
-## Processing Steps
+### Issue #005: 10 IDS Observations Excluded - No Pixel Overlap
 
-1. [x] Combine all CSVs into single file
-2. [x] Apply scale factors to convert to physical units
-3. [ ] Calculate derived variables (annual totals for flux variables) — deferred to analysis
-4. [ ] Check for missing values (coastal NoData issue) — deferred to analysis
-5. [x] Join to IDS cleaned data on OBSERVATION_ID
-6. [x] Export merged dataset
+**Date identified:** 2026-02-23
+**Records affected:** 10 observations (0.0002%)
 
-**Merged output:** `02_terraclimate/data/processed/ids_terraclimate_merged.gpkg` (4.2 GB)
+**Description:**
+The TerraClimate pixel map (`damage_areas_pixel_map.parquet`) contains 4,475,817 unique
+OBSERVATION_IDs, while the IDS damage_areas layer has 4,475,827 - a difference of exactly 10.
+These 10 observations have geometries so degenerate (near-zero-area slivers or self-intersecting
+polygons) that `exactextractr::exact_extract()` returns zero rows for them. No TerraClimate
+pixel at ~4km resolution overlaps the geometry, so these observations have no pixel mapping
+and no climate summaries.
+
+**Evidence:**
+- IDS `damage_areas` total OBSERVATION_IDs: 4,475,827
+- TerraClimate pixel map unique OBSERVATION_IDs: 4,475,817
+- Difference: 10 (confirmed consistent across all build_climate_summaries.R runs)
+
+**Decision:** Accepted as missing data. The geometries are valid enough to pass sf validation
+but produce no usable area intersection at ~4km resolution. These observations will have no
+rows in any climate summaries output. Users joining on OBSERVATION_ID should be aware that
+10 observations will not match.
+
+**Impact:** Negligible (0.0002% of observations). The same 10 observations are likely absent
+from PRISM and WorldClim pixel maps as well, since their geometries are dataset-agnostic.
 
 ---
 
-## Performance Summary
+## Design Decisions
 
-| Metric | Value |
-|--------|-------|
-| Total features extracted | 4,475,817 |
-| Features excluded (invalid centroids) | 10 |
-| Total extraction time | ~25 minutes |
-| Average rate | ~3,000 features/second |
-| Output size | ~500 MB (251 CSV files) |
-| Errors encountered | 0 |
+Key decisions made during workflow development that affect data structure and usage.
+
+| Decision | Rationale | Date |
+|----------|-----------|------|
+| **Pixel decomposition** (not centroid sampling) | Preserves within-polygon climate variation; critical for large damage areas | 2026-02-05 |
+| **Monthly values preserved** (not annual means) | Enables seasonal analysis; users aggregate as needed | 2026-02-05 |
+| **Two-table architecture** (pixel maps + pixel values) | Efficient storage; handles pancake features; enables weighted means | 2026-02-05 |
+| **GEE extraction** (not NetCDF download) | No local storage needed; direct pixel sampling; free access | 2026-02-05 |
+| **Parquet format** | Efficient columnar storage; fast filtering by year/month/variable | 2026-02-05 |
+| **Scale factors applied during extraction** | Values immediately usable in physical units | 2026-02-05 |
+| **exactextractr for polygon-pixel mapping** | Provides coverage_fraction for proper area weighting | 2026-02-05 |
+| **Monthly stacking in GEE** | 12x extraction efficiency improvement (one API call per year vs. per month) | 2026-02-10 |
+| **Both calendar and water year retained** | Different analyses need different time bases; no forced conversion | 2026-02-06 |
+
+---
+
+## Performance Notes
+
+### Extraction Efficiency
+
+**Monthly Stacking Optimization:**
+- Original approach: 12 separate GEE `sampleRegions()` calls per year (one per month)
+- Optimized approach: Stack all 12 months into single 168-band image (14 variables × 12 months)
+- **Result:** ~12x speedup, reduces GEE quota consumption
+
+**Batch Size:**
+- Default: 2,500 pixels per GEE request
+- 168 bands × 2,500 pixels = ~420,000 values per request
+- If GEE timeouts occur, reduce batch size to 1,500-2,000
+
+### Data Volume
+
+| Component | Size |
+|-----------|------|
+| Pixel maps (3 IDS layers) | ~150 MB total |
+| Pixel values (yearly parquet, wide) | ~50-100 MB per year |
+| Pixel values (long format, all years) | ~2-3 GB |
+| Summaries (observation-level means) | ~500 MB |
+
+---
+
+## Known Limitations
+
+1. **Spatial resolution:** ~4km pixels are coarse for small IDS observations (<50 ha). Use PRISM (800m) for finer spatial detail.
+
+2. **Temporal resolution:** Monthly data may miss short-duration climate events. Daily reanalysis data (e.g., ERA5) would be needed for event-based analysis.
+
+3. **NoData at coastlines/edges:** ~1,200 observations lack climate data due to proximity to ocean or dataset boundary.
+
+4. **Degenerate geometries (10 observations):** See Issue #005. Exactly 10 IDS observations have geometries that produce no pixel overlap at ~4km resolution. They are absent from all climate summaries.
+
+5. **Recent year data quality:** Most recent year (2024 at time of extraction) may be provisional. Check TerraClimate release notes.
 
 ---
 
@@ -294,5 +193,8 @@ OBSERVATION_ID,aet,def,pdsi,pet,pr,ro,soil,srad,swe,tmmn,tmmx,vap,vpd,vs,REGION_
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 1.0 | 2025-01-31 | Initial extraction complete |
-| 1.1 | 2025-02-03 | Merged with IDS data, scale factors applied |
+| 1.0 | 2025-01-31 | Initial centroid-based extraction (CSV output, annual means) - deprecated |
+| 2.0 | 2026-02-05 | Pixel decomposition workflow (parquet output, monthly values, coverage fractions) |
+| 2.1 | 2026-02-10 | Added monthly stacking optimization for GEE extraction efficiency |
+
+**Note:** Version 1.0 (centroid extraction) is fully deprecated. Historical v1.0 issues have been archived. For v1.0 documentation, see git history (commits before 2026-02-05).

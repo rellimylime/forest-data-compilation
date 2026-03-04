@@ -1,84 +1,236 @@
-# TerraClimate Extraction Workflow
+# TerraClimate Extraction: Technical Reference
+
+For a quick-start guide, workflow steps, and usage examples (including how to
+filter by species or survey area), see **README.txt**.
+
+This document covers the technical architecture, detailed script internals,
+configuration, and design decisions.
 
 ## Status
-- [x] Configure GEE access (gee_utils.R)
-- [x] Extract climate data at IDS centroids (01_extract_terraclimate.R)
-- [x] Process, scale, and merge with IDS data (02_merge_terraclimate.R)
-
-## Overview
-
-TerraClimate is a global gridded climate dataset at ~4km resolution. Rather than downloading raw raster tiles, we extract point values directly at IDS observation locations via Google Earth Engine. This approach is:
-- **Efficient:** Extract only what we need (~500 MB vs ~500 GB of raw tiles)
-- **Fast:** ~25 minutes for 4.5M observations
-- **Joinable:** Output includes OBSERVATION_ID for direct merge with IDS data
-
-## Scripts
-
-### scripts/utils/gee_utils.R
-Utility functions for Google Earth Engine operations via reticulate.
-
-**Key functions:**
-- `init_gee()` - Initialize GEE with project credentials
-- `sf_points_to_ee()` - Convert sf points to ee.FeatureCollection
-- `get_terraclimate_annual()` - Get annual mean image for given year
-- `extract_at_points()` - Sample image values at point locations
-- `apply_terraclimate_scales()` - Apply scale factors to raw values
-
-**Dependencies:** reticulate, yaml, here, sf, dplyr  
-**Configuration:** Requires `local/user_config.yaml` with GEE project ID
+- [x] Explore TerraClimate data (00_explore_terraclimate.R)
+- [x] Build pixel maps (01_build_pixel_maps.R)
+- [x] Extract monthly pixel values (02_extract_terraclimate.R)
+- [x] Build observation summaries (scripts/build_climate_summaries.R terraclimate)
 
 ---
 
-### 01_extract_terraclimate.R
-Extracts TerraClimate annual means at IDS polygon centroids.
+## Architecture: Pixel Decomposition
 
-**Input:**
-- `01_ids/data/processed/ids_damage_areas_cleaned.gpkg`
-- `config.yaml` (TerraClimate variable definitions)
+Climate-IDS integration uses a **pixel decomposition** pattern shared identically
+across TerraClimate, PRISM, and WorldClim. Instead of clipping rasters per
+observation, each observation is mapped to the raster pixels it overlaps, and
+climate values are extracted once per unique pixel.
 
-**Output:**
-- `02_terraclimate/data/raw/tc_r{REGION}_{YEAR}.csv` (251 files)
+```
+IDS Observations    Pixel Maps                     Pixel Values (long)
++--------------+   +--------------------------+   +--------------------------------------+
+|OBSERVATION_ID|-->|OBSERVATION_ID            |   | pixel_id                             |
+|DAMAGE_AREA_ID|   |DAMAGE_AREA_ID            |   | calendar_year, calendar_month        |
+|geometry      |   |pixel_id -----------------+-->| water_year, water_year_month         |
++--------------+   |x, y, coverage_fraction   |   | variable, value                      |
+                   +--------------------------+   +--------------------------------------+
+```
 
-**Process:**
-1. Load unique REGION_ID × SURVEY_YEAR combinations from IDS data
-2. Check for existing output files (resumable)
-3. For each batch:
-   - Load IDS geometries for that region-year
-   - Compute centroids using `st_point_on_surface()`
-   - Filter invalid coordinates (NaN)
-   - Query TerraClimate annual mean image
-   - Extract in sub-batches of 5000 (GEE limit)
-   - Save to CSV
+**coverage_fraction** = area(observation intersect pixel) / area(pixel). NOT normalized.
+Used as weight when computing area-weighted means per observation.
 
-**Runtime:** ~25 minutes for full dataset  
-**Features extracted:** 4,475,817 (10 excluded for invalid coordinates)
+**Why this design:**
+- Preserves within-polygon variation (important for large damage areas)
+- Enables seasonal analysis (monthly data, not annual means)
+- Efficient storage (unique pixels extracted once, not per observation)
+- Handles "pancake features" (multiple observations sharing same geometry)
+- Reusable pattern across all climate datasets
+
+### Time Conventions
+
+- **Calendar year/month** and **water year/month** are both stored in long-format outputs.
+- Water year: Oct-Sep. If month >= 10: water_year = cal_year + 1, water_year_month = month - 9.
+- IDS data keeps its original `SURVEY_YEAR`; NOT forced into water year.
+- Shared helper: `scripts/utils/time_utils.R`.
 
 ---
 
-### 02_merge_terraclimate.R
-Cleans and joins TerraClimate data to IDS observations.
+## Script Details
+
+### Shared Utility Scripts
+
+#### scripts/utils/climate_extract.R
+Core extraction framework shared by all climate datasets.
+
+| Function | Purpose |
+|----------|---------|
+| `build_pixel_map()` | Map features to overlapping raster pixels (exactextractr for polygons, cellFromXY for points) |
+| `build_ids_pixel_maps()` | Build pixel maps for all IDS layers; handles pancake deduplication |
+| `extract_climate_from_gee()` | Extract values from GEE ImageCollection in batches |
+| `get_unique_pixels()` | Get unique pixel coordinates across all pixel maps |
+| `get_reference_raster_from_gee()` | Download a reference raster from GEE to define pixel grid |
+| `join_to_observations()` | Join pixel values back to observations with weighted means |
+| `load_pixel_map()` | Read pixel map from parquet |
+| `load_pixel_values()` | Load all yearly parquet files for a dataset |
+
+#### scripts/utils/time_utils.R
+Water year conversion helper.
+
+| Function | Purpose |
+|----------|---------|
+| `calendar_to_water_year()` | Convert calendar year/month to water year/month |
+| `water_to_calendar_year()` | Reverse conversion |
+| `add_water_year()` | Append water_year and water_year_month columns |
+| `water_year_month_label()` | Get month abbreviation for water year month number |
+
+---
+
+### 00_explore_terraclimate.R
+Exploratory analysis of TerraClimate data structure and values before
+committing to the full extraction workflow. Console output only, no files written.
+
+- Initializes GEE and prints TerraClimate config
+- Loads 100 sample IDS features (2020, Region 5)
+- Tests centroid extraction on 5 variables
+- Compares raw vs scaled values with sanity checks
+- Estimates full extraction time across all ~4.5M features
+
+---
+
+### 01_build_pixel_maps.R
+Creates the mapping from IDS observations to TerraClimate raster pixels.
 
 **Input:**
-- `02_terraclimate/data/raw/tc_r*.csv` (251 files from extraction)
-- `01_ids/data/processed/ids_damage_areas_cleaned.gpkg`
-- `config.yaml` (scale factors)
+- `01_ids/data/processed/ids_cleaned.gpkg` (all layers)
 
 **Output:**
-- `02_terraclimate/data/processed/ids_terraclimate_merged.gpkg`
+- `data/processed/pixel_maps/damage_areas_pixel_map.parquet`
+- `data/processed/pixel_maps/damage_points_pixel_map.parquet`
+- `data/processed/pixel_maps/surveyed_areas_pixel_map.parquet`
 
 **Process:**
-1. Load and combine all 251 TerraClimate CSVs
-2. Apply scale factors from config (e.g., tmmx × 0.1 → °C)
-3. Remove rows with NA OBSERVATION_ID (15 from Region 9, 2024 batch)
-4. Deduplicate on OBSERVATION_ID (3,499 duplicates from sub-batch boundary issue)
-5. Load IDS cleaned data
-6. Left join on OBSERVATION_ID only (avoids type mismatch on REGION_ID/SURVEY_YEAR)
-7. Report missing climate data by region
-8. Save merged GeoPackage
+1. Download TerraClimate reference raster from GEE (cached after first run)
+2. For each IDS layer:
+   - Polygons (damage_areas, surveyed_areas): `exactextractr::exact_extract()` finds
+     all overlapping pixels and computes coverage_fraction
+   - Points (damage_points): `terra::cellFromXY()` finds containing pixel;
+     coverage_fraction set to 1.0
+3. For damage_areas: build map on unique DAMAGE_AREA_ID geometries first
+   (handles pancake features), then join back to OBSERVATION_IDs
+4. Save as parquet
 
-**Runtime:** ~5 minutes  
-**Output size:** ~4.2 GB  
-**Expected:** 4,475,827 rows; 1,235 with missing climate data (0.03%)
+**Pixel map schema (damage_areas):**
+
+| Column | Type | Description |
+|--------|------|-------------|
+| OBSERVATION_ID | integer | IDS observation identifier |
+| DAMAGE_AREA_ID | integer | Geometry identifier (shared by pancake features) |
+| pixel_id | integer | Unique pixel identifier (raster cell number) |
+| x | numeric | Pixel center longitude |
+| y | numeric | Pixel center latitude |
+| coverage_fraction | numeric | area(observation intersect pixel) / area(pixel) |
+
+---
+
+### 02_extract_terraclimate.R
+Extracts monthly climate values for all unique pixels via GEE.
+
+**Input:**
+- Pixel maps from step 1
+- GEE ImageCollection: IDAHO_EPSCOR/TERRACLIMATE
+
+**Output:**
+- `data/processed/pixel_values/terraclimate_{year}.parquet` (1997-2024)
+
+**Process:**
+1. Load pixel maps from all three IDS layers
+2. Extract unique pixel coordinates (deduplicated across layers)
+3. For each year (1997-2024):
+   - Stack all 12 monthly images into a single 168-band image
+     (14 variables x 12 months, bands named `{variable}_{month:02d}`)
+   - Extract stacked image at pixel coordinates in batches of 2,500
+   - Unstack result back to per-month rows
+   - Apply scale factors from config.yaml
+4. Save as yearly parquet files (wide format)
+
+**Performance:** Stacking all months into one image reduces GEE round-trips
+by ~12x (one `sampleRegions()` call per batch instead of 12). The
+FeatureCollection is built from a GeoJSON dict in a single Python call
+rather than per-point `ee.Feature()` construction. If GEE timeouts occur,
+reduce `batch_size` (default 2,500).
+
+**Pixel values schema (wide, per-year files):**
+
+| Column | Type | Description |
+|--------|------|-------------|
+| pixel_id | integer | Matches pixel_id in pixel maps |
+| x | numeric | Pixel center longitude |
+| y | numeric | Pixel center latitude |
+| year | integer | Calendar year |
+| month | integer | Calendar month (1-12) |
+| tmmx, tmmn, pr, ... | numeric | 14 climate variables (scale factors applied) |
+
+---
+
+### scripts/build_climate_summaries.R (shared)
+Computes observation-level area-weighted climate summaries.
+Run as: `Rscript scripts/build_climate_summaries.R terraclimate`
+
+**Input:**
+- `data/processed/pixel_maps/damage_areas_pixel_map.parquet`
+- `data/processed/pixel_values/terraclimate_{year}.parquet` (reads wide-format source files directly)
+
+**Output:** `processed/climate/terraclimate/damage_areas_summaries/` (per-variable parquet files)
+
+The script reads directly from wide-format yearly source files - no intermediate reshape step required. For each variable × year chunk, it reads the relevant column, joins to the pixel map, and computes area-weighted aggregations. Output is one parquet file per variable, readable as a unified dataset via `open_dataset()`.
+
+**Weighted mean formula:**
+```
+weighted_mean = sum(value * coverage_fraction, na.rm = TRUE) /
+                sum(coverage_fraction[!is.na(value)])
+```
+
+Only pixels with non-NA values contribute to the denominator.
+
+**Summary columns:** weighted_mean, value_min, value_max, n_pixels, n_pixels_with_data, sum_coverage_fraction
+
+Water year columns (water_year, water_year_month) are computed inside this script during chunk processing - no separate reshape step is needed.
+
+---
+
+## Data Flow
+
+```
++-----------------------------------------------------------------------------+
+|                           Google Earth Engine                                |
+|  IDAHO_EPSCOR/TERRACLIMATE                                                  |
+|  Global ~4km monthly climate rasters (1958-present)                         |
++-----------------------------------------------------------------------------+
+          |                                    |
+          | reference raster                   | sampleRegions()
+          | (01_build_pixel_maps.R)            | (02_extract_terraclimate.R)
+          v                                    v
++--------------------------+        +------------------------------------------+
+|  data/raw/               |        |  data/processed/pixel_values/            |
+|  terraclimate_ref.tif    |        |  terraclimate_1997.parquet (wide)        |
+|  (pixel grid reference)  |        |  ...                                     |
++--------------------------+        |  terraclimate_2024.parquet (wide)        |
+          |                         +------------------------------------------+
+          v                                    |
++----------------------------------+           |
+|  data/processed/pixel_maps/      |           |
+|  damage_areas_pixel_map.parquet  |           |
+|  damage_points_pixel_map.parquet |           |
+|  surveyed_areas_pixel_map.parquet|           |
++----------------------------------+           |
+          |                                    |
+          +-----------------+------------------+
+                            | build_climate_summaries.R
+                            | (reads source files directly)
+                            v
+                  +-----------------------------------------+
+                  |  processed/climate/terraclimate/         |
+                  |  damage_areas_summaries/                 |
+                  |    tmmx.parquet, tmmn.parquet, ...       |
+                  |  (weighted_mean, value_min, value_max    |
+                  |   per obs per var per time)              |
+                  +-----------------------------------------+
+```
 
 ---
 
@@ -86,24 +238,23 @@ Cleans and joins TerraClimate data to IDS observations.
 
 ### config.yaml (TerraClimate section)
 ```yaml
-raw:
-  terraclimate:
-    gee_asset: "IDAHO_EPSCOR/TERRACLIMATE"
-    spatial_resolution: "~4km (1/24th degree)"
-    temporal_resolution: "monthly"
-    variables:
-      tmmx:
-        description: "Maximum temperature"
-        units: "°C"
-        scale: 0.1
-      pr:
-        description: "Precipitation accumulation"
-        units: "mm"
-        scale: 1
-      # ... (14 variables total)
+terraclimate:
+  gee_asset: "IDAHO_EPSCOR/TERRACLIMATE"
+  gee_scale: 4000
+  variables:
+    tmmx:
+      scale: 0.1
+      units: "deg C"
+    tmmn:
+      scale: 0.1
+      units: "deg C"
+    pr:
+      scale: 1
+      units: "mm"
+    # ... (14 total variables; see config.yaml for complete list)
 ```
 
-### local/user_config.yaml
+### local/user_config.yaml (gitignored)
 ```yaml
 gee_project: "your-gee-project-id"
 ```
@@ -114,75 +265,38 @@ gee_project: "your-gee-project-id"
 
 | Decision | Rationale | Date |
 |----------|-----------|------|
-| Point extraction vs raster download | 500 MB output vs 500+ GB raw tiles; faster, more efficient | 2025-01-31 |
-| Use st_point_on_surface() for centroids | Guarantees point inside polygon (unlike st_centroid for concave shapes) | 2025-01-31 |
-| Extract annual means (not monthly) | Reduces data volume; annual climate sufficient for forest damage analysis | 2025-01-31 |
-| Keep raw values in extraction CSVs | Simpler extraction; apply scales in processing step | 2025-01-31 |
-| Scale = 4000m for extraction | Approximately native resolution; balances precision and performance | 2025-01-31 |
-| Batch by REGION_ID × SURVEY_YEAR | Natural grouping; enables resumable extraction | 2025-01-31 |
-| Sub-batch at 5000 features | GEE API limit for sampleRegions() | 2025-01-31 |
-| Exclude observations with NaN centroids | Only 10 affected (0.0002%); not worth complex geometry fixes | 2025-01-31 |
+| Pixel-level extraction (not polygon means) | Preserves within-polygon climate variation | 2026-02-05 |
+| Monthly values (not annual means) | Enables seasonal analysis | 2026-02-05 |
+| Two-table architecture | Efficient storage; handles pancake features | 2026-02-05 |
+| GEE extraction (not NetCDF download) | No local storage needed; direct pixel sampling | 2026-02-05 |
+| Parquet format | Efficient columnar storage; fast filtering by year/month | 2026-02-05 |
+| Scale factors applied during extraction | Values immediately usable in physical units | 2026-02-05 |
+| exactextractr for polygon-pixel mapping | Provides coverage_fraction for proper weighting | 2026-02-05 |
+| Both calendar and water year retained | Different analyses need different time bases | 2026-02-06 |
+| IDS stays on SURVEY_YEAR (no water year) | Survey timing is administrative, not hydrological | 2026-02-06 |
+| Long format for standardized outputs | Dataset-agnostic; enables uniform joins | 2026-02-06 |
+| Shared reshape/summary scripts | Same pattern for TerraClimate, PRISM, WorldClim | 2026-02-06 |
 
 ---
 
 ## Troubleshooting
 
-### "Band pattern did not match any bands"
-**Cause:** Variable name mismatch (e.g., using "ppt" instead of "pr")  
-**Solution:** Check `config.yaml` variable names match TerraClimate band names exactly
-
-### NaN values in extraction
-**Possible causes:**
-1. Invalid centroid coordinates → Check geometry validity
-2. Point in NoData pixel (ocean/edge) → Check if coastal location
-3. Year not available in TerraClimate → Check temporal coverage (1958-2023+)
-
 ### GEE timeout errors
-**Cause:** Too many features in single request  
-**Solution:** Reduce `batch_size` in extraction loop (default 5000)
+**Cause:** Too many pixels in single request.
+**Solution:** Reduce `batch_size` parameter (default 2500 for monthly stacking).
+With 168 bands per image, batch sizes above 3000 may exceed GEE limits.
+
+### Missing pixel values
+**Cause:** Pixel in NoData area (ocean, data edge).
+**Solution:** Check coastal/edge observations; accept as missing.
+See cleaning_log.md Issue #010 for affected regions.
 
 ### Python/reticulate issues
-**Solution:** Ensure correct Python environment in `.Renviron`:
+**Solution:** Set correct Python path in `.Renviron`:
 ```
 RETICULATE_PYTHON=/path/to/python
 ```
-### Duplicate rows in TerraClimate CSVs
-**Cause:** Sub-batch boundary issue - features at positions 5000, 10000, etc. may be extracted twice  
-**Solution:** Deduplicate with `distinct(OBSERVATION_ID, .keep_all = TRUE)` during merge. All duplicates have identical values.
 
-### Many NAs after merge (type mismatch)
-**Cause:** REGION_ID/SURVEY_YEAR stored as numeric in CSVs but integer in geopackage  
-**Solution:** Join on OBSERVATION_ID only; drop REGION_ID/SURVEY_YEAR from TerraClimate data before join
-
----
-
-## Data Flow Diagram
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                           Google Earth Engine                                │
-│                                                                             │
-│  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │  IDAHO_EPSCOR/TERRACLIMATE                                          │   │
-│  │  Global ~4km monthly climate rasters (1958-present)                 │   │
-│  └─────────────────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                      │
-                                      │ sampleRegions()
-                                      │ at IDS centroids
-                                      ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  02_terraclimate/data/raw/                                                  │
-│  tc_r1_1997.csv, tc_r1_1998.csv, ... tc_r10_2024.csv (251 files)           │
-│  Raw integer values, one row per IDS observation                            │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                      │
-                                      │ 02_merge_terraclimate.R
-                                      │ Apply scales, combine, join to IDS
-                                      ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  02_terraclimate/data/processed/                                            │
-│  ids_terraclimate_merged.gpkg (4.2 GB)                                      │
-│  IDS observations + scaled climate variables, analysis-ready                │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+### Large parquet files
+**Note:** Monthly pixel-level data generates significant volume.
+Typical size: ~50-100 MB per year depending on unique pixel count.

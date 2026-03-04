@@ -2,25 +2,183 @@
 
 Compiled and cleaned datasets for forest disturbance analysis: USDA Forest Service aerial detection surveys (IDS), climate data (TerraClimate, PRISM, WorldClim), and related environmental variables.
 
-**Author:** Emily Miller  
-**Institution:** UC Santa Barbara, Bren School of Environmental Science & Management  
-**Last Updated:** 2025-01-31
+**Author:** Emily Miller
+**Institution:** UC Santa Barbara, Bren School of Environmental Science & Management
+**Last Updated:** 2026-03-02
 
 ---
 
 ## Overview
 
-This repository provides a reproducible pipeline for compiling forest disturbance observations with climate and environmental data across the United States. The primary goal is to create analysis-ready datasets linking **where and when** forest damage occurred (from aerial surveys) with **climate conditions** at those locations.
+This repository compiles US forest data from federal sources into clean, analysis-ready datasets. Each workstream is a self-contained pipeline organized by data source.
+
+**IDS + Climate** (directories `01_ids/` through `04_worldclim/`): Links USDA Forest Service Insect and Disease Survey (IDS) observations to pixel-level climate data.
+
+1. Download and clean IDS observations (damage areas, damage points, surveyed areas)
+2. Extract pixel-level climate data at all IDS observation locations (TerraClimate, PRISM, WorldClim)
+3. Build area-weighted climate summaries per observation, ready to join to IDS for analysis
+
+**FIA forest inventory** (`05_fia/`): Extraction and compilation of Forest Inventory and Analysis (FIA) database records for thermophilization analysis — detecting shifts toward warmer-adapted species. Produces plot-level tree metrics, diversity indices, disturbance history, exclusion flags, and site-level TerraClimate (1958–present) for all FIA plot locations.
 
 ### Key Outputs
 
 | Dataset | Description | Records | Status |
 |---------|-------------|---------|--------|
-| IDS Damage Areas | Forest insect/disease damage polygons (1997-2024) | 4,475,827 | ✅ Complete |
-| TerraClimate | Climate variables at IDS observation centroids | 4,475,817 | ✅ Complete |
-| PRISM | High-resolution US climate normals | — | 🔲 Planned |
-| WorldClim | Global bioclimatic variables | — | 🔲 Planned |
-| **Merged Dataset** | IDS + all climate variables | — | 🔲 In Progress |
+| IDS Damage Areas | Forest insect/disease damage polygons (1997-2024) | 4,475,827 | Complete |
+| TerraClimate | Monthly climate at IDS locations (~4km, 14 variables) | 4,475,817 | Complete |
+| PRISM | High-resolution US climate at IDS locations (CONUS, 800m, 7 variables) | 4,475,817 | Complete |
+| WorldClim | Global monthly climate at IDS locations (~4.5km, 3 variables) | 4,475,817 | Complete |
+| FIA Forest Inventory | Plot-level tree metrics, diversity, disturbance, site climate | 6,956 sites | Complete |
+
+---
+
+## Directory and File Organization
+
+### Top-Level Directories
+
+| Directory | Purpose | Tracked in Git |
+|-----------|---------|----------------|
+| `01_ids/` | IDS (Insect & Disease Survey) data processing | Scripts & docs only |
+| `02_terraclimate/` | TerraClimate climate data extraction | Scripts & docs only |
+| `03_prism/` | PRISM climate data (CONUS, 800m) | Scripts & docs only |
+| `04_worldclim/` | WorldClim climate data (global, ~4.5km) | Scripts & docs only |
+| `05_fia/` | FIA forest inventory — tree metrics, diversity, site climate | Scripts, docs, summaries parquets |
+| `scripts/` | Shared utilities, cross-dataset processing, demo scripts | All files |
+| `docs/` | Project-wide docs + unified Streamlit dashboard | All files |
+| `processed/` | Cross-dataset climate summaries (gitignored, ~300 GB) | Nothing |
+| `local/` | User-specific configuration files (gitignored) | Nothing |
+| `renv/` | R package dependency lockfiles | Lock files only |
+| `archive/` | Previous work not part of current pipeline | All files |
+
+### Key Configuration Files
+
+| File | Purpose |
+|------|---------|
+| `config.yaml` | Central configuration: data sources, variables, processing parameters |
+| `local/user_config.yaml` | User-specific settings (GEE project ID, local paths) - **gitignored** |
+| `.Renviron` | R environment variables (Python path for reticulate) - **gitignored** |
+| `renv.lock` | R package dependency versions (reproducibility) |
+
+### Documentation Guide
+
+All documentation follows a consistent structure across dataset directories. Here is what each file contains and where to find it:
+
+**Project-level documentation:**
+
+| File | Location | What's in it |
+|------|----------|--------------|
+| `README.md` | Root | This file — project overview, quick start, workflow |
+| `ARCHITECTURE.md` | `docs/` | Pixel decomposition pattern shared by all climate datasets: workflow steps, time conventions, data schemas, weighted mean calculations, FIA point-based variant |
+| `SETUP.md` | `scripts/` | R and Python installation, GEE authentication, package setup, dashboard launch |
+| `config.yaml` | Root | All dataset source URLs, variable definitions, scale factors, and processing parameters |
+| `docs/dashboard/` | `docs/` | Unified Streamlit dashboard — run with `streamlit run docs/dashboard/app.py` |
+
+**`01_ids/` - IDS data:**
+
+| File | What's in it |
+|------|--------------|
+| `README.txt` | Source overview, feature counts, script list, lookup table descriptions |
+| `WORKFLOW.md` | All 5 production scripts with inputs/outputs, plus QC script descriptions and key decisions |
+| `cleaning_log.md` | 9 documented data quality issues (CRS, pancake features, field standardization, etc.) |
+| `data_dictionary.csv` | Raw field definitions and metadata (generated by `02_inspect_ids.R`) |
+| `docs/ids_layers_overview.md` | Cleaned output field definitions and usage notes for the final GeoPackage layers |
+
+**`02_terraclimate/` - TerraClimate:**
+
+| File | What's in it |
+|------|--------------|
+| `README.txt` | Source overview, 3-step workflow, detailed usage examples, variable list |
+| `WORKFLOW.md` | GEE extraction details, design decisions, per-script documentation |
+| `cleaning_log.md` | 5 data quality issues (scale factors, coastal NoData, degenerate geometries, etc.) |
+| `data_dictionary.csv` | Field definitions for all output tables |
+
+**`03_prism/` - PRISM:**
+
+| File | What's in it |
+|------|--------------|
+| `README.txt` | Source overview, 2-step workflow, variables, CONUS-only scope and implications |
+| `WORKFLOW.md` | Web service extraction details, streaming download approach, design decisions |
+
+**`04_worldclim/` - WorldClim:**
+
+| File | What's in it |
+|------|--------------|
+| `README.txt` | Source overview, 3-step workflow (download + pixel maps + extract), decade file organization |
+| `WORKFLOW.md` | Bulk download approach, local GeoTIFF extraction, design decisions |
+
+**`05_fia/` - FIA Forest Inventory:**
+
+| File | What's in it |
+|------|--------------|
+| `README.txt` | Source overview, 6-script pipeline, key metrics (BA, diversity), output schemas, usage examples |
+| `WORKFLOW.md` | FIA download, processing decisions, exclusion flag logic, site climate extraction details |
+
+### Standard Dataset Directory Structure
+
+Each numbered dataset directory (`01_ids/`, `02_terraclimate/`, etc.) follows this consistent structure:
+
+```
+NN_datasetname/
+├── README.txt                # Dataset overview, usage examples, citations
+├── WORKFLOW.md               # Script documentation and decisions → links to docs/ARCHITECTURE.md
+├── cleaning_log.md           # Data quality issues and cleaning decisions
+├── data_dictionary.csv       # Field metadata
+├── docs/                     # Original documentation from data provider (PDFs, etc.)
+├── lookups/                  # Code-to-description lookup tables (CSV files)
+├── scripts/
+│   ├── 00_explore_*.R        # Optional: exploratory analysis (diagnostic only)
+│   ├── 01_*.R                # Required: core processing scripts
+│   ├── 02_*.R                # Required: core processing scripts
+│   └── ...
+└── data/
+    ├── raw/                  # Original downloaded data (gitignored)
+    └── processed/            # Cleaned outputs (gitignored)
+```
+
+### Shared Scripts Directory
+
+`scripts/` contains utilities and cross-dataset processing scripts used by **all** climate datasets:
+
+| File | Type | Purpose |
+|------|------|---------|
+| `00_setup.R` | Setup | Load packages, initialize GEE, check environment |
+| `build_climate_summaries.R` | Processing | Compute area-weighted observation-level summaries (generic for all climate datasets) |
+| `compare_mpb_climate_datasets.R` | Analysis | Side-by-side comparison of TerraClimate / PRISM / WorldClim outputs for MPB outbreaks |
+| `demo_01_ids_climate.R` | Demo | IDS + gridded climate: MPB outbreak severity vs. water-year temperature and precipitation |
+| `demo_02_fia_forest.R` | Demo | FIA forest data: exclusion flags, tree metrics, disturbance history, damage agents, treatments |
+| `demo_03_site_climate.R` | Demo | Point-based TerraClimate: querying FIA site climate, long-term means, custom CSV locations |
+| `demo_mpb_climate_analysis.R` | **Deprecated** | Original combined demo — see the three `demo_0*.R` scripts above |
+| **utils/climate_extract.R** | Utility | Pixel map building, GEE extraction framework |
+| **utils/gee_utils.R** | Utility | GEE initialization, sf↔ee conversions |
+| **utils/time_utils.R** | Utility | Calendar ↔ water year conversions |
+| **utils/load_config.R** | Utility | config.yaml loader |
+| **utils/metadata_utils.R** | Utility | Metadata tracking helpers |
+
+**Usage:**
+```r
+# Build observation-level summaries (reads directly from yearly source files)
+Rscript scripts/build_climate_summaries.R terraclimate
+```
+
+### Processed Outputs Directory
+
+`processed/` contains cross-dataset derived files not specific to any one input dataset:
+
+```
+processed/
+└── climate/                                  # Standardized climate outputs (~300 GB total)
+    ├── terraclimate/
+    │   └── damage_areas_summaries/           # Per-variable parquet files (open_dataset())
+    │       ├── tmmx.parquet                  # weighted_mean, value_min, value_max per obs
+    │       ├── tmmn.parquet
+    │       └── ...                           # One file per variable (14 total, ~10-13 GB each)
+    ├── prism/
+    │   └── damage_areas_summaries/           # (Same structure; 7 variables, ~19-23 GB each)
+    └── worldclim/
+        └── damage_areas_summaries/           # (Same structure; 3 variables, ~9-13 GB each)
+```
+
+Note: `processed/` is gitignored. Run the pipeline scripts to generate these locally, or contact the author for pre-processed files.
 
 ---
 
@@ -39,17 +197,65 @@ This repository provides a reproducible pipeline for compiling forest disturbanc
 - **Description:** High-resolution (~4km) global climate and water balance data
 - **Coverage:** Global, monthly (1958-present)
 - **Variables:** 14 climate variables (temperature, precipitation, ET, drought indices, etc.)
-- **Access Method:** Point extraction via Google Earth Engine at IDS observation centroids
+- **Access Method:** Pixel-level extraction via Google Earth Engine (no per-observation rasters)
 
-### 3. PRISM *(Planned)*
+### 3. PRISM
 - **Source:** [PRISM Climate Group](https://prism.oregonstate.edu/)
-- **Description:** High-resolution climate data for the contiguous United States
-- **Coverage:** CONUS only, monthly/daily (1895-present)
+- **Description:** High-resolution (800m) climate data for the contiguous United States
+- **Coverage:** CONUS only, monthly (1981-present); IDS extraction 1997-2024
+- **Variables:** 7 (ppt, tmean, tmin, tmax, tdmean, vpdmin, vpdmax)
+- **Access Method:** Direct web service download (services.nacse.org)
 
-### 4. WorldClim *(Planned)*
-- **Source:** [WorldClim](https://www.worldclim.org/)
-- **Description:** Global climate and bioclimatic variables
-- **Coverage:** Global, climatological normals
+### 4. WorldClim
+- **Source:** [WorldClim Version 2.1](https://www.worldclim.org/)
+- **Description:** Global historical monthly weather at ~4.5km (CRU TS 4.09)
+- **Coverage:** Global, monthly (1950-2024); IDS extraction 1997-2024
+- **Variables:** 3 (tmin, tmax, prec)
+- **Access Method:** Bulk download (local GeoTIFF files)
+
+---
+
+## Demo Scripts
+
+Three self-contained demo scripts show how to use each part of the compiled data for real ecological analyses. They are independent — run whichever is relevant to your work.
+
+### demo_01_ids_climate.R — IDS + Gridded Climate
+
+Links IDS Mountain Pine Beetle observations to water-year climate conditions. Accepts any of the three climate datasets as a command-line argument.
+
+```bash
+Rscript scripts/demo_01_ids_climate.R                  # TerraClimate (default)
+Rscript scripts/demo_01_ids_climate.R prism
+Rscript scripts/demo_01_ids_climate.R worldclim
+```
+
+Output: `output/demo_01_ids_climate_<dataset>/` — 3 figures + `annual_summary.csv`
+
+| Figure | Description |
+|--------|-------------|
+| `01_outbreak_timeline.png` | MPB damage acres per survey year (1997-2024) |
+| `02_climate_timeseries.png` | Temperature and precipitation at MPB sites over time |
+| `03_outbreak_vs_climate.png` | Outbreak severity vs. each climate variable (linear fit) |
+
+### demo_02_fia_forest.R — FIA Forest Inventory
+
+Demonstrates the full FIA analysis workflow: exclusion flags, tree metrics, disturbance history, damage agents, treatments, seedlings, and mortality.
+
+```bash
+Rscript scripts/demo_02_fia_forest.R
+```
+
+Output: `output/demo_02_fia_forest/` — figures + CSV summaries
+
+### demo_03_site_climate.R — Point-Based TerraClimate
+
+Queries `fia_site_climate.parquet` to compute annual CWD, summer temperatures, and long-term climatologies. Also shows how to add custom lat/lon locations to `05_fia/data/processed/site_climate/all_site_locations.csv` for extraction.
+
+```bash
+Rscript scripts/demo_03_site_climate.R
+```
+
+Output: `output/demo_03_site_climate/` — 3 figures + CSV summaries
 
 ---
 
@@ -57,48 +263,52 @@ This repository provides a reproducible pipeline for compiling forest disturbanc
 
 ```
 forest-data-compilation/
-├── README.md                 # This file
-├── config.yaml               # Central configuration (paths, variables, parameters)
-├── METADATA_MASTER.csv       # Cross-dataset metadata tracking
+├── README.md                        # Project overview (this file)
+├── config.yaml                      # Central configuration
 ├── .gitignore
-├── renv.lock                 # R package dependencies
+├── renv.lock                        # R package dependencies
 │
-├── scripts/                  # Shared utility scripts
-│   ├── 00_setup.R           # Environment setup and package loading
-│   └── utils/
-│       ├── load_config.R    # Configuration file loader
-│       ├── gee_utils.R      # Google Earth Engine functions
-│       └── metadata_utils.R # Metadata management helpers
+├── docs/                            # Project-wide documentation and dashboard
+│   ├── ARCHITECTURE.md              # Shared pixel decomposition architecture
+│   └── dashboard/                   # Unified Streamlit dashboard
+│       ├── app.py                   # Entry point: streamlit run docs/dashboard/app.py
+│       ├── utils.py                 # Shared helpers
+│       └── pages/                   # One file per dashboard section
 │
-├── local/                    # User-specific config (gitignored)
-│   └── user_config.yaml     # GEE project ID, local paths
+├── scripts/                         # Shared utilities and demo scripts
+│   ├── 00_setup.R                   # Environment setup
+│   ├── build_climate_summaries.R    # Observation-level weighted means (all datasets)
+│   ├── compare_mpb_climate_datasets.R  # Cross-dataset comparison
+│   ├── demo_01_ids_climate.R        # Demo: IDS + gridded climate
+│   ├── demo_02_fia_forest.R         # Demo: FIA forest inventory
+│   ├── demo_03_site_climate.R       # Demo: point-based TerraClimate
+│   ├── SETUP.md                     # Installation guide
+│   └── utils/                       # Utility modules
 │
-├── 01_ids/                   # Insect & Disease Survey data
-├── 02_terraclimate/          # TerraClimate extractions
-├── 03_prism/                 # PRISM climate data (planned)
-├── 04_worldclim/             # WorldClim data (planned)
+├── processed/                       # Cross-dataset climate summaries (gitignored, ~300 GB)
+│   └── climate/                     # Standardized climate by dataset
 │
-├── merged_data/              # Final merged outputs
-└── templates/                # Documentation templates
+├── local/                           # User-specific config (gitignored)
+│   └── user_config.yaml             # GEE project ID, paths
+│
+├── 01_ids/                          # Insect & Disease Survey (complete)
+├── 02_terraclimate/                 # TerraClimate (complete)
+├── 03_prism/                        # PRISM (complete)
+├── 04_worldclim/                    # WorldClim (complete)
+├── 05_fia/                          # FIA forest inventory (complete)
+│   ├── README.txt
+│   ├── WORKFLOW.md
+│   ├── scripts/                     # 01_download → 06_extract_site_climate
+│   ├── lookups/                     # ref_species.parquet, ref_forest_type.parquet
+│   ├── reference/                   # Lab reference code (not part of pipeline)
+│   │   └── fia_disturbance_harvest_checks.R
+│   ├── data/processed/summaries/    # 8 plot-level parquets (tracked in git)
+│   └── data/processed/site_climate/ # fia_site_climate.parquet + all_site_locations.csv
+│
+└── archive/                         # Previous work not part of current pipeline
 ```
 
-### Dataset Directory Structure
-
-Each dataset folder (`01_ids/`, `02_terraclimate/`, etc.) follows a consistent structure:
-
-```
-XX_datasetname/
-├── README.txt            # Dataset overview, source, citation
-├── data_dictionary.csv   # Field definitions, units, value ranges
-├── cleaning_log.md       # Data quality issues and decisions
-├── WORKFLOW.md           # Processing steps and script documentation
-├── docs/                 # Original documentation from data provider
-├── lookups/              # Code lookup tables (if applicable)
-├── scripts/              # Dataset-specific processing scripts
-└── data/
-    ├── raw/              # Original downloaded data (gitignored)
-    └── processed/        # Cleaned outputs (gitignored)
-```
+See **[Directory and File Organization](#directory-and-file-organization)** above for detailed descriptions.
 
 ---
 
@@ -155,49 +365,112 @@ XX_datasetname/
 ### Quick Start
 
 ```r
-# 1. Download and clean IDS data
-source("01_ids/scripts/01_download_ids.R")  # Download raw geodatabases
-source("01_ids/scripts/02_inspect_ids.R")   # Generate data dictionary & lookups
-source("01_ids/scripts/03_clean_ids.R")     # Clean and merge regions
-source("01_ids/scripts/04_verify_ids.R")    # Validate output
+# === STEP 1: IDS Foundation (Required for all IDS + climate work) ===
+source("01_ids/scripts/01_download_ids.R")    # Download raw geodatabases (~1.6 GB)
+source("01_ids/scripts/02_inspect_ids.R")     # Generate data dictionary & lookups
+source("01_ids/scripts/03_clean_ids.R")       # Clean and merge 10 regions
 
-# 2. Extract TerraClimate at IDS locations
-source("02_terraclimate/scripts/01_extract_terraclimate.R")  # ~25 min for 4.5M points
+# === STEP 2: Climate Extraction (Per Dataset) ===
+# TerraClimate example (repeat for prism, worldclim):
+source("02_terraclimate/scripts/01_build_pixel_maps.R")      # Polygon → pixel mapping
+source("02_terraclimate/scripts/02_extract_terraclimate.R")  # GEE extraction
 
-# 3. Process and merge (coming soon)
-# source("02_terraclimate/scripts/02_process_terraclimate.R")
-# source("02_terraclimate/scripts/03_merge_ids_terraclimate.R")
+# === STEP 3: Build Observation Summaries (Generic, Per Dataset) ===
+Rscript scripts/build_climate_summaries.R terraclimate   # Area-weighted summaries
+# Rscript scripts/build_climate_summaries.R prism
+# Rscript scripts/build_climate_summaries.R worldclim
+
+# === STEP 4: FIA Forest Inventory (Independent of Steps 1-3) ===
+source("05_fia/scripts/01_download_fia.R")               # Download CSV tables (all 50 states)
+source("05_fia/scripts/02_inspect_fia.R")                # Verify columns; build lookup parquets
+source("05_fia/scripts/03_extract_trees.R")              # Tree records → per-state parquets
+source("05_fia/scripts/04_extract_seedlings_mortality.R") # Seedlings + mortality
+source("05_fia/scripts/05_build_fia_summaries.R")        # Plot-level metrics + exclusion flags
+source("05_fia/scripts/06_extract_site_climate.R")       # TerraClimate at FIA sites (GEE)
+```
+
+### Demo Scripts
+
+```bash
+# IDS + climate: MPB outbreak severity vs. temperature and precipitation
+Rscript scripts/demo_01_ids_climate.R terraclimate   # or prism / worldclim
+
+# FIA forest inventory: exclusion flags, tree metrics, disturbance history
+Rscript scripts/demo_02_fia_forest.R
+
+# Point-based TerraClimate: FIA site climate, long-term means, custom CSVs
+Rscript scripts/demo_03_site_climate.R
+```
+
+See **[Demo Scripts](#demo-scripts)** above for full output descriptions.
+
+### Optional QC / Exploratory Scripts
+
+These scripts generate diagnostic outputs but are **not required** for the core workflow:
+
+```r
+# IDS QC validation (checks field structure, geometry validity, cleaning)
+source("01_ids/scripts/qc/validate_ids.R")
+
+# IDS temporal coverage exploration (era differences, missingness by region)
+source("01_ids/scripts/qc/explore_ids_coverage.R")
+
+# TerraClimate exploration (optional, tests GEE extraction on sample)
+source("02_terraclimate/scripts/00_explore_terraclimate.R")
 ```
 
 ### Detailed Workflow Documentation
 
-Each dataset has its own `WORKFLOW.md` with:
-- Script descriptions and dependencies
-- Input/output specifications
-- Decision log with rationale
-- Troubleshooting guide
+**Architecture Overview:**
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — **Shared pixel decomposition pattern** (IDS polygons + FIA points)
 
-See:
-- [`01_ids/WORKFLOW.md`](01_ids/WORKFLOW.md)
-- [`02_terraclimate/WORKFLOW.md`](02_terraclimate/WORKFLOW.md)
+**Dataset-Specific Technical Details:**
+- [`01_ids/WORKFLOW.md`](01_ids/WORKFLOW.md) — IDS processing scripts and decisions
+- [`02_terraclimate/WORKFLOW.md`](02_terraclimate/WORKFLOW.md) — TerraClimate GEE extraction
+- [`03_prism/WORKFLOW.md`](03_prism/WORKFLOW.md) — PRISM web service extraction
+- [`04_worldclim/WORKFLOW.md`](04_worldclim/WORKFLOW.md) — WorldClim bulk download + extraction
+- [`05_fia/WORKFLOW.md`](05_fia/WORKFLOW.md) — FIA download, summaries, exclusion flags, site climate
+- Each `WORKFLOW.md` includes script descriptions, input/output specifications, and a decision log.
+
+**Interactive Dashboard:**
+- `streamlit run docs/dashboard/app.py` — explore all outputs, schemas, and load code snippets
 
 ---
 
 ## Data Outputs
 
-### Current Outputs
-
-| File | Location | Size | Description |
-|------|----------|------|-------------|
-| `ids_damage_areas_cleaned.gpkg` | `01_ids/data/processed/` | 3.8 GB | Cleaned IDS polygons (4.5M features) |
-| `tc_r*_*.csv` (251 files) | `02_terraclimate/data/raw/` | ~500 MB | TerraClimate extractions by region-year |
-
-### Planned Outputs
+### IDS Outputs
 
 | File | Location | Description |
 |------|----------|-------------|
-| `terraclimate_scaled.csv` | `02_terraclimate/data/processed/` | Scaled climate values, single file |
-| `ids_terraclimate_merged.csv` | `merged_data/` | IDS + TerraClimate joined dataset |
+| `ids_layers_cleaned.gpkg` | `01_ids/data/processed/` | Cleaned IDS layers (damage_areas, damage_points, surveyed_areas) |
+| `damage_area_to_surveyed_area.parquet` | `processed/ids/` | Spatial join: each damage area to its best-matching surveyed area |
+| `damage_area_area_metrics.parquet` | `processed/ids/` | Area metrics: damage_area_m2, survey_area_m2, damage_frac_of_survey (EPSG:5070) |
+
+### Climate Outputs (per dataset)
+
+| File | Location | Description |
+|------|----------|-------------|
+| `*_pixel_map.parquet` | `XX_dataset/data/processed/pixel_maps/` | Pixel map: observation to raster pixel with coverage_fraction |
+| `*_{year}.parquet` | `XX_dataset/data/processed/pixel_values/` | Wide-format pixel values per year (intermediate) |
+| `damage_areas_summaries/` | `processed/climate/<dataset>/` | Per-variable parquets with area-weighted summaries (read with `open_dataset()`) |
+
+### FIA Outputs
+
+These files are **tracked in git** and available without running the pipeline.
+
+| File | Location | Description |
+|------|----------|-------------|
+| `plot_tree_metrics.parquet` | `05_fia/data/processed/summaries/` | BA, diversity (Shannon H), size class per plot × year |
+| `plot_exclusion_flags.parquet` | `05_fia/data/processed/summaries/` | Per-plot nonforest / harvest / disturbance filter flags |
+| `plot_disturbance_history.parquet` | `05_fia/data/processed/summaries/` | Long-format disturbance events (DSTRBCD 1/2/3) |
+| `plot_damage_agents.parquet` | `05_fia/data/processed/summaries/` | Tree-level damage agent codes (FHAAST/PTIPS) |
+| `plot_mortality_metrics.parquet` | `05_fia/data/processed/summaries/` | Between-measurement mortality by agent code |
+| `plot_seedling_metrics.parquet` | `05_fia/data/processed/summaries/` | Seedling regeneration counts per plot × year |
+| `plot_treatment_history.parquet` | `05_fia/data/processed/summaries/` | Silvicultural treatment records (TRTCD 10/20/30/40/50) |
+| `plot_cond_fortypcd.parquet` | `05_fia/data/processed/summaries/` | Condition-level forest type (FORTYPCD) pass-through |
+| `fia_site_pixel_map.parquet` | `05_fia/data/processed/site_climate/` | FIA plot → TerraClimate pixel mapping (6,956 sites) |
+| `fia_site_climate.parquet` | `05_fia/data/processed/site_climate/` | Monthly TerraClimate at FIA sites, 1958–present (23.5M rows) |
 
 ### Data Access
 
@@ -211,14 +484,43 @@ Raw and processed data files are **not tracked in git** due to size. To obtain:
 
 ## Key Documentation
 
-| Document | Purpose |
-|----------|---------|
-| `config.yaml` | Central configuration for all datasets |
-| `*/README.txt` | Dataset overview, source, citation |
-| `*/data_dictionary.csv` | Field definitions and metadata |
-| `*/cleaning_log.md` | Data quality issues and cleaning decisions |
-| `*/WORKFLOW.md` | Processing steps and script documentation |
-| `*/lookups/*.csv` | Code-to-description lookup tables |
+| Document | Location | Purpose |
+|----------|----------|---------|
+| `ARCHITECTURE.md` | `docs/` | **Shared pixel decomposition architecture** (workflow, time conventions, schemas, FIA point variant) |
+| `SETUP.md` | `scripts/` | Installation: R, Python, GEE authentication, `renv` setup, dashboard launch |
+| `config.yaml` | Root | Central configuration for all datasets (URLs, variables, parameters) |
+| `README.txt` | Each dataset dir | Dataset overview, source, citation, workflow steps, usage examples |
+| `WORKFLOW.md` | Each dataset dir | Dataset-specific script documentation and design decisions |
+| `cleaning_log.md` | `01_ids/`, `02_terraclimate/` | Data quality issues found and cleaning decisions made |
+| `data_dictionary.csv` | `01_ids/`, `02_terraclimate/` | Field definitions, units, value ranges |
+| `lookups/*.csv` | `01_ids/lookups/` | Code-to-description lookup tables (species, agents, damage types) |
+| `docs/dashboard/` | `docs/` | Unified Streamlit dashboard — interactive schema and data explorer |
+
+> For a detailed guide to what each specific document contains, see [Documentation Guide](#documentation-guide) above.
+
+---
+
+## Architecture: Pixel Decomposition
+
+Climate data is linked to IDS observations through a **pixel decomposition** approach rather than clipping rasters per observation. This pattern is shared identically across all climate datasets (TerraClimate, PRISM, WorldClim).
+
+**Key Concepts:**
+- Each IDS observation maps to the climate pixels it overlaps
+- Climate values extracted once per unique pixel (not per observation)
+- **coverage_fraction** = area(observation ∩ pixel) / area(pixel) - used as weight for area-weighted means
+- Both **calendar year** and **water year** retained (Oct-Sep water year)
+- IDS keeps original `SURVEY_YEAR` (not forced to water year)
+
+**For complete architecture documentation, see:**
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+
+This document covers:
+- Pixel decomposition workflow (3 standard steps)
+- Time conventions (calendar vs water year)
+- Weighted mean calculations
+- Shared utility functions
+- Data format schemas
+- Implementation checklist for new datasets
 
 ---
 
@@ -231,7 +533,7 @@ Raw and processed data files are **not tracked in git** due to size. To obtain:
 
 ### TerraClimate
 - **Scale factors:** Raw values are integers; must apply scale factors for physical units
-- **Annual means:** Flux variables (precipitation, ET) may need ×12 for annual totals
+- **Annual means:** Flux variables (precipitation, ET) may need x12 for annual totals
 - **10 excluded observations:** Invalid geometries couldn't produce centroids
 
 ### General

@@ -1,0 +1,6 @@
+streamlit>=1.30
+pandas>=2.0
+plotly>=5.17
+pyarrow>=14.0
+# pyvis is only needed for 05_fia/docs/dashboard/fiadb_dashboard.py
+# It has its own requirements.txt in that directory for separate deployment

@@ -56,87 +56,324 @@ raw:
         filename: "AK_Region10_AllYears.gdb.zip"
         description: "Alaska Region"
 
+  # ============================================================================
+  # CLIMATE DATASETS
+  # All climate data uses two-table architecture:
+  #   - pixel_map: links IDS observations to climate raster pixels
+  #   - pixel_values: climate data per unique pixel per time step
+  # ============================================================================
+
   terraclimate:
-      description: "High-resolution global climate and water balance (1958-present)"
-      source: "https://www.climatologylab.org/terraclimate.html"
-      citation: "Abatzoglou et al. 2018, Scientific Data"
-      format: "extracted via GEE"
-      access_method: "Google Earth Engine"
-      gee_asset: "IDAHO_EPSCOR/TERRACLIMATE"
-      spatial_resolution: "~4km (1/24th degree)"
-      temporal_resolution: "monthly"
-      local_dir: "02_terraclimate/data/raw"
-      variables:
-        tmmx:
-          description: "Maximum temperature"
-          units: "°C"
-          scale: 0.1
-        tmmn:
-          description: "Minimum temperature"
-          units: "°C"
-          scale: 0.1
-        pr:
-          description: "Precipitation accumulation"
-          units: "mm"
-          scale: 1
-        srad:
-          description: "Downward surface shortwave radiation"
-          units: "W/m2"
-          scale: 0.1
-        vs:
-          description: "Wind speed at 10m"
-          units: "m/s"
-          scale: 0.01
-        vap:
-          description: "Vapor pressure"
-          units: "kPa"
-          scale: 0.001
-        vpd:
-          description: "Vapor pressure deficit"
-          units: "kPa"
-          scale: 0.01
-        pet:
-          description: "Reference evapotranspiration (Penman-Monteith)"
-          units: "mm"
-          scale: 0.1
-        aet:
-          description: "Actual evapotranspiration"
-          units: "mm"
-          scale: 0.1
-        def:
-          description: "Climate water deficit"
-          units: "mm"
-          scale: 0.1
-        soil:
-          description: "Soil moisture"
-          units: "mm"
-          scale: 0.1
-        swe:
-          description: "Snow water equivalent"
-          units: "mm"
-          scale: 1
-        ro:
-          description: "Runoff"
-          units: "mm"
-          scale: 1
-        pdsi:
-          description: "Palmer Drought Severity Index"
-          units: "unitless"
-          scale: 0.01
-        
+    description: "High-resolution global climate and water balance (1958-present)"
+    source: "https://www.climatologylab.org/terraclimate.html"
+    citation: "Abatzoglou et al. 2018, Scientific Data"
+    format: "extracted via GEE"
+    access_method: "Google Earth Engine"
+    gee_asset: "IDAHO_EPSCOR/TERRACLIMATE"
+    gee_scale: 4000
+    spatial_resolution: "~4km (1/24th degree)"
+    temporal_resolution: "monthly"
+    local_dir: "02_terraclimate/data/raw"
+    output_dir: "02_terraclimate/data/processed"
+    output_prefix: "terraclimate"
+    variables:
+      tmmx:
+        description: "Maximum temperature"
+        units: "°C"
+        scale: 0.1
+      tmmn:
+        description: "Minimum temperature"
+        units: "°C"
+        scale: 0.1
+      pr:
+        description: "Precipitation accumulation"
+        units: "mm"
+        scale: 1
+      srad:
+        description: "Downward surface shortwave radiation"
+        units: "W/m2"
+        scale: 0.1
+      vs:
+        description: "Wind speed at 10m"
+        units: "m/s"
+        scale: 0.01
+      vap:
+        description: "Vapor pressure"
+        units: "kPa"
+        scale: 0.001
+      vpd:
+        description: "Vapor pressure deficit"
+        units: "kPa"
+        scale: 0.01
+      pet:
+        description: "Reference evapotranspiration (Penman-Monteith)"
+        units: "mm"
+        scale: 0.1
+      aet:
+        description: "Actual evapotranspiration"
+        units: "mm"
+        scale: 0.1
+      def:
+        description: "Climate water deficit"
+        units: "mm"
+        scale: 0.1
+      soil:
+        description: "Soil moisture"
+        units: "mm"
+        scale: 0.1
+      swe:
+        description: "Snow water equivalent"
+        units: "mm"
+        scale: 1
+      ro:
+        description: "Runoff"
+        units: "mm"
+        scale: 1
+      pdsi:
+        description: "Palmer Drought Severity Index"
+        units: "unitless"
+        scale: 0.01
+
   prism:
-    description: "PRISM climate data for contiguous US"
+    description: "PRISM climate data for contiguous US (CONUS only)"
     source: "https://prism.oregonstate.edu/"
-    format: "BIL raster"
+    citation: "PRISM Climate Group, Oregon State University"
+    format: "downloaded via web service"
+    access_method: "Direct web service (services.nacse.org)"
+    product: "AN81m (monthly 800m normals)"
+    spatial_resolution: "800m (~30 arc-seconds)"
+    temporal_resolution: "monthly"
+    coverage: "CONUS only (excludes Alaska, Hawaii)"
     local_dir: "03_prism/data/raw"
-    files: {}  # TBD
+    output_dir: "03_prism/data/processed"
+    output_prefix: "prism"
+    variables:
+      ppt:
+        description: "Total precipitation"
+        units: "mm"
+        scale: 1
+      tmean:
+        description: "Mean temperature"
+        units: "°C"
+        scale: 1
+      tmin:
+        description: "Minimum temperature"
+        units: "°C"
+        scale: 1
+      tmax:
+        description: "Maximum temperature"
+        units: "°C"
+        scale: 1
+      tdmean:
+        description: "Mean dew point temperature"
+        units: "°C"
+        scale: 1
+      vpdmin:
+        description: "Minimum vapor pressure deficit"
+        units: "hPa"
+        scale: 1
+      vpdmax:
+        description: "Maximum vapor pressure deficit"
+        units: "hPa"
+        scale: 1
 
   worldclim:
-    description: "Global climate and bioclimatic variables"
-    source: "https://www.worldclim.org/"
+    description: "WorldClim historical monthly weather data"
+    source: "https://www.worldclim.org/data/monthlywth.html"
+    citation: "Fick & Hijmans 2017, International Journal of Climatology"
     format: "GeoTIFF"
+    access_method: "Direct download"
+    spatial_resolution: "~4.5km (2.5 arc-minutes)"
+    temporal_resolution: "monthly"
+    coverage: "Global land areas, 1950-2024"
     local_dir: "04_worldclim/data/raw"
-    files: {}  # TBD
+    output_dir: "04_worldclim/data/processed"
+    output_prefix: "worldclim"
+    download_url_pattern: "https://geodata.ucdavis.edu/climate/worldclim/2_1/hist/cts4.09/wc2.1_cruts4.09_2.5m_{variable}_{decade}.zip"
+    decades:
+      - "1950-1959"
+      - "1960-1969"
+      - "1970-1979"
+      - "1980-1989"
+      - "1990-1999"
+      - "2000-2009"
+      - "2010-2019"
+      - "2020-2024"
+    variables:
+      tmin:
+        description: "Minimum temperature"
+        units: "°C"
+        scale: 1
+      tmax:
+        description: "Maximum temperature"
+        units: "°C"
+        scale: 1
+      prec:
+        description: "Precipitation"
+        units: "mm"
+        scale: 1
+
+  fia:
+    description: "USDA Forest Service Forest Inventory and Analysis (FIADB)"
+    source: "https://apps.fs.usda.gov/fia/datamart/CSV/"
+    citation: "Forest Inventory and Analysis National Program, USDA Forest Service"
+    format: "CSV (downloaded via rFIA package)"
+    access_method: "rFIA::getFIA() by state"
+    temporal_resolution: "annual survey cycle (INVYR)"
+    coverage: "All 50 US states"
+    local_dir: "05_fia/data/raw"
+    output_dir: "05_fia/data/processed"
+
+    states:
+      - AL
+      - AK
+      - AZ
+      - AR
+      - CA
+      - CO
+      - CT
+      - DE
+      - FL
+      - GA
+      - HI
+      - ID
+      - IL
+      - IN
+      - IA
+      - KS
+      - KY
+      - LA
+      - ME
+      - MD
+      - MA
+      - MI
+      - MN
+      - MS
+      - MO
+      - MT
+      - NE
+      - NV
+      - NH
+      - NJ
+      - NM
+      - NY
+      - NC
+      - ND
+      - OH
+      - OK
+      - OR
+      - PA
+      - RI
+      - SC
+      - SD
+      - TN
+      - TX
+      - UT
+      - VT
+      - VA
+      - WA
+      - WV
+      - WI
+      - WY
+
+    tables_required:
+      - PLOT
+      - COND
+      - TREE
+      - SEEDLING
+      - TREE_GRM_COMPONENT
+
+    # TREE filter parameters
+    tree_filters:
+      statuscd_include: [1, 2]     # 1=live, 2=standing dead
+      dia_min_inches: 1.0          # minimum DIA for inclusion
+
+    # Individual-tree size class boundaries (DIA in inches)
+    size_classes:
+      sapling:
+        min: 1.0
+        max: 4.9
+      intermediate:
+        min: 5.0
+        max: 11.9
+      mature:
+        min: 12.0
+
+    # Canopy layer assignment (from TREE.CCLCD)
+    canopy_layers:
+      overstory_codes: [1, 2, 3]   # open grown, dominant, codominant
+      understory_codes: [4, 5]     # intermediate, overtopped
+      fallback_dia_threshold: 5.0  # used when CCLCD is NA
+
+    # TREE_GRM_COMPONENT filter codes (MICR_COMPONENT_AL_FOREST)
+    mortality_codes:
+      natural: [MORTALITY1, MORTALITY2]
+      harvest: [CUT1, CUT2]
+
+    # Study period (FIA annual inventory modern era)
+    invyr_min: 2000
+    invyr_max: 2024
+
+  # ERA5 is deferred from the current phase. Configuration retained in archive/05_era5/.
+  # era5:
+  #   description: "ERA5 hourly reanalysis on single levels (aggregated to daily)"
+  #   source: "https://cds.climate.copernicus.eu/datasets/reanalysis-era5-single-levels"
+  #   citation: "Hersbach et al. 2020, Quarterly Journal of the Royal Meteorological Society"
+  #   format: "NetCDF"
+  #   access_method: "CDS API"
+  #   spatial_resolution: "~28km (0.25 degree)"
+  #   temporal_resolution: "daily"
+  #   coverage: "Global, 1940-present"
+  #   local_dir: "05_era5/data/raw"
+  #   output_dir: "05_era5/data/processed"
+  #   output_prefix: "era5"
+  #   # Bounding box for CDS API: [north, west, south, east]
+  #   cds_area: [72, -180, 17, -64]
+  #   variables:
+  #   t2m:    {description: "2m temperature", units: "°C", scale: 1, era5_name: "2m_temperature", convert_kelvin: true}
+  #   d2m:    {description: "2m dewpoint temperature", units: "°C", scale: 1, era5_name: "2m_dewpoint_temperature", convert_kelvin: true}
+  #   tp:     {description: "Total precipitation", units: "mm", scale: 1000, era5_name: "total_precipitation"}
+  #   sf:     {description: "Snowfall", units: "mm we", scale: 1000, era5_name: "snowfall"}
+  #   sd:     {description: "Snow depth", units: "m we", scale: 1, era5_name: "snow_depth"}
+  #   sp:     {description: "Surface pressure", units: "hPa", scale: 0.01, era5_name: "surface_pressure"}
+  #   u10:    {description: "10m u-component of wind", units: "m/s", scale: 1, era5_name: "10m_u_component_of_wind"}
+  #   v10:    {description: "10m v-component of wind", units: "m/s", scale: 1, era5_name: "10m_v_component_of_wind"}
+  #   u100:   {description: "100m u-component of wind", units: "m/s", scale: 1, era5_name: "100m_u_component_of_wind"}
+  #   v100:   {description: "100m v-component of wind", units: "m/s", scale: 1, era5_name: "100m_v_component_of_wind"}
+  #   ssrd:   {description: "Surface solar radiation downwards", units: "MJ/m2", scale: 0.000001, era5_name: "surface_solar_radiation_downwards"}
+  #   ssr:    {description: "Surface net solar radiation", units: "MJ/m2", scale: 0.000001, era5_name: "surface_net_solar_radiation"}
+  #   str:    {description: "Surface net thermal radiation", units: "MJ/m2", scale: 0.000001, era5_name: "surface_net_thermal_radiation"}
+  #   stl1:   {description: "Soil temperature level 1 (0-7cm)", units: "°C", scale: 1, era5_name: "soil_temperature_level_1", convert_kelvin: true}
+  #   stl2:   {description: "Soil temperature level 2 (7-28cm)", units: "°C", scale: 1, era5_name: "soil_temperature_level_2", convert_kelvin: true}
+  #   swvl1:  {description: "Volumetric soil water layer 1 (0-7cm)", units: "m3/m3", scale: 1, era5_name: "volumetric_soil_water_layer_1"}
+  #   swvl2:  {description: "Volumetric soil water layer 2 (7-28cm)", units: "m3/m3", scale: 1, era5_name: "volumetric_soil_water_layer_2"}
+  #   e:      {description: "Total evaporation", units: "mm", scale: 1000, era5_name: "total_evaporation"}
+  #   pev:    {description: "Potential evaporation", units: "mm", scale: 1000, era5_name: "potential_evaporation"}
+  #   lai_hv: {description: "Leaf area index, high vegetation", units: "m2/m2", scale: 1, era5_name: "leaf_area_index_high_vegetation"}
+  #   lai_lv: {description: "Leaf area index, low vegetation", units: "m2/m2", scale: 1, era5_name: "leaf_area_index_low_vegetation"}
+  #   skt:    {description: "Skin temperature", units: "°C", scale: 1, era5_name: "skin_temperature", convert_kelvin: true}
+  #   stl3:   {description: "Soil temperature level 3 (28-100cm)", units: "°C", scale: 1, era5_name: "soil_temperature_level_3", convert_kelvin: true}
+  #   stl4:   {description: "Soil temperature level 4 (100-289cm)", units: "°C", scale: 1, era5_name: "soil_temperature_level_4", convert_kelvin: true}
+  #   swvl3:  {description: "Volumetric soil water layer 3 (28-100cm)", units: "m3/m3", scale: 1, era5_name: "volumetric_soil_water_layer_3"}
+  #   swvl4:  {description: "Volumetric soil water layer 4 (100-289cm)", units: "m3/m3", scale: 1, era5_name: "volumetric_soil_water_layer_4"}
+  #   smlt:   {description: "Snowmelt", units: "mm", scale: 1000, era5_name: "snowmelt"}
+  #   ro:     {description: "Runoff (total)", units: "mm", scale: 1000, era5_name: "runoff"}
+  #   sro:    {description: "Surface runoff", units: "mm", scale: 1000, era5_name: "surface_runoff"}
+  #   strd:   {description: "Surface thermal radiation downwards", units: "MJ/m2", scale: 0.000001, era5_name: "surface_thermal_radiation_downwards"}
+  #   tcc:    {description: "Total cloud cover", units: "fraction (0-1)", scale: 1, era5_name: "total_cloud_cover"}
+  #   tcwv:   {description: "Total column water vapour", units: "kg/m2", scale: 1, era5_name: "total_column_water_vapour"}
+  #   msl:    {description: "Mean sea level pressure", units: "hPa", scale: 0.01, era5_name: "mean_sea_level_pressure"}
+  #   cape:   {description: "Convective available potential energy", units: "J/kg", scale: 1, era5_name: "convective_available_potential_energy"}
+  #   blh:    {description: "Boundary layer height", units: "m", scale: 1, era5_name: "boundary_layer_height"}
+  #   cp:     {description: "Convective precipitation", units: "mm", scale: 1000, era5_name: "convective_precipitation"}
+  #   sshf:   {description: "Surface sensible heat flux", units: "MJ/m2", scale: 0.000001, era5_name: "surface_sensible_heat_flux"}
+  #   slhf:   {description: "Surface latent heat flux", units: "MJ/m2", scale: 0.000001, era5_name: "surface_latent_heat_flux"}
+  #   fdir:   {description: "Total sky direct solar radiation at surface", units: "MJ/m2", scale: 0.000001, era5_name: "total_sky_direct_solar_radiation_at_surface"}
+  #   lcc:    {description: "Low cloud cover", units: "fraction (0-1)", scale: 1, era5_name: "low_cloud_cover"}
+  #   mcc:    {description: "Medium cloud cover", units: "fraction (0-1)", scale: 1, era5_name: "medium_cloud_cover"}
+  #   hcc:    {description: "High cloud cover", units: "fraction (0-1)", scale: 1, era5_name: "high_cloud_cover"}
+  #   fal:    {description: "Forecast albedo", units: "fraction (0-1)", scale: 1, era5_name: "forecast_albedo"}
+  #   rsn:    {description: "Snow density", units: "kg/m3", scale: 1, era5_name: "snow_density"}
 
 # ==============================================================================
 # PROCESSED DATA
@@ -151,34 +388,106 @@ processed:
         filename: "ids_all_regions.gpkg"
         description: "All regions merged into single file"
       cleaned:
-        filename: "ids_cleaned.gpkg"
+        filename: "ids_layers_cleaned.gpkg"
         description: "After QC and cleaning"
+    # Derived IDS products (spatial assignment + area metrics)
+    derived:
+      output_dir: "processed/ids"
+      damage_area_to_surveyed_area:
+        filename: "damage_area_to_surveyed_area.parquet"
+        description: "Spatial assignment of damage areas to surveyed areas (max overlap)"
+        columns: "DAMAGE_AREA_ID, SURVEYED_AREA_ID, overlap_m2, match_quality_flag"
+      damage_area_area_metrics:
+        filename: "damage_area_area_metrics.parquet"
+        description: "Area metrics in EPSG:5070: damage_area_m2, survey_area_m2, damage_frac_of_survey"
+        columns: "DAMAGE_AREA_ID, damage_area_m2, SURVEYED_AREA_ID, survey_area_m2, damage_frac_of_survey"
 
-  terraclimate:
-    local_dir: "02_terraclimate/data/processed"
+  fia:
+    local_dir: "05_fia/data/processed"
+    trees:
+      output_dir: "05_fia/data/processed/trees"
+      description: "Tree-level BA and stem metrics, hive-partitioned by state"
+      columns: "PLT_CN, INVYR, SPCD, SFTWD_HRDWD, STATUSCD, size_class, canopy_layer, ba_sqft, ba_per_acre, n_trees_tpa, n_trees_raw"
+    seedlings:
+      output_dir: "05_fia/data/processed/seedlings"
+      description: "Seedling counts by species per plot visit, hive-partitioned by state"
+      columns: "PLT_CN, INVYR, SPCD, SFTWD_HRDWD, treecount_total"
+    mortality:
+      output_dir: "05_fia/data/processed/mortality"
+      description: "Between-measurement mortality from TREE_GRM_COMPONENT, hive-partitioned by state"
+      columns: "PLT_CN, INVYR, SPCD, SFTWD_HRDWD, AGENTCD, component_type, tpamort_per_acre"
+    cond:
+      output_dir: "05_fia/data/processed/cond"
+      description: "Condition-level attributes per plot visit, hive-partitioned by state"
+      columns: "PLT_CN, INVYR, STATECD, CONDID, FORTYPCD, COND_STATUS_CD, CONDPROP_UNADJ, LAT, LON, DSTRBCD1, DSTRBCD2, DSTRBCD3, DSTRBYR1, DSTRBYR2, DSTRBYR3"
+    damage_agents:
+      output_dir: "05_fia/data/processed/damage_agents"
+      description: "Live-tree damage agent codes (DAMAGE_AGENT_CD1/2/3) aggregated to plot x INVYR x CONDID x species, hive-partitioned by state"
+      columns: "PLT_CN, INVYR, CONDID, SPCD, SFTWD_HRDWD, DAMAGE_AGENT_CD, ba_per_acre, n_trees_tpa"
+    harvest_flags:
+      output_dir: "05_fia/data/processed/harvest_flags"
+      description: "Per-plot flags for incidental harvest based on AGENTCD 80-89 (cause-of-death codes on dead trees), hive-partitioned by state"
+      columns: "PLT_CN, INVYR, STATECD"
+    summaries:
+      output_dir: "05_fia/data/processed/summaries"
+      description: "Plot-level aggregated metrics: BA totals, diversity indices, disturbance history, damage agents"
+      files:
+        plot_tree_metrics: "plot_tree_metrics.parquet"
+        plot_seedling_metrics: "plot_seedling_metrics.parquet"
+        plot_mortality_metrics: "plot_mortality_metrics.parquet"
+        plot_cond_fortypcd: "plot_cond_fortypcd.parquet"
+        plot_disturbance_history: "plot_disturbance_history.parquet"
+        plot_damage_agents: "plot_damage_agents.parquet"
+
+  # Standardized climate outputs (long format, dataset-agnostic)
+  climate:
+    output_dir: "processed/climate"
+    description: "Standardized long-format climate data per dataset"
+    note: "Each dataset has a damage_areas_summaries/ directory with per-variable parquet files"
+    damage_areas_summaries:
+      description: "Area-weighted climate summaries per DAMAGE_AREA_ID per variable per time step"
+      format: "Per-variable parquet files in damage_areas_summaries/ directory (read with open_dataset())"
+      columns: "OBSERVATION_ID, DAMAGE_AREA_ID, calendar_year, calendar_month, water_year, water_year_month, variable, weighted_mean, value_min, value_max, n_pixels, n_pixels_with_data, sum_coverage_fraction"
+
+  # Climate pixel maps (observation -> pixel mapping)
+  pixel_maps:
+    local_dir: "data/processed/pixel_maps"
+    description: "Maps IDS observations to climate raster pixels"
     files:
-      cleaned:
-        filename: "terraclimate_cleaned.csv"
-        description: "Extracted and cleaned TerraClimate data"
+      terraclimate:
+        damage_areas: "terraclimate_damage_areas_pixel_map.parquet"
+        damage_points: "terraclimate_damage_points_pixel_map.parquet"
+        surveyed_areas: "terraclimate_surveyed_areas_pixel_map.parquet"
+      prism:
+        damage_areas: "prism_damage_areas_pixel_map.parquet"
+        damage_points: "prism_damage_points_pixel_map.parquet"
+        surveyed_areas: "prism_surveyed_areas_pixel_map.parquet"
+      worldclim:
+        damage_areas: "worldclim_damage_areas_pixel_map.parquet"
+        damage_points: "worldclim_damage_points_pixel_map.parquet"
+        surveyed_areas: "worldclim_surveyed_areas_pixel_map.parquet"
+      # era5: (deferred - see archive/05_era5/ for configuration)
 
-# ==============================================================================
-# MERGED DATA
-# ==============================================================================
-
-merged:
-  local_dir: "merged_data"
-  files:
-    deliverable1:
-      filename: "ids_terraclimate_merged.csv"
-      description: "IDS observations joined with TerraClimate variables"
+  # Climate pixel values (climate data per pixel per time)
+  pixel_values:
+    description: "Climate values at each unique pixel for each time step"
+    note: "Stored as yearly parquet files: {prefix}_{year}.parquet"
 
 # ==============================================================================
 # PARAMETERS
 # ==============================================================================
 
 params:
+  # Full study area (US including Alaska)
   study_area:
-    description: "Continental US bounding box"
+    description: "US bounding box including Alaska"
+    xmin: -180
+    xmax: -64
+    ymin: 17
+    ymax: 72
+  # CONUS only (for PRISM)
+  study_area_conus:
+    description: "Contiguous US bounding box"
     xmin: -125
     xmax: -66
     ymin: 24
@@ -187,3 +496,7 @@ params:
     start_year: 1997
     end_year: 2024
   crs: "EPSG:4326"
+  area_crs: "EPSG:5070"  # Conus Albers Equal Area for area calculations
+  water_year:
+    description: "US hydrological convention: Oct-Sep"
+    note: "month >= 10: water_year = calendar_year + 1, water_year_month = month - 9"

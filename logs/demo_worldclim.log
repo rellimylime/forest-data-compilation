@@ -1,0 +1,32 @@
+- The project is out-of-sync -- use `renv::status()` for details.
+here() starts at /Users/ermiller/forest-data-compilation
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+
+Attaching package: ‘arrow’
+
+The following object is masked from ‘package:utils’:
+
+    timestamp
+
+Linking to GEOS 3.10.2, GDAL 3.4.1, PROJ 8.2.1; sf_use_s2() is TRUE
+Dataset: worldclim  (tmax=tmax  tmin=tmin  precip=prec)
+Warning message:
+In CPL_read_ogr(dsn, layer, query, as.character(options), quiet,  :
+  argument layer is ignored when query is specified
+MPB observations loaded: 1,309,460  (1997-2024)
+`geom_smooth()` using formula = 'y ~ x'
+
+Figures saved to /Users/ermiller/forest-data-compilation/output/demo_mpb_worldclim/
+  01_outbreak_timeline.png   — MPB damage acres by year
+  02_climate_timeseries.png  — temperature and precip at MPB sites over time
+  03_outbreak_vs_climate.png — outbreak severity vs water-year climate

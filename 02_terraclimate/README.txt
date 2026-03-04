@@ -1,160 +1,240 @@
 ================================================================================
-TerraClimate Extraction for IDS Observations
+TerraClimate Pixel-Level Extraction for IDS Observations
 ================================================================================
 Source: https://www.climatologylab.org/terraclimate.html
-Description: High-resolution (~4km) global climate and water balance dataset 
-derived from WorldClim, CRU, and JRA-55 reanalysis. Monthly data from 1958 to 
-present. Data extracted at IDS observation centroids via Google Earth Engine.
+Description: High-resolution (~4km) global climate and water balance dataset
+derived from WorldClim, CRU, and JRA-55 reanalysis. Monthly data from 1958 to
+present. Pixel-level values extracted at IDS observation locations via GEE.
 
-Citation: Abatzoglou, J.T., S.Z. Dobrowski, S.A. Parks, K.C. Hegewisch (2018). 
-TerraClimate, a high-resolution global dataset of monthly climate and climatic 
+Citation: Abatzoglou, J.T., S.Z. Dobrowski, S.A. Parks, K.C. Hegewisch (2018).
+TerraClimate, a high-resolution global dataset of monthly climate and climatic
 water balance from 1958-2015. Scientific Data 5:170191.
 
 GEE Asset: IDAHO_EPSCOR/TERRACLIMATE
 Native resolution: ~4km (1/24th degree, approximately 4638m at equator)
-Temporal resolution: Monthly (aggregated to annual means for this extraction)
-Temporal coverage: 1958-2024 (data availability may lag by several months)
-Extraction date: 2025-01-31
+Temporal resolution: Monthly (all 12 months preserved per year)
+Temporal coverage: 1958-present (IDS extraction: 1997-2024)
 
 ================================================================================
-EXTRACTION METHODOLOGY
+RUNNING THE WORKFLOW
 ================================================================================
-Data was NOT downloaded as raw raster tiles. Instead, point values were 
-extracted directly from Google Earth Engine using the following approach:
+Run scripts in order. Steps 1-2 are TerraClimate-specific (in this directory).
+Step 3 uses a shared script (in the top-level scripts/ directory) that works
+identically for all climate datasets (PRISM, WorldClim).
 
-1. For each IDS damage polygon, compute centroid using st_point_on_surface()
-2. Query TerraClimate ImageCollection for the observation's SURVEY_YEAR
-3. Calculate annual mean across all 12 months for each variable
-4. Extract pixel values at centroid coordinates using sampleRegions()
-5. Scale = 4000m (approximately native resolution)
+  Step 1: Rscript 02_terraclimate/scripts/01_build_pixel_maps.R
+          Maps each IDS observation to the ~4km TerraClimate pixels it overlaps.
 
-This yields one row per IDS observation with climate conditions at that 
-location during that year.
+  Step 2: Rscript 02_terraclimate/scripts/02_extract_terraclimate.R
+          Extracts monthly climate values for all unique pixels from GEE.
+
+  Step 3: Rscript scripts/build_climate_summaries.R terraclimate
+          Computes area-weighted climate means per observation per month.
+          Water year columns are added during this step.
+
+Prerequisite: 00_explore_terraclimate.R is an optional exploratory script.
 
 ================================================================================
-OUTPUT FILES
+USING THE OUTPUTS
 ================================================================================
-Raw extraction CSVs:
-  Location: 02_terraclimate/data/raw/
-  Format: CSV (one file per region-year batch)
-  Naming convention: tc_r{REGION_ID}_{SURVEY_YEAR}.csv
-  Example: tc_r10_2020.csv (Alaska, year 2020)
-  Total files: 251 (one per region × year combination)
-  Total observations extracted: 4,475,817 (matches IDS cleaned data)
-  Extraction time: ~25 minutes
+The workflow produces two key output types:
 
-Merged output (analysis-ready):
-  Location: 02_terraclimate/data/processed/ids_terraclimate_merged.gpkg
-  Format: GeoPackage (IDS geometries + scaled climate variables)
-  Size: 4.2 GB
-  Scale factors: Applied (values in physical units)
-  Merge date: 2025-02-03
+  1. PIXEL MAPS  -- link observations to raster pixels
+     Location: 02_terraclimate/data/processed/pixel_maps/
+     Files: damage_areas_pixel_map.parquet
+            damage_points_pixel_map.parquet
+            surveyed_areas_pixel_map.parquet
+     Columns: OBSERVATION_ID, DAMAGE_AREA_ID, pixel_id, x, y, coverage_fraction
+
+  2. PIXEL VALUES -- monthly climate data per unique pixel
+     Location: 02_terraclimate/data/processed/pixel_values/
+     Files: terraclimate_{year}.parquet (one per year, 1997-2024)
+     Columns: pixel_id, x, y, year, month, [14 climate variables]
+
+After summaries (step 3):
+     Location: processed/climate/terraclimate/damage_areas_summaries/
+     Format: one parquet per variable (read with open_dataset())
+     Columns: DAMAGE_AREA_ID, calendar_year, calendar_month, water_year,
+              water_year_month, variable, weighted_mean, value_min, value_max,
+              n_pixels, n_pixels_with_data, sum_coverage_fraction
+
+================================================================================
+HOW TO: Get Climate Data for a Specific Species
+================================================================================
+Goal: Select IDS observations for a particular host species and retrieve the
+TerraClimate values at the corresponding pixels.
+
+  library(sf)
+  library(dplyr)
+  library(arrow)
+
+  # --- 1. Load IDS data and species lookup ---
+  damage_areas <- st_read(
+    "01_ids/data/processed/ids_layers_cleaned.gpkg",
+    layer = "damage_areas"
+  )
+  species_lookup <- read.csv("01_ids/lookups/host_code_lookup.csv")
+
+  # --- 2. Find the HOST_CODE for your species ---
+  # Browse available species:
+  print(species_lookup)
+  # Example codes: 122 = ponderosa pine, 202 = Douglas-fir,
+  #                746 = quaking aspen, 108 = lodgepole pine
+
+  # --- 3. Filter IDS observations ---
+  my_obs <- damage_areas %>%
+    filter(HOST_CODE == 122)               # ponderosa pine
+  # Add more filters if needed:
+  #   filter(HOST_CODE == 122,
+  #          SURVEY_YEAR >= 2010,
+  #          REGION_ID == 1)               # Northern Region only
+
+  # --- 4. Get the TerraClimate pixels for those observations ---
+  pixel_map <- read_parquet(
+    "02_terraclimate/data/processed/pixel_maps/damage_areas_pixel_map.parquet"
+  )
+  my_pixels <- pixel_map %>%
+    filter(OBSERVATION_ID %in% my_obs$OBSERVATION_ID)
+
+  # --- 5. Load climate data and join ---
+  # OPTION A: Use pre-built summaries (one weighted mean per observation per month)
+  # Summaries are stored as per-variable parquet files; read with open_dataset()
+  summaries <- open_dataset(
+    "processed/climate/terraclimate/damage_areas_summaries"
+  )
+  my_climate <- summaries %>%
+    filter(DAMAGE_AREA_ID %in% unique(my_obs$DAMAGE_AREA_ID)) %>%
+    collect()
+
+  # OPTION B: Keep individual pixel values (for within-polygon variation)
+  # Pixel values are stored as yearly wide-format parquet files
+  pixel_values <- open_dataset(
+    "02_terraclimate/data/processed/pixel_values"
+  )
+  my_pixel_climate <- pixel_values %>%
+    filter(pixel_id %in% my_pixels$pixel_id) %>%
+    collect() %>%
+    inner_join(my_pixels, by = "pixel_id")
+
+  # --- 6. Merge climate back to IDS attributes ---
+  result <- my_obs %>%
+    st_drop_geometry() %>%
+    inner_join(
+      my_climate %>% filter(variable == "tmmx"),
+      by = "DAMAGE_AREA_ID"
+    )
+
+NOTE ON PANCAKE FEATURES: Multiple OBSERVATION_IDs can share the same
+DAMAGE_AREA_ID (same geometry, different damage agents). When computing
+total affected area, group by DAMAGE_AREA_ID first to avoid double-counting.
+Pancake features are flagged by OBSERVATION_COUNT = "MULTIPLE".
+
+================================================================================
+HOW TO: Get Climate Data for a Survey Area
+================================================================================
+Goal: Retrieve TerraClimate values for surveyed areas (the polygons describing
+where aerial surveys actually flew), rather than for individual damage
+observations.
+
+  library(sf)
+  library(dplyr)
+  library(arrow)
+
+  # --- 1. Load surveyed areas ---
+  survey_areas <- st_read(
+    "01_ids/data/processed/ids_layers_cleaned.gpkg",
+    layer = "surveyed_areas"
+  )
+  # Filter if needed:
+  #   survey_areas %>% filter(SURVEY_YEAR == 2020, REGION_ID == 5)
+
+  # --- 2. Get the TerraClimate pixels for those survey polygons ---
+  pixel_map <- read_parquet(
+    "02_terraclimate/data/processed/pixel_maps/surveyed_areas_pixel_map.parquet"
+  )
+  my_pixels <- pixel_map %>%
+    filter(SURVEY_FEATURE_ID %in% survey_areas$SURVEY_FEATURE_ID)
+
+  # --- 3. Load pixel values and join ---
+  # Pixel values are yearly wide-format files; use open_dataset() to query across years
+  pixel_values <- open_dataset(
+    "02_terraclimate/data/processed/pixel_values"
+  )
+  survey_climate <- pixel_values %>%
+    filter(pixel_id %in% my_pixels$pixel_id) %>%
+    collect() %>%
+    inner_join(my_pixels, by = "pixel_id")
+
+  # --- 4. Compute area-weighted mean per survey polygon ---
+  survey_summaries <- survey_climate %>%
+    group_by(SURVEY_FEATURE_ID, calendar_year, calendar_month,
+             water_year, water_year_month, variable) %>%
+    summarize(
+      weighted_mean = sum(value * coverage_fraction, na.rm = TRUE) /
+                      sum(coverage_fraction[!is.na(value)]),
+      n_pixels = n(),
+      .groups = "drop"
+    )
+
+NOTE: Surveyed areas use SURVEY_FEATURE_ID (not OBSERVATION_ID) as their
+primary key. The pre-built summaries (step 4) are generated for damage_areas
+by default. For surveyed_areas, compute summaries from pixel values directly
+as shown above, or run script 04 with the surveyed_areas layer.
+
+================================================================================
+SURVEY_YEAR vs WATER YEAR
+================================================================================
+IDS observations have SURVEY_YEAR (integer, no month). TerraClimate pixel
+values store monthly data with BOTH calendar_year/calendar_month AND
+water_year/water_year_month on every row. All years of climate data are
+extracted for every pixel -- not just the observation year.
+
+The water year runs Oct-Sep. When joining IDS observations to climate:
+
+  - calendar_year == SURVEY_YEAR gives Jan-Dec of the observation year
+  - water_year == SURVEY_YEAR gives Oct(prior year)-Sep(observation year)
+
+These share 9 months (Jan-Sep) but differ on 3 (Oct-Dec). Because IDS
+surveys are typically flown in summer/fall, the damage being observed was
+often driven by climate from the preceding winter/spring -- which is better
+captured by the water year. However, without month-of-survey there is
+inherent ambiguity.
+
+The pixel values and summaries include both time systems on every row, so
+you choose the time window at analysis time:
+
+  # Calendar year match: Jan-Dec of SURVEY_YEAR
+  my_climate %>% filter(calendar_year == 2020)
+
+  # Water year match: Oct 2019 - Sep 2020
+  my_climate %>% filter(water_year == 2020)
+
+  # Custom: prior water year (lagged climate)
+  my_climate %>% filter(water_year == 2020 - 1)
+
+  # Growing season only (Apr-Sep = water year months 7-12)
+  my_climate %>% filter(water_year == 2020, water_year_month >= 7)
+
+This is a downstream analysis decision. The extraction pipeline is agnostic
+-- it stores all months for all years and lets you filter at join time.
 
 ================================================================================
 VARIABLES EXTRACTED (14 total)
 ================================================================================
-All values are ANNUAL MEANS of monthly data. Raw integer values from GEE 
-require scaling (see scale factors below).
+See data_dictionary.csv for complete field definitions and scale factors.
 
-Temperature:
-  - tmmx: Maximum temperature (scale: 0.1, units: °C)
-  - tmmn: Minimum temperature (scale: 0.1, units: °C)
-
-Precipitation & Water:
-  - pr: Precipitation accumulation (scale: 1, units: mm)
-  - aet: Actual evapotranspiration (scale: 0.1, units: mm)
-  - pet: Reference evapotranspiration, Penman-Monteith (scale: 0.1, units: mm)
-  - def: Climate water deficit (scale: 0.1, units: mm)
-  - soil: Soil moisture (scale: 0.1, units: mm)
-  - swe: Snow water equivalent (scale: 1, units: mm)
-  - ro: Runoff (scale: 1, units: mm)
-
-Atmospheric:
-  - vap: Vapor pressure (scale: 0.001, units: kPa)
-  - vpd: Vapor pressure deficit (scale: 0.01, units: kPa)
-  - srad: Downward surface shortwave radiation (scale: 0.1, units: W/m²)
-  - vs: Wind speed at 10m (scale: 0.01, units: m/s)
-
-Drought Index:
-  - pdsi: Palmer Drought Severity Index (scale: 0.01, units: unitless)
+Temperature:          tmmx (max), tmmn (min) -- degrees C
+Precipitation/Water:  pr (precip), aet (actual ET), pet (reference ET),
+                      def (water deficit), soil (moisture), swe (snow),
+                      ro (runoff) -- mm
+Atmospheric:          vap (vapor pressure), vpd (vapor pressure deficit),
+                      srad (solar radiation), vs (wind speed)
+Drought Index:        pdsi (Palmer Drought Severity Index) -- unitless
 
 ================================================================================
-KEY FIELDS IN OUTPUT CSVs
+OTHER DOCUMENTATION
 ================================================================================
-- OBSERVATION_ID: Links to IDS cleaned data (join key)
-- REGION_ID: USFS region (added during extraction)
-- SURVEY_YEAR: Year of observation (added during extraction)
-- [14 climate variables]: Raw values from GEE (apply scale factors above)
-
-================================================================================
-KNOWN ISSUES
-================================================================================
-1. RAW CSVs REQUIRE SCALING: Raw CSV values in data/raw/ are integers from GEE.
-   Scale factors are applied in the merged GeoPackage (data/processed/).
-
-2. ANNUAL MEANS: Values represent mean of 12 monthly values. For variables 
-   like precipitation (pr) where annual TOTAL is more meaningful, multiply 
-   the mean by 12 in downstream analysis.
-
-3. INVALID CENTROIDS: 10 IDS observations had geometries that produced NaN 
-   centroids (0.0002% of data). These were excluded from extraction.
-
-4. EDGE PIXELS: Points near coastlines or at edges of TerraClimate coverage 
-   may have missing values if the centroid falls in a NoData pixel.
-
-5. COORDINATE PRECISION: st_point_on_surface() may produce slightly different 
-   results for complex multipolygons on geodetic (lat/lon) coordinates. This 
-   is negligible at 4km resolution.
-
-================================================================================
-DATA QUALITY NOTES
-================================================================================
-1. DUPLICATES: Extraction produced 3,499 duplicate OBSERVATION_IDs due to 
-   sub-batch boundary issue. All duplicates identical; removed during merge.
-
-2. NA IDS: 15 observations from Region 9, 2024 lost OBSERVATION_ID during 
-   GEE extraction. Excluded from merge.
-
-3. MISSING CLIMATE DATA: 1,235 observations (0.03%) have no climate values.
-   Centroids fall in TerraClimate NoData pixels, concentrated in:
-   - Alaska (694)
-   - Pacific Northwest (152)
-   - Other coastal areas (389)
-
-4. JOIN METHOD: Merge uses OBSERVATION_ID only (not REGION_ID/SURVEY_YEAR) 
-   to avoid type mismatch issues.
-
-================================================================================
-USING THE MERGED DATA
-================================================================================
-The merged GeoPackage contains IDS observations with scaled climate variables:
-
-```r
-library(sf)
-
-# Load merged data (IDS + TerraClimate, scale factors already applied)
-data <- st_read("02_terraclimate/data/processed/ids_terraclimate_merged.gpkg")
-
-# Climate variables are now in physical units (°C, mm, kPa, etc.)
-```
-
-To work with raw extraction CSVs directly (e.g., for debugging):
-
-```r
-library(dplyr)
-library(readr)
-library(purrr)
-
-tc_files <- list.files("02_terraclimate/data/raw", pattern = "\\.csv$", 
-                       full.names = TRUE)
-terraclimate_raw <- map_dfr(tc_files, read_csv)
-# Note: Raw values require scale factor application
-```
-
-================================================================================
-PROCESSING NOTES
-================================================================================
-- Extraction performed in batches by REGION_ID × SURVEY_YEAR
-- Sub-batches of 5000 features used to stay within GEE limits
-- Progress is resumable: existing CSV files are skipped on re-run
-- CRS: IDS centroids transformed to EPSG:4326 (WGS84) before extraction
+  WORKFLOW.md        Technical architecture, script details, design decisions
+  cleaning_log.md    Data quality issues and resolutions
+  data_dictionary.csv  Field definitions and scale factors for all output tables
+  docs/terraclim_ref.pdf  TerraClimate reference publication

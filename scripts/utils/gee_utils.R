@@ -75,24 +75,30 @@ sf_polygons_to_ee <- function(sf_obj, id_col, ee) {
   sf_obj <- st_transform(sf_obj, 4326)
   
   features <- lapply(seq_len(nrow(sf_obj)), function(i) {
-    # Extract coordinates from geometry
     geom <- st_geometry(sf_obj[i, ])[[1]]
+    coords <- st_coordinates(geom)
+    coords_df <- as.data.frame(coords)
     
-    # Handle POLYGON vs MULTIPOLYGON
-    if (inherits(geom, "MULTIPOLYGON")) {
-      # Take first polygon only
-      coords_mat <- geom[[1]][[1]]
+    if ("L2" %in% names(coords_df)) {
+      polygons <- split(coords_df, coords_df$L1)
+      polygon_list <- lapply(polygons, function(poly_df) {
+        rings <- split(poly_df, poly_df$L2)
+        lapply(rings, function(ring_df) {
+          lapply(seq_len(nrow(ring_df)), function(j) {
+            c(ring_df$X[j], ring_df$Y[j])
+          })
+        })
+      })
+      ee_geom <- ee$Geometry$MultiPolygon(polygon_list)
     } else {
-      # POLYGON - first ring (exterior)
-      coords_mat <- geom[[1]]
+      rings <- split(coords_df, coords_df$L1)
+      ring_list <- lapply(rings, function(ring_df) {
+        lapply(seq_len(nrow(ring_df)), function(j) {
+          c(ring_df$X[j], ring_df$Y[j])
+        })
+      })
+      ee_geom <- ee$Geometry$Polygon(ring_list)
     }
-    
-    # Convert to list of [lon, lat] pairs
-    coord_list <- lapply(seq_len(nrow(coords_mat)), function(j) {
-      c(coords_mat[j, 1], coords_mat[j, 2])
-    })
-    
-    ee_geom <- ee$Geometry$Polygon(list(coord_list))
     
     props <- list()
     props[[id_col]] <- sf_obj[[id_col]][i]
