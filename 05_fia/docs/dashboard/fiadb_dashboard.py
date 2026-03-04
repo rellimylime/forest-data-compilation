@@ -1536,11 +1536,10 @@ _TABLE_TO_CAT: Dict[str, str] = {
 }
 
 
-def build_pyvis_graph(db_tables: List[str]) -> str:
-    # Height is set by JS at render time to maintain a 4:3 aspect ratio.
-    # The 600px here is just a fallback in case JS cannot run.
+def build_pyvis_graph(db_tables: List[str], graph_height: int = 460) -> str:
+    # graph_height controls the canvas; the info panel below adds ~180px to the iframe.
     net = Network(
-        height="600px",
+        height=f"{graph_height}px",
         width="100%",
         directed=True,
         notebook=False,
@@ -1602,7 +1601,7 @@ def build_pyvis_graph(db_tables: List[str]) -> str:
     margin: 0; padding: 0; background: #0e1117;
     display: flex; flex-direction: column; height: auto; overflow-x: hidden;
   }}
-  #mynetwork {{ background: #0e1117 !important; flex: 0 0 auto; }}
+  #mynetwork {{ background: #0e1117 !important; flex: 0 0 {graph_height}px; }}
   #fia-node-panel {{
     flex: 0 0 auto;
     padding: 12px 18px 10px;
@@ -1629,36 +1628,13 @@ def build_pyvis_graph(db_tables: List[str]) -> str:
 </div>
 <script>
 var FIA_TABLE_INFO = {table_info_json};
-
-function resizeDiagram() {{
-    try {{
-        var fe = window.frameElement;
-        if (!fe) return;
-        var w = fe.getBoundingClientRect().width;
-        if (w < 10) return;
-        var netH = Math.round(w * 3 / 4);
-        var netEl = document.getElementById("mynetwork");
-        var panelEl = document.getElementById("fia-node-panel");
-        if (!netEl) return;
-        netEl.style.height = netH + "px";
-        var panelH = panelEl ? panelEl.offsetHeight : 100;
-        fe.style.height = (netH + panelH) + "px";
-        if (typeof network !== "undefined") {{
-            network.setSize("100%", netH + "px");
-            network.redraw();
-        }}
-    }} catch(e) {{}}
-}}
-
-window.addEventListener("resize", resizeDiagram);
-
 (function waitForNetwork() {{
     if (typeof network === 'undefined') {{ setTimeout(waitForNetwork, 100); return; }}
+    // Fit on stabilized event, plus a belt-and-suspenders timeout fallback
     network.once("stabilized", function() {{
         network.fit({{animation: {{duration: 600, easingFunction: "easeInOutQuad"}}}});
-        resizeDiagram();
     }});
-    setTimeout(function() {{ network.fit(); resizeDiagram(); }}, 1800);
+    setTimeout(function() {{ network.fit(); }}, 1800);
     network.on("click", function(params) {{
         var panel       = document.getElementById("fia-node-panel");
         var placeholder = document.getElementById("fia-placeholder");
@@ -2335,8 +2311,12 @@ The color of each node shows which group the table belongs to (see the color key
         st.caption("Nodes = tables · Arrows = connections · Colors = table group · Drag to rearrange")
 
         if _PYVIS_AVAILABLE:
-            html = build_pyvis_graph(db_tables)
-            components.html(html, height=800, scrolling=False)
+            graph_height = st.slider(
+                "Diagram height (px)", min_value=300, max_value=1400,
+                value=600, step=50, key="rel_map_height",
+            )
+            html = build_pyvis_graph(db_tables, graph_height=graph_height)
+            components.html(html, height=graph_height + 180, scrolling=False)
         elif _GRAPHVIZ_AVAILABLE:
             st.info(
                 "pyvis not installed — showing a static core-table diagram. "
