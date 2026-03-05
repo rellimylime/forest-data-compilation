@@ -86,6 +86,9 @@ processed/
 
 # User specific
 local/
+.devcontainer/
+.vscode/
+meeting.md
 
 # Claude settings
 .claude/*
