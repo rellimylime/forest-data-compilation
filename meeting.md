@@ -148,7 +148,7 @@ Output: `output/demo_02_fia_forest/` — figures + CSVs *(run FIA pipeline first
 
 ### Demo 03 — Point-Based TerraClimate at FIA Sites ([`scripts/demo_03_site_climate.R`](scripts/demo_03_site_climate.R))
 
-Demonstrates how to query `fia_site_climate.parquet` — monthly TerraClimate (1958–present) for 6,956 FIA plot locations. Also shows how to add custom lat/lon sites to the extraction.
+Demonstrates how to query `site_climate.parquet` — monthly TerraClimate (1958–present) for 6,956 site locations. Also shows how to add custom lat/lon sites to the extraction.
 
 - **A — Site list:** inspect `all_site_locations.csv` (the input defining which locations were extracted)
 - **B — Parquet structure:** 23.5M rows × 6 variables (tmmx, tmmn, pr, def, pet, aet)

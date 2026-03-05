@@ -249,7 +249,7 @@ Output: `output/demo_02_fia_forest/` — figures + CSV summaries
 
 ### demo_03_site_climate.R — Point-Based TerraClimate
 
-Queries `fia_site_climate.parquet` to compute annual CWD, summer temperatures, and long-term climatologies. Also shows how to add custom lat/lon locations to `05_fia/data/processed/site_climate/all_site_locations.csv` for extraction.
+Queries `site_climate.parquet` to compute annual CWD, summer temperatures, and long-term climatologies. Also shows how to add custom lat/lon locations to `05_fia/data/processed/site_climate/all_site_locations.csv` for extraction.
 
 ```bash
 Rscript scripts/demo_03_site_climate.R
@@ -303,7 +303,7 @@ forest-data-compilation/
 │   ├── reference/                   # Lab reference code (not part of pipeline)
 │   │   └── fia_disturbance_harvest_checks.R
 │   ├── data/processed/summaries/    # 8 plot-level parquets (tracked in git)
-│   └── data/processed/site_climate/ # fia_site_climate.parquet + all_site_locations.csv
+│   └── data/processed/site_climate/ # site_climate.parquet + all_site_locations.csv
 │
 └── archive/                         # Previous work not part of current pipeline
 ```
@@ -469,8 +469,8 @@ These files are **tracked in git** and available without running the pipeline.
 | `plot_seedling_metrics.parquet` | `05_fia/data/processed/summaries/` | Seedling regeneration counts per plot × year |
 | `plot_treatment_history.parquet` | `05_fia/data/processed/summaries/` | Silvicultural treatment records (TRTCD 10/20/30/40/50) |
 | `plot_cond_fortypcd.parquet` | `05_fia/data/processed/summaries/` | Condition-level forest type (FORTYPCD) pass-through |
-| `fia_site_pixel_map.parquet` | `05_fia/data/processed/site_climate/` | FIA plot → TerraClimate pixel mapping (6,956 sites) |
-| `fia_site_climate.parquet` | `05_fia/data/processed/site_climate/` | Monthly TerraClimate at FIA sites, 1958–present (23.5M rows) |
+| `site_pixel_map.parquet` | `05_fia/data/processed/site_climate/` | FIA plot → TerraClimate pixel mapping (6,956 sites) |
+| `site_climate.parquet` | `05_fia/data/processed/site_climate/` | Monthly TerraClimate at FIA sites, 1958–present (23.5M rows) |
 
 ### Data Access
 

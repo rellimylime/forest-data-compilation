@@ -317,7 +317,7 @@ with grid_tab:
 
     if grid_dataset.startswith("FIA"):
         pm_path = str(repo_path("05_fia", "data", "processed", "site_climate",
-                                 "fia_site_pixel_map.parquet"))
+                                 "site_pixel_map.parquet"))
         color_seq = ["#4e79a7"]
         title_suffix = "FIA site pixel centroids (TerraClimate 4km grid)"
         sample_n = None

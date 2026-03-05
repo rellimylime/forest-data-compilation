@@ -128,8 +128,8 @@ data/processed/summaries/            National plot-level aggregated metrics
     has_insect:    any DSTRBCD %in% c(10,11,12)  [positive filter, not an exclusion]
 
 data/processed/site_climate/         TerraClimate at FIA site locations
-  fia_site_pixel_map.parquet          site_id -> pixel_id mapping
-  fia_site_climate.parquet            Monthly climate 1958-present
+  site_pixel_map.parquet          site_id -> pixel_id mapping
+  site_climate.parquet            Monthly climate 1958-present
     Columns: site_id, year, month, water_year, water_year_month,
              variable (tmmx/tmmn/pr/def/pet/aet), value
 
@@ -180,7 +180,7 @@ FIA TerraClimate climate data (at site locations)
 Monthly TerraClimate from 1958-present at all site locations:
 
   library(arrow); library(dplyr)
-  clim <- read_parquet("05_fia/data/processed/site_climate/fia_site_climate.parquet")
+  clim <- read_parquet("05_fia/data/processed/site_climate/site_climate.parquet")
 
   # Annual water-year precipitation per site
   clim |> filter(variable == "pr") |>

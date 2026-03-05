@@ -70,7 +70,7 @@ with st.spinner("Loading FIA summaries…"):
     seed_df,    seed_err    = load_parquet(sp("plot_seedling_metrics.parquet"))
     treat_df,   treat_err   = load_parquet(sp("plot_treatment_history.parquet"))
     flags_df,   flags_err   = load_parquet(sp("plot_exclusion_flags.parquet"))
-# fia_site_climate.parquet is 23.5M rows — not loaded eagerly; use metadata only
+# site_climate.parquet is 23.5M rows — not loaded eagerly; use metadata only
 clim_df = None
 
 # ------------------------------------------------------------------------------
@@ -119,11 +119,11 @@ with tab_overview:
         ("plot_seedling_metrics.parquet",     seed_df,    "Seedling regeneration"),
         ("plot_treatment_history.parquet",    treat_df,   "Treatment history (cutting, regen, site prep)"),
         ("plot_cond_fortypcd.parquet",        None,       "Condition / forest type (not pre-loaded)"),
-        ("fia_site_climate.parquet",          None,    "Point climate — FIA plots + ITRDB sites (TerraClimate 1958–2024)"),
+        ("site_climate.parquet",          None,    "Point climate — FIA plots + ITRDB sites (TerraClimate 1958–2024)"),
     ]
     rows = []
     for fname, df, desc in files_info:
-        is_summ = fname != "fia_site_climate.parquet"
+        is_summ = fname != "site_climate.parquet"
         fpath = sp(fname) if is_summ else cp(fname)
         exists = os.path.isfile(fpath)
         size_mb = os.path.getsize(fpath) / 1e6 if exists else None
@@ -158,7 +158,7 @@ with tab_overview:
         "| `plot_damage_agents` | 1+ rows per plot × year | `PLT_CN, INVYR, CONDID` |\n"
         "| `plot_mortality_metrics` | 1+ rows per plot × year | `PLT_CN, INVYR` |\n"
         "| `plot_treatment_history` | 1+ rows per condition × treatment slot | `PLT_CN, INVYR` |\n"
-        "| `fia_site_climate` | 1 row per site × year × month × variable | `site_id` (numeric = FIA, alphanumeric = ITRDB) |\n"
+        "| `site_climate` | 1 row per site × year × month × variable | `site_id` (numeric = FIA, alphanumeric = ITRDB) |\n"
     )
 
 # ==============================================================================
@@ -621,12 +621,12 @@ with tab_climate:
         "the main FIA forest inventory analysis above."
     )
 
-    clim_path = cp("fia_site_climate.parquet")
+    clim_path = cp("site_climate.parquet")
     clim_exists = os.path.isfile(clim_path)
 
     if not clim_exists:
         st.info(
-            "`fia_site_climate.parquet` not found.  \n"
+            "`site_climate.parquet` not found.  \n"
             "Generate with `Rscript 05_fia/scripts/06_extract_site_climate.R`."
         )
     else:
@@ -657,7 +657,7 @@ with tab_climate:
         st.subheader("Load in R")
         st.code(
             'library(arrow); library(dplyr)\n'
-            'clim <- read_parquet("05_fia/data/processed/site_climate/fia_site_climate.parquet")\n\n'
+            'clim <- read_parquet("05_fia/data/processed/site_climate/site_climate.parquet")\n\n'
             '# Annual water-year precipitation per site\n'
             'clim |> filter(variable == "pr") |>\n'
             '  group_by(site_id, water_year) |>\n'

@@ -249,12 +249,12 @@ This means the full pixel decomposition pattern works for any set of lat/lon poi
   (site_id, lat, lon)                    |
           |                              |
           v build_pixel_map()            |
-  fia_site_pixel_map.parquet             |
+  site_pixel_map.parquet             |
   (site_id, pixel_id, x, y,             |
    coverage_fraction=1.0)               |
           |                             |
           v join on pixel_id            v
-  fia_site_climate.parquet     extract_climate_from_gee()
+  site_climate.parquet     extract_climate_from_gee()
   (site_id, year, month,       annual parquets per variable
    water_year, variable, value)
 ```

@@ -3,14 +3,14 @@
 # Point-Based TerraClimate — FIA Sites and Custom Location Lists
 # ==============================================================================
 #
-# Demonstrates how to query and analyze fia_site_climate.parquet, which holds
+# Demonstrates how to query and analyze site_climate.parquet, which holds
 # monthly TerraClimate (1958–present) for 6,956 FIA plot locations.
 #
 # The same pipeline can extract climate for ANY lat/lon CSV using
 # 05_fia/data/processed/site_climate/all_site_locations.csv as the input template.
 #
 #   Part A  Understand the site list (all_site_locations.csv)
-#   Part B  Explore fia_site_climate.parquet structure
+#   Part B  Explore site_climate.parquet structure
 #   Part C  Annual water-year summaries per site
 #   Part D  Long-term mean climate across sites
 #   Part E  Figures — temporal trends and spatial variation
@@ -49,7 +49,7 @@ cat("=====================\n\n")
 #
 # 05_fia/data/processed/site_climate/all_site_locations.csv defines the sites
 # for which climate was extracted. It is the *input* to 06_extract_site_climate.R; the output is
-# fia_site_climate.parquet.
+# site_climate.parquet.
 #
 # Schema: site_id, latitude, longitude, source
 #   site_id   — unique location identifier (FIA PLT_CN for FIA plots)
@@ -65,7 +65,7 @@ cat(sprintf("Lat range: %.2f – %.2f\n", min(sites$latitude),  max(sites$latitu
 cat(sprintf("Lon range: %.2f – %.2f\n", min(sites$longitude), max(sites$longitude)))
 
 # ==============================================================================
-# Part B: Explore fia_site_climate.parquet structure
+# Part B: Explore site_climate.parquet structure
 # ==============================================================================
 #
 # Schema: site_id | year | month | water_year | water_year_month | variable | value
@@ -82,7 +82,7 @@ cat(sprintf("Lon range: %.2f – %.2f\n", min(sites$longitude), max(sites$longit
 #
 
 clim <- read_parquet(
-  here("05_fia/data/processed/site_climate/fia_site_climate.parquet")
+  here("05_fia/data/processed/site_climate/site_climate.parquet")
 )
 
 cat(sprintf("\nSite climate rows: %s\n", format(nrow(clim), big.mark = ",")))
@@ -263,7 +263,7 @@ write.csv(co_annual_cwd, file.path(output_dir, "colorado_annual_cwd.csv"), row.n
 #
 #   The script maps each site to its 4km TerraClimate pixel (nearest centroid),
 #   then extracts monthly values for all variables via Google Earth Engine.
-#   The output fia_site_climate.parquet is updated with the new rows.
+#   The output site_climate.parquet is updated with the new rows.
 #
 #   Note: GEE authentication required — see local/user_config.yaml.
 #

@@ -384,17 +384,17 @@ CATALOG = {
             "py_code": 'cond = pd.read_parquet("05_fia/data/processed/summaries/plot_cond_fortypcd.parquet")',
         },
         {
-            "label":   "fia_site_pixel_map.parquet",
-            "path":    "05_fia/data/processed/site_climate/fia_site_pixel_map.parquet",
+            "label":   "site_pixel_map.parquet",
+            "path":    "05_fia/data/processed/site_climate/site_pixel_map.parquet",
             "format":  "Parquet",
             "desc":    "Maps each FIA plot location (site_id) to its TerraClimate 4km pixel. "
                        "Columns: site_id, pixel_id, x (lon), y (lat).",
-            "r_code":  'pm <- arrow::read_parquet("05_fia/data/processed/site_climate/fia_site_pixel_map.parquet")',
-            "py_code": 'pm = pd.read_parquet("05_fia/data/processed/site_climate/fia_site_pixel_map.parquet")',
+            "r_code":  'pm <- arrow::read_parquet("05_fia/data/processed/site_climate/site_pixel_map.parquet")',
+            "py_code": 'pm = pd.read_parquet("05_fia/data/processed/site_climate/site_pixel_map.parquet")',
         },
         {
-            "label":   "fia_site_climate.parquet",
-            "path":    "05_fia/data/processed/site_climate/fia_site_climate.parquet",
+            "label":   "site_climate.parquet",
+            "path":    "05_fia/data/processed/site_climate/site_climate.parquet",
             "format":  "Parquet",
             "desc":    "Monthly TerraClimate at 6,956 FIA plot locations. 23.5M rows. "
                        "Columns: site_id, year, month, water_year, water_year_month, variable, value. "
@@ -402,14 +402,14 @@ CATALOG = {
                        "Period: 1958–2024.",
             "r_code":  (
                 'library(arrow); library(dplyr)\n'
-                'clim <- read_parquet("05_fia/data/processed/site_climate/fia_site_climate.parquet")\n'
+                'clim <- read_parquet("05_fia/data/processed/site_climate/site_climate.parquet")\n'
                 '# Annual water-year precip\n'
                 'clim |> filter(variable == "pr") |>\n'
                 '  group_by(site_id, water_year) |>\n'
                 '  summarise(precip_mm = sum(value, na.rm = TRUE))'
             ),
             "py_code": (
-                'clim = pd.read_parquet("05_fia/data/processed/site_climate/fia_site_climate.parquet")\n'
+                'clim = pd.read_parquet("05_fia/data/processed/site_climate/site_climate.parquet")\n'
                 '# Annual water-year precip\n'
                 'precip = (clim[clim["variable"] == "pr"]\n'
                 '          .groupby(["site_id", "water_year"])["value"].sum())'

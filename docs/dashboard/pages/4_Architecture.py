@@ -186,7 +186,7 @@ PIPELINE_HTML = """
         nearest pixel centroid
       </div>
       <span class="box-method method-fia">coverage_fraction = 1.0 (always)</span>
-      <div class="box-filename">fia_site_pixel_map.parquet<br>site_id · pixel_id · x · y</div>
+      <div class="box-filename">site_pixel_map.parquet<br>site_id · pixel_id · x · y</div>
     </td>
     <td class="pipe-arrow">→</td>
     <!-- TerraClimate spanned from IDS row -->
@@ -199,7 +199,7 @@ PIPELINE_HTML = """
         per site × year × month<br><br>
         + water_year · water_year_month
       </div>
-      <div class="box-filename">fia_site_climate.parquet<br>23.5M rows · 62 MB<br>6 vars · 1958–2024</div>
+      <div class="box-filename">site_climate.parquet<br>23.5M rows · 62 MB<br>6 vars · 1958–2024</div>
     </td>
   </tr>
 </table>
@@ -300,7 +300,7 @@ with tab_fia:
          "For point locations, pixel assignment is much simpler than for polygons: "
          "find the TerraClimate 4km grid cell whose centroid is nearest to each plot location. "
          "Uses `build_pixel_map()` from `climate_extract.R` with a reference raster. "
-         "Output: `fia_site_pixel_map.parquet` (site_id · pixel_id · x · y, 6,956 rows).",
+         "Output: `site_pixel_map.parquet` (site_id · pixel_id · x · y, 6,956 rows).",
          "`05_fia/scripts/06_extract_site_climate.R`"),
         ("Step 3", "Authenticate GEE (one-time)",
          "Browser authentication: `ee$Authenticate(auth_mode = 'notebook')`. "
@@ -318,7 +318,7 @@ with tab_fia:
          "Since all FIA sites are points, `coverage_fraction = 1.0` for all — "
          "no area-weighting needed, just a direct join on `pixel_id`. "
          "Add `water_year` and `water_year_month`. "
-         "Output: `fia_site_climate.parquet` (23.5M rows · 62 MB).",
+         "Output: `site_climate.parquet` (23.5M rows · 62 MB).",
          "`05_fia/scripts/06_extract_site_climate.R`"),
     ]
 
@@ -409,7 +409,7 @@ with tab_code:
         st.code(
             'library(arrow); library(dplyr)\n\n'
             'clim <- read_parquet(\n'
-            '  "05_fia/data/processed/site_climate/fia_site_climate.parquet"\n'
+            '  "05_fia/data/processed/site_climate/site_climate.parquet"\n'
             ')\n\n'
             '# Annual water-year precipitation per site\n'
             'clim |>\n'
@@ -424,7 +424,7 @@ with tab_code:
         st.code(
             'import pandas as pd\n\n'
             'clim = pd.read_parquet(\n'
-            '    "05_fia/data/processed/site_climate/fia_site_climate.parquet"\n'
+            '    "05_fia/data/processed/site_climate/site_climate.parquet"\n'
             ')\n\n'
             '# Annual water-year precipitation per site\n'
             'pr = clim[clim["variable"] == "pr"]\n'
@@ -454,7 +454,7 @@ with tab_code:
     with col2:
         st.caption("FIA site pixel map (one row per plot location)")
         st.code(
-            '# fia_site_pixel_map.parquet\n'
+            '# site_pixel_map.parquet\n'
             'site_id     str      # FIA plot identifier\n'
             'pixel_id    int64    # same grid as IDS pixel maps\n'
             'x           float64  # pixel centroid lon\n'
