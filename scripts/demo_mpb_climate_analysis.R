@@ -304,7 +304,7 @@ if (FALSE) {  # Set to TRUE once FIA pipeline has been run
 # B. FIA site-level TerraClimate (1958-present)
 # ------------------------------------------------------------------------------
 #
-# fia_site_climate.parquet contains monthly tmmx, tmmn, pr, def, pet, aet for
+# site_climate.parquet contains monthly tmmx, tmmn, pr, def, pet, aet for
 # all sites in all_site_locations.csv.  The 'def' variable is climate water
 # deficit (CWD = PET - AET) — a key predictor of drought stress and disturbance.
 #
@@ -313,7 +313,7 @@ if (FALSE) {  # Set to TRUE once FIA pipeline has been run
 if (FALSE) {  # Set to TRUE once 06_extract_site_climate.R has been run
 
   site_clim <- read_parquet(
-    here("05_fia/data/processed/site_climate/fia_site_climate.parquet")
+    here("05_fia/data/processed/site_climate/site_climate.parquet")
   )
 
   cat(sprintf("Site climate rows: %s\n", format(nrow(site_clim), big.mark = ",")))

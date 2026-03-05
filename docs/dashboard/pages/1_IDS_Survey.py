@@ -39,8 +39,8 @@ st.markdown(
 IDS_DIR     = repo_path("01_ids")
 LOOKUP_DIR  = IDS_DIR / "lookups"
 IDS_GPK     = IDS_DIR / "data" / "processed" / "ids_layers_cleaned.gpkg"
-PIXEL_MAP   = repo_path("02_terraclimate", "data", "processed",
-                         "pixel_maps", "damage_areas_pixel_map.parquet")
+PIXEL_CENTROIDS = repo_path("02_terraclimate", "lookups",
+                             "damage_areas_pixel_centroids.parquet")
 
 tab_summary, tab_dca, tab_host, tab_schema, tab_map = st.tabs([
     "📊 Summary",
@@ -265,103 +265,71 @@ with tab_schema:
 with tab_map:
     st.subheader("TerraClimate Pixel Grid — IDS Coverage")
     st.markdown(
-        "Each damage area is decomposed into the 4km TerraClimate pixels it overlaps. "
-        "The map below shows pixel centroids from "
-        "`02_terraclimate/data/processed/pixel_maps/damage_areas_pixel_map.parquet` "
-        "(sampled for display speed)."
+        "Each IDS damage area is decomposed into the 4km TerraClimate pixels it overlaps "
+        "(see Architecture page for details). The map below shows all **263,871 unique pixels** "
+        "that intersect at least one damage area, colored by how many distinct damage areas "
+        "fall within each pixel. Color is log-scaled — pixels with thousands of overlapping "
+        "damage areas (dense outbreak zones) stand out clearly against lightly surveyed areas."
     )
 
-    pm_path = str(PIXEL_MAP)
-    pm_exists = os.path.isfile(pm_path)
+    pc_path = str(PIXEL_CENTROIDS)
+    pc_exists = os.path.isfile(pc_path)
 
-    if not pm_exists:
+    if not pc_exists:
         st.info(
-            "Pixel map not found. Run `02_terraclimate/scripts/02_build_pixel_maps.R` "
-            "to generate it."
+            "Pixel centroid file not found: "
+            "`02_terraclimate/data/processed/pixel_maps/damage_areas_pixel_centroids.parquet`"
         )
-        # Fallback: show FIA site pixel map which is tiny
-        fia_pm = str(repo_path("05_fia", "data", "processed", "site_climate",
-                                "fia_site_pixel_map.parquet"))
-        if os.path.isfile(fia_pm):
-            st.markdown("**Showing FIA site pixel map as a proxy** (6,956 points):")
-            pm_df, pm_err = load_parquet(fia_pm)
-            if pm_df is not None and PLOTLY_AVAILABLE:
-                _df = pm_df.rename(columns={"y": "lat", "x": "lon"})
-                try:
-                    fig = px.scatter_map(
-                        _df, lat="lat", lon="lon",
-                        color_discrete_sequence=["#4e79a7"],
-                        map_style="open-street-map",
-                        zoom=3, center={"lat": 44, "lon": -105},
-                        opacity=0.7,
-                        title="FIA site pixel centroids (4km TerraClimate grid)",
-                    )
-                except AttributeError:
-                    fig = px.scatter_mapbox(
-                        _df, lat="lat", lon="lon",
-                        color_discrete_sequence=["#4e79a7"],
-                        mapbox_style="open-street-map",
-                        zoom=3, center={"lat": 44, "lon": -105},
-                        opacity=0.7,
-                        title="FIA site pixel centroids (4km TerraClimate grid)",
-                    )
-                fig.update_traces(marker_size=5)
-                fig.update_layout(paper_bgcolor="#0e1117", font_color="#ddd",
-                                  margin=dict(l=0, r=0, t=30, b=0))
-                st.plotly_chart(fig, use_container_width=True)
+    elif not PLOTLY_AVAILABLE:
+        st.warning("Install `plotly` to view the map.")
     else:
-        meta = parquet_meta(pm_path)
-        n_total = meta.get("rows", 0) or 0
-        sample_n = min(30_000, n_total)
+        pc_df, pc_err = load_parquet(pc_path)
+        if pc_err:
+            st.error(pc_err)
+        elif pc_df is not None:
+            import numpy as np
+            pc_df["log_n"] = np.log1p(pc_df["n_damage_areas"])
 
-        st.markdown(
-            f"Pixel map has **{n_total:,} rows** (pixel × damage area pairs). "
-            f"Showing a random sample of **{sample_n:,}** pixel centroids."
-        )
+            try:
+                fig = px.scatter_map(
+                    pc_df, lat="y", lon="x",
+                    color="log_n",
+                    color_continuous_scale="YlOrRd",
+                    hover_data={"n_damage_areas": True, "log_n": False,
+                                "x": False, "y": False},
+                    labels={"log_n": "log(n+1)", "n_damage_areas": "Damage areas"},
+                    map_style="carto-darkmatter",
+                    zoom=3, center={"lat": 44, "lon": -105},
+                    opacity=0.7,
+                )
+            except AttributeError:
+                fig = px.scatter_mapbox(
+                    pc_df, lat="y", lon="x",
+                    color="log_n",
+                    color_continuous_scale="YlOrRd",
+                    hover_data={"n_damage_areas": True, "log_n": False,
+                                "x": False, "y": False},
+                    labels={"log_n": "log(n+1)", "n_damage_areas": "Damage areas"},
+                    mapbox_style="carto-darkmatter",
+                    zoom=3, center={"lat": 44, "lon": -105},
+                    opacity=0.7,
+                )
 
-        if not PLOTLY_AVAILABLE:
-            st.warning("Install `plotly` to view the map.")
-        else:
-            pm_df, pm_err = load_parquet(pm_path)
-            if pm_df is not None:
-                # Get unique pixels only for the map
-                pixel_cols = [c for c in ["pixel_id", "x", "y"] if c in pm_df.columns]
-                if len(pixel_cols) == 3:
-                    unique_pixels = pm_df[pixel_cols].drop_duplicates("pixel_id")
-                    if len(unique_pixels) > sample_n:
-                        unique_pixels = unique_pixels.sample(sample_n, random_state=42)
-
-                    col_x = "x" if "x" in unique_pixels.columns else None
-                    col_y = "y" if "y" in unique_pixels.columns else None
-
-                    if col_x and col_y:
-                        _title = f"TerraClimate 4km pixel centroids (IDS coverage, n={len(unique_pixels):,})"
-                        try:
-                            fig = px.scatter_map(
-                                unique_pixels, lat=col_y, lon=col_x,
-                                color_discrete_sequence=["#e15759"],
-                                map_style="open-street-map",
-                                zoom=3, center={"lat": 44, "lon": -105},
-                                opacity=0.5, title=_title,
-                            )
-                        except AttributeError:
-                            fig = px.scatter_mapbox(
-                                unique_pixels, lat=col_y, lon=col_x,
-                                color_discrete_sequence=["#e15759"],
-                                mapbox_style="open-street-map",
-                                zoom=3, center={"lat": 44, "lon": -105},
-                                opacity=0.5, title=_title,
-                            )
-                        fig.update_traces(marker_size=3)
-                        fig.update_layout(paper_bgcolor="#0e1117", font_color="#ddd",
-                                          margin=dict(l=0, r=0, t=30, b=0))
-                        st.plotly_chart(fig, use_container_width=True)
-                        st.caption(
-                            "Each dot = one unique 4km TerraClimate pixel that overlaps "
-                            "at least one IDS damage area. The pixel decomposition assigns "
-                            "climate values to damage areas via these shared pixels."
-                        )
-                else:
-                    st.warning(f"Expected columns `pixel_id, x, y`. Found: {pm_df.columns.tolist()}")
-            elif pm_err:
-                st.error(pm_err)
+            fig.update_traces(marker_size=3)
+            fig.update_layout(
+                paper_bgcolor="#0e1117",
+                font_color="#ddd",
+                margin=dict(l=0, r=0, t=10, b=0),
+                coloraxis_colorbar=dict(
+                    title="Damage areas<br>(log scale)",
+                    bgcolor="#161b22",
+                    tickcolor="#ddd",
+                    title_font_color="#ddd",
+                ),
+            )
+            st.plotly_chart(fig, use_container_width=True)
+            st.caption(
+                "Each dot = one unique 4km TerraClimate pixel overlapping at least one "
+                "IDS damage area. Color intensity reflects damage area density within that pixel. "
+                "Source: `02_terraclimate/lookups/damage_areas_pixel_centroids.parquet`"
+            )

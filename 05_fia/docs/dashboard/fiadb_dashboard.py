@@ -1536,10 +1536,10 @@ _TABLE_TO_CAT: Dict[str, str] = {
 }
 
 
-def build_pyvis_graph(db_tables: List[str]) -> str:
-    # Reserve 460 px for the graph; the info panel sits below it in the same iframe.
+def build_pyvis_graph(db_tables: List[str], graph_height: int = 460) -> str:
+    # graph_height controls the canvas; the info panel below adds ~180px to the iframe.
     net = Network(
-        height="460px",
+        height=f"{graph_height}px",
         width="100%",
         directed=True,
         notebook=False,
@@ -1601,7 +1601,7 @@ def build_pyvis_graph(db_tables: List[str]) -> str:
     margin: 0; padding: 0; background: #0e1117;
     display: flex; flex-direction: column; height: auto; overflow-x: hidden;
   }}
-  #mynetwork {{ background: #0e1117 !important; flex: 0 0 460px; }}
+  #mynetwork {{ background: #0e1117 !important; flex: 0 0 {graph_height}px; }}
   #fia-node-panel {{
     flex: 0 0 auto;
     padding: 12px 18px 10px;
@@ -2311,8 +2311,12 @@ The color of each node shows which group the table belongs to (see the color key
         st.caption("Nodes = tables · Arrows = connections · Colors = table group · Drag to rearrange")
 
         if _PYVIS_AVAILABLE:
-            html = build_pyvis_graph(db_tables)
-            components.html(html, height=640, scrolling=False)
+            graph_height = st.slider(
+                "Diagram height (px)", min_value=300, max_value=1400,
+                value=600, step=50, key="rel_map_height",
+            )
+            html = build_pyvis_graph(db_tables, graph_height=graph_height)
+            components.html(html, height=graph_height + 180, scrolling=False)
         elif _GRAPHVIZ_AVAILABLE:
             st.info(
                 "pyvis not installed — showing a static core-table diagram. "

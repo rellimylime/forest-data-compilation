@@ -150,11 +150,11 @@ PIPELINE = [
     ("FIA", "Condition / forest type",
      "05_fia/data/processed/summaries/plot_cond_fortypcd.parquet",
      "Condition-level forest type and disturbance codes pass-through"),
-    ("FIA", "FIA site pixel map",
-     "05_fia/data/processed/site_climate/fia_site_pixel_map.parquet",
+    ("FIA", "Site pixel map",
+     "05_fia/data/processed/site_climate/site_pixel_map.parquet",
      "TerraClimate 4km pixel assignments for 6,956 FIA plot locations"),
-    ("FIA", "FIA site climate",
-     "05_fia/data/processed/site_climate/fia_site_climate.parquet",
+    ("FIA", "Site climate",
+     "05_fia/data/processed/site_climate/site_climate.parquet",
      "Monthly TerraClimate at FIA sites: 6 variables, 1958–2024 (23.5M rows)"),
 ]
 
@@ -259,7 +259,7 @@ if os.path.isfile(fia_tree_path):
 else:
     c4.markdown(metric_card("FIA Plot Visits", "—", "run pipeline first"), unsafe_allow_html=True)
 
-fia_clim_path = str(repo_path("05_fia", "data", "processed", "site_climate", "fia_site_climate.parquet"))
+fia_clim_path = str(repo_path("05_fia", "data", "processed", "site_climate", "site_climate.parquet"))
 if os.path.isfile(fia_clim_path):
     m2 = parquet_meta(fia_clim_path)
     c5.markdown(

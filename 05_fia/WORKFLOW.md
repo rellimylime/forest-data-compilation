@@ -229,10 +229,10 @@ One row per **condition × treatment slot** where TRTCD ≠ 0. Mirrors `plot_dis
 - GEE credentials (`local/user_config.yaml`)
 
 **Outputs:**
-- `data/processed/site_climate/fia_site_pixel_map.parquet` — site_id → pixel_id
-- `data/processed/site_climate/fia_site_climate.parquet` — long-format monthly climate
+- `data/processed/site_climate/site_pixel_map.parquet` — site_id → pixel_id
+- `data/processed/site_climate/site_climate.parquet` — long-format monthly climate
 
-**Schema (fia_site_climate.parquet):**
+**Schema (site_climate.parquet):**
 
 | Column | Type | Description |
 |--------|------|-------------|
@@ -253,7 +253,7 @@ One row per **condition × treatment slot** where TRTCD ≠ 0. Mirrors `plot_dis
 4. Annual parquets consolidated, joined to site_id, pivoted to long format
 5. Water year added via `calendar_to_water_year()` from `scripts/utils/time_utils.R`
 
-**Note on coordinate fuzz:** FIA coordinates are fuzzed ~1 mile for privacy, which is well within TerraClimate's ~4km pixel. Multiple nearby FIA plots may map to the same pixel; this is expected and documented in `fia_site_pixel_map.parquet`.
+**Note on coordinate fuzz:** FIA coordinates are fuzzed ~1 mile for privacy, which is well within TerraClimate's ~4km pixel. Multiple nearby FIA plots may map to the same pixel; this is expected and documented in `site_pixel_map.parquet`.
 
 **Note on year range:** TerraClimate begins in 1958. The GEE extraction uses 1958–`config.raw.terraclimate.end_year`. This is a ~66-year range, much larger than the IDS-driven extraction (1997–present), but since FIA site pixels are small in number (~a few thousand unique pixels), GEE processing is fast.
 
@@ -288,8 +288,8 @@ summaries/plot_damage_agents.parquet            |
 summaries/plot_exclusion_flags.parquet  <-------+---GEE (TerraClimate)
                                                 |       |
                                                 v 06_extract_site_climate.R
-                                        site_climate/fia_site_pixel_map.parquet
-                                        site_climate/fia_site_climate.parquet
+                                        site_climate/site_pixel_map.parquet
+                                        site_climate/site_climate.parquet
                                           (tmmx, tmmn, pr, def, pet, aet
                                            1958-present, monthly, long format)
 ```
