@@ -77,40 +77,29 @@ sites_sf <- st_as_sf(
 # so we deduplicate to unique pixels before extracting. site_pixel_map.parquet
 # records which pixel each site maps to so we can join results back at the end.
 #
-# ref_rast reconstructs the TerraClimate grid from stored pixel-center
-# coordinates so cellFromXY() can assign a pixel_id to each site. The raster
-# extent is defined as the cell centers ± half a cell width, which converts
-# from center coordinates to the outer-edge coordinates that rast() expects.
+# Snap each site to its containing TerraClimate pixel using the global TC grid
+# (1/24° resolution, full geographic extent). pixel_id is the global cell number,
+# which is the same ID that extract_climate_from_gee() embeds in its output,
+# so the join in the consolidation step is unambiguous.
 
-pixel_vals_dir <- here(tc_config$output_dir, "pixel_values")
-ref_parquet    <- list.files(
-  pixel_vals_dir, pattern = "\\.parquet$", full.names = TRUE
-)[1]
-
-if (is.na(ref_parquet) || !file.exists(ref_parquet)) {
-  stop(paste(
-    "No pixel_values parquet found in", pixel_vals_dir,
-    "\nRun 02_terraclimate/scripts/02_extract_terraclimate.R first."
-  ))
-}
-
-ref_grid <- read_parquet(
-  ref_parquet, col_select = c("pixel_id", "x", "y")
-) |>
-  distinct(pixel_id, x, y)
-
-res_deg  <- 1 / 24  # TerraClimate native resolution in degrees
-ref_rast <- rast(
-  xmin       = min(ref_grid$x) - res_deg / 2,
-  xmax       = max(ref_grid$x) + res_deg / 2,
-  ymin       = min(ref_grid$y) - res_deg / 2,
-  ymax       = max(ref_grid$y) + res_deg / 2,
+res_deg   <- 1 / 24  # TerraClimate native resolution in degrees
+tc_global <- rast(
+  xmin = -180, xmax = 180, ymin = -90, ymax = 90,
   resolution = res_deg,
-  crs        = "+proj=longlat +datum=WGS84 +no_defs"  # proj4: avoids PROJ db lookup
+  crs = "+proj=longlat +datum=WGS84 +no_defs"  # proj4: avoids PROJ db lookup
 )
-values(ref_rast) <- NA_real_
 
-pixel_map <- build_pixel_map(sites_sf, ref_rast, id_col = "site_id")
+coords <- st_coordinates(sites_sf)
+cells  <- cellFromXY(tc_global, coords)
+xy     <- xyFromCell(tc_global, cells)
+
+pixel_map <- data.frame(
+  site_id           = sites_sf$site_id,
+  pixel_id          = cells,
+  x                 = xy[, 1],
+  y                 = xy[, 2],
+  coverage_fraction = 1.0
+)
 n_pixels  <- n_distinct(pixel_map$pixel_id)
 cat(sprintf(
   "%d sites → %d unique pixels (%.1f sites/pixel)\n",
@@ -146,8 +135,7 @@ cat(sprintf(
 ))
 
 pixel_coords <- pixel_map |>
-  distinct(pixel_id) |>
-  inner_join(ref_grid, by = "pixel_id")
+  distinct(pixel_id, x, y)
 
 tmp_dir <- file.path(out_dir, "_gee_annual")
 dir_create(tmp_dir)
@@ -177,6 +165,8 @@ extract_climate_from_gee(
 annual_files <- list.files(
   tmp_dir, pattern = "^sites_\\d{4}\\.parquet$", full.names = TRUE
 )
+# Drop empty files (e.g. future years where GEE returned no data)
+annual_files <- annual_files[vapply(annual_files, function(f) nrow(read_parquet(f)) > 0, logical(1))]
 cat(sprintf("Consolidating %d annual files...\n", length(annual_files)))
 
 pm_slim     <- pixel_map |> select(site_id, pixel_id)
