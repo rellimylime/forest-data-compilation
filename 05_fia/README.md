@@ -62,7 +62,7 @@ Rscript 05_fia/scripts/02_inspect_fia.R               # Verify schema, generate 
 Rscript 05_fia/scripts/03_extract_trees.R             # Extract tree/BA/condition records
 Rscript 05_fia/scripts/04_extract_seedlings_mortality.R  # Extract seedlings + GRM mortality
 Rscript 05_fia/scripts/05_build_fia_summaries.R       # Aggregate to national plot-level summaries
-Rscript 05_fia/scripts/06_extract_site_climate.R      # TerraClimate at all FIA sites via GEE (optional)
+Rscript 05_fia/scripts/06_extract_site_climate.R      # TerraClimate at all FIA sites via GEE (optional — requires GEE account)
 ```
 
 **Prerequisite:** Install `rFIA` before step 1: `renv::install("rFIA"); renv::snapshot()`.

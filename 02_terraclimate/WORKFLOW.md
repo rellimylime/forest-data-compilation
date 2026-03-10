@@ -5,7 +5,7 @@ For a quick-start guide and directory overview, see **README.md**.
 This document covers the technical architecture, per-script details, usage examples, and troubleshooting.
 
 ## Status
-- [x] Explore TerraClimate data (00_explore_terraclimate.R)
+- [x] Explore TerraClimate data (scripts/explore/00_explore_terraclimate.R)
 - [x] Build pixel maps (01_build_pixel_maps.R)
 - [x] Extract monthly pixel values (02_extract_terraclimate.R)
 - [x] Build observation summaries (scripts/build_climate_summaries.R terraclimate)

@@ -27,7 +27,8 @@ High-resolution global climate and water balance dataset derived from WorldClim,
 ├── cleaning_log.md         ← Data quality issues and processing decisions
 ├── data_dictionary.csv     ← Field definitions for all output tables
 ├── scripts/
-│   ├── 00_explore_terraclimate.R   ← Optional exploratory script (not in pipeline)
+│   ├── explore/
+│   │   └── 00_explore_terraclimate.R  ← Optional exploratory script (not in pipeline)
 │   ├── 01_build_pixel_maps.R       ← Map IDS observations to ~4km TerraClimate pixels
 │   └── 02_extract_terraclimate.R   ← Extract monthly values for all unique pixels via GEE
 ├── lookups/
@@ -51,7 +52,7 @@ Rscript 02_terraclimate/scripts/02_extract_terraclimate.R      # Extract monthly
 Rscript scripts/build_climate_summaries.R terraclimate         # Area-weighted summaries per obs
 ```
 
-`00_explore_terraclimate.R` is an optional exploratory script run before the pipeline was built — not required for data reproduction.
+`scripts/explore/00_explore_terraclimate.R` is an optional exploratory script run before the pipeline was built — not required for data reproduction.
 
 **Prerequisite:** `01_ids/` must be processed first (steps 1–3 at minimum).
 
