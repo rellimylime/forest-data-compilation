@@ -1,4 +1,4 @@
-# History files
+﻿# History files
 .Rhistory
 .Rapp.history
 
@@ -91,6 +91,6 @@ local/
 meeting.md
 
 # Claude settings
-.claude/*
+.claude/
 
 email-re-FIA.pdf
