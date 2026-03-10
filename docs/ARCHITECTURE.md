@@ -286,8 +286,8 @@ When adding a new climate dataset:
 
 ```
 <NN>_<dataset>/
-├── README.txt                    (Quick-start guide, usage examples)
-├── WORKFLOW.md                   (Dataset-specific technical details → links to this doc)
+├── README.md                     (Dataset overview, directory structure, quick-start)
+├── WORKFLOW.md                   (Dataset-specific technical details, usage examples → links to this doc)
 ├── cleaning_log.md               (Dataset-specific issues and decisions)
 ├── data_dictionary.csv           (Variable definitions)
 ├── docs/                         (Dataset-specific reference docs)

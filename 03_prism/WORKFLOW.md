@@ -1,6 +1,6 @@
 # PRISM Climate Data: Technical Reference
 
-**For quick-start guide and usage examples, see README.txt**
+For a quick-start guide and directory overview, see **README.md**.
 
 This document covers PRISM-specific technical details. For the shared pixel decomposition architecture, workflow steps, and data schemas, see **[`docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md)**.
 

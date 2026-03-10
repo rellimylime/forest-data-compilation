@@ -1,10 +1,8 @@
 # TerraClimate Extraction: Technical Reference
 
-For a quick-start guide, workflow steps, and usage examples (including how to
-filter by species or survey area), see **README.txt**.
+For a quick-start guide and directory overview, see **README.md**.
 
-This document covers the technical architecture, detailed script internals,
-configuration, and design decisions.
+This document covers the technical architecture, per-script details, usage examples, and troubleshooting.
 
 ## Status
 - [x] Explore TerraClimate data (00_explore_terraclimate.R)
@@ -261,21 +259,113 @@ gee_project: "your-gee-project-id"
 
 ---
 
-## Decisions Log
+## Usage Examples
 
-| Decision | Rationale | Date |
-|----------|-----------|------|
-| Pixel-level extraction (not polygon means) | Preserves within-polygon climate variation | 2026-02-05 |
-| Monthly values (not annual means) | Enables seasonal analysis | 2026-02-05 |
-| Two-table architecture | Efficient storage; handles pancake features | 2026-02-05 |
-| GEE extraction (not NetCDF download) | No local storage needed; direct pixel sampling | 2026-02-05 |
-| Parquet format | Efficient columnar storage; fast filtering by year/month | 2026-02-05 |
-| Scale factors applied during extraction | Values immediately usable in physical units | 2026-02-05 |
-| exactextractr for polygon-pixel mapping | Provides coverage_fraction for proper weighting | 2026-02-05 |
-| Both calendar and water year retained | Different analyses need different time bases | 2026-02-06 |
-| IDS stays on SURVEY_YEAR (no water year) | Survey timing is administrative, not hydrological | 2026-02-06 |
-| Long format for standardized outputs | Dataset-agnostic; enables uniform joins | 2026-02-06 |
-| Shared reshape/summary scripts | Same pattern for TerraClimate, PRISM, WorldClim | 2026-02-06 |
+### Get Climate Data for a Specific Species
+
+```r
+library(sf)
+library(dplyr)
+library(arrow)
+
+# 1. Load IDS data and species lookup
+damage_areas <- st_read(
+  "01_ids/data/processed/ids_layers_cleaned.gpkg",
+  layer = "damage_areas"
+)
+species_lookup <- read.csv("01_ids/lookups/host_code_lookup.csv")
+# Example codes: 122 = ponderosa pine, 202 = Douglas-fir,
+#                746 = quaking aspen, 108 = lodgepole pine
+
+# 2. Filter IDS observations
+my_obs <- damage_areas %>%
+  filter(HOST_CODE == 122)  # ponderosa pine
+
+# 3. OPTION A: Use pre-built weighted summaries (one mean per observation per month)
+summaries <- open_dataset("processed/climate/terraclimate/damage_areas_summaries")
+my_climate <- summaries %>%
+  filter(DAMAGE_AREA_ID %in% unique(my_obs$DAMAGE_AREA_ID)) %>%
+  collect()
+
+# 4. OPTION B: Keep individual pixel values (for within-polygon variation)
+pixel_map <- read_parquet(
+  "02_terraclimate/data/processed/pixel_maps/damage_areas_pixel_map.parquet"
+)
+pixel_values <- open_dataset("02_terraclimate/data/processed/pixel_values")
+my_pixel_climate <- pixel_values %>%
+  filter(pixel_id %in% (pixel_map %>% filter(OBSERVATION_ID %in% my_obs$OBSERVATION_ID) %>% pull(pixel_id))) %>%
+  collect()
+
+# 5. Join climate back to IDS attributes
+result <- my_obs %>%
+  st_drop_geometry() %>%
+  inner_join(
+    my_climate %>% filter(variable == "tmmx"),
+    by = "DAMAGE_AREA_ID"
+  )
+```
+
+> **Pancake features:** Multiple OBSERVATION_IDs can share the same DAMAGE_AREA_ID (same geometry, different damage agents). When computing total affected area, group by DAMAGE_AREA_ID first to avoid double-counting.
+
+---
+
+### Get Climate Data for a Survey Area
+
+```r
+# 1. Load surveyed areas
+survey_areas <- st_read(
+  "01_ids/data/processed/ids_layers_cleaned.gpkg",
+  layer = "surveyed_areas"
+)
+
+# 2. Get the TerraClimate pixels for those survey polygons
+pixel_map <- read_parquet(
+  "02_terraclimate/data/processed/pixel_maps/surveyed_areas_pixel_map.parquet"
+)
+my_pixels <- pixel_map %>%
+  filter(SURVEY_FEATURE_ID %in% survey_areas$SURVEY_FEATURE_ID)
+
+# 3. Load pixel values and compute area-weighted mean per survey polygon
+pixel_values <- open_dataset("02_terraclimate/data/processed/pixel_values")
+survey_summaries <- pixel_values %>%
+  filter(pixel_id %in% my_pixels$pixel_id) %>%
+  collect() %>%
+  inner_join(my_pixels, by = "pixel_id") %>%
+  group_by(SURVEY_FEATURE_ID, calendar_year, calendar_month,
+           water_year, water_year_month, variable) %>%
+  summarize(
+    weighted_mean = sum(value * coverage_fraction, na.rm = TRUE) /
+                    sum(coverage_fraction[!is.na(value)]),
+    n_pixels = n(),
+    .groups = "drop"
+  )
+```
+
+> **Note:** Surveyed areas use `SURVEY_FEATURE_ID` as their primary key. Pre-built summaries are generated for `damage_areas` only; for `surveyed_areas`, compute from pixel values directly as shown above.
+
+---
+
+### Time Window Filtering
+
+IDS has `SURVEY_YEAR` (integer, no month). TerraClimate pixel values store monthly data with both `calendar_year`/`calendar_month` and `water_year`/`water_year_month` on every row. Choose your time window at join time:
+
+```r
+# Calendar year match: Jan–Dec of SURVEY_YEAR
+my_climate %>% filter(calendar_year == 2020)
+
+# Water year match: Oct 2019 – Sep 2020
+my_climate %>% filter(water_year == 2020)
+
+# Prior water year (lagged climate)
+my_climate %>% filter(water_year == 2020 - 1)
+
+# Growing season only (Apr–Sep = water year months 7–12)
+my_climate %>% filter(water_year == 2020, water_year_month >= 7)
+```
+
+Water year runs Oct–Sep. If `month >= 10`: `water_year = cal_year + 1`, `water_year_month = month - 9`. Implemented in `scripts/utils/time_utils.R`.
+
+> Because IDS surveys are typically flown in summer/fall, damage may reflect climate from the preceding winter/spring — better captured by water year. Without month-of-survey, this choice is inherently ambiguous; the pipeline stores both so you decide at analysis time.
 
 ---
 

@@ -176,7 +176,7 @@ dataset_configs <- list(
     source_prefix = "worldclim",
     variables = names(config$raw$worldclim$variables),
     time_cols = c("year", "month")
-  ),
+  )
   # era5 = list(  # deferred - see archive/05_era5/
   #   pixel_map = here("05_era5/data/processed/pixel_maps/damage_areas_pixel_map.parquet"),
   #   source_dir = here("05_era5/data/processed/pixel_values"),
@@ -683,3 +683,4 @@ cat(sprintf("  Year range: %d-%d\n", min(years), max(years)))
 cat(sprintf("  Total runtime: %.1f minutes (%.2f hours)\n", total_time, total_time / 60))
 cat(sprintf("\n  Read with: open_dataset('%s')\n", output_dir))
 cat("================================================================================\n\n")
+

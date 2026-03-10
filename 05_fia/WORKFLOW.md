@@ -1,5 +1,10 @@
 # FIA Data Pipeline - Technical Workflow
 
+For a quick-start guide and directory overview, see **README.md**.
+This document covers per-script technical details, data flow, usage examples, and field references.
+
+---
+
 ## Status
 
 - [ ] Download FIA CSVs by state (`01_download_fia.R`)
@@ -343,6 +348,75 @@ Key fields confirmed from User Guide v9.4 (see `docs/FIADB_field_reference.md` f
 | TRTYR1 | COND | Year of treatment 1; TRTYR2/3 parallel TRTCD2/3 |
 | COND_STATUS_CD | COND | **1=Forested** (keep for most analyses), 2=Non-forested, 3=Water, 4=Non-census water, 5=Non-forest land with trees |
 | DAMAGE_AGENT_CD1 | TREE | 5-digit PTIPS/FHAAST damage agent code on live trees (Appendix H); up to 3 per tree; 11000s=bark beetles, 12000s=defoliators, 14000s=sucking insects, 15000s=borers, 21000s=root disease, 22000s=cankers |
+
+---
+
+## Usage Examples
+
+### Load Plot Summaries
+
+```r
+library(arrow)
+library(dplyr)
+
+# All states at once (lazy, partitioned by state)
+trees_ds <- open_dataset("05_fia/data/processed/trees", partitioning = "state")
+
+# Filter to one state
+co_trees <- trees_ds |> filter(state == "CO") |> collect()
+
+# Final plot-level metrics
+metrics <- read_parquet("05_fia/data/processed/summaries/plot_tree_metrics.parquet")
+
+# Species lookup
+ref_sp <- read_parquet("05_fia/lookups/ref_species.parquet")
+```
+
+---
+
+### Filter to Forested, Undisturbed Plots
+
+FIA samples all US land — ~59% of plot×year rows have `pct_forested == 0`. Always filter to forested plots first before applying disturbance exclusions.
+
+```r
+flags <- read_parquet("05_fia/data/processed/summaries/plot_exclusion_flags.parquet")
+
+# Primary gate: forested plots only
+# Then apply standard clean-plot filter (no non-forest, human disturbance, or harvest)
+forested_clean <- flags |> filter(pct_forested >= 0.5, !exclude_any)
+metrics_clean  <- metrics |> inner_join(forested_clean, by = c("PLT_CN", "INVYR"))
+
+# Positive filter: plots that burned
+metrics_fire   <- metrics |> inner_join(flags |> filter(has_fire), by = c("PLT_CN", "INVYR"))
+
+# Positive filter: plots with insect damage
+metrics_insect <- metrics |> inner_join(flags |> filter(has_insect), by = c("PLT_CN", "INVYR"))
+```
+
+**Key disturbance codes (COND.DSTRBCD):**
+
+| Code | Meaning |
+|------|---------|
+| 10–12 | Insect damage (general, understory, trees) |
+| 30–32 | Fire (general, ground, crown) |
+| 80 | Human-induced (logging, development, clearing) |
+| COND_STATUS_CD = 1 | Forested condition (keep) |
+
+---
+
+### Get Site-Level Climate Data
+
+```r
+library(arrow); library(dplyr)
+clim <- read_parquet("05_fia/data/processed/site_climate/site_climate.parquet")
+
+# Annual water-year precipitation per site
+clim |> filter(variable == "pr") |>
+  group_by(site_id, water_year) |>
+  summarise(precip_mm = sum(value, na.rm = TRUE))
+
+# All 6 variables: tmmx, tmmn, pr, def (CWD), pet, aet
+```
 
 ---
 

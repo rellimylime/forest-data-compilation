@@ -173,6 +173,29 @@ US_AREA column contains only 3 values: "CONUS", "ALASKA", "HAWAII". Redundant wi
 
 ---
 
+## Processing Decisions
+
+Decisions about data scope, field handling, and processing methods made during pipeline development.
+
+| Decision | Rationale | Date |
+|----------|-----------|------|
+| Extract and clean all three IDS layers | Full IDS content available for downstream use (damage areas, damage points, surveyed areas) | 2025-01-30 |
+| Keep codes only, create lookup tables | Reduces file size; codes are complete (text often missing) | 2025-01-30 |
+| Keep both Legacy and DMSM intensity fields | Not directly comparable; let analysis scripts decide which to use | 2025-01-30 |
+| Transform to EPSG:4326 | Matches TerraClimate CRS for downstream merge | 2025-01-30 |
+| Drop US_AREA column | Redundant with REGION_ID; use region_lookup.csv instead | 2025-01-30 |
+| Keep pancake features (14.7%) | Preserves multi-agent damage info; document ACRES summing caveat | 2025-01-30 |
+| Recode PERCENT_AFFECTED_CODE -1 → NA | 2015 transition year placeholder; LEGACY_* fields available | 2025-01-30 |
+| Add SOURCE_FILE column | Distinguishes CA vs HI (both REGION_ID=5) | 2025-01-30 |
+| Assign damage to surveyed via max overlap | Deterministic 1:1 assignment; simple and auditable | 2026-02-06 |
+| Area metrics in EPSG:5070 | Equal-area projection for accurate m2 calculations | 2026-02-06 |
+| IDS keeps SURVEY_YEAR (no water year) | Survey timing is administrative, not hydrological | 2026-02-06 |
+| Chunked spatial ops (10k features) | Handles 4.5M+ features without memory exhaustion | 2026-02-06 |
+| QC scripts in scripts/qc/ | Separate diagnostics from production pipeline | 2026-02-23 |
+| Exploration CSVs in data/processed/ids_exploration_raw/ | Data outputs belong in data/, not docs/ | 2026-02-23 |
+
+---
+
 ## Version History
 
 | Version | Date | Changes |
