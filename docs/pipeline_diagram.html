@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>forest-data-compilation - Pipeline Companion</title>
+  <style>
+    :root {
+      --bg: #0f1720;
+      --panel: #17212b;
+      --panel-2: #1d2834;
+      --border: #304154;
+      --text: #e6edf3;
+      --muted: #9aa7b5;
+      --blue: #6cb6ff;
+      --green: #7ee787;
+      --gold: #f2cc60;
+      --pink: #d2a8ff;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(180deg, #0f1720 0%, #131d27 100%);
+      color: var(--text);
+      line-height: 1.55;
+    }
+
+    a {
+      color: var(--blue);
+      text-decoration: none;
+    }
+
+    a:hover { text-decoration: underline; }
+
+    code {
+      font-family: Consolas, "Courier New", monospace;
+      color: var(--gold);
+    }
+
+    .shell {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 24px 20px 40px;
+    }
+
+    .hero,
+    .panel {
+      background: rgba(23, 33, 43, 0.94);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.18);
+    }
+
+    .hero {
+      padding: 22px;
+      margin-bottom: 16px;
+    }
+
+    h1, h2, h3 {
+      margin: 0 0 10px;
+      line-height: 1.2;
+    }
+
+    h1 {
+      font-size: 28px;
+      letter-spacing: -0.02em;
+    }
+
+    h2 { font-size: 22px; }
+    h3 { font-size: 16px; }
+
+    p {
+      margin: 0 0 10px;
+      color: var(--text);
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .chips,
+    .link-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .chip,
+    .link-chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      color: var(--text);
+      font-size: 13px;
+      text-decoration: none;
+    }
+
+    .link-chip:hover {
+      border-color: var(--blue);
+      text-decoration: none;
+    }
+
+    .notice {
+      margin-top: 14px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(29, 40, 52, 0.78);
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    .panel {
+      padding: 18px;
+    }
+
+    .flow {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: stretch;
+      margin: 12px 0 14px;
+    }
+
+    .step {
+      flex: 1 1 180px;
+      min-width: 180px;
+      border-radius: 12px;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+    }
+
+    .step.blue { border-color: #1f6feb; background: #111c2f; }
+    .step.green { border-color: #2ea043; background: #10241b; }
+    .step.gold { border-color: #d29922; background: #2a2110; }
+    .step.pink { border-color: #8957e5; background: #1b1430; }
+    .step.gray { border-color: #57606a; background: #1b2128; }
+
+    .step-label {
+      display: inline-block;
+      margin-bottom: 8px;
+      font-size: 11px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .step-title {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .step-body {
+      font-size: 13px;
+      color: #c9d1d9;
+    }
+
+    .arrow {
+      flex: 0 0 auto;
+      align-self: center;
+      color: var(--muted);
+      font-size: 20px;
+      padding: 0 2px;
+    }
+
+    .mini-list {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--text);
+    }
+
+    .mini-list li {
+      margin-bottom: 7px;
+    }
+
+    footer {
+      margin-top: 18px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 920px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      h1 { font-size: 24px; }
+      h2 { font-size: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="hero">
+      <h1>Pipeline companion</h1>
+      <p class="muted">A short static overview of the repo. This page is meant to be easy to scan, not exhaustive.</p>
+      <div class="chips">
+        <span class="chip">2 main workstreams</span>
+        <span class="chip">small visual blocks</span>
+        <span class="chip">no drag</span>
+        <span class="chip">direct doc links nearby</span>
+      </div>
+      <div class="notice">
+        For the most guided local walkthrough, run <code>streamlit run docs/dashboard/app.py</code>
+        and open <strong>Architecture</strong> in the sidebar. This page is the short static companion.
+      </div>
+      <div class="link-row" style="margin-top: 14px;">
+        <a class="link-chip" href="../README.md">Repo home</a>
+        <a class="link-chip" href="README.md">Docs hub</a>
+        <a class="link-chip" href="REPRODUCE.md">Reproduce</a>
+        <a class="link-chip" href="DATA_PRODUCTS.md">Data products</a>
+        <a class="link-chip" href="dashboard/app.py">Dashboard entrypoint</a>
+      </div>
+    </header>
+
+    <div class="grid">
+      <section class="panel">
+        <h2>Two main paths</h2>
+        <p>You usually only need one of these at a time.</p>
+
+        <div class="flow">
+          <div class="step blue">
+            <div class="step-label">Path A</div>
+            <div class="step-title">IDS foundation</div>
+            <div class="step-body">Clean IDS once, then use it as the base for any climate dataset.</div>
+          </div>
+          <div class="arrow">-&gt;</div>
+          <div class="step pink">
+            <div class="step-label">Path A</div>
+            <div class="step-title">Climate branch</div>
+            <div class="step-body">Choose TerraClimate, PRISM, and/or WorldClim depending on coverage and resolution needs.</div>
+          </div>
+        </div>
+
+        <div class="flow">
+          <div class="step green">
+            <div class="step-label">Path B</div>
+            <div class="step-title">FIA pipeline</div>
+            <div class="step-body">Download FIA tables, build state extracts, then compile national plot summaries.</div>
+          </div>
+          <div class="arrow">-&gt;</div>
+          <div class="step gray">
+            <div class="step-label">Optional</div>
+            <div class="step-title">FIA site climate</div>
+            <div class="step-body">Add TerraClimate at FIA plot locations only if you need site climate.</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>What to open next</h2>
+        <ul class="mini-list">
+          <li>Use <a href="../01_ids/README.md">01_ids/README.md</a> if you need the IDS plus climate path.</li>
+          <li>Use <a href="../05_fia/README.md">05_fia/README.md</a> if you need the FIA path.</li>
+          <li>Use <a href="REPRODUCE.md">docs/REPRODUCE.md</a> when you want exact script order.</li>
+          <li>Use <a href="DATA_PRODUCTS.md">docs/DATA_PRODUCTS.md</a> when you want output locations.</li>
+        </ul>
+      </section>
+    </div>
+
+    <div class="grid">
+      <section class="panel">
+        <h2>IDS plus climate</h2>
+        <div class="flow">
+          <div class="step blue">
+            <div class="step-label">1</div>
+            <div class="step-title">01_ids</div>
+            <div class="step-body">Download, inspect, clean, and organize IDS layers.</div>
+          </div>
+          <div class="arrow">-&gt;</div>
+          <div class="step pink">
+            <div class="step-label">2</div>
+            <div class="step-title">02 / 03 / 04 climate</div>
+            <div class="step-body">Run TerraClimate, PRISM, and/or WorldClim extraction.</div>
+          </div>
+          <div class="arrow">-&gt;</div>
+          <div class="step gold">
+            <div class="step-label">3</div>
+            <div class="step-title">Shared summaries</div>
+            <div class="step-body">Use <code>scripts/build_climate_summaries.R</code> for the final damage-area outputs.</div>
+          </div>
+        </div>
+        <div class="link-row">
+          <a class="link-chip" href="../01_ids/README.md">IDS overview</a>
+          <a class="link-chip" href="../02_terraclimate/README.md">TerraClimate</a>
+          <a class="link-chip" href="../03_prism/README.md">PRISM</a>
+          <a class="link-chip" href="../04_worldclim/README.md">WorldClim</a>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>FIA</h2>
+        <div class="flow">
+          <div class="step green">
+            <div class="step-label">1</div>
+            <div class="step-title">Download and inspect</div>
+            <div class="step-body">Get FIA tables and build the lookup parquets.</div>
+          </div>
+          <div class="arrow">-&gt;</div>
+          <div class="step green">
+            <div class="step-label">2</div>
+            <div class="step-title">State extracts</div>
+            <div class="step-body">Write tree, condition, seedling, and mortality parquet partitions.</div>
+          </div>
+          <div class="arrow">-&gt;</div>
+          <div class="step green">
+            <div class="step-label">3</div>
+            <div class="step-title">National summaries</div>
+            <div class="step-body">Build the tracked plot-level outputs used downstream.</div>
+          </div>
+        </div>
+        <div class="link-row">
+          <a class="link-chip" href="../05_fia/README.md">FIA overview</a>
+          <a class="link-chip" href="../05_fia/WORKFLOW.md">FIA workflow</a>
+          <a class="link-chip" href="../05_fia/scripts/">FIA scripts</a>
+        </div>
+      </section>
+    </div>
+
+    <section class="panel" style="margin-top: 16px;">
+      <h2>Where outputs end up</h2>
+      <div class="flow">
+        <div class="step blue">
+          <div class="step-label">Finished</div>
+          <div class="step-title">IDS outputs</div>
+          <div class="step-body"><code>01_ids/data/processed/</code> and <code>processed/ids/</code></div>
+        </div>
+        <div class="arrow">-&gt;</div>
+        <div class="step pink">
+          <div class="step-label">Finished</div>
+          <div class="step-title">Climate outputs</div>
+          <div class="step-body"><code>processed/climate/</code> summary parquets</div>
+        </div>
+        <div class="arrow">-&gt;</div>
+        <div class="step green">
+          <div class="step-label">Finished</div>
+          <div class="step-title">FIA outputs</div>
+          <div class="step-body"><code>05_fia/data/processed/</code> summaries and site climate</div>
+        </div>
+        <div class="arrow">-&gt;</div>
+        <div class="step gray">
+          <div class="step-label">Used by</div>
+          <div class="step-title">Demos and dashboard</div>
+          <div class="step-body"><code>scripts/demos/</code> and <code>docs/dashboard/</code></div>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      If you need the exact run order rather than the short visual summary, open
+      <a href="REPRODUCE.md">docs/REPRODUCE.md</a>.
+    </footer>
+  </div>
+</body>
+</html>
