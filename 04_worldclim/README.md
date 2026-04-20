@@ -1,95 +1,84 @@
-# WorldClim — Global Monthly Climate Extraction
+# WorldClim - Global Monthly Climate Extraction
 
-**Source:** WorldClim Version 2.1 / UC Davis Geospatial Data
-**URL:** https://www.worldclim.org/data/monthlywth.html
-**Download:** https://geodata.ucdavis.edu/climate/worldclim/
+**Navigation:** [Repo Home](../README.md) | [Docs Hub](../docs/README.md) | [Setup](../scripts/SETUP.md) | [Reproduce](../docs/REPRODUCE.md) | [Pipeline Map](../docs/PIPELINE_MAP.md) | [Data Products](../docs/DATA_PRODUCTS.md) | [Technical Workflow](WORKFLOW.md) | [Scripts](scripts/)
 
-Global historical monthly weather data interpolated from station observations (CRU TS 4.09). Extracted at IDS observation locations from locally-downloaded GeoTIFF files.
+## What this workstream does
 
-| | |
+`04_worldclim/` downloads WorldClim monthly weather GeoTIFFs, maps IDS observations to WorldClim pixels, and extracts monthly climate values from local files. Final observation-level summaries are built with the shared script [`scripts/build_climate_summaries.R`](../scripts/build_climate_summaries.R).
+
+## When to use it
+
+Use WorldClim if you want:
+
+- global coverage without using Google Earth Engine
+- a local-raster workflow
+- a lightweight climate product focused on temperature and precipitation
+
+## Quick facts
+
+| Item | Value |
 |---|---|
-| **Spatial resolution** | ~4.5 km (2.5 arc-minutes) |
-| **Temporal resolution** | Monthly (all 12 months per year) |
-| **Temporal coverage** | 1950–2024 (IDS extraction: 1997–2024) |
-| **Spatial coverage** | Global land areas |
-| **Variables** | 3 (temperature min/max, precipitation) |
+| Coverage | Global land areas |
+| Resolution | About 4.5 km |
+| Temporal coverage | 1950-2024, with IDS extraction for 1997-2024 |
+| Variables | 3 |
+| Requires GEE | No |
 
-**Citation:** Fick, S.E. and R.J. Hijmans (2017). WorldClim 2: new 1km spatial resolution climate surfaces for global land areas. *International Journal of Climatology* 37(12): 4302–4315.
+## Workflow At a Glance
 
----
-
-## Directory Structure
-
-```
-04_worldclim/
-├── README.md               ← This file: overview and quick-start
-├── WORKFLOW.md             ← Technical reference: architecture, script details, design decisions
-└── data/
-    ├── raw/            ← gitignored; ~600 MB decade GeoTIFF archives (kept locally)
-    │   ├── tmin/       ← monthly .tif files organized by variable
-    │   ├── tmax/
-    │   └── prec/
-    └── processed/
-        ├── pixel_maps/     ← gitignored
-        └── pixel_values/   ← gitignored; one parquet per year (1997–2024)
+```mermaid
+flowchart LR
+  A[IDS foundation] --> B[Download WorldClim]
+  B --> C[Build pixel maps]
+  C --> D[Extract from GeoTIFFs]
+  D --> E[Shared climate summaries]
 ```
 
-> No `lookups/` or `docs/` — WorldClim has no dataset-specific lookup tables.
+## Production Scripts
 
----
+| Step | Script | Role |
+|---|---|---|
+| 1 | [01_download_worldclim.R](scripts/01_download_worldclim.R) | Download decade-based GeoTIFF archives |
+| 2 | [02_build_pixel_maps.R](scripts/02_build_pixel_maps.R) | Map IDS features to WorldClim pixels |
+| 3 | [03_extract_worldclim.R](scripts/03_extract_worldclim.R) | Extract monthly values from local GeoTIFFs |
+| 4 | [build_climate_summaries.R](../scripts/build_climate_summaries.R) | Build final observation-level summaries |
 
 ## Quick Start
 
-Run steps in order from the repo root. Steps 1–3 are WorldClim-specific; step 4 uses a shared script.
+Prerequisite: complete the IDS foundation steps in [01_ids/README.md](../01_ids/README.md).
 
 ```bash
-Rscript 04_worldclim/scripts/01_download_worldclim.R   # Download decade GeoTIFF archives (~600 MB, one-time)
-Rscript 04_worldclim/scripts/02_build_pixel_maps.R     # Map IDS observations to ~4.5km pixels
-Rscript 04_worldclim/scripts/03_extract_worldclim.R    # Extract monthly values from local GeoTIFFs
-Rscript scripts/build_climate_summaries.R worldclim    # Area-weighted summaries per observation
+Rscript 04_worldclim/scripts/01_download_worldclim.R
+Rscript 04_worldclim/scripts/02_build_pixel_maps.R
+Rscript 04_worldclim/scripts/03_extract_worldclim.R
+Rscript scripts/build_climate_summaries.R worldclim
 ```
-
-Step 1 is a one-time download (~600 MB). Raw GeoTIFFs are kept locally for repeated extraction.
-
-**Prerequisite:** `01_ids/` must be processed first.
-
----
 
 ## Key Outputs
 
-| Output | Location | Description |
-|--------|----------|-------------|
-| `damage_areas_pixel_map.parquet` | `data/processed/pixel_maps/` | IDS observations → overlapping ~4.5km WorldClim pixels |
-| `damage_points_pixel_map.parquet` | `data/processed/pixel_maps/` | Same for damage points |
-| `surveyed_areas_pixel_map.parquet` | `data/processed/pixel_maps/` | Same for surveyed areas |
-| `worldclim_{year}.parquet` | `data/processed/pixel_values/` | Monthly climate values per unique pixel (1997–2024) |
-| `{variable}.parquet` | `processed/climate/worldclim/damage_areas_summaries/` | Area-weighted observation-level summaries, one file per variable |
+| Output | Location | Notes |
+|---|---|---|
+| Raw GeoTIFF cache | `04_worldclim/data/raw/` | Downloaded once and kept locally |
+| Pixel maps | `04_worldclim/data/processed/pixel_maps/` | One parquet per IDS layer |
+| Yearly pixel values | `04_worldclim/data/processed/pixel_values/worldclim_{year}.parquet` | Wide-format yearly files |
+| Observation summaries | `processed/climate/worldclim/damage_areas_summaries/` | One parquet per variable |
 
-**Summary columns:** `DAMAGE_AREA_ID`, `calendar_year`, `calendar_month`, `water_year`, `water_year_month`, `variable`, `weighted_mean`, `value_min`, `value_max`, `n_pixels`, `n_pixels_with_data`, `sum_coverage_fraction`
+## Variables
 
----
+WorldClim contributes three monthly variables in physical units: `tmin`, `tmax`, and `prec`.
 
-## Variables Extracted (3 total)
+## Related Docs
 
-All values are in physical units — no scale factors needed.
+| If you want... | Go to... |
+|---|---|
+| shared climate architecture | [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md) |
+| per-script technical detail and troubleshooting | [WORKFLOW.md](WORKFLOW.md) |
+| reproduction order | [docs/REPRODUCE.md](../docs/REPRODUCE.md) |
+| output inventory | [docs/DATA_PRODUCTS.md](../docs/DATA_PRODUCTS.md) |
 
-| Variable | Description | Units |
-|----------|-------------|-------|
-| `tmin` | Monthly minimum temperature | °C |
-| `tmax` | Monthly maximum temperature | °C |
-| `prec` | Monthly total precipitation | mm |
+## See also
 
----
-
-## Data Organization
-
-Raw data is downloaded as decade-based zip archives, each containing 120 individual monthly GeoTIFFs (one band per file):
-
-| Decade | Files | IDS years covered |
-|--------|-------|-------------------|
-| 1950–1959 through 1980–1989 | 120 each | None (pre-IDS) |
-| 1990–1999 | 120 | 1997–1999 |
-| 2000–2009, 2010–2019 | 120 each | Full |
-| 2020–2024 | 60 | Full |
-
-Files are organized into per-variable subdirectories after extraction (e.g., `data/raw/tmin/`).
+- [Docs Hub](../docs/README.md)
+- [Shared Architecture](../docs/ARCHITECTURE.md)
+- [TerraClimate README](../02_terraclimate/README.md)
+- [PRISM README](../03_prism/README.md)

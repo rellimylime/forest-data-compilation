@@ -1,5 +1,7 @@
 # TerraClimate Extraction: Technical Reference
 
+**Navigation:** [Repo Home](../README.md) | [Docs Hub](../docs/README.md) | [Setup](../scripts/SETUP.md) | [Reproduce](../docs/REPRODUCE.md) | [Pipeline Map](../docs/PIPELINE_MAP.md) | [Data Products](../docs/DATA_PRODUCTS.md) | [TerraClimate README](README.md) | [Scripts](scripts/)
+
 For a quick-start guide and directory overview, see **README.md**.
 
 This document covers the technical architecture, per-script details, usage examples, and troubleshooting.
@@ -52,7 +54,7 @@ Used as weight when computing area-weighted means per observation.
 
 ### Shared Utility Scripts
 
-#### scripts/utils/climate_extract.R
+#### [scripts/utils/climate_extract.R](../scripts/utils/climate_extract.R)
 Core extraction framework shared by all climate datasets.
 
 | Function | Purpose |
@@ -66,7 +68,7 @@ Core extraction framework shared by all climate datasets.
 | `load_pixel_map()` | Read pixel map from parquet |
 | `load_pixel_values()` | Load all yearly parquet files for a dataset |
 
-#### scripts/utils/time_utils.R
+#### [scripts/utils/time_utils.R](../scripts/utils/time_utils.R)
 Water year conversion helper.
 
 | Function | Purpose |
@@ -78,7 +80,7 @@ Water year conversion helper.
 
 ---
 
-### 00_explore_terraclimate.R
+### [00_explore_terraclimate.R](scripts/explore/00_explore_terraclimate.R)
 Exploratory analysis of TerraClimate data structure and values before
 committing to the full extraction workflow. Console output only, no files written.
 
@@ -90,7 +92,7 @@ committing to the full extraction workflow. Console output only, no files writte
 
 ---
 
-### 01_build_pixel_maps.R
+### [01_build_pixel_maps.R](scripts/01_build_pixel_maps.R)
 Creates the mapping from IDS observations to TerraClimate raster pixels.
 
 **Input:**
@@ -125,7 +127,7 @@ Creates the mapping from IDS observations to TerraClimate raster pixels.
 
 ---
 
-### 02_extract_terraclimate.R
+### [02_extract_terraclimate.R](scripts/02_extract_terraclimate.R)
 Extracts monthly climate values for all unique pixels via GEE.
 
 **Input:**
@@ -165,7 +167,7 @@ reduce `batch_size` (default 2,500).
 
 ---
 
-### scripts/build_climate_summaries.R (shared)
+### [scripts/build_climate_summaries.R](../scripts/build_climate_summaries.R) (shared)
 Computes observation-level area-weighted climate summaries.
 Run as: `Rscript scripts/build_climate_summaries.R terraclimate`
 
@@ -390,3 +392,12 @@ RETICULATE_PYTHON=/path/to/python
 ### Large parquet files
 **Note:** Monthly pixel-level data generates significant volume.
 Typical size: ~50-100 MB per year depending on unique pixel count.
+
+---
+
+## See also
+
+- [TerraClimate README](README.md)
+- [Shared architecture](../docs/ARCHITECTURE.md)
+- [Repo reproduction guide](../docs/REPRODUCE.md)
+- [Data products](../docs/DATA_PRODUCTS.md)

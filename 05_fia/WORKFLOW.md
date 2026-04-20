@@ -1,5 +1,7 @@
 # FIA Data Pipeline - Technical Workflow
 
+**Navigation:** [Repo Home](../README.md) | [Docs Hub](../docs/README.md) | [Setup](../scripts/SETUP.md) | [Reproduce](../docs/REPRODUCE.md) | [Pipeline Map](../docs/PIPELINE_MAP.md) | [Data Products](../docs/DATA_PRODUCTS.md) | [FIA README](README.md) | [Scripts](scripts/)
+
 For a quick-start guide and directory overview, see **README.md**.
 This document covers per-script technical details, data flow, usage examples, and field references.
 
@@ -40,7 +42,7 @@ trees gives per-acre basal area without needing to know subplot areas directly.
 
 ## Script Details
 
-### 01_download_fia.R
+### [01_download_fia.R](scripts/01_download_fia.R)
 
 **Inputs:** `config.raw.fia.states`, `config.raw.fia.tables_required`
 
@@ -57,7 +59,7 @@ trees gives per-acre basal area without needing to know subplot areas directly.
 
 ---
 
-### 02_inspect_fia.R
+### [02_inspect_fia.R](scripts/02_inspect_fia.R)
 
 **Inputs:** `data/raw/REF/REF_SPECIES.csv`, `data/raw/REF/REF_FOREST_TYPE.csv`, sample of state CSVs
 
@@ -73,7 +75,7 @@ trees gives per-acre basal area without needing to know subplot areas directly.
 
 ---
 
-### 03_extract_trees.R
+### [03_extract_trees.R](scripts/03_extract_trees.R)
 
 **Inputs:** `data/raw/{ST}/{ST}_TREE.csv`, `data/raw/{ST}/{ST}_PLOT.csv`, `data/raw/{ST}/{ST}_COND.csv`, `lookups/ref_species.parquet`
 
@@ -106,7 +108,7 @@ trees gives per-acre basal area without needing to know subplot areas directly.
 
 ---
 
-### 04_extract_seedlings_mortality.R
+### [04_extract_seedlings_mortality.R](scripts/04_extract_seedlings_mortality.R)
 
 **Inputs:**
 - `data/raw/{ST}/{ST}_SEEDLING.csv`
@@ -135,11 +137,11 @@ trees gives per-acre basal area without needing to know subplot areas directly.
 
 ---
 
-### 05_build_fia_summaries.R
+### [05_build_fia_summaries.R](scripts/05_build_fia_summaries.R)
 
 **Inputs:** Per-state partitioned parquets from scripts 03 and 04
 
-**Outputs:** `data/processed/summaries/` (6 national parquet files)
+**Outputs:** `data/processed/summaries/` (8 national parquet files)
 
 **Processing:**
 - Uses `open_dataset(..., partitioning="state")` to read partitioned parquets lazily
@@ -226,7 +228,7 @@ One row per **condition × treatment slot** where TRTCD ≠ 0. Mirrors `plot_dis
 
 ---
 
-### 06_extract_site_climate.R
+### [06_extract_site_climate.R](scripts/06_extract_site_climate.R)
 
 **Inputs:**
 - `data/processed/site_climate/all_site_locations.csv`: site_id, latitude, longitude, source
@@ -456,3 +458,12 @@ identifiers. Potential linkage approaches:
 - `fread(select=cols)` minimizes memory by only reading needed columns
 - `gc()` after each state should release memory
 - If still failing, process large states separately: `Rscript 03_extract_trees.R TX`
+
+---
+
+## See also
+
+- [FIA README](README.md)
+- [Repo reproduction guide](../docs/REPRODUCE.md)
+- [Data products](../docs/DATA_PRODUCTS.md)
+- [Shared architecture](../docs/ARCHITECTURE.md)

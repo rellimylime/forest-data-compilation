@@ -1,5 +1,7 @@
 # IDS Data Workflow
 
+**Navigation:** [Repo Home](../README.md) | [Docs Hub](../docs/README.md) | [Setup](../scripts/SETUP.md) | [Reproduce](../docs/REPRODUCE.md) | [Pipeline Map](../docs/PIPELINE_MAP.md) | [Data Products](../docs/DATA_PRODUCTS.md) | [IDS README](README.md) | [Scripts](scripts/)
+
 For a quick-start guide and directory overview, see **README.md**.
 This document covers technical architecture, per-script details, and usage examples.
 
@@ -33,13 +35,13 @@ Scripts are split into two groups:
 
 ## Production Pipeline
 
-### 01_download_ids.R
+### [01_download_ids.R](scripts/01_download_ids.R)
 Downloads all regional geodatabases from USFS.
 - **Input:** URLs from config.yaml
 - **Output:** 10 raw .gdb files in `data/raw/` (~1.6 GB total)
 - Skips files that already exist
 
-### 02_inspect_ids.R
+### [02_inspect_ids.R](scripts/02_inspect_ids.R)
 Explores raw data structure, checks field consistency across regions, and generates lookup tables.
 - **Input:** Raw .gdb files in `data/raw/`
 - **Output:**
@@ -52,7 +54,7 @@ Explores raw data structure, checks field consistency across regions, and genera
   - `lookups/region_lookup.csv` (10 regions)
 - **Key findings:** All 10 regions have identical field structure (44 fields); three different CRS across regions; legacy vs DMSM methodology break ~2015
 
-### 03_clean_ids.R
+### [03_clean_ids.R](scripts/03_clean_ids.R)
 Selects fields, transforms CRS, and merges all regions for every IDS layer.
 - **Input:** 10 raw .gdb files in `data/raw/`
 - **Output:** `data/processed/ids_layers_cleaned.gpkg` (layers: `damage_areas`, `damage_points`, `surveyed_areas`)
@@ -65,7 +67,7 @@ Selects fields, transforms CRS, and merges all regions for every IDS layer.
   - Generate SURVEY_FEATURE_ID for surveyed_areas
   - Merge all 10 regions per layer into a single geopackage
 
-### 04_assign_surveyed_areas.R
+### [04_assign_surveyed_areas.R](scripts/04_assign_surveyed_areas.R)
 Spatially assigns each DAMAGE_AREA_ID to the best-matching SURVEYED_AREA_ID via polygon intersection with max-overlap selection. Processed in chunks (10k features) to handle millions of geometries.
 - **Input:** `data/processed/ids_layers_cleaned.gpkg` (damage_areas + surveyed_areas layers)
 - **Output:** `processed/ids/damage_area_to_surveyed_area.parquet`
@@ -76,7 +78,7 @@ Spatially assigns each DAMAGE_AREA_ID to the best-matching SURVEYED_AREA_ID via 
   - Filters surveyed areas to matching SURVEY_YEAR for efficiency
   - Unmatched damage areas are flagged, not dropped
 
-### 05_compute_area_metrics.R
+### [05_compute_area_metrics.R](scripts/05_compute_area_metrics.R)
 Computes area metrics for damage areas and their assigned surveyed areas.
 - **Input:**
   - `data/processed/ids_layers_cleaned.gpkg`
@@ -95,12 +97,12 @@ Computes area metrics for damage areas and their assigned surveyed areas.
 
 These scripts are diagnostic tools run once during development. They are not required to reproduce the cleaned data. Re-run if you need to audit data quality or update the exploration summaries.
 
-### scripts/qc/validate_ids.R
+### [scripts/qc/validate_ids.R](scripts/qc/validate_ids.R)
 Validates cleaned output. Prints field checks, geometry counts, and summary stats. No files written.
 - **Input:** `data/processed/ids_layers_cleaned.gpkg`
 - **Checks:** Field structure, CRS (EPSG:4326), cleaning actions (uppercase, no -1 values), geometry validity, region/year distributions
 
-### scripts/qc/explore_ids_coverage.R
+### [scripts/qc/explore_ids_coverage.R](scripts/qc/explore_ids_coverage.R)
 Analyzes raw data for era differences, missingness, and regional temporal coverage.
 - **Input:** Raw .gdb files in `data/raw/`
 - **Output:** `data/processed/ids_exploration_raw/`
@@ -108,3 +110,12 @@ Analyzes raw data for era differences, missingness, and regional temporal covera
   - `ids_missing_by_era.csv` - fraction NA per column per era
   - `ids_value_summary_pre_2015.csv` / `ids_value_summary_post_2015.csv`
   - `ids_region_coverage.csv` - year range and gaps per region
+
+---
+
+## See also
+
+- [IDS README](README.md)
+- [Repo reproduction guide](../docs/REPRODUCE.md)
+- [QC and validation guide](../docs/TESTING.md)
+- [Data products](../docs/DATA_PRODUCTS.md)
