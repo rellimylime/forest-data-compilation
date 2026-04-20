@@ -110,25 +110,17 @@ annual_pr_wrong <- summarize(annual_mean = mean(value))  # INCORRECT for flux va
 **Records affected:** 10 observations (0.0002%)
 
 **Description:**
-The TerraClimate pixel map (`damage_areas_pixel_map.parquet`) contains 4,475,817 unique
-OBSERVATION_IDs, while the IDS damage_areas layer has 4,475,827 - a difference of exactly 10.
-These 10 observations have geometries so degenerate (near-zero-area slivers or self-intersecting
-polygons) that `exactextractr::exact_extract()` returns zero rows for them. No TerraClimate
-pixel at ~4km resolution overlaps the geometry, so these observations have no pixel mapping
-and no climate summaries.
+The TerraClimate pixel map (`damage_areas_pixel_map.parquet`) contains 4,475,817 unique OBSERVATION_IDs, while the IDS damage_areas layer has 4,475,827 - a difference of exactly 10.
+These 10 observations have geometries so degenerate (near-zero-area slivers or self-intersecting polygons) that `exactextractr::exact_extract()` returns zero rows for them. No TerraClimate pixel at ~4km resolution overlaps the geometry, so these observations have no pixel mapping and no climate summaries.
 
 **Evidence:**
 - IDS `damage_areas` total OBSERVATION_IDs: 4,475,827
 - TerraClimate pixel map unique OBSERVATION_IDs: 4,475,817
 - Difference: 10 (confirmed consistent across all build_climate_summaries.R runs)
 
-**Decision:** Accepted as missing data. The geometries are valid enough to pass sf validation
-but produce no usable area intersection at ~4km resolution. These observations will have no
-rows in any climate summaries output. Users joining on OBSERVATION_ID should be aware that
-10 observations will not match.
+**Decision:** Accepted as missing data. The geometries are valid enough to pass sf validation but produce no usable area intersection at ~4km resolution. These observations will have no rows in any climate summaries output. Users joining on OBSERVATION_ID should be aware that 10 observations will not match.
 
-**Impact:** Negligible (0.0002% of observations). The same 10 observations are likely absent
-from PRISM and WorldClim pixel maps as well, since their geometries are dataset-agnostic.
+**Impact:** Negligible (0.0002% of observations). The same 10 observations are likely absent from PRISM and WorldClim pixel maps as well, since their geometries are dataset-agnostic.
 
 ---
 
