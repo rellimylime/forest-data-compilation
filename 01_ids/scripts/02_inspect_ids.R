@@ -223,52 +223,48 @@ cat(glue("\nGrand total DAMAGE_AREAS: {format(totals$total_features[totals$layer
 
 cat("\n\n=== GENERATING LOOKUP TABLES ===\n")
 
+# Build observed-value lookups from all regional damage-area layers.
+# The bundled IDS docs define field meaning, but the host and DCA label sets
+# are most reliably recovered from the source geodatabases themselves.
+build_lookup_from_all_gdbs <- function(field_code, field_text, prefix = "DAMAGE_AREAS_FLAT") {
+  map_dfr(gdb_dirs, function(gdb) {
+    layer_name <- get_layer_name(gdb, prefix)
+    lookup_query <- glue("SELECT {field_code}, {field_text} FROM \"{layer_name}\"")
+
+    st_read(gdb, query = lookup_query, quiet = TRUE) |>
+      st_drop_geometry()
+  }) |>
+    filter(!is.na(.data[[field_code]]), !is.na(.data[[field_text]])) |>
+    distinct(.data[[field_code]], .data[[field_text]]) |>
+    arrange(.data[[field_code]], .data[[field_text]])
+}
+
 # HOST_CODE lookup
-host_query <- glue("SELECT HOST_CODE, HOST FROM \"{r5_damage_areas}\" WHERE HOST IS NOT NULL")
-host_lookup <- st_read(r5_path, query = host_query, quiet = TRUE) |> 
-  st_drop_geometry() |>
-  distinct(HOST_CODE, HOST) |>
-  arrange(HOST_CODE)
+host_lookup <- build_lookup_from_all_gdbs("HOST_CODE", "HOST")
 
 write_csv(host_lookup, here("01_ids/lookups/host_code_lookup.csv"))
 cat(glue("Saved {nrow(host_lookup)} host codes to host_code_lookup.csv\n"))
 
 # DCA_CODE lookup
-dca_query <- glue("SELECT DCA_CODE, DCA_COMMON_NAME FROM \"{r5_damage_areas}\"")
-dca_lookup <- st_read(r5_path, query = dca_query, quiet = TRUE) |> 
-  st_drop_geometry() |>
-  distinct(DCA_CODE, DCA_COMMON_NAME) |>
-  arrange(DCA_CODE)
+dca_lookup <- build_lookup_from_all_gdbs("DCA_CODE", "DCA_COMMON_NAME")
 
 write_csv(dca_lookup, here("01_ids/lookups/dca_code_lookup.csv"))
 cat(glue("Saved {nrow(dca_lookup)} DCA codes to dca_code_lookup.csv\n"))
 
 # DAMAGE_TYPE lookup
-damage_type_query <- glue("SELECT DAMAGE_TYPE_CODE, DAMAGE_TYPE FROM \"{r5_damage_areas}\"")
-damage_type_lookup <- st_read(r5_path, query = damage_type_query, quiet = TRUE) |> 
-  st_drop_geometry() |>
-  distinct(DAMAGE_TYPE_CODE, DAMAGE_TYPE) |>
-  arrange(DAMAGE_TYPE_CODE)
+damage_type_lookup <- build_lookup_from_all_gdbs("DAMAGE_TYPE_CODE", "DAMAGE_TYPE")
 
 write_csv(damage_type_lookup, here("01_ids/lookups/damage_type_lookup.csv"))
 cat(glue("Saved {nrow(damage_type_lookup)} damage types to damage_type_lookup.csv\n"))
 
 # PERCENT_AFFECTED lookup
-pct_query <- glue("SELECT PERCENT_AFFECTED_CODE, PERCENT_AFFECTED FROM \"{r5_damage_areas}\" WHERE PERCENT_AFFECTED IS NOT NULL")
-pct_lookup <- st_read(r5_path, query = pct_query, quiet = TRUE) |> 
-  st_drop_geometry() |>
-  distinct(PERCENT_AFFECTED_CODE, PERCENT_AFFECTED) |>
-  arrange(PERCENT_AFFECTED_CODE)
+pct_lookup <- build_lookup_from_all_gdbs("PERCENT_AFFECTED_CODE", "PERCENT_AFFECTED")
 
 write_csv(pct_lookup, here("01_ids/lookups/percent_affected_lookup.csv"))
 cat(glue("Saved {nrow(pct_lookup)} percent affected codes to percent_affected_lookup.csv\n"))
 
 # LEGACY_SEVERITY lookup
-severity_query <- glue("SELECT LEGACY_SEVERITY_CODE, LEGACY_SEVERITY FROM \"{r5_damage_areas}\" WHERE LEGACY_SEVERITY IS NOT NULL")
-severity_lookup <- st_read(r5_path, query = severity_query, quiet = TRUE) |> 
-  st_drop_geometry() |>
-  distinct(LEGACY_SEVERITY_CODE, LEGACY_SEVERITY) |>
-  arrange(LEGACY_SEVERITY_CODE)
+severity_lookup <- build_lookup_from_all_gdbs("LEGACY_SEVERITY_CODE", "LEGACY_SEVERITY")
 
 write_csv(severity_lookup, here("01_ids/lookups/legacy_severity_lookup.csv"))
 cat(glue("Saved {nrow(severity_lookup)} legacy severity codes to legacy_severity_lookup.csv\n"))
