@@ -24,7 +24,7 @@ Scripts are split into two groups:
 - [x] `01_download_ids.R` - download raw geodatabases
 - [x] `02_inspect_ids.R` - inspect structure, generate lookup tables
 - [x] `03_clean_ids.R` - merge and clean all regions
-- [ ] `04_assign_surveyed_areas.R` - spatial join: damage areas → surveyed areas
+- [ ] `04_assign_surveyed_areas.R` - spatial join: damage areas -> surveyed areas
 - [ ] `05_compute_area_metrics.R` - compute damage area size and survey fraction
 
 **QC / diagnostics** (`scripts/qc/`) - one-time analysis, not required to reproduce data:
@@ -46,12 +46,15 @@ Explores raw data structure, checks field consistency across regions, and genera
 - **Input:** Raw .gdb files in `data/raw/`
 - **Output:**
   - `data_dictionary.csv` (field metadata from R5 sample)
-  - `lookups/host_code_lookup.csv` (76 species)
-  - `lookups/dca_code_lookup.csv` (130 damage agents)
-  - `lookups/damage_type_lookup.csv` (9 types)
-  - `lookups/percent_affected_lookup.csv` (5 levels)
-  - `lookups/legacy_severity_lookup.csv` (4 levels)
+  - `lookups/host_code_lookup.csv` (228 species)
+  - `lookups/dca_code_lookup.csv` (534 damage agents)
+  - `lookups/damage_type_lookup.csv` (18 types)
+  - `lookups/percent_affected_lookup.csv` (6 levels)
+  - `lookups/legacy_severity_lookup.csv` (3 levels)
   - `lookups/region_lookup.csv` (10 regions)
+- **Lookup validation notes:**
+  - `host_code_lookup.csv` and `dca_code_lookup.csv` are observed-value lookups built from distinct code/name pairs across all regional `DAMAGE_AREAS_FLAT` layers, not from a separate bundled master codebook.
+  - `percent_affected_lookup.csv` and `legacy_severity_lookup.csv` intentionally retain raw `-1 = No Data` placeholder values because they occur in the source geodatabases; `03_clean_ids.R` later recodes `PERCENT_AFFECTED_CODE = -1` to `NA`.
 - **Key findings:** All 10 regions have identical field structure (44 fields); three different CRS across regions; legacy vs DMSM methodology break ~2015
 
 ### [03_clean_ids.R](scripts/03_clean_ids.R)
@@ -62,7 +65,7 @@ Selects fields, transforms CRS, and merges all regions for every IDS layer.
   - Select layer-specific fields (damage layers keep 15 fields; surveyed areas keep 4 fields). Codes only - use lookups for names.
   - Transform all regions to EPSG:4326 (WGS84)
   - Standardize OBSERVATION_COUNT to uppercase (damage layers)
-  - Recode PERCENT_AFFECTED_CODE -1 → NA (damage layers)
+  - Recode PERCENT_AFFECTED_CODE -1 -> NA (damage layers)
   - Add SOURCE_FILE column for traceability
   - Generate SURVEY_FEATURE_ID for surveyed_areas
   - Merge all 10 regions per layer into a single geopackage
