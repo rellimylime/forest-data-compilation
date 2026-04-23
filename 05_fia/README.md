@@ -13,6 +13,7 @@ Use this workstream if you need:
 - FIA plot-level forest structure and diversity metrics
 - disturbance and treatment history by plot and inventory year
 - species and forest-type lookup tables
+- per-state parquet partitions for tree, condition, seedling, mortality, damage-agent, and harvest-flag data
 - monthly TerraClimate at FIA site locations
 
 ## Quick facts
@@ -22,6 +23,7 @@ Use this workstream if you need:
 | Source | USDA Forest Service FIA DataMart |
 | Coverage | All 50 US states |
 | Inventory years | 2000-2024 |
+| Site-climate years | 1958-2024 |
 | Main format | CSV to parquet |
 | Optional GEE step | Site climate only |
 
@@ -68,23 +70,48 @@ Notes:
 
 | Output family | Location | Notes |
 |---|---|---|
+| Raw state CSV bundles | `05_fia/data/raw/{ST}/` | Contains `COND`, `PLOT`, `SEEDLING`, `TREE`, and `TREE_GRM_COMPONENT` CSVs by state |
+| Raw REF tables | `05_fia/data/raw/REF/` | Contains `REF_SPECIES.csv` and `REF_FOREST_TYPE.csv` |
 | FIA lookup parquets | `05_fia/lookups/` | Tracked in git |
-| Per-state extracted tables | `05_fia/data/processed/trees/`, `cond/`, `seedlings/`, `mortality/` | Local parquet partitions |
+| Per-state extracted tables | `05_fia/data/processed/{trees,cond,damage_agents,harvest_flags,seedlings,mortality}/state={ST}/` | Local parquet partitions |
 | National plot summaries | `05_fia/data/processed/summaries/` | Tracked in git |
-| Site climate outputs | `05_fia/data/processed/site_climate/` | Tracked in git |
+| Site climate input template | `05_fia/data/processed/site_climate/all_site_locations.csv` | Tracked in git and used as the input site list |
+| Site climate checkpoints | `05_fia/data/processed/site_climate/_gee_annual/` | Local yearly checkpoint parquets used for resumable GEE extraction |
+| Site climate outputs | `05_fia/data/processed/site_climate/site_pixel_map.parquet` and `site_climate.parquet` | Tracked in git |
+
+The repo keeps the parent output folders in git, while the deeper `state={ST}/` partition directories are created by the extraction scripts when those local outputs are generated.
 
 ## Main Git-Tracked Output Files
 
-- `plot_tree_metrics.parquet`
-- `plot_seedling_metrics.parquet`
-- `plot_mortality_metrics.parquet`
-- `plot_disturbance_history.parquet`
-- `plot_damage_agents.parquet`
-- `plot_treatment_history.parquet`
-- `plot_cond_fortypcd.parquet`
-- `plot_exclusion_flags.parquet`
-- `site_pixel_map.parquet`
-- `site_climate.parquet`
+- `05_fia/lookups/ref_species.parquet`
+- `05_fia/lookups/ref_forest_type.parquet`
+- `05_fia/data/processed/summaries/plot_tree_metrics.parquet`
+- `05_fia/data/processed/summaries/plot_seedling_metrics.parquet`
+- `05_fia/data/processed/summaries/plot_mortality_metrics.parquet`
+- `05_fia/data/processed/summaries/plot_disturbance_history.parquet`
+- `05_fia/data/processed/summaries/plot_damage_agents.parquet`
+- `05_fia/data/processed/summaries/plot_treatment_history.parquet`
+- `05_fia/data/processed/summaries/plot_cond_fortypcd.parquet`
+- `05_fia/data/processed/summaries/plot_exclusion_flags.parquet`
+- `05_fia/data/processed/site_climate/all_site_locations.csv`
+- `05_fia/data/processed/site_climate/site_pixel_map.parquet`
+- `05_fia/data/processed/site_climate/site_climate.parquet`
+
+## Directory Layout
+
+| Path | What belongs here |
+|---|---|
+| `05_fia/data/raw/{ST}/` | State-level FIA CSV downloads |
+| `05_fia/data/raw/REF/` | National FIA reference tables |
+| `05_fia/lookups/` | Git-tracked parquet versions of the reference tables |
+| `05_fia/data/processed/trees/state={ST}/` | Per-state tree extracts |
+| `05_fia/data/processed/cond/state={ST}/` | Per-state condition extracts |
+| `05_fia/data/processed/damage_agents/state={ST}/` | Per-state damage-agent extracts |
+| `05_fia/data/processed/harvest_flags/state={ST}/` | Per-state harvest-flag extracts |
+| `05_fia/data/processed/seedlings/state={ST}/` | Per-state seedling extracts |
+| `05_fia/data/processed/mortality/state={ST}/` | Per-state mortality extracts |
+| `05_fia/data/processed/summaries/` | National plot-level summary parquets |
+| `05_fia/data/processed/site_climate/` | Site list input, yearly GEE checkpoints, site pixel map, and final climate parquet |
 
 ## Related Docs
 

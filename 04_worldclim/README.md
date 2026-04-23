@@ -38,9 +38,9 @@ flowchart LR
 
 | Step | Script | Role |
 |---|---|---|
-| 1 | [01_download_worldclim.R](scripts/01_download_worldclim.R) | Download decade-based GeoTIFF archives |
+| 1 | [01_download_worldclim.R](scripts/01_download_worldclim.R) | Download decade-based GeoTIFF archives and populate the raw cache |
 | 2 | [02_build_pixel_maps.R](scripts/02_build_pixel_maps.R) | Map IDS features to WorldClim pixels |
-| 3 | [03_extract_worldclim.R](scripts/03_extract_worldclim.R) | Extract monthly values from local GeoTIFFs |
+| 3 | [03_extract_worldclim.R](scripts/03_extract_worldclim.R) | Extract monthly values from local GeoTIFFs and write yearly parquet files |
 | 4 | [build_climate_summaries.R](../scripts/build_climate_summaries.R) | Build final observation-level summaries |
 
 ## Quick Start
@@ -58,10 +58,29 @@ Rscript scripts/build_climate_summaries.R worldclim
 
 | Output | Location | Notes |
 |---|---|---|
-| Raw GeoTIFF cache | `04_worldclim/data/raw/` | Downloaded once and kept locally |
-| Pixel maps | `04_worldclim/data/processed/pixel_maps/` | One parquet per IDS layer |
+| Raw GeoTIFF cache | `04_worldclim/data/raw/{prec,tmax,tmin}/` | Monthly files named `wc2.1_cruts4.09_2.5m_<var>_<YYYY>-<MM>.tif` |
+| Pixel maps | `04_worldclim/data/processed/pixel_maps/` | Includes `damage_areas`, `damage_points`, and `surveyed_areas` pixel maps |
 | Yearly pixel values | `04_worldclim/data/processed/pixel_values/worldclim_{year}.parquet` | Wide-format yearly files |
-| Observation summaries | `processed/climate/worldclim/damage_areas_summaries/` | One parquet per variable |
+| Observation summaries | `processed/climate/worldclim/damage_areas_summaries/` | One parquet per WorldClim variable |
+
+## Final Summary Files
+
+The shared summary builder writes one parquet per variable under `processed/climate/worldclim/damage_areas_summaries/`:
+
+- `prec.parquet`
+- `tmax.parquet`
+- `tmin.parquet`
+
+## Directory Layout
+
+| Path | What belongs here |
+|---|---|
+| `04_worldclim/data/raw/prec/` | Monthly precipitation GeoTIFFs |
+| `04_worldclim/data/raw/tmax/` | Monthly maximum-temperature GeoTIFFs |
+| `04_worldclim/data/raw/tmin/` | Monthly minimum-temperature GeoTIFFs |
+| `04_worldclim/data/processed/pixel_maps/` | IDS feature-to-pixel crosswalks |
+| `04_worldclim/data/processed/pixel_values/` | Yearly WorldClim parquet extracts |
+| `processed/climate/worldclim/damage_areas_summaries/` | Cross-workstream observation-level summaries used by demos and downstream analysis |
 
 ## Variables
 

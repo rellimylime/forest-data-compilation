@@ -37,8 +37,8 @@ flowchart LR
 
 | Step | Script | Role |
 |---|---|---|
-| 1 | [01_build_pixel_maps.R](scripts/01_build_pixel_maps.R) | Map CONUS IDS features to PRISM pixels |
-| 2 | [02_extract_prism.R](scripts/02_extract_prism.R) | Download, extract, and discard monthly PRISM rasters |
+| 1 | [01_build_pixel_maps.R](scripts/01_build_pixel_maps.R) | Map CONUS IDS features to PRISM pixels from `prism_reference.tif` |
+| 2 | [02_extract_prism.R](scripts/02_extract_prism.R) | Download monthly PRISM rasters, extract values, and write yearly parquet files |
 | 3 | [build_climate_summaries.R](../scripts/build_climate_summaries.R) | Build final observation-level summaries |
 
 ## Quick Start
@@ -55,9 +55,33 @@ Rscript scripts/build_climate_summaries.R prism
 
 | Output | Location | Notes |
 |---|---|---|
-| Pixel maps | `03_prism/data/processed/pixel_maps/` | One parquet per IDS layer |
+| Reference raster | `03_prism/data/raw/prism_reference.tif` | Expected local input for pixel-map construction |
+| Pixel maps | `03_prism/data/processed/pixel_maps/` | Includes `damage_areas`, `damage_points`, and `surveyed_areas` pixel maps |
 | Yearly pixel values | `03_prism/data/processed/pixel_values/prism_{year}.parquet` | Wide-format yearly files |
-| Observation summaries | `processed/climate/prism/damage_areas_summaries/` | One parquet per variable |
+| Observation summaries | `processed/climate/prism/damage_areas_summaries/` | One parquet per PRISM variable |
+
+## Final Summary Files
+
+The shared summary builder writes one parquet per variable under `processed/climate/prism/damage_areas_summaries/`:
+
+- `ppt.parquet`
+- `tdmean.parquet`
+- `tmax.parquet`
+- `tmean.parquet`
+- `tmin.parquet`
+- `vpdmax.parquet`
+- `vpdmin.parquet`
+
+## Directory Layout
+
+| Path | What belongs here |
+|---|---|
+| `03_prism/data/raw/` | `prism_reference.tif` and any temporary local files needed to bootstrap extraction |
+| `03_prism/data/processed/pixel_maps/` | IDS feature-to-pixel crosswalks |
+| `03_prism/data/processed/pixel_values/` | Yearly PRISM parquet extracts |
+| `processed/climate/prism/damage_areas_summaries/` | Cross-workstream observation-level summaries used by demos and downstream analysis |
+
+Note: the current PRISM extractor does not keep the monthly downloaded rasters in the repo layout. The durable outputs are the yearly `prism_{year}.parquet` files and the final summary parquets.
 
 ## Coverage Notes
 

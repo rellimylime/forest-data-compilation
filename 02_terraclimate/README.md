@@ -37,8 +37,8 @@ flowchart LR
 
 | Step | Script | Role |
 |---|---|---|
-| 1 | [01_build_pixel_maps.R](scripts/01_build_pixel_maps.R) | Map IDS features to TerraClimate pixels |
-| 2 | [02_extract_terraclimate.R](scripts/02_extract_terraclimate.R) | Extract monthly TerraClimate values via GEE |
+| 1 | [01_build_pixel_maps.R](scripts/01_build_pixel_maps.R) | Map IDS features to TerraClimate pixels from `terraclimate_reference.tif` |
+| 2 | [02_extract_terraclimate.R](scripts/02_extract_terraclimate.R) | Extract monthly TerraClimate values via GEE and write yearly parquet files |
 | 3 | [build_climate_summaries.R](../scripts/build_climate_summaries.R) | Build final observation-level summaries |
 
 Optional exploratory script:
@@ -59,10 +59,42 @@ Rscript scripts/build_climate_summaries.R terraclimate
 
 | Output | Location | Notes |
 |---|---|---|
-| Pixel maps | `02_terraclimate/data/processed/pixel_maps/` | One parquet per IDS layer |
+| Reference raster | `02_terraclimate/data/raw/terraclimate_reference.tif` | Expected local input for pixel-map construction |
+| Optional raw cache | `02_terraclimate/data/raw/TerraClimate_{var}_{year}.nc` | Present in the provided server tree, but not written by the current repo scripts |
+| Pixel maps | `02_terraclimate/data/processed/pixel_maps/` | Includes `damage_areas`, `damage_points`, and `surveyed_areas` pixel maps |
+| Unique-pixel cache | `02_terraclimate/data/processed/pixel_maps/_all_layers_unique_pixels.parquet` | Deduplicated pixel list across all IDS layers |
 | Yearly pixel values | `02_terraclimate/data/processed/pixel_values/terraclimate_{year}.parquet` | Wide-format yearly files |
-| Observation summaries | `processed/climate/terraclimate/damage_areas_summaries/` | One parquet per variable |
-| Pixel centroid lookup | `02_terraclimate/lookups/damage_areas_pixel_centroids.parquet` | Tracked in git for dashboard use |
+| Observation summaries | `processed/climate/terraclimate/damage_areas_summaries/` | One parquet per TerraClimate variable |
+| Pixel centroid lookup | `02_terraclimate/lookups/damage_areas_pixel_centroids.parquet` | Tracked in git for dashboard and review use |
+
+## Final Summary Files
+
+The shared summary builder writes one parquet per variable under `processed/climate/terraclimate/damage_areas_summaries/`:
+
+- `aet.parquet`
+- `def.parquet`
+- `pdsi.parquet`
+- `pet.parquet`
+- `pr.parquet`
+- `ro.parquet`
+- `soil.parquet`
+- `srad.parquet`
+- `swe.parquet`
+- `tmmn.parquet`
+- `tmmx.parquet`
+- `vap.parquet`
+- `vpd.parquet`
+- `vs.parquet`
+
+## Directory Layout
+
+| Path | What belongs here |
+|---|---|
+| `02_terraclimate/data/raw/` | Reference raster plus any optional server-side raw TerraClimate cache files |
+| `02_terraclimate/data/processed/pixel_maps/` | IDS feature-to-pixel crosswalks and the all-layer unique-pixel cache |
+| `02_terraclimate/data/processed/pixel_values/` | Yearly TerraClimate parquet extracts |
+| `02_terraclimate/lookups/` | Small reviewable lookup artifacts |
+| `processed/climate/terraclimate/damage_areas_summaries/` | Cross-workstream observation-level summaries used by demos and downstream analysis |
 
 ## Variables
 
