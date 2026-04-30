@@ -10,9 +10,9 @@ user explicitly requests a preview.
 Usage:
   streamlit run fiadb_dashboard.py
 
-  Local use: optionally paste the full path to your FIADB SQLite file in the sidebar.
+  Local use: set FIADB_ENABLE_LOCAL_PATH_INPUT=1 to show a path textbox in the app.
   Hosted use (e.g., Streamlit Cloud): set FIADB_DB_PATH on the server and the app
-  will connect automatically without showing a public path textbox.
+  will connect automatically.
 
 Requires:
   pip install streamlit pandas pyvis   # pyvis recommended for interactive graph
@@ -21,7 +21,6 @@ Requires:
 Source: FIADB User Guide v9.4, August 2025
 """
 
-import json
 import os
 import re
 import sqlite3
@@ -1287,7 +1286,6 @@ def guide_rows_to_df(rows: List[Dict[str, Any]], include_table: bool = True) -> 
 # ANALYSIS PIPELINE CODE RENDERING HELPERS
 # =============================================================================
 
-APP_UI_MODES = ["Newbie", "Expert"]
 PIPELINE_CODE_LANGUAGES = ["SQL", "Python", "R"]
 
 
@@ -1440,43 +1438,6 @@ def _first_sentence(text: str) -> str:
     return first.strip()
 
 
-def describe_table_for_newbie(table_name: str) -> str:
-    desc = TABLE_DESCRIPTIONS.get(table_name, "")
-    summary = _first_sentence(desc)
-    if summary:
-        return summary
-    return f"FIA table `{table_name}`."
-
-
-def render_mode_hint_box(
-    *,
-    is_newbie_mode: bool,
-    newbie_title: str,
-    newbie_body: str,
-    expert_title: str,
-    expert_body: str,
-) -> None:
-    """Compact mode-aware callout used at the top of tabs."""
-    if is_newbie_mode:
-        color = "#36a36f"
-        bg = "#36a36f15"
-        title = newbie_title
-        body = newbie_body
-    else:
-        color = "#d18a2b"
-        bg = "#d18a2b15"
-        title = expert_title
-        body = expert_body
-    st.markdown(
-        (
-            f'<div style="margin:6px 0 12px;padding:10px 12px;border-radius:8px;'
-            f'border-left:4px solid {color};background:{bg};">'
-            f'<div style="color:{color};font-weight:700;margin-bottom:4px;">{title}</div>'
-            f'<div style="color:#d9d9d9;line-height:1.35;">{body}</div>'
-            f"</div>"
-        ),
-        unsafe_allow_html=True,
-    )
 
 
 
@@ -1694,78 +1655,6 @@ def build_graphviz_graph(db_tables: List[str]) -> "Digraph":
 def main() -> None:
     st.set_page_config(page_title="FIA Schema Navigator", layout="wide")
     st.title("FIA Database Schema Navigator")
-    if "ui_mode" not in st.session_state:
-        st.session_state["ui_mode"] = "Newbie"
-
-    # ── Sidebar — experience mode (placed first for global visibility) ───────
-    with st.sidebar:
-        st.header("Experience Mode")
-        selected_ui_mode = st.radio(
-            "Choose interface mode",
-            APP_UI_MODES,
-            key="ui_mode",
-            help=(
-                "Newbie mode hides FIA field names/codes in some views until you opt in. "
-                "Expert mode shows technical details up front."
-            ),
-        )
-        _mode_meta = {
-            "Newbie": {
-                "color": "#36a36f",
-                "bg": "#36a36f22",
-                "title": "Newbie mode active",
-                "body": (
-                    "Concept-first explanations. FIA field names, codes, and runnable examples stay hidden "
-                    "until you turn on technical details in a tab."
-                ),
-            },
-            "Expert": {
-                "color": "#d18a2b",
-                "bg": "#d18a2b22",
-                "title": "Expert mode active",
-                "body": (
-                    "Technical FIA details are shown up front, including table names, join steps, key columns, "
-                    "and code examples."
-                ),
-            },
-        }[selected_ui_mode]
-        st.markdown(
-            (
-                f'<div style="margin:0 0 8px;padding:10px 12px;border-radius:8px;'
-                f'border-left:4px solid {_mode_meta["color"]};background:{_mode_meta["bg"]};'
-                f'font-size:0.86em;">'
-                f'<div style="color:{_mode_meta["color"]};font-weight:700;margin-bottom:4px;">'
-                f'{_mode_meta["title"]}</div>'
-                f'<div style="color:#d7d7d7;line-height:1.35;">{_mode_meta["body"]}</div>'
-                f'</div>'
-            ),
-            unsafe_allow_html=True,
-        )
-
-    is_newbie_mode = selected_ui_mode == "Newbie"
-    if is_newbie_mode:
-        st.markdown(
-            """
-<div style="margin:6px 0 10px;padding:10px 12px;border-radius:8px;
-border-left:4px solid #36a36f;background:#36a36f15;color:#d8f0e4;">
-  <strong>Newbie mode:</strong> concept-first explanations and progressive disclosure are enabled.
-  Use the sidebar to switch to Expert mode.
-</div>
-            """,
-            unsafe_allow_html=True,
-        )
-    else:
-        st.markdown(
-            """
-<div style="margin:6px 0 10px;padding:10px 12px;border-radius:8px;
-border-left:4px solid #d18a2b;background:#d18a2b15;color:#f3e6d0;">
-  <strong>Expert mode:</strong> technical FIA schema details and code examples are shown by default.
-  Use the sidebar to switch to Newbie mode.
-</div>
-            """,
-            unsafe_allow_html=True,
-        )
-
     guide_data = load_user_guide_index()
     guide_lookup = prepare_user_guide_lookup(guide_data)
     guide_summary = guide_lookup.get("summary", {})
@@ -1779,28 +1668,22 @@ border-left:4px solid #d18a2b;background:#d18a2b15;color:#f3e6d0;">
         "FIADB v9.4 · August 2025 · Schema browsing via PRAGMA — zero bulk data loading"
     )
 
-    # ── Sidebar — database path (must come first so we can connect before buttons) ──
-    with st.sidebar:
-        st.header("Database")
-        hosted_db_path = os.getenv("FIADB_DB_PATH", "").strip()
-        allow_local_path_input = os.getenv("FIADB_ENABLE_LOCAL_PATH_INPUT", "").strip().lower() in {
-            "1", "true", "yes", "on"
-        }
-
-        db_path = hosted_db_path
-        if hosted_db_path:
-            st.success("Using server-side FIADB database (FIADB_DB_PATH).")
-        elif allow_local_path_input:
+    # ── Database connection ──────────────────────────────────────────────────
+    hosted_db_path = os.getenv("FIADB_DB_PATH", "").strip()
+    allow_local_path_input = os.getenv("FIADB_ENABLE_LOCAL_PATH_INPUT", "").strip().lower() in {
+        "1", "true", "yes", "on"
+    }
+    db_path = hosted_db_path
+    if hosted_db_path:
+        st.success("Connected: using server-side FIADB database.")
+    elif allow_local_path_input:
+        with st.expander("Connect to FIADB SQLite database (optional)", expanded=False):
             db_path = st.text_input(
                 "Path to FIADB SQLite file",
                 placeholder="/path/to/FIADB_NATIONAL.db",
                 help="Full absolute path. Schema metadata is read instantly via PRAGMA.",
             )
-        else:
-            st.info("Metadata-only mode (no database connected).")
-            st.caption("Set `FIADB_DB_PATH` to enable live schema introspection.")
 
-    # ── Database connection ──────────────────────────────────────────────────
     conn: Optional[sqlite3.Connection] = None
     db_tables: List[str] = []
 
@@ -1808,88 +1691,11 @@ border-left:4px solid #d18a2b;background:#d18a2b15;color:#f3e6d0;">
         try:
             conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
             db_tables = get_tables(conn)
-            st.sidebar.success(f"{len(db_tables)} tables found")
+            st.success(f"Connected: {len(db_tables)} tables found")
         except Exception as e:
-            st.sidebar.error(f"Cannot open: {e}")
+            st.error(f"Cannot open database: {e}")
     elif db_path:
-        st.sidebar.warning("File not found — showing static metadata only")
-
-    # ── Sidebar — table group buttons ────────────────────────────────────────
-    with st.sidebar:
-        st.markdown("---")
-        st.markdown("**Table groups**")
-
-        if "sidebar_cat" not in st.session_state:
-            st.session_state["sidebar_cat"] = None
-
-        for cat, color in CATEGORY_COLORS.items():
-            is_active = st.session_state["sidebar_cat"] == cat
-            if st.button(
-                cat,
-                key=f"btn_{cat}",
-                use_container_width=True,
-                type="secondary",
-            ):
-                # Toggle off if already selected, otherwise select
-                st.session_state["sidebar_cat"] = None if is_active else cat
-                st.rerun()
-
-            if is_active:
-                s_tables = TABLE_CATEGORIES.get(cat, [])
-                s_desc   = CATEGORY_DESCRIPTIONS.get(cat, "")
-                in_db    = [t for t in s_tables if t in db_tables] if db_tables else []
-                label    = (f"{len(in_db)}/{len(s_tables)} in DB"
-                            if db_tables else f"{len(s_tables)} tables")
-                st.markdown(
-                    f'<div style="margin:-4px 0 8px;padding:10px 12px;'
-                    f'background:{color}22;border-left:3px solid {color};'
-                    f'border-radius:0 4px 4px 0;font-size:0.82em;color:#ccc;">'
-                    f'<strong style="color:#fff;font-size:0.95em;">{cat}</strong>'
-                    f'&nbsp;&nbsp;<span style="color:#888;">{label}</span>'
-                    f'<br><br>{s_desc}</div>',
-                    unsafe_allow_html=True,
-                )
-                for t in s_tables:
-                    prefix = "✓ " if t in db_tables else "&nbsp;&nbsp;&nbsp;"
-                    st.markdown(
-                        f'<span style="font-size:0.85em;">{prefix}`{t}`</span>',
-                        unsafe_allow_html=True,
-                    )
-
-        # ── JS: colour each sidebar button with its category colour ──────────
-        # components.html runs in a sandboxed iframe; window.parent gives access
-        # to the Streamlit page so we can style the real sidebar buttons.
-        _color_map_js = json.dumps({cat: clr for cat, clr in CATEGORY_COLORS.items()})
-        _active_js    = json.dumps(st.session_state.get("sidebar_cat"))
-        components.html(
-            f"""<script>
-var _CM = {_color_map_js};
-var _AC = {_active_js};
-function _applyBtnColors() {{
-    var sb = window.parent.document.querySelector('section[data-testid="stSidebar"]');
-    if (!sb) return;
-    sb.querySelectorAll('button').forEach(function(b) {{
-        var lbl = b.innerText.trim();
-        var col = _CM[lbl];
-        if (!col) return;
-        var active = (lbl === _AC);
-        b.style.setProperty('background-color', active ? col : col + '55', 'important');
-        b.style.setProperty('color', 'white', 'important');
-        b.style.setProperty('border', '2px solid ' + col + (active ? '' : '88'), 'important');
-        b.style.setProperty('font-weight', active ? '600' : '400', 'important');
-    }});
-}}
-_applyBtnColors();
-[150, 500, 1200].forEach(function(t) {{ setTimeout(_applyBtnColors, t); }});
-var _sb = window.parent.document.querySelector('section[data-testid="stSidebar"]');
-if (_sb) {{
-    new MutationObserver(_applyBtnColors).observe(
-        _sb, {{childList: true, subtree: true, attributeFilter: ['class', 'style']}}
-    );
-}}
-</script>""",
-            height=0,
-        )
+        st.warning("File not found — showing static metadata only")
 
     tabs = st.tabs([
         "Overview",
@@ -2021,45 +1827,22 @@ are exact and reliable for county-level spatial joins.
     # ────────────────────────────────────────────────────────────────────────
     with tabs[1]:
         st.header("Schema Browser")
-        render_mode_hint_box(
-            is_newbie_mode=is_newbie_mode,
-            newbie_title="Newbie view: guided table reading",
-            newbie_body=(
-                "Start by choosing one table and reading the plain-language description. "
-                "Turn on technical sections when you are ready to inspect codebooks, join paths, and FK links."
-            ),
-            expert_title="Expert view: schema-first inspection",
-            expert_body=(
-                "Technical sections are intended to be used immediately: coded columns, join links, and live schema metadata."
-            ),
-        )
-        if is_newbie_mode:
-            st.markdown("""
-Select a table to learn what it represents in the field first. The tab can also reveal the exact FIA field names,
-coded columns, and join relationships once you turn on the technical sections toggle below.
-            """)
-        else:
-            st.markdown("""
+        st.markdown("""
 Select any table from the dropdown to see its columns, data types, and what each coded number means
 in plain English. At the bottom of each table's page you'll also see its **connections** — which other
 tables it links to and which tables link back to it.
 
 > **Tip:** If you see a column like `STATUSCD` with values 1, 2, 3 — the *Coded columns reference*
 > section below the column list will tell you exactly what each number means.
-            """)
+        """)
         st.markdown("---")
 
         all_known = [t for cat in TABLE_CATEGORIES.values() for t in cat]
         choices   = sorted(set(all_known) | set(db_tables)) if db_tables else all_known
         selected  = st.selectbox("Select a table", choices)
 
-        schema_tech_default = not is_newbie_mode
-        if "schema_browser_last_ui_mode" not in st.session_state:
-            st.session_state["schema_browser_last_ui_mode"] = selected_ui_mode
-        if st.session_state["schema_browser_last_ui_mode"] != selected_ui_mode:
-            st.session_state["schema_browser_show_technical_sections"] = schema_tech_default
-            st.session_state["schema_browser_last_ui_mode"] = selected_ui_mode
-        elif "schema_browser_show_technical_sections" not in st.session_state:
+        schema_tech_default = False
+        if "schema_browser_show_technical_sections" not in st.session_state:
             st.session_state["schema_browser_show_technical_sections"] = schema_tech_default
         show_schema_technical_sections = st.toggle(
             "Show technical schema sections (coded fields + join links)",
@@ -2347,34 +2130,16 @@ The color of each node shows which group the table belongs to (see the color key
     # ────────────────────────────────────────────────────────────────────────
     with tabs[3]:
         st.header("Variable Explorer")
-        render_mode_hint_box(
-            is_newbie_mode=is_newbie_mode,
-            newbie_title="Newbie view: concept-first variable search",
-            newbie_body=(
-                "Start with the concept locator, then run a simple keyword search (for example: species, disturbance, owner). "
-                "Advanced filters are hidden until you turn them on."
-            ),
-            expert_title="Expert view: full index search controls",
-            expert_body=(
-                "All search controls are available for direct filtering by table group, table, variable family, and exact-name matching."
-            ),
-        )
-        if is_newbie_mode:
-            st.markdown("""
-Use this tab to answer: **What is the FIA field name for the thing I care about?** Start with a plain-language term,
-then reveal advanced filters if you need to narrow by table group or exact column name.
-            """)
-        else:
-            st.markdown("""
+        st.markdown("""
 Use this tab to answer questions like **Where does this value live?** and **Which tables use this variable name?**
 
 The explorer is powered by the FIADB User Guide's *Index of Column Names* (cached from the PDF), so it works
 **even when no SQLite database is connected**. When a database is connected, you can also run a live PRAGMA-based
 schema search to compare the guide index with the tables actually present in your file.
-            """)
+        """)
 
         if guide_loaded:
-            with st.expander("Where do I find... ? (concept locator)", expanded=is_newbie_mode):
+            with st.expander("Where do I find... ? (concept locator)", expanded=True):
                 concept_names = [c["name"] for c in CONCEPT_LOCATORS]
                 concept_name = st.selectbox(
                     "Choose a concept",
@@ -2393,19 +2158,8 @@ schema search to compare the guide index with the tables actually present in you
                 placeholder="e.g. SPCD, AGENTCD, PREV_PLT_CN, carbon, owner group",
                 key="guide_var_query",
             )
-            if is_newbie_mode:
-                st.caption(
-                    "Try simple terms first (e.g., `species`, `seedling`, `mortality`, `owner`, `forest type`). "
-                    "Enable advanced controls to filter by table group or exact column name."
-                )
-
-            var_advanced_default = not is_newbie_mode
-            if "variable_explorer_last_ui_mode" not in st.session_state:
-                st.session_state["variable_explorer_last_ui_mode"] = selected_ui_mode
-            if st.session_state["variable_explorer_last_ui_mode"] != selected_ui_mode:
-                st.session_state["variable_explorer_show_advanced"] = var_advanced_default
-                st.session_state["variable_explorer_last_ui_mode"] = selected_ui_mode
-            elif "variable_explorer_show_advanced" not in st.session_state:
+            var_advanced_default = False
+            if "variable_explorer_show_advanced" not in st.session_state:
                 st.session_state["variable_explorer_show_advanced"] = var_advanced_default
 
             show_variable_advanced = st.toggle(
@@ -2632,18 +2386,7 @@ schema search to compare the guide index with the tables actually present in you
     # ────────────────────────────────────────────────────────────────────────
     with tabs[4]:
         st.header("Analysis Pipelines")
-        if is_newbie_mode:
-            st.markdown("""
-These are beginner-friendly FIA analysis recipes. Start with the **question** each analysis answers,
-then optionally reveal the FIA-specific table names, column names, codes, and runnable code examples.
-
-Use the **language selector** below to pick which code examples to show when technical details are enabled.
-`SQL` is the canonical query. `Python` and `R` may be native examples (when provided) or wrappers around SQL.
-
-Click any pipeline below to expand it.
-            """)
-        else:
-            st.markdown("""
+        st.markdown("""
 These are step-by-step recipes for the most common FIA analyses. Each one explains the goal in plain
 language, lists the tables you need to pull from and why, and includes a ready-to-run code example.
 
@@ -2651,18 +2394,13 @@ Use the **language selector** below to switch code examples for all pipelines in
 `SQL` is the canonical query. `Python` and `R` may be native examples (when provided) or wrappers around SQL.
 
 Click any pipeline below to expand it.
-            """)
+        """)
 
         if "analysis_pipeline_language" not in st.session_state:
             st.session_state["analysis_pipeline_language"] = "SQL"
 
-        technical_default = not is_newbie_mode
-        if "analysis_pipeline_last_ui_mode" not in st.session_state:
-            st.session_state["analysis_pipeline_last_ui_mode"] = selected_ui_mode
-        if st.session_state["analysis_pipeline_last_ui_mode"] != selected_ui_mode:
-            st.session_state["analysis_pipeline_show_technical"] = technical_default
-            st.session_state["analysis_pipeline_last_ui_mode"] = selected_ui_mode
-        elif "analysis_pipeline_show_technical" not in st.session_state:
+        technical_default = False
+        if "analysis_pipeline_show_technical" not in st.session_state:
             st.session_state["analysis_pipeline_show_technical"] = technical_default
 
         selected_pipeline_language = st.radio(
@@ -2685,16 +2423,8 @@ Click any pipeline below to expand it.
             with st.expander(f"**{tmpl['name']}**  -  *{tmpl['goal']}*"):
                 st.markdown("**What this answers:** " + tmpl["goal"])
 
-                if is_newbie_mode and not show_pipeline_technical:
-                    st.markdown("**Data you will use (concepts first):**")
-                    for t in tmpl.get("tables", []):
-                        st.markdown(
-                            f"- **{t.replace('_', ' ').title()}**: {describe_table_for_newbie(t)}"
-                        )
-                    st.info(
-                        "Technical FIA table names, join steps, field codes, and runnable SQL/Python/R examples "
-                        "are hidden in Newbie mode. Turn on the toggle above to reveal them."
-                    )
+                if not show_pipeline_technical:
+                    st.info("Turn on the toggle above to reveal FIA table names, join steps, codes, and code examples.")
                 else:
                     st.markdown(
                         "**Tables:** " + " &rarr; ".join(f"`{t}`" for t in tmpl["tables"])
@@ -2716,25 +2446,14 @@ Click any pipeline below to expand it.
 
         st.markdown("---")
         st.subheader("Field codebook")
-        if is_newbie_mode and not show_pipeline_technical:
-            st.caption("Field codes are hidden in Newbie mode until you enable technical details.")
-            with st.expander("Show FIA field codebook (technical)"):
-                for field, cb in FIELD_CODEBOOK.items():
-                    with st.expander(f"`{field}` — {cb['description']}"):
-                        st.dataframe(
-                            pd.DataFrame([{"Code": k, "Meaning": v} for k, v in cb["codes"].items()]),
-                            use_container_width=True,
-                            hide_index=True,
-                        )
-        else:
-            st.caption("All coded fields used in analyses — with code → meaning lookup")
-            for field, cb in FIELD_CODEBOOK.items():
-                with st.expander(f"`{field}` — {cb['description']}"):
-                    st.dataframe(
-                        pd.DataFrame([{"Code": k, "Meaning": v} for k, v in cb["codes"].items()]),
-                        use_container_width=True,
-                        hide_index=True,
-                    )
+        st.caption("All coded fields used in analyses — with code → meaning lookup")
+        for field, cb in FIELD_CODEBOOK.items():
+            with st.expander(f"`{field}` — {cb['description']}"):
+                st.dataframe(
+                    pd.DataFrame([{"Code": k, "Meaning": v} for k, v in cb["codes"].items()]),
+                    use_container_width=True,
+                    hide_index=True,
+                )
 
 
 if __name__ == "__main__":

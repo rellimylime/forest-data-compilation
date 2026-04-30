@@ -2,23 +2,20 @@
 # fia_data_dashboard.py
 # FIA Compiled Data Explorer — Streamlit dashboard
 #
-# NOTE: This dashboard has been superseded by the unified repository dashboard.
+# Standalone FIA-focused explorer. Visualizes all processed parquets from the
+# 05_fia pipeline in one place. For the full cross-dataset pipeline overview
+# (IDS + climate + FIA together), see the unified dashboard:
 #
-#   NEW: streamlit run docs/dashboard/app.py
-#
-# The FIA content is now in docs/dashboard/pages/3_FIA_Forest.py
-# and integrates with IDS survey, all climate datasets, and architecture docs.
-# This file is kept for reference but is no longer the primary entrypoint.
-# ==============================================================================
+#   streamlit run docs/dashboard/app.py
 #
 # Visualizes the processed parquets produced by the 05_fia pipeline:
-#   plot_tree_metrics.parquet       — BA, diversity, size class, canopy layer
+#   plot_tree_metrics.parquet        — BA, diversity, size class, canopy layer
 #   plot_disturbance_history.parquet — fire/insect/disease disturbance events
-#   plot_damage_agents.parquet      — specific insect/disease agent codes
-#   plot_mortality_metrics.parquet  — natural and harvest mortality by agent
-#   plot_seedling_metrics.parquet   — seedling regeneration by species group
+#   plot_damage_agents.parquet       — specific insect/disease agent codes
+#   plot_mortality_metrics.parquet   — natural and harvest mortality by agent
+#   plot_seedling_metrics.parquet    — seedling regeneration by species group
 #
-# Usage (legacy):
+# Usage:
 #   streamlit run 05_fia/docs/fia_data_dashboard.py
 #
 # Data directory is set via the sidebar or FIA_DATA_DIR environment variable.
