@@ -36,6 +36,7 @@ library(fs)
 library(glue)
 library(data.table)
 library(arrow)
+library(tibble)
 
 # ------------------------------------------------------------------------------
 # Setup
