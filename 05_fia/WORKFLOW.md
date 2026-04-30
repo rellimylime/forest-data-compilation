@@ -225,7 +225,6 @@ One row per **condition × treatment slot** where TRTCD ≠ 0. Mirrors `plot_dis
 
 **Inputs:**
 - `data/processed/site_climate/all_site_locations.csv`: site_id, latitude, longitude, source
-- TerraClimate pixel_values parquets (reference raster reconstructed from these)
 - GEE credentials (`local/user_config.yaml`)
 
 **Outputs:**
@@ -248,7 +247,7 @@ One row per **condition × treatment slot** where TRTCD ≠ 0. Mirrors `plot_dis
 
 **Processing:**
 1. `st_as_sf()` converts lat/lon to sf POINT object
-2. `build_pixel_map()` (from `scripts/utils/climate_extract.R`) finds containing TerraClimate pixel for each site using `terra::cellFromXY()`; coverage_fraction = 1.0 for all points
+2. A global TerraClimate raster (`rast(-180, 180, -90, 90, res=1/24°)`) is constructed in memory; `terra::cellFromXY()` snaps each site to its containing pixel. `pixel_id` is the global cell number — identical to the ID `extract_climate_from_gee()` embeds in its output — so the consolidation join is unambiguous. `coverage_fraction = 1.0` for all points.
 3. `extract_climate_from_gee()` extracts 1958–present from `IDAHO_EPSCOR/TERRACLIMATE` GEE asset
 4. Annual parquets consolidated, joined to site_id, pivoted to long format
 5. Water year added via `calendar_to_water_year()` from `scripts/utils/time_utils.R`
@@ -314,6 +313,7 @@ summaries/plot_exclusion_flags.parquet  <-------+---GEE (TerraClimate)
 | plot_exclusion_flags as separate parquet | Downstream analyses join this once per analysis rather than re-deriving filters from raw DSTRBCD/TRTCD; mirrors R4 staff recommendation to remove human-disturbed plots upfront | 2026-03 |
 | FIA site climate: 1958-present | TerraClimate begins in 1958 and FIA sites need the full historical record; IDS pixel_values (1997–) not reused because site pixel set is much smaller and a fresh GEE query is faster | 2026-03 |
 | def for CWD | TerraClimate's `def` band = PET − AET = climate water deficit (CWD); same concept as annual CWD used in disturbance risk models | 2026-03 |
+| Global TC raster for pixel snapping | `build_pixel_map()` with a region-limited `ref_rast` (reconstructed from IDS pixel_values extent) is unsafe for points outside that region — `cellFromXY()` returns garbage cell numbers that can coincidentally match unrelated pixel IDs, silently extracting data for the wrong locations. A global raster guarantees correct snapping for sites anywhere. See `cleaning_log.md` Issue #001. | 2026-03 |
 
 ---
 
