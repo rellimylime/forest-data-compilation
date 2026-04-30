@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from utils import apply_dark_css, metric_card
@@ -326,6 +327,178 @@ with tab_fia:
         with st.expander(f"**{step}: {title}**", expanded=True):
             st.markdown(description)
             st.caption(f"Script: `{script}`")
+
+    st.markdown("---")
+    st.subheader("What the pixel map makes possible")
+    st.markdown(
+        "The pixel map is the bridge between two otherwise separate datasets — "
+        "observation records on one side, gridded climate on the other. "
+        "Joining through it gives every observation a full climate history."
+    )
+    components.html("""<!DOCTYPE html><html><head><meta charset="utf-8">
+<style>
+  body { margin: 0; padding: 0; background: transparent;
+         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  .cd-outer { margin: 16px 0 8px; }
+
+  /* Top row: two worlds + bridge */
+  .cd-top { display: flex; align-items: stretch; gap: 0; }
+
+  .cd-world {
+    flex: 1; border-radius: 12px; padding: 20px 22px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .cd-world-obs {
+    background: #0d1f33; border: 1px solid #1f4080;
+  }
+  .cd-world-clim {
+    background: #1a1030; border: 1px solid #5a3fa0;
+  }
+  .cd-world-icon { font-size: 28px; margin-bottom: 2px; }
+  .cd-world-label {
+    font-size: 13px; font-weight: 700; letter-spacing: 0.3px;
+    margin-bottom: 4px;
+  }
+  .cd-obs-label  { color: #58a6ff; }
+  .cd-clim-label { color: #a371f7; }
+  .cd-world-sub  { font-size: 11px; color: #6e7681; margin-bottom: 8px; }
+
+  .cd-tag-row { display: flex; flex-wrap: wrap; gap: 5px; }
+  .cd-tag {
+    display: inline-block; padding: 3px 9px; border-radius: 20px;
+    font-size: 11px; font-family: monospace; line-height: 1.4;
+  }
+  .cd-tag-obs  { background: #0d2d5e; color: #79c0ff; }
+  .cd-tag-clim { background: #1a0d40; color: #c9a9f7; }
+  .cd-tag-dim  { background: #1c2128; color: #8b949e; }
+
+  /* Bridge */
+  .cd-bridge {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 0 18px; flex-shrink: 0; gap: 6px;
+  }
+  .cd-bridge-line {
+    width: 2px; height: 32px;
+    background: linear-gradient(to bottom, #1f4080, #5a3fa0);
+  }
+  .cd-bridge-pill {
+    background: #161b22; border: 1px solid #444d56;
+    border-radius: 20px; padding: 6px 14px;
+    text-align: center;
+  }
+  .cd-bridge-key { font-size: 18px; }
+  .cd-bridge-label {
+    font-size: 10px; color: #8b949e; font-family: monospace;
+    margin-top: 2px; white-space: nowrap;
+  }
+
+  /* Down arrow + result */
+  .cd-down {
+    text-align: center; padding: 14px 0 10px;
+    color: #444d56; font-size: 13px; letter-spacing: 0.5px;
+  }
+  .cd-down-arrow { font-size: 22px; color: #444d56; display: block; }
+
+  .cd-result {
+    background: #0d2018; border: 1px solid #1f5030;
+    border-radius: 12px; padding: 18px 22px;
+  }
+  .cd-result-label {
+    color: #3fb950; font-size: 13px; font-weight: 700; margin-bottom: 12px;
+  }
+  .cd-questions { display: flex; flex-direction: column; gap: 8px; }
+  .cd-q {
+    display: flex; align-items: baseline; gap: 10px;
+    font-size: 12px; color: #c9d1d9; line-height: 1.5;
+  }
+  .cd-q-bullet {
+    color: #3fb950; font-size: 14px; flex-shrink: 0; margin-top: 1px;
+  }
+  .cd-q-key {
+    font-family: monospace; font-size: 11px;
+    background: #0d3520; color: #56d364;
+    padding: 1px 6px; border-radius: 4px; margin-left: 4px;
+  }
+</style>
+
+<div class="cd-outer">
+
+  <!-- Two worlds connected by the pixel map -->
+  <div class="cd-top">
+
+    <div class="cd-world cd-world-obs">
+      <div class="cd-world-icon">🗺️🌲</div>
+      <div class="cd-world-label cd-obs-label">Observation Data</div>
+      <div class="cd-world-sub">IDS aerial surveys · FIA forest inventory</div>
+      <div class="cd-tag-row">
+        <span class="cd-tag cd-tag-obs">DAMAGE_AREA_ID</span>
+        <span class="cd-tag cd-tag-obs">site_id / PLT_CN</span>
+        <span class="cd-tag cd-tag-dim">DCA_CODE (e.g. MPB)</span>
+        <span class="cd-tag cd-tag-dim">HOST_CODE · acres</span>
+        <span class="cd-tag cd-tag-dim">survey_year · region</span>
+        <span class="cd-tag cd-tag-dim">species · basal area</span>
+        <span class="cd-tag cd-tag-dim">disturbance · mortality</span>
+      </div>
+    </div>
+
+    <div class="cd-bridge">
+      <div class="cd-bridge-line"></div>
+      <div class="cd-bridge-pill">
+        <div class="cd-bridge-key">🔑</div>
+        <div class="cd-bridge-label">pixel_map</div>
+        <div class="cd-bridge-label">obs_id ↔ pixel_id</div>
+      </div>
+      <div class="cd-bridge-line"></div>
+    </div>
+
+    <div class="cd-world cd-world-clim">
+      <div class="cd-world-icon">🌐</div>
+      <div class="cd-world-label cd-clim-label">Climate Data</div>
+      <div class="cd-world-sub">TerraClimate · Google Earth Engine · 4km · 1958–2024</div>
+      <div class="cd-tag-row">
+        <span class="cd-tag cd-tag-clim">pixel_id · year · month</span>
+        <span class="cd-tag cd-tag-dim">tmmx — max temp (°C)</span>
+        <span class="cd-tag cd-tag-dim">tmmn — min temp (°C)</span>
+        <span class="cd-tag cd-tag-dim">pr — precipitation (mm)</span>
+        <span class="cd-tag cd-tag-dim">def — water deficit (mm)</span>
+        <span class="cd-tag cd-tag-dim">pet · aet</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Arrow down -->
+  <div class="cd-down">
+    <span class="cd-down-arrow">↓</span>
+    join on obs_id + pixel_id → every observation now has a full climate history
+  </div>
+
+  <!-- What you can ask -->
+  <div class="cd-result">
+    <div class="cd-result-label">✦ Analysis-ready questions</div>
+    <div class="cd-questions">
+      <div class="cd-q">
+        <span class="cd-q-bullet">›</span>
+        <span>Did MPB outbreaks <span class="cd-q-key">DCA_CODE = 11006</span> follow years of elevated water deficit?</span>
+      </div>
+      <div class="cd-q">
+        <span class="cd-q-bullet">›</span>
+        <span>Which FIA plots experienced sustained heat stress before high tree mortality was recorded?</span>
+      </div>
+      <div class="cd-q">
+        <span class="cd-q-bullet">›</span>
+        <span>How does pre-outbreak climate differ between infested and non-infested damage areas in the same region and year?</span>
+      </div>
+      <div class="cd-q">
+        <span class="cd-q-bullet">›</span>
+        <span>Is there a drought lag — do deficit anomalies 1–3 years prior predict outbreak size <span class="cd-q-key">acres</span>?</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body></html>""", height=420)
 
     st.markdown("---")
     st.subheader("Water year convention")

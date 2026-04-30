@@ -230,6 +230,26 @@ st.dataframe(
 
 st.markdown("---")
 
+# ── QA / QC ───────────────────────────────────────────────────────────────────
+st.subheader("QA / QC")
+st.markdown(
+    "The repository includes a `testthat`-based suite that validates output schemas, "
+    "value ranges, key uniqueness, water year arithmetic, and pixel map correctness "
+    "across all five pipeline modules. See [`docs/TESTING.md`](docs/TESTING.md) for "
+    "what each test suite checks."
+)
+st.code(
+    "# Non-strict: skip missing outputs (good during development)\n"
+    "Rscript scripts/run_tests.R\n\n"
+    "# Strict: fail on missing outputs (use for release QA)\n"
+    "Rscript scripts/run_tests.R --strict\n\n"
+    "# Single module\n"
+    "Rscript scripts/run_tests.R 05_fia",
+    language="bash",
+)
+
+st.markdown("---")
+
 # ── Quick corpus stats ────────────────────────────────────────────────────────
 st.subheader("Quick Stats")
 c1, c2, c3, c4, c5 = st.columns(5)
