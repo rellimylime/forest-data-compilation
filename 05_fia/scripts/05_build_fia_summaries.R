@@ -791,7 +791,7 @@ if (file_exists(out_disturb_class)) {
     "DSTRBCD1", "DSTRBCD2", "DSTRBCD3", "DSTRBYR1", "DSTRBYR2", "DSTRBYR3",
     "TRTCD1", "TRTCD2", "TRTCD3", "TRTYR1", "TRTYR2", "TRTYR3",
     "has_any_recorded_disturbance", "has_any_treatment", "has_cutting_treatment",
-    "is_human_or_harvest", natural_flag_cols, "has_human_dist_condition",
+    "is_human_or_harvest", "has_crown_fire_condition", natural_flag_cols, "has_human_dist_condition",
     "has_unknown_other_condition", "n_natural_disturbance_classes",
     "is_multiple_natural_disturbance", "natural_disturbance_primary",
     "is_natural_disturbance", "disturbance_class_primary", "disturbance_class",
