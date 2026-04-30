@@ -100,8 +100,13 @@ for (st in states) {
     next
   }
 
+  # Collapse condition/subplot rows so each species contributes once to Shannon H.
+  species_seed <- seed_dt[, .(
+    treecount_total = sum(treecount_total, na.rm = TRUE)
+  ), by = .(PLT_CN, INVYR, SPCD, SFTWD_HRDWD)]
+
   # Rebuild the plot-level count, functional group, and richness metrics from species rows.
-  expected_totals <- seed_dt[, .(
+  expected_totals <- species_seed[, .(
     treecount_total_expected = sum(treecount_total, na.rm = TRUE),
     count_softwood_expected = sum(treecount_total[SFTWD_HRDWD == "S"], na.rm = TRUE),
     count_hardwood_expected = sum(treecount_total[SFTWD_HRDWD == "H"], na.rm = TRUE),
@@ -110,7 +115,7 @@ for (st in states) {
 
   # Recompute Shannon H from species counts to match the production summary logic.
   expected_shannon <- compute_shannon_h(
-    seed_dt,
+    species_seed,
     c("PLT_CN", "INVYR"),
     "treecount_total"
   )

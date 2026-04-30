@@ -23,6 +23,9 @@
 #   plot_condition_metadata.parquet
 #     - Condition metadata with stable plot IDs, forest type labels, and disturbance flags
 #
+#   plot_seedling_species.parquet
+#     - Species-level seedling composition joined to condition metadata
+#
 # Usage:
 #   Rscript 05_fia/scripts/05_build_fia_summaries.R
 #
@@ -84,6 +87,11 @@ compute_shannon_h <- function(dt, group_cols, value_col) {
 
   # Sum species contributions back to one diversity value per plot visit.
   dt[, .(shannon_h = sum(h_i, na.rm = TRUE)), by = group_cols]
+}
+
+# Sum optional fields while preserving NA when the whole field is unavailable.
+sum_or_na <- function(x) {
+  if (all(is.na(x))) NA_real_ else sum(x, na.rm = TRUE)
 }
 
 # ------------------------------------------------------------------------------
@@ -264,18 +272,26 @@ if (file_exists(out_seed_metrics)) {
       # Skip absent states during partial local runs.
       if (is.null(dt) || nrow(dt) == 0) next
 
-      # Count seedling species within each plot visit.
-      richness <- dt[, .(n_species_seedling = uniqueN(SPCD)), by = .(PLT_CN, INVYR)]
+      # Collapse condition/subplot records to one species row before diversity math.
+      species_seed <- dt[, .(
+        treecount_total = sum(treecount_total, na.rm = TRUE),
+        seedlings_tpa = if ("seedlings_tpa" %in% names(dt)) sum_or_na(seedlings_tpa) else NA_real_
+      ), by = .(PLT_CN, INVYR, SPCD, SFTWD_HRDWD)]
 
-      # Compute count-weighted Shannon diversity from seedling species counts.
-      shannon  <- compute_shannon_h(dt, c("PLT_CN", "INVYR"), "treecount_total")
+      # Count seedling species within each plot visit.
+      richness <- species_seed[, .(n_species_seedling = uniqueN(SPCD)), by = .(PLT_CN, INVYR)]
+
+      # Compute count-weighted Shannon diversity after collapsing duplicate species rows.
+      shannon  <- compute_shannon_h(species_seed, c("PLT_CN", "INVYR"), "treecount_total")
       setnames(shannon, "shannon_h", "shannon_h_count")
 
       # Sum total seedlings and broad functional group counts by plot visit.
-      totals <- dt[, .(treecount_total = sum(treecount_total, na.rm = TRUE),
-                        count_softwood  = sum(treecount_total[SFTWD_HRDWD == "S"], na.rm = TRUE),
-                        count_hardwood  = sum(treecount_total[SFTWD_HRDWD == "H"], na.rm = TRUE)),
-                    by = .(PLT_CN, INVYR)]
+      totals <- species_seed[, .(
+        treecount_total = sum(treecount_total, na.rm = TRUE),
+        seedlings_tpa = sum_or_na(seedlings_tpa),
+        count_softwood = sum(treecount_total[SFTWD_HRDWD == "S"], na.rm = TRUE),
+        count_hardwood = sum(treecount_total[SFTWD_HRDWD == "H"], na.rm = TRUE)
+      ), by = .(PLT_CN, INVYR)]
 
       # Merge totals, richness, and diversity to one plot-year seedling summary.
       result <- Reduce(function(a, b) merge(a, b, by = c("PLT_CN", "INVYR"), all = TRUE),
@@ -286,7 +302,7 @@ if (file_exists(out_seed_metrics)) {
       results[[i]] <- result
 
       # Drop state-level seedling intermediates before the next state.
-      rm(dt, totals, richness, shannon, result); gc(verbose = FALSE)
+      rm(dt, species_seed, totals, richness, shannon, result); gc(verbose = FALSE)
     }
 
     # Bind state summaries into the national plot-level seedling metrics table.
@@ -476,6 +492,90 @@ if (file_exists(out_cond_metadata)) {
 
     # Release the large condition metadata table before later summary steps run.
     gc(verbose = FALSE)
+  }
+}
+
+# ------------------------------------------------------------------------------
+# Step 4c: plot_seedling_species
+# Analysis-ready species-level seedlings joined to condition metadata.
+# ------------------------------------------------------------------------------
+
+cat("Step 4c: plot_seedling_species\n")
+out_seed_species <- file.path(out_dir, "plot_seedling_species.parquet")
+
+if (file_exists(out_seed_species)) {
+  cat(glue("  Already exists ({file_size(out_seed_species)}) - skipping\n\n"))
+} else if (!file_exists(out_cond_metadata)) {
+  cat("  plot_condition_metadata.parquet not found. Run Step 4b first.\n\n")
+} else {
+  # Open per-state seedling extracts lazily because this product starts from species rows.
+  seed_ds <- tryCatch(
+    open_dataset(here(proc_fia$seedlings$output_dir), partitioning = "state"),
+    error = function(e) NULL
+  )
+
+  if (is.null(seed_ds)) {
+    cat("  No seedling parquets found. Run 04_extract_seedlings_mortality.R first.\n\n")
+  } else {
+    # Require the refreshed seedling grain before building this analysis product.
+    missing_seed_cols <- setdiff(c("CONDID", "SUBP", "treecount_total"), names(seed_ds))
+    if (length(missing_seed_cols) > 0) {
+      cat(glue("  Seedling parquets missing: {paste(missing_seed_cols, collapse=', ')}\n"))
+      cat("  Re-run: Rscript 05_fia/scripts/04_extract_seedlings_mortality.R --force-seedlings\n\n")
+    } else {
+      # Keep seedling composition/count fields; condition metadata supplies plot identity.
+      seed_cols <- intersect(
+        c("PLT_CN", "INVYR", "CONDID", "SUBP", "SPCD",
+          "COMMON_NAME", "SCIENTIFIC_NAME", "GENUS", "SPECIES",
+          "SFTWD_HRDWD", "WOODLAND", "MAJOR_SPGRPCD", "JENKINS_SPGRPCD",
+          "treecount_total", "treecount_calc_total", "seedlings_tpa",
+          "n_seedling_records", "state"),
+        names(seed_ds)
+      )
+
+      # Collect the refreshed seedling product for the national condition join.
+      seed_species <- seed_ds |>
+        select(all_of(seed_cols)) |>
+        collect() |>
+        as.data.table()
+
+      # Read condition metadata columns needed for matching, filtering, and modeling.
+      cond_meta <- as.data.table(read_parquet(out_cond_metadata))
+      meta_cols <- intersect(
+        c("PLT_CN", "INVYR", "CONDID", "stable_plot_id",
+          "STATECD", "UNITCD", "COUNTYCD", "PLOT", "PREV_PLT_CN",
+          "LAT", "LON", "ELEV", "FORTYPCD", "forest_type_label",
+          "forest_type_group", "COND_STATUS_CD", "CONDPROP_UNADJ",
+          "pct_forested", "is_forested_condition",
+          "has_fire_condition", "has_crown_fire_condition",
+          "has_insect_condition", "has_disease_condition",
+          "has_wind_condition", "has_drought_condition",
+          "has_human_dist_condition", "has_cutting_treatment"),
+        names(cond_meta)
+      )
+      cond_meta <- cond_meta[, ..meta_cols]
+
+      # Join seedlings to their exact FIA condition so disturbance and forest type match.
+      seed_species <- merge(
+        seed_species, cond_meta,
+        by = c("PLT_CN", "INVYR", "CONDID"),
+        all.x = TRUE
+      )
+
+      # Report unmatched rows because missing condition joins would break inference.
+      n_missing_meta <- sum(is.na(seed_species$stable_plot_id))
+      if (n_missing_meta > 0) {
+        cat(glue("  Warning: {format(n_missing_meta, big.mark=',')} seedling rows lack condition metadata\n"))
+      }
+
+      # Write one national species-level recruitment product for thermophilization analyses.
+      write_parquet(as_tibble(seed_species), out_seed_species, compression = "snappy")
+      cat(glue("  plot_seedling_species: {format(nrow(seed_species), big.mark=',')} rows -> ",
+               "{file_size(out_seed_species)}\n\n"))
+
+      rm(seed_species, cond_meta)
+      gc(verbose = FALSE)
+    }
   }
 }
 
@@ -899,11 +999,13 @@ if (file_exists(out_excl_flags)) {
 cat("FIA summaries complete.\n\n")
 cat("Outputs:\n")
 for (f in c(out_tree_metrics, out_seed_metrics, out_mort_metrics,
-            out_cond_metrics, out_cond_metadata, out_disturb, out_damage_ag, out_excl_flags)) {
+            out_cond_metrics, out_cond_metadata, out_seed_species,
+            out_disturb, out_damage_ag, out_excl_flags)) {
   if (file_exists(f)) cat(glue("  {basename(f)}: {file_size(f)}\n"))
 }
 cat("\nRead with:\n")
 cat("  arrow::read_parquet('05_fia/data/processed/summaries/plot_tree_metrics.parquet')\n")
+cat("  arrow::read_parquet('05_fia/data/processed/summaries/plot_seedling_species.parquet')\n")
 cat("  arrow::read_parquet('05_fia/data/processed/summaries/plot_disturbance_history.parquet')\n")
 cat("  arrow::read_parquet('05_fia/data/processed/summaries/plot_damage_agents.parquet')\n")
 cat("  arrow::read_parquet('05_fia/data/processed/summaries/plot_exclusion_flags.parquet')\n")
