@@ -608,10 +608,12 @@ Tasks:
 - Classify condition-level disturbance and treatment fields.
 - Flag fire, crown fire, insect, disease, wind, drought, human disturbance, and harvest.
 - Create control eligibility flags.
+- Write `05_fia/data/processed/summaries/plot_disturbance_classification.parquet`.
 
 Expected outcome:
 
 - The same disturbance definitions are used in all analyses and figures.
+- Controls are explicitly defined as forested, untreated, and unimpacted plot conditions.
 
 ### Phase 5. Build Species Climate-Affinity Traits
 
