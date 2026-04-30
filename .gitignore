@@ -1,4 +1,4 @@
-# History files
+﻿# History files
 .Rhistory
 .Rapp.history
 
@@ -58,24 +58,30 @@ po/*~
 # RStudio Connect folder
 rsconnect/
 
-# Data folder (raw and intermediate processed files)
-**/data/
-!05_fia/data/
+# Data folders: keep the directory skeleton via .gitkeep, but ignore bulk data.
+**/data/**
+!**/data/**/
+!**/data/**/.gitkeep
 
 # FIA raw CSVs too large for GitHub (TREE tables are 100MB-840MB per state)
 05_fia/data/raw/**/*_TREE.csv
 05_fia/data/raw/**/*_TREE_GRM_COMPONENT.csv
 
-# Processed outputs (cross-dataset derived products)
-processed/
-!05_fia/data/processed/
-05_fia/data/processed/*
+# FIA processed outputs: keep directory skeletons, track selected review files.
+05_fia/data/processed/**
+!05_fia/data/processed/**/
+!05_fia/data/processed/**/.gitkeep
 !05_fia/data/processed/summaries/
 !05_fia/data/processed/summaries/*.parquet
 !05_fia/data/processed/site_climate/
-05_fia/data/processed/site_climate/*
+!05_fia/data/processed/site_climate/all_site_locations.csv
 !05_fia/data/processed/site_climate/site_pixel_map.parquet
 !05_fia/data/processed/site_climate/site_climate.parquet
+
+# Processed outputs (cross-dataset derived products)
+processed/**
+!processed/**/
+!processed/**/.gitkeep
 
 # Large binary file types (safety net for files outside data/ dirs)
 *.nc
@@ -91,4 +97,6 @@ local/
 meeting.md
 
 # Claude settings
-.claude/*
+.claude/
+
+email-re-FIA.pdf

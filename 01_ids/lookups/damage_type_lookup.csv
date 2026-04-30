@@ -14,5 +14,6 @@ DAMAGE_TYPE_CODE,DAMAGE_TYPE
 12,Defoliation < 50% of leaves defoliated
 13,Defoliation 50-75% of leaves defoliated
 14,Defoliation > 75% of leaves defoliated
+16,Mortality and Crown Dieback
 18,Other Damage (known)
 19,Unknown Damage

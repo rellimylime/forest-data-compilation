@@ -1,6 +1,8 @@
 # PRISM Climate Data: Technical Reference
 
-**For quick-start guide and usage examples, see README.txt**
+**Navigation:** [Repo Home](../README.md) | [Docs Hub](../docs/README.md) | [Setup](../scripts/SETUP.md) | [Reproduce](../docs/REPRODUCE.md) | [Pipeline Map](../docs/PIPELINE_MAP.md) | [Data Products](../docs/DATA_PRODUCTS.md) | [PRISM README](README.md) | [Scripts](scripts/)
+
+For a quick-start guide and directory overview, see **README.md**.
 
 This document covers PRISM-specific technical details. For the shared pixel decomposition architecture, workflow steps, and data schemas, see **[`docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md)**.
 
@@ -56,7 +58,7 @@ All values are delivered in physical units by the web service - no scale factors
 
 ## Script Details
 
-### 01_build_pixel_maps.R
+### [01_build_pixel_maps.R](scripts/01_build_pixel_maps.R)
 **PRISM-Specific Behavior:**
 - Filters IDS observations to CONUS only (regions 1-6, 8, 9)
 - Excludes Region 10 (Alaska) and Hawaii observations
@@ -69,7 +71,7 @@ All values are delivered in physical units by the web service - no scale factors
 
 ---
 
-### 02_extract_prism.R
+### [02_extract_prism.R](scripts/02_extract_prism.R)
 **PRISM-Specific Behavior:**
 - Downloads each month's zip from services.nacse.org, extracts with terra::extract(), deletes immediately
 - One parquet per year saved to pixel_values/; safe to interrupt and resume (completed years skipped)
@@ -166,3 +168,12 @@ For detailed workflow architecture, see [`docs/ARCHITECTURE.md`](../docs/ARCHITE
 ### Download failures
 **Cause:** Network interruption or PRISM server error.
 **Solution:** The script catches errors per-variable and stores NA; failed downloads are logged as WARNings. Re-run the script - completed years are skipped automatically.
+
+---
+
+## See also
+
+- [PRISM README](README.md)
+- [Shared architecture](../docs/ARCHITECTURE.md)
+- [Repo reproduction guide](../docs/REPRODUCE.md)
+- [Data products](../docs/DATA_PRODUCTS.md)

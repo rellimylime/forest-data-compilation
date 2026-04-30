@@ -170,6 +170,22 @@ st.markdown(
     "Use the **sidebar** to navigate to each section."
 )
 
+st.info(
+    "If you are new to the repo, start with the `Architecture` page in the sidebar. "
+    "It gives the simplest guided view of the workflows before you dive into the data pages."
+)
+
+st.markdown(
+    """
+    **Suggested order in this dashboard**
+
+    1. `Architecture` for the big picture.
+    2. `IDS Survey`, `Climate`, or `FIA Forest` for workstream-specific details.
+    3. `Data Catalog` for exact file paths, schemas, and load examples.
+    4. Use the repo docs when you need run order or deeper script-by-script detail.
+    """
+)
+
 st.markdown("---")
 
 # ── Data inventory ────────────────────────────────────────────────────────────

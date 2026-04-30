@@ -1,5 +1,12 @@
 # FIA Data Pipeline - Technical Workflow
 
+**Navigation:** [Repo Home](../README.md) | [Docs Hub](../docs/README.md) | [Setup](../scripts/SETUP.md) | [Reproduce](../docs/REPRODUCE.md) | [Pipeline Map](../docs/PIPELINE_MAP.md) | [Data Products](../docs/DATA_PRODUCTS.md) | [FIA README](README.md) | [Scripts](scripts/)
+
+For a quick-start guide and directory overview, see **README.md**.
+This document covers per-script technical details, data flow, usage examples, and field references.
+
+---
+
 ## Status
 
 - [ ] Download FIA CSVs by state (`01_download_fia.R`)
@@ -35,7 +42,7 @@ trees gives per-acre basal area without needing to know subplot areas directly.
 
 ## Script Details
 
-### 01_download_fia.R
+### [01_download_fia.R](scripts/01_download_fia.R)
 
 **Inputs:** `config.raw.fia.states`, `config.raw.fia.tables_required`
 
@@ -52,7 +59,7 @@ trees gives per-acre basal area without needing to know subplot areas directly.
 
 ---
 
-### 02_inspect_fia.R
+### [02_inspect_fia.R](scripts/02_inspect_fia.R)
 
 **Inputs:** `data/raw/REF/REF_SPECIES.csv`, `data/raw/REF/REF_FOREST_TYPE.csv`, sample of state CSVs
 
@@ -68,7 +75,7 @@ trees gives per-acre basal area without needing to know subplot areas directly.
 
 ---
 
-### 03_extract_trees.R
+### [03_extract_trees.R](scripts/03_extract_trees.R)
 
 **Inputs:** `data/raw/{ST}/{ST}_TREE.csv`, `data/raw/{ST}/{ST}_PLOT.csv`, `data/raw/{ST}/{ST}_COND.csv`, `lookups/ref_species.parquet`
 
@@ -101,7 +108,7 @@ trees gives per-acre basal area without needing to know subplot areas directly.
 
 ---
 
-### 04_extract_seedlings_mortality.R
+### [04_extract_seedlings_mortality.R](scripts/04_extract_seedlings_mortality.R)
 
 **Inputs:**
 - `data/raw/{ST}/{ST}_SEEDLING.csv`
@@ -119,6 +126,8 @@ trees gives per-acre basal area without needing to know subplot areas directly.
 - Aggregated: `treecount_total = sum(TREECOUNT)` by `[PLT_CN, INVYR, SPCD, SFTWD_HRDWD]`
 - No per-acre expansion stored (microplot-to-acre conversion can be applied at analysis time)
 
+**Important for thermophilization work:** this per-state seedling product preserves species identity through `SPCD`. Species identity is dropped only later when `05_build_fia_summaries.R` creates the compact plot-year summary `plot_seedling_metrics.parquet`. Use the per-state `seedlings_{ST}.parquet` products for recruitment composition and the plot summary only for total seedling count, richness, and Shannon diversity.
+
 **TREE_GRM_COMPONENT processing:**
 - Filter: `MICR_COMPONENT_AL_FOREST IN ('MORTALITY1','MORTALITY2','CUT1','CUT2')`
 - Filter: `MICR_TPAMORT_UNADJ_AL_FOREST > 0` and not NA
@@ -130,11 +139,11 @@ trees gives per-acre basal area without needing to know subplot areas directly.
 
 ---
 
-### 05_build_fia_summaries.R
+### [05_build_fia_summaries.R](scripts/05_build_fia_summaries.R)
 
 **Inputs:** Per-state partitioned parquets from scripts 03 and 04
 
-**Outputs:** `data/processed/summaries/` (6 national parquet files)
+**Outputs:** `data/processed/summaries/` (8 national parquet files)
 
 **Processing:**
 - Uses `open_dataset(..., partitioning="state")` to read partitioned parquets lazily
@@ -221,7 +230,7 @@ One row per **condition × treatment slot** where TRTCD ≠ 0. Mirrors `plot_dis
 
 ---
 
-### 06_extract_site_climate.R
+### [06_extract_site_climate.R](scripts/06_extract_site_climate.R)
 
 **Inputs:**
 - `data/processed/site_climate/all_site_locations.csv`: site_id, latitude, longitude, source
@@ -346,6 +355,91 @@ Key fields confirmed from User Guide v9.4 (see `docs/FIADB_field_reference.md` f
 
 ---
 
+## Usage Examples
+
+### Load Plot Summaries
+
+```r
+library(arrow)
+library(dplyr)
+
+# All states at once (lazy, partitioned by state)
+trees_ds <- open_dataset("05_fia/data/processed/trees", partitioning = "state")
+
+# Filter to one state
+co_trees <- trees_ds |> filter(state == "CO") |> collect()
+
+# Final plot-level metrics
+metrics <- read_parquet("05_fia/data/processed/summaries/plot_tree_metrics.parquet")
+
+# Species lookup
+ref_sp <- read_parquet("05_fia/lookups/ref_species.parquet")
+```
+
+---
+
+### Filter to Forested, Undisturbed Plots
+
+FIA samples all US land — ~59% of plot×year rows have `pct_forested == 0`. Always filter to forested plots first before applying disturbance exclusions.
+
+```r
+flags <- read_parquet("05_fia/data/processed/summaries/plot_exclusion_flags.parquet")
+
+# Primary gate: forested plots only
+# Then apply standard clean-plot filter (no non-forest, human disturbance, or harvest)
+forested_clean <- flags |> filter(pct_forested >= 0.5, !exclude_any)
+metrics_clean  <- metrics |> inner_join(forested_clean, by = c("PLT_CN", "INVYR"))
+
+# Positive filter: plots that burned
+metrics_fire   <- metrics |> inner_join(flags |> filter(has_fire), by = c("PLT_CN", "INVYR"))
+
+# Positive filter: plots with insect damage
+metrics_insect <- metrics |> inner_join(flags |> filter(has_insect), by = c("PLT_CN", "INVYR"))
+```
+
+**Key disturbance codes (COND.DSTRBCD):**
+
+| Code | Meaning |
+|------|---------|
+| 10–12 | Insect damage (general, understory, trees) |
+| 30–32 | Fire (general, ground, crown) |
+| 80 | Human-induced (logging, development, clearing) |
+| COND_STATUS_CD = 1 | Forested condition (keep) |
+
+---
+
+### Validate Seedling Products
+
+```r
+# From repo root
+Rscript 05_fia/scripts/qc/validate_seedling_products.R
+```
+
+**3. Run It**
+From repo root:
+
+```powershell
+& 'C:\Program Files\R\R-4.5.1\bin\Rscript.exe' 05_fia/scripts/qc/validate_seedling_products.R
+```
+
+---
+
+### Get Site-Level Climate Data
+
+```r
+library(arrow); library(dplyr)
+clim <- read_parquet("05_fia/data/processed/site_climate/site_climate.parquet")
+
+# Annual water-year precipitation per site
+clim |> filter(variable == "pr") |>
+  group_by(site_id, water_year) |>
+  summarise(precip_mm = sum(value, na.rm = TRUE))
+
+# All 6 variables: tmmx, tmmn, pr, def (CWD), pet, aet
+```
+
+---
+
 ## Connection to IDS+Climate Workstream
 
 FIA plots and IDS damage areas share geographic space but use different spatial
@@ -382,3 +476,12 @@ identifiers. Potential linkage approaches:
 - `fread(select=cols)` minimizes memory by only reading needed columns
 - `gc()` after each state should release memory
 - If still failing, process large states separately: `Rscript 03_extract_trees.R TX`
+
+---
+
+## See also
+
+- [FIA README](README.md)
+- [Repo reproduction guide](../docs/REPRODUCE.md)
+- [Data products](../docs/DATA_PRODUCTS.md)
+- [Shared architecture](../docs/ARCHITECTURE.md)

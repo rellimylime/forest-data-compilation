@@ -1,6 +1,6 @@
 # ==============================================================================
 # pages/4_Architecture.py
-# Pixel Decomposition Architecture — pipeline flow and comparison
+# Repository architecture explorer
 # ==============================================================================
 
 import sys
@@ -13,268 +13,281 @@ import streamlit.components.v1 as components
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from utils import apply_dark_css, metric_card
 
-st.set_page_config(page_title="Architecture", page_icon="🔗", layout="wide")
+
+st.set_page_config(page_title="Architecture", page_icon="🧭", layout="wide")
 apply_dark_css()
 
-st.title("🔗 Pipeline Architecture")
-st.markdown(
-    "Both the **IDS aerial survey** and **FIA forest inventory** pipelines extract climate "
-    "using the same core pattern: map observations to raster pixels, extract climate values "
-    "once per unique pixel, then join back. The only difference is how observations map to pixels."
-)
 
-# ==============================================================================
-# PIPELINE FLOW DIAGRAM — HTML table
-# ==============================================================================
-
-PIPELINE_HTML = """
+PAGE_CSS = """
 <style>
-  .pipe-wrap { padding: 4px 0 16px; }
-  .pipe-table { width: 100%; border-collapse: separate; border-spacing: 10px 8px; table-layout: fixed; }
-  .pipe-hdr {
-    text-align: center; padding: 5px 8px;
-    background: #21262d; border-radius: 6px;
-    color: #8b949e; font-size: 10px; font-weight: 700;
-    letter-spacing: 1.5px; text-transform: uppercase;
+  .arch-intro {
+    background: linear-gradient(135deg, #161b22 0%, #1b2430 100%);
+    border: 1px solid #30363d;
+    border-radius: 14px;
+    padding: 18px 20px 16px;
+    margin-bottom: 18px;
   }
-  .pipe-arrow { text-align: center; color: #444d56; font-size: 22px; vertical-align: middle; width: 32px; }
-  /* IDS track — blue */
-  .box-ids {
-    background: #0d1f33; border: 1px solid #1f4080; border-radius: 10px;
-    padding: 14px 16px; color: #ddd; vertical-align: top;
+  .arch-intro p {
+    margin: 0;
+    color: #c9d1d9;
+    line-height: 1.6;
   }
-  .box-ids .track-label { color: #58a6ff; font-weight: 700; font-size: 13px; margin-bottom: 6px; }
-  /* FIA track — green */
-  .box-fia {
-    background: #0d2018; border: 1px solid #1f5030; border-radius: 10px;
-    padding: 14px 16px; color: #ddd; vertical-align: top;
+  .arch-note {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-left: 4px solid #58a6ff;
+    border-radius: 10px;
+    padding: 12px 14px;
+    color: #c9d1d9;
+    margin: 10px 0 16px;
   }
-  .box-fia .track-label { color: #3fb950; font-weight: 700; font-size: 13px; margin-bottom: 6px; }
-  /* Shared TerraClimate — purple, spans both tracks */
-  .box-tc {
-    background: #1a1030; border: 1px solid #5a3fa0; border-radius: 10px;
-    padding: 14px 16px; color: #ddd; vertical-align: middle; text-align: center;
+  .arch-flow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 10px;
+    margin: 10px 0 18px;
   }
-  .box-tc .track-label { color: #a371f7; font-weight: 700; font-size: 13px; margin-bottom: 8px; }
-  /* Detail text */
-  .box-detail { font-size: 12px; line-height: 1.6; color: #c9d1d9; }
-  .box-filename { margin-top: 8px; font-size: 11px; color: #8b949e; font-family: monospace; }
-  .box-method {
-    display: inline-block; margin-top: 6px;
-    padding: 2px 8px; border-radius: 12px;
-    font-size: 11px; font-family: monospace; font-weight: 600;
+  .arch-card {
+    flex: 1 1 200px;
+    min-width: 180px;
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 12px;
+    padding: 14px 14px 12px;
+    overflow-wrap: anywhere;
   }
-  .method-ids { background: #0d2d5e; color: #79c0ff; }
-  .method-fia { background: #0d3520; color: #56d364; }
-  /* Separator row */
-  .pipe-sep { height: 4px; background: transparent; }
-  /* Insight box */
-  .insight {
-    margin-top: 8px; padding: 12px 16px;
-    background: #161b22; border-left: 3px solid #a371f7;
-    border-radius: 0 8px 8px 0; font-size: 13px; color: #c9d1d9; line-height: 1.6;
+  .arch-card.blue { border-color: #1f6feb; background: #111c2f; }
+  .arch-card.green { border-color: #2ea043; background: #10241b; }
+  .arch-card.purple { border-color: #8957e5; background: #1b1430; }
+  .arch-card.gold { border-color: #d29922; background: #2a2110; }
+  .arch-card.gray { border-color: #57606a; background: #1b2128; }
+  .arch-step {
+    display: inline-block;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: #8b949e;
+    margin-bottom: 8px;
   }
-  .insight strong { color: #a371f7; }
-  /* Step number badge */
-  .step-badge {
-    display: inline-block; width: 20px; height: 20px; line-height: 20px;
-    background: #30363d; border-radius: 50%; text-align: center;
-    font-size: 11px; font-weight: 700; color: #8b949e;
-    margin-right: 6px; vertical-align: middle;
+  .arch-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #f0f6fc;
+    margin-bottom: 6px;
+  }
+  .arch-body {
+    font-size: 13px;
+    line-height: 1.55;
+    color: #c9d1d9;
+  }
+  .arch-arrow {
+    flex: 0 0 auto;
+    align-self: center;
+    color: #8b949e;
+    font-size: 22px;
+    padding: 0 2px;
+  }
+  .arch-pill {
+    display: inline-block;
+    margin-top: 8px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: #21262d;
+    border: 1px solid #30363d;
+    color: #8b949e;
+    font-size: 11px;
+  }
+  .arch-mini-card {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 12px;
+    padding: 14px;
+    height: 100%;
+  }
+  .arch-nav-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin: 10px 0 18px;
+  }
+  .arch-nav-card {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 12px;
+    padding: 14px;
+  }
+  .arch-nav-card h4 {
+    margin: 0 0 8px;
+    font-size: 15px;
+    color: #f0f6fc;
+  }
+  .arch-nav-card p {
+    margin: 0;
+    color: #c9d1d9;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+  .arch-mini-card h4 {
+    margin: 0 0 8px;
+    font-size: 15px;
+    color: #f0f6fc;
+  }
+  .arch-mini-card p, .arch-mini-card li {
+    color: #c9d1d9;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+  .arch-mini-card ul {
+    margin: 0;
+    padding-left: 18px;
+  }
+  .arch-caption {
+    color: #8b949e;
+    font-size: 12px;
+    margin-top: -6px;
+    margin-bottom: 12px;
+  }
+  @media (max-width: 960px) {
+    .arch-nav-grid {
+      grid-template-columns: 1fr;
+    }
   }
 </style>
-
-<div class="pipe-wrap">
-<table class="pipe-table">
-  <!-- Header row -->
-  <tr>
-    <th class="pipe-hdr">① Source Observations</th>
-    <th class="pipe-arrow"></th>
-    <th class="pipe-hdr">② Pixel Map</th>
-    <th class="pipe-arrow"></th>
-    <th class="pipe-hdr">③ Climate Extraction</th>
-    <th class="pipe-arrow"></th>
-    <th class="pipe-hdr">④ Analysis-Ready Output</th>
-  </tr>
-
-  <!-- IDS track -->
-  <tr>
-    <td class="box-ids">
-      <div class="track-label">🗺️ IDS — Polygons</div>
-      <div class="box-detail">
-        <b>4.4M</b> damage areas<br>
-        1997–2024 · 10 FS regions<br>
-        DCA_CODE · HOST_CODE<br>
-        Irregular polygon shapes
-      </div>
-      <div class="box-filename">ids_layers_cleaned.gpkg<br>layer: damage_areas</div>
-    </td>
-    <td class="pipe-arrow">→</td>
-    <td class="box-ids">
-      <div class="track-label">Area-Weighted Pixel Map</div>
-      <div class="box-detail">
-        Each polygon overlaps <b>1–N</b> raster pixels<br>
-        <code style="background:#0d2d5e;padding:1px 4px;border-radius:3px;font-size:11px;">exact_extract()</code> computes<br>
-        <b>coverage_fraction</b> per pixel<br>
-        Deduplication across polygons
-      </div>
-      <span class="box-method method-ids">coverage_fraction: 0.0–1.0</span>
-      <div class="box-filename">damage_areas_pixel_map.parquet<br>DAMAGE_AREA_ID · pixel_id · coverage_fraction</div>
-    </td>
-    <td class="pipe-arrow">→</td>
-    <!-- TerraClimate spans IDS + FIA rows -->
-    <td class="box-tc" rowspan="3">
-      <div style="font-size:32px; margin-bottom:8px;">🌐</div>
-      <div class="track-label">TerraClimate<br>(Google Earth Engine)</div>
-      <div class="box-detail">
-        IDAHO_EPSCOR/TERRACLIMATE<br>
-        4 km global · monthly<br>
-        1958–2024<br>
-        14 variables<br><br>
-        <div style="background:#0f0a1f;border-radius:6px;padding:8px;margin-top:4px;">
-          <div style="color:#a371f7;font-size:11px;font-weight:700;margin-bottom:4px;">KEY EFFICIENCY</div>
-          <div style="font-size:11px;line-height:1.5;">Extract climate once per<br>
-          <b style="color:#e3c9ff;">unique pixel</b><br>
-          — not per observation.<br>
-          Many polygons/points<br>share the same 4km cell.</div>
-        </div>
-      </div>
-    </td>
-    <td class="pipe-arrow">→</td>
-    <td class="box-ids">
-      <div class="track-label">Climate Summaries</div>
-      <div class="box-detail">
-        <b>Area-weighted</b> mean:<br>
-        <code style="background:#0d2d5e;padding:1px 4px;border-radius:3px;font-size:11px;">Σ(value × frac) / Σ(frac)</code><br>
-        per damage area × month<br><br>
-        value_min · value_max<br>
-        n_pixels · sum_coverage_fraction
-      </div>
-      <div class="box-filename">processed/climate/terraclimate/<br>damage_areas_summaries/{var}.parquet<br>~10–140 GB per variable</div>
-    </td>
-  </tr>
-
-  <!-- Separator row (inside the rowspan) -->
-  <tr>
-    <td class="pipe-sep"></td>
-    <td></td>
-    <td class="pipe-sep"></td>
-    <td></td>
-    <!-- col 5 (TerraClimate) is spanned -->
-    <td></td>
-    <td class="pipe-sep"></td>
-  </tr>
-
-  <!-- FIA track -->
-  <tr>
-    <td class="box-fia">
-      <div class="track-label">🌲 FIA — Point Locations</div>
-      <div class="box-detail">
-        <b>6,956</b> FIA plot locations<br>
-        all 50 US states<br>
-        site_id · latitude · longitude<br>
-        Single point per plot
-      </div>
-      <div class="box-filename">05_fia/data/processed/site_climate/<br>all_site_locations.csv</div>
-    </td>
-    <td class="pipe-arrow">→</td>
-    <td class="box-fia">
-      <div class="track-label">Nearest-Centroid Pixel Map</div>
-      <div class="box-detail">
-        Each point maps to<br>
-        <b>exactly 1</b> raster pixel<br>
-        <code style="background:#0d3520;padding:1px 4px;border-radius:3px;font-size:11px;">cellFromXY()</code> finds<br>
-        nearest pixel centroid
-      </div>
-      <span class="box-method method-fia">coverage_fraction = 1.0 (always)</span>
-      <div class="box-filename">site_pixel_map.parquet<br>site_id · pixel_id · x · y</div>
-    </td>
-    <td class="pipe-arrow">→</td>
-    <!-- TerraClimate spanned from IDS row -->
-    <td class="pipe-arrow">→</td>
-    <td class="box-fia">
-      <div class="track-label">FIA Site Climate</div>
-      <div class="box-detail">
-        <b>Direct</b> pixel value<br>
-        (no area-weighting needed)<br>
-        per site × year × month<br><br>
-        + water_year · water_year_month
-      </div>
-      <div class="box-filename">site_climate.parquet<br>23.5M rows · 62 MB<br>6 vars · 1958–2024</div>
-    </td>
-  </tr>
-</table>
-
-<div class="insight">
-  <strong>Why pixel decomposition?</strong>
-  Rather than clipping rasters per observation (slow, and imprecise for large or irregular polygons),
-  both pipelines first map observations → pixels, then extract climate values once per
-  <em>unique pixel</em> and join back. With 4.4M IDS damage areas covering a finite set of
-  4km TerraClimate grid cells, deduplication provides an enormous speed and storage advantage.
-  The IDS and FIA pipelines use the <strong>same utility functions</strong>
-  (<code style="background:#21262d;padding:1px 5px;border-radius:3px;">build_pixel_map()</code>,
-  <code style="background:#21262d;padding:1px 5px;border-radius:3px;">extract_climate_from_gee()</code>
-  from <code style="background:#21262d;padding:1px 5px;border-radius:3px;">scripts/utils/climate_extract.R</code>)
-  — the only difference is the pixel-assignment method at Step ②.
-</div>
-</div>
 """
 
-st.markdown(PIPELINE_HTML, unsafe_allow_html=True)
 
-st.markdown("---")
+st.markdown(PAGE_CSS, unsafe_allow_html=True)
 
-# ==============================================================================
-# STEP-BY-STEP SECTIONS
-# ==============================================================================
 
-tab_ids, tab_fia, tab_comparison, tab_code = st.tabs([
-    "🗺️ IDS Pipeline Steps",
-    "🌲 FIA Pipeline Steps",
-    "⚖️ Side-by-Side Comparison",
-    "💻 Code Reference",
-])
+def flow_block(cards):
+    parts = ['<div class="arch-flow">']
+    for i, card in enumerate(cards):
+        parts.append(
+            f"""
+            <div class="arch-card {card['tone']}">
+              <div class="arch-step">{card['step']}</div>
+              <div class="arch-title">{card['title']}</div>
+              <div class="arch-body">{card['body']}</div>
+              {f"<div class='arch-pill'>{card['pill']}</div>" if card.get('pill') else ""}
+            </div>
+            """
+        )
+        if i < len(cards) - 1:
+            parts.append('<div class="arch-arrow">&rarr;</div>')
+    parts.append("</div>")
+    return "".join(parts)
 
-# ==============================================================================
-# IDS PIPELINE STEPS
-# ==============================================================================
-with tab_ids:
-    st.subheader("IDS Climate Extraction — Step by Step")
 
-    steps = [
-        ("Step 0", "Download + merge IDS geodatabases",
-         "10 regional `.gdb` files (one per FS region, 1997–2024) → merged + cleaned "
-         "into a single `ids_layers_cleaned.gpkg` with three layers: "
-         "`damage_areas` (4.4M polygons), `damage_points` (1.2M points), `surveyed_areas` (74.5K polygons).",
-         "`01_ids/scripts/01_download_ids.R` + `02_merge_clean_ids.R`"),
-        ("Step 1", "Build pixel maps",
-         "For each layer, use `exact_extract()` to find every TerraClimate 4km pixel that overlaps "
-         "each polygon, recording the `coverage_fraction` (0–1) for each polygon-pixel pair. "
-         "Output: `{layer}_pixel_map.parquet` with columns "
-         "`DAMAGE_AREA_ID · pixel_id · x · y · coverage_fraction`.",
-         "`02_terraclimate/scripts/02_build_pixel_maps.R`"),
-        ("Step 2", "Deduplicate pixels + extract climate via GEE",
-         "Collect all unique `pixel_id` values across all observations. "
-         "For each year, build a stacked GEE Image (6–14 variables × 12 months) and call "
-         "`.sampleRegions()` at the unique pixel centroids — far fewer requests than "
-         "one per observation. Output: `terraclimate_{year}.parquet` (wide, one row per pixel-month).",
-         "`02_terraclimate/scripts/03_extract_terraclimate.R`"),
-        ("Step 3", "Build area-weighted summaries",
-         "Join pixel climate values back through the pixel map to observations. "
-         "For each damage area × month, compute: "
-         "`weighted_mean = Σ(value × coverage_fraction) / Σ(coverage_fraction)` "
-         "plus `value_min`, `value_max`, `n_pixels`, `sum_coverage_fraction`. "
-         "Output: one `{variable}.parquet` per climate variable (~10–140 GB each).",
-         "`scripts/build_summaries.R` (shared utility, called per variable)"),
-    ]
+CLIMATE_OPTIONS = {
+    "TerraClimate": {
+        "tone": "purple",
+        "why": "Best when you want global coverage and the broadest climate variable set.",
+        "scripts": [
+            "02_terraclimate/scripts/01_build_pixel_maps.R",
+            "02_terraclimate/scripts/02_extract_terraclimate.R",
+            "scripts/build_climate_summaries.R terraclimate",
+        ],
+        "outputs": [
+            "02_terraclimate/data/processed/pixel_maps/",
+            "02_terraclimate/data/processed/pixel_values/",
+            "processed/climate/terraclimate/damage_areas_summaries/",
+        ],
+        "extraction": "Google Earth Engine extraction at unique TerraClimate pixels.",
+    },
+    "PRISM": {
+        "tone": "gold",
+        "why": "Best when you want high-resolution CONUS climate without using Google Earth Engine.",
+        "scripts": [
+            "03_prism/scripts/01_build_pixel_maps.R",
+            "03_prism/scripts/02_extract_prism.R",
+            "scripts/build_climate_summaries.R prism",
+        ],
+        "outputs": [
+            "03_prism/data/processed/pixel_maps/",
+            "03_prism/data/processed/pixel_values/",
+            "processed/climate/prism/damage_areas_summaries/",
+        ],
+        "extraction": "Download, extract, and discard monthly PRISM files from the web service.",
+    },
+    "WorldClim": {
+        "tone": "blue",
+        "why": "Best when you want global coverage from local GeoTIFF files instead of GEE.",
+        "scripts": [
+            "04_worldclim/scripts/01_download_worldclim.R",
+            "04_worldclim/scripts/02_build_pixel_maps.R",
+            "04_worldclim/scripts/03_extract_worldclim.R",
+            "scripts/build_climate_summaries.R worldclim",
+        ],
+        "outputs": [
+            "04_worldclim/data/raw/",
+            "04_worldclim/data/processed/pixel_maps/",
+            "04_worldclim/data/processed/pixel_values/",
+            "processed/climate/worldclim/damage_areas_summaries/",
+        ],
+        "extraction": "Read climate values from locally downloaded WorldClim GeoTIFFs.",
+    },
+}
 
-    for step, title, description, script in steps:
-        with st.expander(f"**{step}: {title}**", expanded=True):
-            st.markdown(description)
-            st.caption(f"Script: `{script}`")
 
-    st.markdown("---")
-    st.subheader("Why pixel decomposition?")
+st.title("Architecture Explorer")
+st.markdown(
+    """
+    <div class="arch-intro">
+      <p>
+        This page is meant to make the repository feel easier to understand at a glance.
+        Instead of one giant diagram, it breaks the architecture into a few calmer views:
+        what the two main workstreams are, where the climate branches split, what is shared,
+        and what the final outputs feed into.
+      </p>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+
+c1, c2, c3, c4 = st.columns(4)
+with c1:
+    st.markdown(metric_card("Main workstreams", "2", "IDS + climate and FIA"), unsafe_allow_html=True)
+with c2:
+    st.markdown(metric_card("Climate options", "3", "TerraClimate, PRISM, WorldClim"), unsafe_allow_html=True)
+with c3:
+    st.markdown(metric_card("Shared climate step", "1", "build_climate_summaries.R"), unsafe_allow_html=True)
+with c4:
+    st.markdown(metric_card("Main consumers", "2", "demo scripts and dashboard"), unsafe_allow_html=True)
+
+st.markdown(
+    """
+    <div class="arch-nav-grid">
+      <div class="arch-nav-card">
+        <h4>Start here</h4>
+        <p>Use this page for the calmest visual explanation of how the repo fits together.</p>
+      </div>
+      <div class="arch-nav-card">
+        <h4>Then choose a data page</h4>
+        <p>Use the sidebar to open <code>IDS Survey</code>, <code>Climate</code>, or <code>FIA Forest</code>.</p>
+      </div>
+      <div class="arch-nav-card">
+        <h4>Need exact file paths</h4>
+        <p>Open <code>Data Catalog</code> for output locations, schemas, and load examples.</p>
+      </div>
+      <div class="arch-nav-card">
+        <h4>Need deeper docs</h4>
+        <p>Use <code>README.md</code>, <code>docs/REPRODUCE.md</code>, and the workstream <code>WORKFLOW.md</code> files only when you want more detail.</p>
+      </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+
+tab_overview, tab_ids, tab_fia, tab_shared, tab_outputs = st.tabs(
+    ["Overview", "IDS + Climate", "FIA", "Shared Pieces", "Outputs"]
+)
+
+
+with tab_overview:
+    st.subheader("Start here")
     st.markdown(
         "| Concern | Naive (clip rasters per obs) | Pixel decomposition |\n"
         "|---------|------------------------------|---------------------|\n"
@@ -503,135 +516,346 @@ with tab_fia:
     st.markdown("---")
     st.subheader("Water year convention")
     st.markdown(
-        "All time series carry **both** calendar and water year columns:\n\n"
-        "- Water year runs **October → September**\n"
-        "- `water_year`: if `calendar_month ≥ 10` → `calendar_year + 1`, else `calendar_year`\n"
-        "- `water_year_month`: 1 = October, 2 = November, …, 12 = September\n\n"
-        "This allows analyses to use whichever time base is most appropriate "
-        "(calendar year for temperature; water year for precipitation, drought, and SWE)."
+        flow_block(
+            [
+                {
+                    "step": "Path A",
+                    "title": "IDS foundation",
+                    "body": "Download, inspect, clean, and organize the IDS layers that every climate workflow depends on.",
+                    "tone": "blue",
+                    "pill": "01_ids/",
+                },
+                {
+                    "step": "Path A",
+                    "title": "Choose climate dataset",
+                    "body": "Run TerraClimate, PRISM, and/or WorldClim depending on coverage and resolution needs.",
+                    "tone": "purple",
+                    "pill": "02_terraclimate/, 03_prism/, 04_worldclim/",
+                },
+                {
+                    "step": "Shared",
+                    "title": "Climate summaries",
+                    "body": "All climate branches end in the same summary builder for observation-level outputs.",
+                    "tone": "gold",
+                    "pill": "scripts/build_climate_summaries.R",
+                },
+                {
+                    "step": "Use",
+                    "title": "Analysis and exploration",
+                    "body": "Processed outputs feed demo scripts, documentation, and the rest of the dashboard.",
+                    "tone": "gray",
+                    "pill": "output/ and docs/dashboard/",
+                },
+            ]
+        ),
+        unsafe_allow_html=True,
     )
 
-# ==============================================================================
-# COMPARISON TABLE
-# ==============================================================================
-with tab_comparison:
-    st.subheader("IDS vs. FIA — Side by Side")
-
-    comp_data = [
-        ["Observation type",          "Polygon (damage area)",                      "Point (plot location)"],
-        ["n_observations",            "~4.4M damage areas",                         "6,956 FIA sites"],
-        ["Pixel assignment method",   "`exact_extract()` + `coverage_fraction`",    "`cellFromXY()` nearest centroid"],
-        ["coverage_fraction",         "Weighted, 0–1 per pixel",                    "Always 1.0 (single pixel)"],
-        ["Area-weighted mean",        "Required — polygons span multiple pixels",   "Not needed — direct pixel value"],
-        ["n_unique_pixels",           "Much smaller than n_obs × n_pixels_per_obs", "≤ 6,956 (one per site)"],
-        ["Climate source",            "TerraClimate, PRISM, WorldClim",             "TerraClimate only"],
-        ["Temporal range",            "1997–2024 (IDS survey era)",                 "1958–2024 (full TerraClimate record)"],
-        ["Output per variable",       "~10–140 GB parquet",                         "62 MB total (all 6 variables combined)"],
-        ["Output location",           "`processed/climate/{dataset}/damage_areas_summaries/`",
-                                      "`05_fia/data/processed/site_climate/`"],
-        ["Utility functions",         "`build_pixel_map()`, `extract_climate_from_gee()`",
-                                      "Same functions from `climate_extract.R`"],
-    ]
-    comp_df = pd.DataFrame(comp_data, columns=["Aspect", "IDS Pathway", "FIA Pathway"])
-    st.dataframe(comp_df, use_container_width=True, hide_index=True)
-
-    st.markdown("---")
-    st.subheader("Shared utility functions")
-    utils_data = [
-        ["`build_pixel_map()`",            "`scripts/utils/climate_extract.R`", "Both — maps observations to pixel_id"],
-        ["`extract_climate_from_gee()`",   "`scripts/utils/climate_extract.R`", "Both — pulls TerraClimate via GEE"],
-        ["`init_gee()`",                   "`scripts/utils/gee_utils.R`",       "Both — GEE auth + initialization"],
-        ["`calendar_to_water_year()`",     "`scripts/utils/time_utils.R`",      "Both — adds water_year columns"],
-        ["`load_config()`",                "`scripts/utils/load_config.R`",     "Both — reads config.yaml paths"],
-    ]
-    st.dataframe(
-        pd.DataFrame(utils_data, columns=["Function", "File", "Used by"]),
-        use_container_width=True, hide_index=True,
+    st.markdown(
+        flow_block(
+            [
+                {
+                    "step": "Path B",
+                    "title": "FIA downloads",
+                    "body": "Download FIA state tables and inspect their schema before heavy processing.",
+                    "tone": "green",
+                    "pill": "05_fia/scripts/01-02",
+                },
+                {
+                    "step": "Path B",
+                    "title": "State-level extracts",
+                    "body": "Build parquet partitions for trees, conditions, seedlings, and mortality.",
+                    "tone": "green",
+                    "pill": "05_fia/scripts/03-04",
+                },
+                {
+                    "step": "Path B",
+                    "title": "National summaries",
+                    "body": "Aggregate to plot-level FIA outputs used for forest structure, disturbance, and treatment analysis.",
+                    "tone": "green",
+                    "pill": "05_fia/scripts/05",
+                },
+                {
+                    "step": "Optional",
+                    "title": "Site climate",
+                    "body": "Optionally map FIA plot locations to TerraClimate pixels and extract long-term monthly climate.",
+                    "tone": "purple",
+                    "pill": "05_fia/scripts/06",
+                },
+            ]
+        ),
+        unsafe_allow_html=True,
     )
 
-# ==============================================================================
-# CODE REFERENCE
-# ==============================================================================
-with tab_code:
-    st.subheader("Reading large climate summaries efficiently (R)")
-    st.code(
-        'library(arrow); library(dplyr)\n\n'
-        '# DON\'T: read_parquet() loads the full 10-140 GB into memory\n'
-        '# DO:    open_dataset() creates a lazy Arrow reference\n'
-        'tmmx <- open_dataset("processed/climate/terraclimate/damage_areas_summaries/tmmx.parquet")\n\n'
-        '# Filter BEFORE collect() — only touched rows are scanned\n'
-        'mpb_summer <- tmmx |>\n'
-        '  filter(calendar_month %in% 6:8) |>\n'
-        '  collect()\n\n'
-        '# Join to IDS metadata via DAMAGE_AREA_ID\n'
-        'library(sf)\n'
-        'mpb <- st_read("01_ids/data/processed/ids_layers_cleaned.gpkg",\n'
-        '               layer = "damage_areas",\n'
-        '               query = "SELECT DAMAGE_AREA_ID FROM damage_areas WHERE DCA_CODE = 11006")\n'
-        'st_geometry(mpb) <- NULL\n\n'
-        'mpb_climate <- tmmx |>\n'
-        '  semi_join(mpb, by = "DAMAGE_AREA_ID", copy = TRUE) |>\n'
-        '  collect()',
-        language="r",
-    )
-
-    st.markdown("---")
-    st.subheader("Reading FIA site climate (R + Python)")
-    col1, col2 = st.columns(2)
-    with col1:
-        st.code(
-            'library(arrow); library(dplyr)\n\n'
-            'clim <- read_parquet(\n'
-            '  "05_fia/data/processed/site_climate/site_climate.parquet"\n'
-            ')\n\n'
-            '# Annual water-year precipitation per site\n'
-            'clim |>\n'
-            '  filter(variable == "pr") |>\n'
-            '  group_by(site_id, water_year) |>\n'
-            '  summarise(precip_mm = sum(value, na.rm = TRUE))\n\n'
-            '# Join to FIA tree metrics via site_id / PLT_CN\n'
-            '# (site_id maps to PLT_CN — see 06_extract_site_climate.R)',
-            language="r",
+    left, right = st.columns([1.1, 0.9])
+    with left:
+        st.markdown("#### What is shared")
+        st.markdown(
+            """
+            - The climate workstreams all use the same pixel-decomposition idea.
+            - The final climate summaries all come from one shared script.
+            - The dashboard and demo scripts consume the finished outputs in the same way.
+            """
         )
+    with right:
+        st.markdown("#### What changes between paths")
+        st.markdown(
+            """
+            - IDS starts with polygon survey data; FIA starts with plot tables.
+            - PRISM is CONUS-only, while TerraClimate and WorldClim are global.
+            - FIA site climate is optional and uses point locations instead of polygons.
+            """
+        )
+
+
+with tab_ids:
+    st.subheader("IDS plus climate")
+    st.caption("Pick one climate dataset to see the branch in a simpler form.")
+
+    dataset = st.selectbox("Climate dataset", list(CLIMATE_OPTIONS.keys()))
+    cfg = CLIMATE_OPTIONS[dataset]
+
+    st.markdown(
+        flow_block(
+            [
+                {
+                    "step": "1",
+                    "title": "IDS foundation",
+                    "body": "Clean IDS and build the core layers that all climate branches start from.",
+                    "tone": "blue",
+                    "pill": "01_ids/",
+                },
+                {
+                    "step": "2",
+                    "title": f"{dataset} extraction",
+                    "body": cfg["extraction"],
+                    "tone": cfg["tone"],
+                    "pill": dataset,
+                },
+                {
+                    "step": "3",
+                    "title": "Shared climate summaries",
+                    "body": "Join climate values back to observations and write final summary parquets.",
+                    "tone": "gold",
+                    "pill": "build_climate_summaries.R",
+                },
+                {
+                    "step": "4",
+                    "title": "Use outputs",
+                    "body": "Open the summaries in analysis code, demos, or the dashboard.",
+                    "tone": "gray",
+                    "pill": "processed/climate/",
+                },
+            ]
+        ),
+        unsafe_allow_html=True,
+    )
+
+    col1, col2 = st.columns([1.05, 0.95])
+    with col1:
+        st.markdown("#### When to choose this dataset")
+        st.markdown(cfg["why"])
+
+        st.markdown("#### Main scripts")
+        st.code("\n".join(cfg["scripts"]), language="text")
+
     with col2:
-        st.code(
-            'import pandas as pd\n\n'
-            'clim = pd.read_parquet(\n'
-            '    "05_fia/data/processed/site_climate/site_climate.parquet"\n'
-            ')\n\n'
-            '# Annual water-year precipitation per site\n'
-            'pr = clim[clim["variable"] == "pr"]\n'
-            'annual = (\n'
-            '    pr.groupby(["site_id", "water_year"])["value"]\n'
-            '    .sum()\n'
-            '    .reset_index()\n'
-            '    .rename(columns={"value": "precip_mm"})\n'
-            ')',
-            language="python",
-        )
+        st.markdown("#### Main output locations")
+        st.code("\n".join(cfg["outputs"]), language="text")
 
-    st.markdown("---")
-    st.subheader("Pixel map schemas")
-    col1, col2 = st.columns(2)
-    with col1:
-        st.caption("IDS pixel map (one row per polygon-pixel pair)")
+    st.markdown("#### What makes the climate architecture less repetitive")
+    compare_df = pd.DataFrame(
+        [
+            ["Naive approach", "Clip or extract climate separately for every observation."],
+            ["Pixel-decomposition approach", "Map observations to pixels first, then extract climate once per unique pixel."],
+            ["Main benefit", "Far less repeated extraction work and cleaner, reusable summary outputs."],
+        ],
+        columns=["Idea", "Meaning"],
+    )
+    st.dataframe(compare_df, use_container_width=True, hide_index=True)
+
+
+with tab_fia:
+    st.subheader("FIA pipeline")
+    st.markdown(
+        '<div class="arch-note">The core FIA path is straightforward: download tables, build state-level parquet extracts, then aggregate to national plot summaries. The site-climate branch is optional.</div>',
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        flow_block(
+            [
+                {
+                    "step": "1",
+                    "title": "Download FIA tables",
+                    "body": "Get state tables and national reference tables from FIA DataMart.",
+                    "tone": "green",
+                    "pill": "05_fia/scripts/01_download_fia.R",
+                },
+                {
+                    "step": "2",
+                    "title": "Inspect and build lookups",
+                    "body": "Check schema and write the species and forest-type lookup parquets.",
+                    "tone": "green",
+                    "pill": "05_fia/scripts/02_inspect_fia.R",
+                },
+                {
+                    "step": "3",
+                    "title": "Extract state tables",
+                    "body": "Build state-partitioned tree, condition, seedling, and mortality parquet outputs.",
+                    "tone": "green",
+                    "pill": "05_fia/scripts/03-04",
+                },
+                {
+                    "step": "4",
+                    "title": "Build national summaries",
+                    "body": "Aggregate the state outputs into the tracked FIA summary files used downstream.",
+                    "tone": "green",
+                    "pill": "05_fia/scripts/05_build_fia_summaries.R",
+                },
+            ]
+        ),
+        unsafe_allow_html=True,
+    )
+
+    left, right = st.columns(2)
+    with left:
+        st.markdown("#### Core FIA outputs")
         st.code(
-            '# damage_areas_pixel_map.parquet\n'
-            'DAMAGE_AREA_ID      large_string  # links to IDS gpkg\n'
-            'pixel_id            int64         # unique raster pixel\n'
-            'x                   float64       # pixel centroid lon (WGS84)\n'
-            'y                   float64       # pixel centroid lat (WGS84)\n'
-            'coverage_fraction   float64       # fraction of pixel in polygon (0–1)',
+            "\n".join(
+                [
+                    "05_fia/data/processed/summaries/plot_tree_metrics.parquet",
+                    "05_fia/data/processed/summaries/plot_seedling_metrics.parquet",
+                    "05_fia/data/processed/summaries/plot_mortality_metrics.parquet",
+                    "05_fia/data/processed/summaries/plot_disturbance_history.parquet",
+                    "05_fia/data/processed/summaries/plot_treatment_history.parquet",
+                    "05_fia/data/processed/summaries/plot_exclusion_flags.parquet",
+                ]
+            ),
             language="text",
         )
-    with col2:
-        st.caption("FIA site pixel map (one row per plot location)")
-        st.code(
-            '# site_pixel_map.parquet\n'
-            'site_id     str      # FIA plot identifier\n'
-            'pixel_id    int64    # same grid as IDS pixel maps\n'
-            'x           float64  # pixel centroid lon\n'
-            'y           float64  # pixel centroid lat\n'
-            '# coverage_fraction = 1.0 implicitly for all points',
-            language="text",
+    with right:
+        st.markdown("#### Optional site-climate branch")
+        st.markdown(
+            """
+            If you need climate at FIA plot locations:
+
+            - compile site coordinates
+            - map each site to one TerraClimate pixel
+            - extract monthly TerraClimate values
+            - write `site_pixel_map.parquet` and `site_climate.parquet`
+            """
+        )
+        st.code("05_fia/scripts/06_extract_site_climate.R", language="text")
+
+
+with tab_shared:
+    st.subheader("Shared pieces")
+    st.caption("These are the parts that tie the repo together across workstreams.")
+
+    a, b = st.columns(2)
+    with a:
+        st.markdown(
+            """
+            <div class="arch-mini-card">
+              <h4>Shared climate code</h4>
+              <ul>
+                <li><code>scripts/utils/climate_extract.R</code> handles pixel maps and extraction helpers.</li>
+                <li><code>scripts/utils/time_utils.R</code> keeps calendar and water-year handling consistent.</li>
+                <li><code>scripts/utils/gee_utils.R</code> centralizes Google Earth Engine setup.</li>
+                <li><code>scripts/build_climate_summaries.R</code> builds final observation summaries for all climate datasets.</li>
+              </ul>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    with b:
+        st.markdown(
+            """
+            <div class="arch-mini-card">
+              <h4>Shared documentation spine</h4>
+              <ul>
+                <li><code>README.md</code> is the front door.</li>
+                <li><code>docs/README.md</code> is the docs hub.</li>
+                <li><code>docs/REPRODUCE.md</code> gives exact run order.</li>
+                <li><code>docs/DATA_PRODUCTS.md</code> maps outputs to scripts.</li>
+              </ul>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    st.markdown("#### If you want to read the repo in a calm order")
+    read_order = pd.DataFrame(
+        [
+            ["1", "README.md", "Understand the two main workstreams and where to go next."],
+            ["2", "docs/REPRODUCE.md", "See the production run order without digging into code."],
+            ["3", "01_ids/README.md or 05_fia/README.md", "Choose the workstream you care about."],
+            ["4", "WORKFLOW.md in that directory", "Read the technical detail only after the overview makes sense."],
+            ["5", "scripts/ and docs/dashboard/", "Inspect implementation and outputs when you are ready."],
+        ],
+        columns=["Step", "Read", "Why"],
+    )
+    st.dataframe(read_order, use_container_width=True, hide_index=True)
+
+
+with tab_outputs:
+    st.subheader("Where the finished outputs go")
+
+    st.markdown(
+        flow_block(
+            [
+                {
+                    "step": "Finished",
+                    "title": "IDS outputs",
+                    "body": "Cleaned layers, matches, and area metrics.",
+                    "tone": "blue",
+                    "pill": "01_ids/data/processed/ and processed/ids/",
+                },
+                {
+                    "step": "Finished",
+                    "title": "Climate outputs",
+                    "body": "Final damage-area climate summaries for TerraClimate, PRISM, and/or WorldClim.",
+                    "tone": "purple",
+                    "pill": "processed/climate/",
+                },
+                {
+                    "step": "Finished",
+                    "title": "FIA outputs",
+                    "body": "Tracked plot-level summary parquets and optional site climate.",
+                    "tone": "green",
+                    "pill": "05_fia/data/processed/",
+                },
+                {
+                    "step": "Used by",
+                    "title": "Demos and dashboard",
+                    "body": "The repo's examples and the Streamlit dashboard read the finished outputs.",
+                    "tone": "gray",
+                    "pill": "output/ and docs/dashboard/",
+                },
+            ]
+        ),
+        unsafe_allow_html=True,
+    )
+
+    left, right = st.columns(2)
+    with left:
+        st.markdown("#### Consumers")
+        st.markdown(
+            """
+            - `scripts/demos/` for example analyses
+            - `docs/dashboard/` for interactive exploration
+            - downstream notebooks or analysis scripts that read parquet outputs
+            """
+        )
+    with right:
+        st.markdown("#### Standalone guide")
+        st.markdown(
+            """
+            If you still want a static architecture page outside Streamlit, the short HTML companion is at:
+
+            `docs/pipeline_diagram.html`
+
+            This dashboard page is the main built-in architecture view.
+            """
         )

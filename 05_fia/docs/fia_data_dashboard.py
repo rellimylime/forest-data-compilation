@@ -446,6 +446,13 @@ def main():
     def color_status(val):
         return "color: #3fb950" if val == "✓" else "color: #f85149"
 
+    def style_cells(df, func, subset):
+        """Support both old and new pandas Styler cell-formatting APIs."""
+        styler = df.style
+        if hasattr(styler, "map"):
+            return styler.map(func, subset=subset)
+        return styler.applymap(func, subset=subset)
+
     # ── Tabs ──────────────────────────────────────────────────────────────────
     tab_overview, tab_filters, tab_forests, tab_disturb, tab_agents, tab_mort = st.tabs([
         "📂 Overview",
@@ -491,7 +498,7 @@ def main():
 
         avail_df = pd.DataFrame(rows)
         st.dataframe(
-            avail_df.style.applymap(color_status, subset=["Status"]),
+            style_cells(avail_df, color_status, subset=["Status"]),
             use_container_width=True,
             hide_index=True,
         )
@@ -584,7 +591,7 @@ def main():
                         })
                     col_df = pd.DataFrame(col_rows)
                     st.dataframe(
-                        col_df.style.applymap(color_status, subset=["In data"]),
+                        style_cells(col_df, color_status, subset=["In data"]),
                         hide_index=True,
                         use_container_width=True,
                     )

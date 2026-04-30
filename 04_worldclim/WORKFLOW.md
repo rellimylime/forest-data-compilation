@@ -1,6 +1,8 @@
 # WorldClim Monthly Weather: Technical Reference
 
-**For quick-start guide and usage examples, see README.txt**
+**Navigation:** [Repo Home](../README.md) | [Docs Hub](../docs/README.md) | [Setup](../scripts/SETUP.md) | [Reproduce](../docs/REPRODUCE.md) | [Pipeline Map](../docs/PIPELINE_MAP.md) | [Data Products](../docs/DATA_PRODUCTS.md) | [WorldClim README](README.md) | [Scripts](scripts/)
+
+For a quick-start guide and directory overview, see **README.md**.
 
 This document covers WorldClim-specific technical details. For the shared pixel decomposition architecture, workflow steps, and data schemas, see **[`docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md)**.
 
@@ -64,7 +66,7 @@ worldclim:
 
 ## Script Details
 
-### 01_download_worldclim.R
+### [01_download_worldclim.R](scripts/01_download_worldclim.R)
 **WorldClim-Specific Behavior:**
 - Downloads decade-based zip archives from geodata.ucdavis.edu (CRU TS 4.09)
 - Each zip contains 120 individual monthly GeoTIFFs (10 years × 12 months),
@@ -91,7 +93,7 @@ wc2.1_cruts4.09_2.5m_tmin_1999-12.tif   (Dec 1999)
 
 ---
 
-### 02_build_pixel_maps.R
+### [02_build_pixel_maps.R](scripts/02_build_pixel_maps.R)
 **WorldClim-Specific Behavior:**
 - Uses any downloaded GeoTIFF as reference raster (same grid for all variables)
 - Resolution similar to TerraClimate (~4.5km)
@@ -99,7 +101,7 @@ wc2.1_cruts4.09_2.5m_tmin_1999-12.tif   (Dec 1999)
 
 ---
 
-### 03_extract_worldclim.R
+### [03_extract_worldclim.R](scripts/03_extract_worldclim.R)
 **WorldClim-Specific Behavior:**
 - Extracts from local GeoTIFF files (not GEE)
 - Each month is a separate single-band TIF; no band index math needed
@@ -201,3 +203,12 @@ Update the `sprintf()` pattern in `03_extract_worldclim.R` line ~95 accordingly.
 
 ### Large raw file sizes
 **Note:** Decade files are ~70-100 MB each. 24 total files = ~600 MB. This is manageable compared to GEE-based datasets.
+
+---
+
+## See also
+
+- [WorldClim README](README.md)
+- [Shared architecture](../docs/ARCHITECTURE.md)
+- [Repo reproduction guide](../docs/REPRODUCE.md)
+- [Data products](../docs/DATA_PRODUCTS.md)

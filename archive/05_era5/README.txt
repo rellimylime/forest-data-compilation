@@ -1,3 +1,8 @@
+NOTE
+Current repo paths for this archived workflow live under `archive/05_era5/`, not
+`05_era5/`. Use `archive/05_era5/README.md` as the current entrypoint and treat
+this file as legacy reference notes.
+
 ================================================================================
 ERA5 Monthly Reanalysis Pixel-Level Extraction for IDS Observations
 ================================================================================

@@ -1,77 +1,229 @@
 HOST_CODE,HOST
 10,fir spp.
+11,Pacific silver fir
+12,balsam fir
 14,Santa Lucia or bristlecone fir
 15,white fir
+16,Fraser fir
 17,grand fir
+18,corkbark fir
 19,subalpine fir
 20,California red fir
 21,Shasta red fir
+22,noble fir
 41,Port-Orford-cedar
+42,Alaska yellow-cedar
+43,Atlantic white-cedar
 50,cypress
+51,Arizona cypress
 54,Monterey cypress
 55,Sargent's cypress
 57,redcedar/juniper spp.
+61,Ashe juniper
 62,California juniper
+63,alligator juniper
 64,western juniper
+65,Utah juniper
+66,Rocky Mountain juniper
+67,southern redcedar
+68,eastern redcedar
+69,oneseed juniper
+70,larch spp.
+71,tamarack (native)
+72,subalpine larch
+73,western larch
 81,incense-cedar
 90,spruce spp.
+91,Norway spruce
+93,Engelmann spruce
+94,white spruce
+95,black spruce
 96,blue spruce
+97,red spruce
 98,Sitka spruce
 100,pine spp.
 101,whitebark pine
 102,Rocky Mountain bristlecone pine
 103,knobcone pine
 104,foxtail pine
+105,jack pine
 106,common or two-needle pinyon
+107,sand pine
 108,lodgepole pine
 109,Coulter pine
+110,shortleaf pine
+111,slash pine
+112,Apache pine
 113,limber pine
+114,southwestern white pine
 116,Jeffrey pine
 117,sugar pine
+118,Chihuahuan pine
 119,western white pine
 120,bishop pine
+121,longleaf pine
 122,ponderosa pine
 124,Monterey pine
+125,red pine
+126,pitch pine
 127,gray or California foothill pine
+129,eastern white pine
+130,Scotch pine
+131,loblolly pine
+132,Virginia pine
 133,singleleaf pinyon
+134,border pinyon
+136,Austrian pine
 137,Washoe pine
 138,four-leaf or Parry pinyon pine
+142,Great Basin bristlecone pine
 201,bigcone Douglas-fir
 202,Douglas-fir
 211,redwood
 212,giant sequoia
+221,baldcypress
+241,northern white-cedar
+242,western redcedar
+260,hemlock spp.
+261,eastern hemlock
+262,Carolina hemlock
+263,western hemlock
 264,mountain hemlock
 299,Unknown conifer(s)
+310,maple spp.
 312,bigleaf maple
 313,boxelder
+314,black maple
+316,red maple
+317,silver maple
+318,sugar maple
+320,Norway maple
+321,Rocky Mountain maple
+330,"buckeye, horsechestnut spp."
+341,ailanthus
+350,alder spp.
 351,red alder
 352,white alder
+356,serviceberry spp.
 361,Pacific madrone
+370,birch spp.
+371,yellow birch
+372,sweet birch
+374,water birch
+375,paper birch
+377,Virginia roundleaf birch
+379,gray birch
+391,"American hornbeam, musclewood"
+400,hickory spp.
+402,bitternut hickory
+403,pignut hickory
+404,pecan
+407,shagbark hickory
+409,mockernut hickory
+421,American chestnut
+462,hackberry
 475,curlleaf mountain-mahogany
+491,flowering dogwood
+500,hawthorn spp.
 510,eucalyptus spp.
+531,American beech
+540,ash spp.
+541,white ash
+542,Oregon ash
+543,black ash
+544,green ash
+552,honeylocust
+591,American holly
+600,walnut spp.
+601,butternut
+602,black walnut
 603,northern California black walnut
+606,Arizona walnut
+611,sweetgum
+621,yellow-poplar
 631,tanoak
+660,apple spp.
+691,water tupelo
+693,blackgum
+701,eastern hophornbeam
+721,redbay
 730,California sycamore
+731,American sycamore
+732,Arizona sycamore
 740,cottonwood and poplar spp.
+741,balsam poplar
+742,eastern cottonwood
+743,bigtooth aspen
+745,plains cottonwood
 746,quaking aspen
 747,black cottonwood
 748,Fremont cottonwood
+749,narrowleaf cottonwood
+760,cherry and plum spp.
+761,pin cherry
+762,black cherry
+763,chokecherry
+766,American plum
 800,oak spp.
 801,California live oak
+802,white oak
+803,Arizona white oak
+804,swamp white oak
 805,canyon live oak
+806,scarlet oak
 807,blue oak
 808,Durand oak
+809,northern pin oak
+810,Emory oak
 811,Engelmann oak
+812,southern red oak
+814,Gambel oak
 815,Oregon white oak
+816,scrub oak
+817,shingle oak
 818,California black oak
+820,laurel oak
 821,California white oak
+823,bur oak
+825,swamp chestnut oak
+827,water oak
+828,Texas red oak
+830,pin oak
+831,willow oak
+832,chestnut oak
+833,northern red oak
+835,post oak
+837,black oak
 838,live oak
 839,interior live oak
+840,dwarf post oak
+841,dwarf live oak
+901,black locust
+902,New Mexico locust
+912,cabbage palmetto
 920,willow spp.
+922,black willow
+923,Bebb willow
 924,Bonpland willow
+928,Scouler's willow
+931,sassafras
+950,basswood spp.
+951,American basswood
+970,elm spp.
+971,winged elm
+972,American elm
+974,Siberian elm
+991,saltcedar
+997,Russian-olive
 998,Unknown hardwood(s)
 999,Other or unknown live tree
 6011,blackwood
+7782,ohia
 7783,ohia lehua
+9901,R6 hybrid poplar
+9906,Lutz spruce
+9907,shore pine / beach pine
+9914,Alaska paper birch
+9997,No host tree
 9998,All tree species
 9999,known but not listed
