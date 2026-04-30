@@ -123,10 +123,11 @@ trees gives per-acre basal area without needing to know subplot areas directly.
 **SEEDLING processing:**
 - Filter: `TREECOUNT > 0`, INVYR range
 - Seedlings are counted on the microplot (1/300 acre) per species per condition
-- Aggregated: `treecount_total = sum(TREECOUNT)` by `[PLT_CN, INVYR, SPCD, SFTWD_HRDWD]`
-- No per-acre expansion stored (microplot-to-acre conversion can be applied at analysis time)
+- Aggregated: `treecount_total = sum(TREECOUNT)` by `[stable_plot_id, PLT_CN, INVYR, CONDID, SUBP, SPCD]`
+- Retains optional FIA density fields as `treecount_calc_total` and `seedlings_tpa` when available
+- Use `--force-seedlings` when refreshing older seedling parquets to the condition/subplot grain
 
-**Important for thermophilization work:** this per-state seedling product preserves species identity through `SPCD`. Species identity is dropped only later when `05_build_fia_summaries.R` creates the compact plot-year summary `plot_seedling_metrics.parquet`. Use the per-state `seedlings_{ST}.parquet` products for recruitment composition and the plot summary only for total seedling count, richness, and Shannon diversity.
+**Important for thermophilization work:** this per-state seedling product preserves species identity through `SPCD` and keeps `CONDID`/`SUBP` so seedlings can be joined to exact condition metadata. Species identity is dropped only later when `05_build_fia_summaries.R` creates the compact plot-year summary `plot_seedling_metrics.parquet`. Use `plot_seedling_species.parquet` for recruitment composition and the plot summary only for total seedling count, richness, density, and Shannon diversity.
 
 **TREE_GRM_COMPONENT processing:**
 - Filter: `MICR_COMPONENT_AL_FOREST IN ('MORTALITY1','MORTALITY2','CUT1','CUT2')`
