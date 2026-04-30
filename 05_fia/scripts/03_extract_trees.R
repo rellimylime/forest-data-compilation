@@ -35,9 +35,9 @@
 #     Columns: PLT_CN, INVYR, SPCD, SFTWD_HRDWD, STATUSCD, size_class,
 #              canopy_layer, ba_sqft, ba_per_acre, n_trees_tpa, n_trees_raw
 #   05_fia/data/processed/cond/state={ST}/cond_{ST}.parquet
-#     Columns: PLT_CN, INVYR, STATECD, CONDID, FORTYPCD, COND_STATUS_CD,
-#              CONDPROP_UNADJ, LAT, LON, DSTRBCD1-3, DSTRBYR1-3,
-#              TRTCD1-3, TRTYR1-3
+#     Columns: stable_plot_id, PLT_CN, INVYR, STATECD, UNITCD, COUNTYCD, PLOT,
+#              PREV_PLT_CN, CONDID, FORTYPCD, COND_STATUS_CD, CONDPROP_UNADJ,
+#              LAT, LON, ELEV, DSTRBCD1-3, DSTRBYR1-3, TRTCD1-3, TRTYR1-3
 #   05_fia/data/processed/damage_agents/state={ST}/damage_agents_{ST}.parquet
 #     Columns: PLT_CN, INVYR, CONDID, SPCD, SFTWD_HRDWD, DAMAGE_AGENT_CD,
 #              ba_per_acre, n_trees_tpa
@@ -60,6 +60,7 @@ library(arrow)
 # Setup
 # ------------------------------------------------------------------------------
 
+# Pull FIA input/output locations from the shared project config.
 fia_config       <- config$raw$fia
 raw_dir          <- here(fia_config$local_dir)
 out_trees        <- here(config$processed$fia$trees$output_dir)
@@ -82,9 +83,11 @@ lookup_dir <- here("05_fia/lookups")
 args        <- commandArgs(trailingOnly = TRUE)
 force_cond  <- "--force-cond" %in% args
 state_args  <- toupper(args[!args %in% "--force-cond"])
+
+# Run requested states only, or all configured states when no state list is supplied.
 states      <- if (length(state_args) > 0) state_args else fia_config$states
 
-# Filters from config
+# Convert configured filters to the types expected by data.table comparisons.
 statuscd_include  <- as.integer(fia_config$tree_filters$statuscd_include)
 dia_min           <- fia_config$tree_filters$dia_min_inches
 invyr_min         <- fia_config$invyr_min
@@ -93,6 +96,7 @@ overstory_codes   <- as.integer(fia_config$canopy_layers$overstory_codes)
 understory_codes  <- as.integer(fia_config$canopy_layers$understory_codes)
 fallback_dia      <- fia_config$canopy_layers$fallback_dia_threshold
 
+# Echo the run configuration so logs show exactly what was processed.
 cat("FIA Tree Extraction\n")
 cat("===================\n\n")
 cat(glue("Output (trees):   {out_trees}\n"))
@@ -104,12 +108,16 @@ cat(glue("INVYR range: {invyr_min}-{invyr_max}\n"))
 if (force_cond) cat("Mode: --force-cond (cond parquets will be re-extracted even if they exist)\n")
 cat("\n")
 
-# Required columns
+# Read only the columns needed for the downstream FIA products.
 tree_cols <- c("CN", "PLT_CN", "CONDID", "SUBP", "SPCD", "STATUSCD",
                "DIA", "TPA_UNADJ", "CCLCD", "AGENTCD", "INVYR",
                "DAMAGE_AGENT_CD1", "DAMAGE_AGENT_CD2", "DAMAGE_AGENT_CD3")
-plot_cols <- c("CN", "STATECD", "UNITCD", "COUNTYCD", "PLOT", "INVYR",
+
+# Keep plot identity fields so later steps can link repeated visits.
+plot_cols <- c("CN", "PREV_PLT_CN", "STATECD", "UNITCD", "COUNTYCD", "PLOT", "INVYR",
                "LAT", "LON", "ELEV")
+
+# Keep condition fields that define forest type, disturbance, and treatment history.
 cond_cols <- c("PLT_CN", "CONDID", "FORTYPCD", "COND_STATUS_CD",
                "CONDPROP_UNADJ", "INVYR",
                "DSTRBCD1", "DSTRBCD2", "DSTRBCD3",
@@ -117,13 +125,17 @@ cond_cols <- c("PLT_CN", "CONDID", "FORTYPCD", "COND_STATUS_CD",
                "TRTCD1",  "TRTCD2",  "TRTCD3",
                "TRTYR1",  "TRTYR2",  "TRTYR3")
 
-# Load REF_SPECIES once (small, national)
+# Locate the species lookup produced by 02_inspect_fia.R.
 ref_sp_path <- file.path(lookup_dir, "ref_species.parquet")
 if (!file_exists(ref_sp_path)) {
   stop("ref_species.parquet not found. Run 02_inspect_fia.R first.")
 }
+
+# Load only fields needed for grouping tree records.
 ref_sp <- as.data.table(read_parquet(ref_sp_path))
 ref_sp <- ref_sp[, .(SPCD, SFTWD_HRDWD, WOODLAND)]
+
+# Key by species code because every tree join uses SPCD.
 setkey(ref_sp, SPCD)
 
 cat(glue("Loaded REF_SPECIES: {nrow(ref_sp)} species\n\n"))
@@ -136,6 +148,7 @@ t_total <- Sys.time()
 n_done <- 0; n_skipped <- 0; n_failed <- 0
 
 for (i in seq_along(states)) {
+  # Build all state-specific paths once at the top of the loop.
   st              <- states[i]
   state_dir       <- file.path(raw_dir, st)
   trees_out        <- file.path(out_trees,         glue("state={st}/trees_{st}.parquet"))
@@ -146,26 +159,50 @@ for (i in seq_along(states)) {
   # Determine what needs to be (re-)computed for this state.
   # In --force-cond mode, cond is always re-extracted even if the parquet exists,
   # but trees/damage_agents/harvest_flags are left alone if they already exist.
+  # Trees and damage agents are paired because both come from the TREE table.
   need_trees          <- !(file_exists(trees_out) && file_exists(damage_ag_out))
   need_harvest_flags  <- !file_exists(harvest_flags_out)
   need_cond           <- !file_exists(cond_out) || force_cond
 
+  # Skip states where every requested output is already available.
   if (!need_trees && !need_harvest_flags && !need_cond) {
     cat(glue("[{i}/{length(states)}] {st}: all outputs exist - skipping\n"))
     n_skipped <- n_skipped + 1
     next
   }
 
+  # Raw FIA CSV filenames follow the state-table naming convention.
   tree_file <- file.path(state_dir, glue("{st}_TREE.csv"))
   plot_file <- file.path(state_dir, glue("{st}_PLOT.csv"))
   cond_file <- file.path(state_dir, glue("{st}_COND.csv"))
 
-  if (!file_exists(tree_file)) {
-    cat(glue("[{i}/{length(states)}] {st}: TREE.csv not found - skipping\n"))
+  # PLOT is needed for all outputs because it supplies location and stable plot IDs.
+  if (!file_exists(plot_file)) {
+    cat(glue("[{i}/{length(states)}] {st}: PLOT.csv not found - skipping\n"))
     n_failed <- n_failed + 1
     next
   }
 
+  # COND-only reruns should still work even when TREE has not been downloaded locally.
+  if (need_cond && !file_exists(cond_file)) {
+    cat(glue("[{i}/{length(states)}] {st}: COND.csv not found - skipping cond\n"))
+    need_cond <- FALSE
+  }
+
+  # Tree-dependent outputs require TREE, but condition metadata can still be rebuilt without it.
+  if ((need_trees || need_harvest_flags) && !file_exists(tree_file)) {
+    cat(glue("[{i}/{length(states)}] {st}: TREE.csv not found - rebuilding cond only\n"))
+    need_trees <- FALSE
+    need_harvest_flags <- FALSE
+  }
+
+  # If no requested output can be rebuilt for this state, move on cleanly.
+  if (!need_trees && !need_harvest_flags && !need_cond) {
+    n_failed <- n_failed + 1
+    next
+  }
+
+  # Build a short label for progress messages.
   what <- paste(c(
     if (need_trees)                        "trees+damage+harvest" else NULL,
     if (need_harvest_flags && !need_trees) "harvest_flags"        else NULL,
@@ -177,9 +214,11 @@ for (i in seq_along(states)) {
   tryCatch({
 
     # ------ Load tables (only what's needed) ----------------------------------
+    # PLOT is always loaded because it supplies state, coordinates, and stable IDs.
     plot_dt <- fread(plot_file, select = plot_cols, showProgress = FALSE)
 
     if (need_trees) {
+      # Full TREE read is needed for basal area, canopy, damage, and harvest flags.
       tree_dt <- fread(tree_file, select = tree_cols, showProgress = FALSE)
       cat(glue("  Loaded: TREE={format(nrow(tree_dt), big.mark=',')}"))
     } else if (need_harvest_flags) {
@@ -192,6 +231,8 @@ for (i in seq_along(states)) {
     if (need_cond) {
       # Intersect with available columns: older state files may lack TRTCD
       avail_cond  <- names(fread(cond_file, nrows = 0L, showProgress = FALSE))
+
+      # Select only columns that actually exist so older state files can still run.
       select_cond <- intersect(cond_cols, avail_cond)
       cond_dt <- fread(cond_file, select = select_cond, showProgress = FALSE)
       cat(glue("{if (need_trees || need_harvest_flags) ', ' else '  Loaded: '}",
@@ -201,7 +242,7 @@ for (i in seq_along(states)) {
 
     # ------ Trees + damage agents (skipped if both parquets already exist) ----
     if (need_trees) {
-      # Filter trees
+      # Keep live and standing-dead tally trees with valid diameter and expansion factors.
       tree_dt <- tree_dt[
         STATUSCD %in% statuscd_include &
         !is.na(DIA) & DIA >= dia_min &
@@ -210,15 +251,17 @@ for (i in seq_along(states)) {
       ]
       cat(glue("  After filters: {format(nrow(tree_dt), big.mark=',')} trees\n"))
 
+      # Stop this state early if no usable tree records remain after filters.
       if (nrow(tree_dt) == 0) {
         cat("  No trees after filtering - skipping state\n")
         n_failed <- n_failed + 1
         next
       }
 
-      # Derived fields
+      # Convert diameter to per-tree basal area before applying expansion factors.
       tree_dt[, ba_sqft_tree := 0.005454 * DIA^2]
 
+      # Assign diameter-based size classes used for sapling/intermediate/mature summaries.
       tree_dt[, size_class := fcase(
         DIA <  5.0, "sapling",
         DIA < 12.0, "intermediate",
@@ -226,6 +269,7 @@ for (i in seq_along(states)) {
         default = NA_character_
       )]
 
+      # Assign canopy layer from crown class, using diameter fallback when crown class is missing.
       tree_dt[, canopy_layer := fcase(
         !is.na(CCLCD) & CCLCD %in% overstory_codes,  "overstory",
         !is.na(CCLCD) & CCLCD %in% understory_codes, "understory",
@@ -234,18 +278,22 @@ for (i in seq_along(states)) {
         default = NA_character_
       )]
 
+      # Report missing crown classes because the fallback affects understory/overstory totals.
       cclcd_missing_n <- tree_dt[is.na(CCLCD), .N]
       if (cclcd_missing_n > 0) {
         cat(glue("  Note: {format(cclcd_missing_n, big.mark=',')} trees had NA CCLCD ",
                  "(DIA fallback applied)\n"))
       }
 
+      # Attach softwood/hardwood and woodland flags before aggregation.
       setkey(tree_dt, SPCD)
       tree_dt <- ref_sp[tree_dt, on = "SPCD"]
 
+      # Keep one row per plot-year-species-status-size-layer combination.
       group_cols <- c("PLT_CN", "INVYR", "SPCD", "SFTWD_HRDWD", "WOODLAND",
                       "STATUSCD", "size_class", "canopy_layer")
 
+      # Sum raw basal area and per-acre expanded basal area at the analysis grain.
       trees_agg <- tree_dt[, .(
         ba_sqft     = sum(ba_sqft_tree,            na.rm = TRUE),
         ba_per_acre = sum(TPA_UNADJ * ba_sqft_tree, na.rm = TRUE),
@@ -253,17 +301,19 @@ for (i in seq_along(states)) {
         n_trees_raw = .N
       ), by = group_cols]
 
+      # Write the compact tree aggregate for this state.
       dir_create(dirname(trees_out))
       write_parquet(as_tibble(trees_agg), trees_out, compression = "snappy")
       cat(glue("  Trees:   {format(nrow(trees_agg), big.mark=',')} rows -> {file_size(trees_out)}\n"))
 
-      # Damage agents
+      # Keep live trees with at least one nonzero damage-agent code.
       has_damage <- tree_dt[STATUSCD == 1 &
         (!is.na(DAMAGE_AGENT_CD1) & DAMAGE_AGENT_CD1 != 0 |
          !is.na(DAMAGE_AGENT_CD2) & DAMAGE_AGENT_CD2 != 0 |
          !is.na(DAMAGE_AGENT_CD3) & DAMAGE_AGENT_CD3 != 0)]
 
       if (nrow(has_damage) > 0) {
+        # Pivot the three damage-agent slots so each tree-agent pairing is one row.
         da_long <- melt(
           has_damage[, .(PLT_CN, INVYR, CONDID, SPCD, SFTWD_HRDWD,
                          ba_sqft_tree, TPA_UNADJ,
@@ -274,12 +324,17 @@ for (i in seq_along(states)) {
           variable.name = "agent_slot",
           value.name    = "DAMAGE_AGENT_CD"
         )
+
+        # Drop empty damage slots after pivoting.
         da_long <- da_long[!is.na(DAMAGE_AGENT_CD) & DAMAGE_AGENT_CD != 0]
+
+        # Aggregate affected live-tree BA and TPA by plot, year, condition, species, and agent.
         da_agg <- da_long[, .(
           ba_per_acre = sum(TPA_UNADJ * ba_sqft_tree, na.rm = TRUE),
           n_trees_tpa = sum(TPA_UNADJ, na.rm = TRUE)
         ), by = .(PLT_CN, INVYR, CONDID, SPCD, SFTWD_HRDWD, DAMAGE_AGENT_CD)]
       } else {
+        # Write an empty table with the expected schema when a state has no damage records.
         da_agg <- data.table(
           PLT_CN = integer(0), INVYR = integer(0), CONDID = integer(0),
           SPCD = integer(0), SFTWD_HRDWD = character(0),
@@ -287,6 +342,8 @@ for (i in seq_along(states)) {
           n_trees_tpa = numeric(0)
         )
       }
+
+      # Write one damage-agent parquet per state for resumable downstream reads.
       dir_create(dirname(damage_ag_out))
       write_parquet(as_tibble(da_agg), damage_ag_out, compression = "snappy")
       cat(glue("  Damage:  {format(nrow(da_agg), big.mark=',')} rows -> {file_size(damage_ag_out)}\n"))
@@ -297,14 +354,23 @@ for (i in seq_along(states)) {
     # tree_dt holds either the full tree table (need_trees path) or just
     # PLT_CN/INVYR/AGENTCD (need_harvest_flags-only path); both work here.
     if (need_harvest_flags) {
+      # Flag plots with incidental harvest cause-of-death codes.
       hf_dt <- tree_dt[!is.na(AGENTCD) & AGENTCD >= 80L & AGENTCD <= 89L,
                         .(PLT_CN, INVYR)]
+
+      # Collapse to one harvest flag per plot visit.
       hf_dt <- unique(hf_dt)
+
+      # Attach state code from PLOT so the partitioned output has state context.
       plot_map_hf <- plot_dt[, .(CN, STATECD)]
       setnames(plot_map_hf, "CN", "PLT_CN")
+
+      # Join flagged tree plot visits back to parent plot records.
       setkey(hf_dt, PLT_CN)
       setkey(plot_map_hf, PLT_CN)
       hf_dt <- plot_map_hf[hf_dt, on = "PLT_CN"]
+
+      # Write only positive harvest flags to keep the file small.
       dir_create(dirname(harvest_flags_out))
       write_parquet(as_tibble(hf_dt), harvest_flags_out, compression = "snappy")
       cat(glue("  Harvest: {format(nrow(hf_dt), big.mark=',')} flagged plots",
@@ -313,15 +379,30 @@ for (i in seq_along(states)) {
 
     # ------ COND: filter and add STATECD + LAT/LON from PLOT -----------------
     if (need_cond) {
+      # Restrict condition rows to the modern FIA annual-inventory period.
       cond_filt <- cond_dt[INVYR >= invyr_min & INVYR <= invyr_max]
 
+      # Key PLOT on CN because COND.PLT_CN points to PLOT.CN.
       setkey(plot_dt, CN)
-      plot_map <- plot_dt[, .(CN, STATECD, LAT, LON)]
+
+      # Carry stable plot identifiers from PLOT onto each condition row.
+      plot_map <- plot_dt[, .(
+        CN, STATECD, UNITCD, COUNTYCD, PLOT, PREV_PLT_CN,
+        LAT, LON, ELEV
+      )]
+
+      # Stable plot ID links repeated visits across changing PLT_CN records.
+      plot_map[, stable_plot_id := paste(STATECD, UNITCD, COUNTYCD, PLOT, sep = "_")]
+
+      # Rename PLOT.CN to PLT_CN so condition rows join to their parent plot visit.
       setnames(plot_map, "CN", "PLT_CN")
+
+      # Join condition attributes to plot location and stable identity fields.
       setkey(cond_filt, PLT_CN)
       setkey(plot_map, PLT_CN)
       cond_filt <- plot_map[cond_filt, on = "PLT_CN"]
 
+      # Write condition rows with plot identity fields for later metadata products.
       dir_create(dirname(cond_out))
       write_parquet(as_tibble(cond_filt), cond_out, compression = "snappy")
       cat(glue("  Cond:    {format(nrow(cond_filt), big.mark=',')} rows -> {file_size(cond_out)}\n"))
@@ -332,10 +413,12 @@ for (i in seq_along(states)) {
     n_done <- n_done + 1
 
   }, error = function(e) {
+    # Count state-level failures and continue so one bad state does not stop the batch.
     warning(glue("  Error processing {st}: {e$message}"))
     n_failed <- n_failed + 1
   })
 
+  # Drop large per-state tables before moving to the next state.
   if (exists("tree_dt"))    rm(tree_dt)
   if (exists("cond_dt"))    rm(cond_dt)
   if (exists("trees_agg"))  rm(trees_agg)
@@ -345,7 +428,8 @@ for (i in seq_along(states)) {
   if (exists("da_long"))    rm(da_long)
   if (exists("hf_dt"))      rm(hf_dt)
   if (exists("plot_map_hf")) rm(plot_map_hf)
-  rm(plot_dt)
+  if (exists("plot_map"))    rm(plot_map)
+  if (exists("plot_dt"))     rm(plot_dt)
   gc(verbose = FALSE)
 }
 

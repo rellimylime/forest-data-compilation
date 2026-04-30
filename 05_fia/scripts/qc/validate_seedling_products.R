@@ -4,6 +4,8 @@
 # ==============================================================================
 
 source("scripts/utils/load_config.R")
+
+# Load configured FIA paths so validation follows the same layout as production scripts.
 config <- load_config()
 
 library(here)
@@ -71,7 +73,11 @@ if (length(missing_summary_cols) > 0) {
 
 # Validate state-by-state to keep memory bounded and make failures easier to locate.
 states <- sort(unique(summary_dt$state))
+
+# Use a tiny tolerance because all reproduced metrics are sums/counts from the same data.
 tol <- 1e-8
+
+# Store one compact diagnostic row per state.
 results <- list()
 
 for (st in states) {
@@ -89,6 +95,8 @@ for (st in states) {
       summary_rows = summary_dt[state == st, .N],
       status = "missing_species_product"
     )
+
+    # Move to the next state after recording the missing product.
     next
   }
 
@@ -120,6 +128,7 @@ for (st in states) {
   cmp <- merge(expected, observed, by = c("PLT_CN", "INVYR"), all = TRUE)
 
   # Store compact state-level diagnostics for final reporting.
+  # Each mismatch count should be zero when the plot summary matches species rows.
   results[[st]] <- data.table(
     state = st,
     seed_species_rows = nrow(seed_dt),

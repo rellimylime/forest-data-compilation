@@ -20,6 +20,9 @@
 #   plot_cond_fortypcd.parquet
 #     - Forest type per plot x INVYR x condition (for transition analysis)
 #
+#   plot_condition_metadata.parquet
+#     - Condition metadata with stable plot IDs, forest type labels, and disturbance flags
+#
 # Usage:
 #   Rscript 05_fia/scripts/05_build_fia_summaries.R
 #
@@ -35,22 +38,25 @@ library(glue)
 library(data.table)
 library(arrow)
 library(dplyr)
+library(tibble)
 
 # ------------------------------------------------------------------------------
 # Setup
 # ------------------------------------------------------------------------------
 
+# Load FIA config paths and state list once for all summary steps.
 fia_config  <- config$raw$fia
 proc_fia    <- config$processed$fia
 out_dir     <- here(proc_fia$summaries$output_dir)
 states      <- fia_config$states
 
-# Open cond dataset once (used for LAT/LON join in Step 1 and for Step 5)
+# Open cond dataset once because several summary products need condition fields.
 cond_ds <- tryCatch(
   open_dataset(here(proc_fia$cond$output_dir), partitioning = "state"),
   error = function(e) NULL
 )
 
+# Ensure the summary output directory exists before any step writes parquet files.
 dir_create(out_dir)
 
 cat("FIA Plot-Level Summaries\n")
@@ -64,10 +70,19 @@ cat(glue("Output: {out_dir}\n\n"))
 # ------------------------------------------------------------------------------
 
 compute_shannon_h <- function(dt, group_cols, value_col) {
+  # Work on a copy so helper columns do not modify the caller's data.table.
   dt <- copy(dt)
+
+  # Compute total abundance within each plot visit before calculating proportions.
   dt[, total := sum(get(value_col), na.rm = TRUE), by = group_cols]
+
+  # Convert each species or stratum value to a relative abundance.
   dt[total > 0, p_i := get(value_col) / total]
+
+  # Keep Shannon contributions only where the proportion is valid and positive.
   dt[!is.na(p_i) & p_i > 0, h_i := -p_i * log(p_i)]
+
+  # Sum species contributions back to one diversity value per plot visit.
   dt[, .(shannon_h = sum(h_i, na.rm = TRUE)), by = group_cols]
 }
 
@@ -82,6 +97,7 @@ out_tree_metrics <- file.path(out_dir, "plot_tree_metrics.parquet")
 if (file_exists(out_tree_metrics)) {
   cat(glue("  Already exists ({file_size(out_tree_metrics)}) - skipping\n\n"))
 } else {
+  # Open state-partitioned tree aggregates lazily so we can collect one state at a time.
   trees_ds <- tryCatch(
     open_dataset(here(proc_fia$trees$output_dir), partitioning = "state"),
     error = function(e) NULL
@@ -94,26 +110,31 @@ if (file_exists(out_tree_metrics)) {
     results <- vector("list", length(states))
 
     for (i in seq_along(states)) {
+      # Collect one state's tree aggregates to keep memory bounded.
       st <- states[i]
       dt <- tryCatch({
         trees_ds |> filter(state == st) |> collect() |> as.data.table()
       }, error = function(e) NULL)
 
+      # Some states may be absent locally, especially during partial reruns.
       if (is.null(dt) || nrow(dt) == 0) next
 
       # -- BA totals by stratum (all combinations computed in one pass) --------
+      # Split live and standing-dead trees because they support different metrics.
       live <- dt[STATUSCD == 1]
       dead <- dt[STATUSCD == 2]
 
-      # Total BA
+      # Summarize total live basal area and live tree density by plot visit.
       ba_live <- live[, .(ba_live_total = sum(ba_per_acre, na.rm = TRUE),
                            n_trees_live  = sum(n_trees_tpa, na.rm = TRUE)),
                        by = .(PLT_CN, INVYR)]
+
+      # Summarize standing-dead basal area and dead tree density by plot visit.
       ba_dead <- dead[, .(ba_dead_total = sum(ba_per_acre, na.rm = TRUE),
                            n_trees_dead  = sum(n_trees_tpa, na.rm = TRUE)),
                        by = .(PLT_CN, INVYR)]
 
-      # By functional group (live only)
+      # Summarize live basal area by broad softwood/hardwood functional group.
       ba_soft <- live[SFTWD_HRDWD == "S",
                        .(ba_live_softwood = sum(ba_per_acre, na.rm = TRUE)),
                        by = .(PLT_CN, INVYR)]
@@ -121,7 +142,7 @@ if (file_exists(out_tree_metrics)) {
                        .(ba_live_hardwood = sum(ba_per_acre, na.rm = TRUE)),
                        by = .(PLT_CN, INVYR)]
 
-      # By size class (live only)
+      # Pivot live basal area by size class into one column per class.
       ba_sz <- dcast(
         live[, .(ba_per_acre = sum(ba_per_acre, na.rm = TRUE)),
               by = .(PLT_CN, INVYR, size_class)],
@@ -130,11 +151,12 @@ if (file_exists(out_tree_metrics)) {
       )
       # Rename columns defensively (not all size classes may be present)
       for (sc in c("sapling", "intermediate", "mature")) {
+        # Keep a stable output schema even when a state lacks a size class.
         if (!sc %in% names(ba_sz)) ba_sz[, (paste0("ba_live_", sc)) := NA_real_]
         else setnames(ba_sz, sc, paste0("ba_live_", sc))
       }
 
-      # By canopy layer (live only)
+      # Pivot live basal area by canopy layer into overstory/understory columns.
       ba_ly <- dcast(
         live[, .(ba_per_acre = sum(ba_per_acre, na.rm = TRUE)),
               by = .(PLT_CN, INVYR, canopy_layer)],
@@ -142,20 +164,26 @@ if (file_exists(out_tree_metrics)) {
         value.var = "ba_per_acre", fill = 0
       )
       for (ly in c("overstory", "understory")) {
+        # Keep the layer columns available for downstream joins and plotting.
         if (!ly %in% names(ba_ly)) ba_ly[, (paste0("ba_live_", ly)) := NA_real_]
         else setnames(ba_ly, ly, paste0("ba_live_", ly))
       }
 
       # -- Diversity: species richness and Shannon H (BA-weighted, live) -------
+      # Collapse live tree basal area to one row per species within each plot visit.
       species_ba <- live[, .(ba_per_acre = sum(ba_per_acre, na.rm = TRUE)),
                           by = .(PLT_CN, INVYR, SPCD)]
+
+      # Remove zero-abundance species before richness/diversity calculations.
       species_ba <- species_ba[ba_per_acre > 0]
 
+      # Count live tree species and compute BA-weighted Shannon diversity.
       richness <- species_ba[, .(n_species_live = uniqueN(SPCD)), by = .(PLT_CN, INVYR)]
       shannon  <- compute_shannon_h(species_ba, c("PLT_CN", "INVYR"), "ba_per_acre")
       setnames(shannon, "shannon_h", "shannon_h_ba")
 
       # -- Join all metrics into one row per plot x INVYR ----------------------
+      # Merge all metric tables with full joins so missing strata do not drop plots.
       result <- Reduce(function(a, b) merge(a, b, by = c("PLT_CN", "INVYR"), all = TRUE),
                        list(ba_live, ba_dead, ba_soft, ba_hard,
                             ba_sz, ba_ly, richness, shannon))
@@ -165,6 +193,7 @@ if (file_exists(out_tree_metrics)) {
 
       # Add LAT/LON from cond (one coordinate per PLT_CN)
       if (!is.null(cond_ds)) {
+        # Coordinates live in condition outputs, so pull one unique coordinate per plot visit.
         coord_dt <- tryCatch({
           cond_ds |>
             filter(state == st) |>
@@ -173,12 +202,16 @@ if (file_exists(out_tree_metrics)) {
             as.data.table() |>
             unique(by = "PLT_CN")
         }, error = function(e) NULL)
+
+        # Left join coordinates onto tree metrics when they are available.
         if (!is.null(coord_dt)) result <- coord_dt[result, on = "PLT_CN"]
       }
 
+      # Preserve state as a simple filter column in the national summary.
       result[, state := st]
       results[[i]] <- result
 
+      # Drop per-state intermediates before collecting the next state.
       rm(dt, live, dead, ba_live, ba_dead, ba_soft, ba_hard,
          ba_sz, ba_ly, species_ba, richness, shannon, result)
       gc(verbose = FALSE)
@@ -189,7 +222,10 @@ if (file_exists(out_tree_metrics)) {
       }
     }
 
+    # Bind all state results into the national plot-level tree metrics table.
     all_metrics <- rbindlist(Filter(Negate(is.null), results), fill = TRUE)
+
+    # Write the final tree summary as a git-trackable parquet product.
     write_parquet(as_tibble(all_metrics), out_tree_metrics, compression = "snappy")
     cat(glue("  plot_tree_metrics: {format(nrow(all_metrics), big.mark=',')} rows -> ",
              "{file_size(out_tree_metrics)}\n\n"))
@@ -208,6 +244,7 @@ out_seed_metrics <- file.path(out_dir, "plot_seedling_metrics.parquet")
 if (file_exists(out_seed_metrics)) {
   cat(glue("  Already exists ({file_size(out_seed_metrics)}) - skipping\n\n"))
 } else {
+  # Open species-level seedling extracts lazily so each state can be summarized alone.
   seed_ds <- tryCatch(
     open_dataset(here(proc_fia$seedlings$output_dir), partitioning = "state"),
     error = function(e) NULL
@@ -217,29 +254,45 @@ if (file_exists(out_seed_metrics)) {
   } else {
     results <- vector("list", length(states))
     for (i in seq_along(states)) {
+      # Collect one state's species-level seedling rows.
       st <- states[i]
       dt <- tryCatch(
         seed_ds |> filter(state == st) |> collect() |> as.data.table(),
         error = function(e) NULL
       )
+
+      # Skip absent states during partial local runs.
       if (is.null(dt) || nrow(dt) == 0) next
 
+      # Count seedling species within each plot visit.
       richness <- dt[, .(n_species_seedling = uniqueN(SPCD)), by = .(PLT_CN, INVYR)]
+
+      # Compute count-weighted Shannon diversity from seedling species counts.
       shannon  <- compute_shannon_h(dt, c("PLT_CN", "INVYR"), "treecount_total")
       setnames(shannon, "shannon_h", "shannon_h_count")
 
+      # Sum total seedlings and broad functional group counts by plot visit.
       totals <- dt[, .(treecount_total = sum(treecount_total, na.rm = TRUE),
                         count_softwood  = sum(treecount_total[SFTWD_HRDWD == "S"], na.rm = TRUE),
                         count_hardwood  = sum(treecount_total[SFTWD_HRDWD == "H"], na.rm = TRUE)),
                     by = .(PLT_CN, INVYR)]
 
+      # Merge totals, richness, and diversity to one plot-year seedling summary.
       result <- Reduce(function(a, b) merge(a, b, by = c("PLT_CN", "INVYR"), all = TRUE),
                        list(totals, richness, shannon))
+
+      # Preserve state as a filter column in the national seedling summary.
       result[, state := st]
       results[[i]] <- result
+
+      # Drop state-level seedling intermediates before the next state.
       rm(dt, totals, richness, shannon, result); gc(verbose = FALSE)
     }
+
+    # Bind state summaries into the national plot-level seedling metrics table.
     all_seed <- rbindlist(Filter(Negate(is.null), results), fill = TRUE)
+
+    # Write the compact plot-year seedling summary; species identity stays in the upstream extracts.
     write_parquet(as_tibble(all_seed), out_seed_metrics, compression = "snappy")
     cat(glue("  plot_seedling_metrics: {format(nrow(all_seed), big.mark=',')} rows -> ",
              "{file_size(out_seed_metrics)}\n\n"))
@@ -258,6 +311,7 @@ out_mort_metrics <- file.path(out_dir, "plot_mortality_metrics.parquet")
 if (file_exists(out_mort_metrics)) {
   cat(glue("  Already exists ({file_size(out_mort_metrics)}) - skipping\n\n"))
 } else {
+  # Open mortality extracts lazily, then collect because the national table is modest.
   mort_ds <- tryCatch(
     open_dataset(here(proc_fia$mortality$output_dir), partitioning = "state"),
     error = function(e) NULL
@@ -265,7 +319,10 @@ if (file_exists(out_mort_metrics)) {
   if (is.null(mort_ds)) {
     cat("  No mortality parquets found. Run 04_extract_seedlings_mortality.R first.\n\n")
   } else {
+    # This product preserves species, mortality agent, and natural/harvest component type.
     all_mort <- mort_ds |> collect() |> as.data.table()
+
+    # Write a single national mortality table for analysis convenience.
     write_parquet(as_tibble(all_mort), out_mort_metrics, compression = "snappy")
     cat(glue("  plot_mortality_metrics: {format(nrow(all_mort), big.mark=',')} rows -> ",
              "{file_size(out_mort_metrics)}\n\n"))
@@ -286,11 +343,140 @@ if (file_exists(out_cond_metrics)) {
 } else if (is.null(cond_ds)) {
   cat("  No cond parquets found. Run 03_extract_trees.R first.\n\n")
 } else {
+  # Pass through condition rows nationally so analysts can inspect raw condition fields.
   all_cond <- cond_ds |> collect() |> as.data.table()
+
+  # Write the condition/forest-type table before building derived metadata products.
   write_parquet(as_tibble(all_cond), out_cond_metrics, compression = "snappy")
   cat(glue("  plot_cond_fortypcd: {format(nrow(all_cond), big.mark=',')} rows -> ",
            "{file_size(out_cond_metrics)}\n\n"))
   rm(all_cond); gc(verbose = FALSE)
+}
+
+# ------------------------------------------------------------------------------
+# Step 4b: plot_condition_metadata
+# Condition-level metadata with stable plot IDs, forest type labels, and flags.
+# ------------------------------------------------------------------------------
+
+cat("Step 4b: plot_condition_metadata\n")
+out_cond_metadata <- file.path(out_dir, "plot_condition_metadata.parquet")
+
+if (file_exists(out_cond_metadata)) {
+  cat(glue("  Already exists ({file_size(out_cond_metadata)}) - skipping\n\n"))
+} else if (is.null(cond_ds)) {
+  cat("  No cond parquets found. Run 03_extract_trees.R --force-cond first.\n\n")
+} else {
+  # Define the condition metadata columns needed for stable plot IDs and disturbance flags.
+  needed_cols <- c(
+    "stable_plot_id", "PLT_CN", "INVYR",
+    "STATECD", "UNITCD", "COUNTYCD", "PLOT", "PREV_PLT_CN",
+    "LAT", "LON", "ELEV",
+    "CONDID", "FORTYPCD", "COND_STATUS_CD", "CONDPROP_UNADJ",
+    "DSTRBCD1", "DSTRBCD2", "DSTRBCD3",
+    "DSTRBYR1", "DSTRBYR2", "DSTRBYR3",
+    "TRTCD1", "TRTCD2", "TRTCD3",
+    "TRTYR1", "TRTYR2", "TRTYR3",
+    "state"
+  )
+
+  # Stop with a useful message if cond parquets have not been regenerated yet.
+  # These columns are required because they define repeated-plot identity.
+  missing_required <- setdiff(
+    c("stable_plot_id", "UNITCD", "COUNTYCD", "PLOT"),
+    names(cond_ds)
+  )
+  if (length(missing_required) > 0) {
+    cat(glue("  Missing stable-id columns: {paste(missing_required, collapse=', ')}\n"))
+    cat("  Re-run: Rscript 05_fia/scripts/03_extract_trees.R --force-cond\n\n")
+  } else {
+    # Read only metadata columns so the condition table stays manageable in memory.
+    available_cols <- intersect(needed_cols, names(cond_ds))
+
+    # Collect condition metadata after column selection to avoid reading unused fields.
+    cond_meta <- cond_ds |>
+      select(all_of(available_cols)) |>
+      collect() |>
+      as.data.table()
+
+    # Add missing optional code columns as NA so old cond parquets fail gracefully.
+    for (code_col in c("DSTRBCD1", "DSTRBCD2", "DSTRBCD3",
+                       "TRTCD1", "TRTCD2", "TRTCD3")) {
+      # Optional disturbance/treatment slots may be absent in older local outputs.
+      if (!code_col %in% names(cond_meta)) cond_meta[, (code_col) := NA_integer_]
+    }
+
+    # Compute forested plot proportion once and attach it to every condition row.
+    forested <- cond_meta[, .(
+      n_conditions = .N,
+      pct_forested = sum(CONDPROP_UNADJ[COND_STATUS_CD == 1L], na.rm = TRUE)
+    ), by = .(PLT_CN, INVYR)]
+
+    # Join plot-visit forested proportion back to condition-level metadata.
+    # Each condition row carries the plot-level forested gate used for analysis filters.
+    setkey(forested, PLT_CN, INVYR)
+    setkey(cond_meta, PLT_CN, INVYR)
+    cond_meta <- forested[cond_meta, on = .(PLT_CN, INVYR)]
+
+    # Add forest type labels from the official FIA forest type lookup.
+    ref_ft_path <- here("05_fia/lookups/ref_forest_type.parquet")
+    if (file_exists(ref_ft_path)) {
+      # Forest type lookup uses VALUE for FORTYPCD and MEANING for the label.
+      ref_ft <- as.data.table(read_parquet(ref_ft_path))
+      ref_ft <- ref_ft[, .(
+        FORTYPCD = as.integer(VALUE),
+        forest_type_label = MEANING,
+        forest_type_group = TYPGRPCD
+      )]
+
+      # Keep one label row per forest type code before joining to condition rows.
+      ref_ft <- unique(ref_ft, by = "FORTYPCD")
+
+      # Match forest type labels to condition rows without changing unmatched rows.
+      cond_meta[, FORTYPCD := as.integer(FORTYPCD)]
+      setkey(ref_ft, FORTYPCD)
+      setkey(cond_meta, FORTYPCD)
+      cond_meta <- ref_ft[cond_meta, on = "FORTYPCD"]
+    }
+
+    # Mark forested conditions with FALSE instead of NA for missing status codes.
+    cond_meta[, is_forested_condition := COND_STATUS_CD %in% 1L]
+
+    # Flag fire disturbances, keeping crown fire as the stricter severity proxy.
+    cond_meta[, has_fire_condition := DSTRBCD1 %in% c(30L, 31L, 32L) |
+                                      DSTRBCD2 %in% c(30L, 31L, 32L) |
+                                      DSTRBCD3 %in% c(30L, 31L, 32L)]
+    cond_meta[, has_crown_fire_condition := DSTRBCD1 %in% 32L |
+                                             DSTRBCD2 %in% 32L |
+                                             DSTRBCD3 %in% 32L]
+
+    # Flag biological disturbance classes used for treatment-control matching.
+    cond_meta[, has_insect_condition := DSTRBCD1 %in% c(10L, 11L, 12L) |
+                                        DSTRBCD2 %in% c(10L, 11L, 12L) |
+                                        DSTRBCD3 %in% c(10L, 11L, 12L)]
+    cond_meta[, has_disease_condition := DSTRBCD1 %in% c(20L, 21L, 22L) |
+                                         DSTRBCD2 %in% c(20L, 21L, 22L) |
+                                         DSTRBCD3 %in% c(20L, 21L, 22L)]
+
+    # Flag weather and human disturbance classes with NA-safe membership tests.
+    cond_meta[, has_wind_condition := DSTRBCD1 %in% 52L | DSTRBCD2 %in% 52L | DSTRBCD3 %in% 52L]
+    cond_meta[, has_drought_condition := DSTRBCD1 %in% 54L | DSTRBCD2 %in% 54L | DSTRBCD3 %in% 54L]
+    cond_meta[, has_human_dist_condition := DSTRBCD1 %in% 80L | DSTRBCD2 %in% 80L | DSTRBCD3 %in% 80L]
+
+    # Flag cutting treatments separately because they are management, not natural disturbance.
+    cond_meta[, has_cutting_treatment := TRTCD1 %in% 10L | TRTCD2 %in% 10L | TRTCD3 %in% 10L]
+
+    # Write one condition-level metadata table for downstream matching and modeling.
+    # This table is the main join target for thermophilization analysis setup.
+    write_parquet(as_tibble(cond_meta), out_cond_metadata, compression = "snappy")
+    cat(glue("  plot_condition_metadata: {format(nrow(cond_meta), big.mark=',')} rows -> ",
+             "{file_size(out_cond_metadata)}\n\n"))
+
+    rm(cond_meta, forested)
+    if (exists("ref_ft")) rm(ref_ft)
+
+    # Release the large condition metadata table before later summary steps run.
+    gc(verbose = FALSE)
+  }
 }
 
 # ------------------------------------------------------------------------------
@@ -713,7 +899,7 @@ if (file_exists(out_excl_flags)) {
 cat("FIA summaries complete.\n\n")
 cat("Outputs:\n")
 for (f in c(out_tree_metrics, out_seed_metrics, out_mort_metrics,
-            out_cond_metrics, out_disturb, out_damage_ag, out_excl_flags)) {
+            out_cond_metrics, out_cond_metadata, out_disturb, out_damage_ag, out_excl_flags)) {
   if (file_exists(f)) cat(glue("  {basename(f)}: {file_size(f)}\n"))
 }
 cat("\nRead with:\n")
