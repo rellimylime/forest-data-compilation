@@ -678,12 +678,14 @@ if (file_exists(out_disturb_class)) {
     has_any_recorded_disturbance, "other_recorded",
     default = "none"
   )]
-  cond_class[, disturbance_class := fcase(
-    disturbance_class_primary %in% c("crown_fire", "fire"), "fire",
-    disturbance_class_primary %in% c("wind", "drought", "other_weather"), "weather",
-    disturbance_class_primary %in% c("animal", "vegetation", "geologic", "other_unknown", "other_recorded"), "other",
-    default = disturbance_class_primary
-  )]
+  # Start with the primary class, then collapse selected classes to broader groups.
+  cond_class[, disturbance_class := disturbance_class_primary]
+  cond_class[disturbance_class_primary %in% c("crown_fire", "fire"), disturbance_class := "fire"]
+  cond_class[disturbance_class_primary %in% c("wind", "drought", "other_weather"), disturbance_class := "weather"]
+  cond_class[
+    disturbance_class_primary %in% c("animal", "vegetation", "geologic", "other_unknown", "other_recorded"),
+    disturbance_class := "other"
+  ]
 
   # Crown fire is the strongest FIA-only high-severity proxy available in this product.
   cond_class[, is_high_severity_proxy := has_crown_fire_condition]
