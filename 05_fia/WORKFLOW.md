@@ -144,7 +144,7 @@ trees gives per-acre basal area without needing to know subplot areas directly.
 
 **Inputs:** Per-state partitioned parquets from scripts 03 and 04
 
-**Outputs:** `data/processed/summaries/` (8 national parquet files)
+**Outputs:** `data/processed/summaries/` (11 national parquet files)
 
 **Processing:**
 - Uses `open_dataset(..., partitioning="state")` to read partitioned parquets lazily
@@ -170,6 +170,21 @@ trees gives per-acre basal area without needing to know subplot areas directly.
 - `disturbance_label` (human-readable, e.g. "Ground fire", "Crown fire")
 - `disturbance_category` (fire / insects / disease / weather / animal / vegetation / geologic / other)
 - Rows with DSTRBCD == 0 (no disturbance) are excluded
+
+**plot_disturbance_classification columns (Step 4d):**
+
+One row per **plot visit x condition**. This is the main disturbance backbone for thermophilization matching and modeling because FIA disturbance, treatment, forest type, and condition proportion are condition-level fields.
+
+- Identifiers: `stable_plot_id`, `PLT_CN`, `INVYR`, `CONDID`, state/county/unit/plot fields
+- Forest gate: `is_forested_condition`, `pct_forested`, `is_forested_analysis_condition`
+- Region: `region_east_west` using longitude <= -100 as the first-pass West/East split
+- Raw FIA fields: `DSTRBCD1-3`, `DSTRBYR1-3`, `TRTCD1-3`, `TRTYR1-3`
+- Disturbance classes: `natural_disturbance_primary`, `disturbance_class_primary`, `disturbance_class`
+- Eligibility flags: `is_control_candidate`, `is_natural_disturbance_candidate`, `disturbed_vs_control`
+- Timing fields: `disturbance_year_latest`, `time_since_disturbance`, treatment/cutting timing fields
+- Severity proxy: `is_high_severity_proxy` and `high_severity_proxy_type`; v1 only treats crown fire as high severity
+
+**Control definition in v1:** a control candidate must be a forested condition on a plot visit with `pct_forested >= 0.5`, no recorded disturbance code, and no recorded treatment code.
 
 **plot_damage_agents columns:**
 
@@ -292,7 +307,11 @@ summaries/plot_tree_metrics.parquet             |
 summaries/plot_seedling_metrics.parquet         |
 summaries/plot_mortality_metrics.parquet        |
 summaries/plot_cond_fortypcd.parquet            |
+summaries/plot_condition_metadata.parquet       |
+summaries/plot_seedling_species.parquet         |
 summaries/plot_disturbance_history.parquet      |
+summaries/plot_disturbance_classification.parquet |
+summaries/plot_treatment_history.parquet        |
 summaries/plot_damage_agents.parquet            |
 summaries/plot_exclusion_flags.parquet  <-------+---GEE (TerraClimate)
                                                 |       |
