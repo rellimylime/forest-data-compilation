@@ -126,6 +126,8 @@ trees gives per-acre basal area without needing to know subplot areas directly.
 - Aggregated: `treecount_total = sum(TREECOUNT)` by `[PLT_CN, INVYR, SPCD, SFTWD_HRDWD]`
 - No per-acre expansion stored (microplot-to-acre conversion can be applied at analysis time)
 
+**Important for thermophilization work:** this per-state seedling product preserves species identity through `SPCD`. Species identity is dropped only later when `05_build_fia_summaries.R` creates the compact plot-year summary `plot_seedling_metrics.parquet`. Use the per-state `seedlings_{ST}.parquet` products for recruitment composition and the plot summary only for total seedling count, richness, and Shannon diversity.
+
 **TREE_GRM_COMPONENT processing:**
 - Filter: `MICR_COMPONENT_AL_FOREST IN ('MORTALITY1','MORTALITY2','CUT1','CUT2')`
 - Filter: `MICR_TPAMORT_UNADJ_AL_FOREST > 0` and not NA
@@ -403,6 +405,22 @@ metrics_insect <- metrics |> inner_join(flags |> filter(has_insect), by = c("PLT
 | 30–32 | Fire (general, ground, crown) |
 | 80 | Human-induced (logging, development, clearing) |
 | COND_STATUS_CD = 1 | Forested condition (keep) |
+
+---
+
+### Validate Seedling Products
+
+```r
+# From repo root
+Rscript 05_fia/scripts/qc/validate_seedling_products.R
+```
+
+**3. Run It**
+From repo root:
+
+```powershell
+& 'C:\Program Files\R\R-4.5.1\bin\Rscript.exe' 05_fia/scripts/qc/validate_seedling_products.R
+```
 
 ---
 
