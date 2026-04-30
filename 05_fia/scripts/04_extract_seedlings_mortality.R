@@ -6,7 +6,7 @@
 #   Counted on the microplot (1/300 acre) by species and condition class.
 #   Minimum height: conifers >= 6 inches, hardwoods >= 12 inches.
 #   TREECOUNT is the raw count of seedlings on the microplot.
-#   Aggregated to plot x INVYR x species level.
+#   Aggregated to plot x INVYR x condition x subplot x species level.
 #
 # MORTALITY (between-measurement):
 #   TREE_GRM_COMPONENT records changes between consecutive visits (T1 -> T2).
@@ -19,10 +19,13 @@
 # Usage:
 #   Rscript 05_fia/scripts/04_extract_seedlings_mortality.R
 #   Rscript 05_fia/scripts/04_extract_seedlings_mortality.R CO WY MT
+#   Rscript 05_fia/scripts/04_extract_seedlings_mortality.R --force-seedlings
 #
 # Output:
 #   05_fia/data/processed/seedlings/state={ST}/seedlings_{ST}.parquet
-#     Columns: PLT_CN, INVYR, SPCD, SFTWD_HRDWD, treecount_total
+#     Columns: stable_plot_id, PLT_CN, INVYR, STATECD, UNITCD, COUNTYCD, PLOT,
+#              CONDID, SUBP, SPCD, species names/groups, treecount_total,
+#              treecount_calc_total, seedlings_tpa, n_seedling_records
 #   05_fia/data/processed/mortality/state={ST}/mortality_{ST}.parquet
 #     Columns: PLT_CN, INVYR, SPCD, SFTWD_HRDWD, AGENTCD, component_type,
 #              tpamort_per_acre
@@ -49,9 +52,13 @@ out_seedling <- here(config$processed$fia$seedlings$output_dir)
 out_mort     <- here(config$processed$fia$mortality$output_dir)
 lookup_dir   <- here("05_fia/lookups")
 
-# Allow state-specific reruns for quick testing or failed-state recovery.
-args   <- commandArgs(trailingOnly = TRUE)
-states <- if (length(args) > 0) toupper(args) else fia_config$states
+# Allow state-specific reruns and seedling-only refreshes for schema upgrades.
+args <- commandArgs(trailingOnly = TRUE)
+force_seedlings <- "--force-seedlings" %in% args
+
+# Treat command-line flags separately from state abbreviations.
+state_args <- toupper(args[!args %in% c("--force-seedlings")])
+states <- if (length(state_args) > 0) state_args else fia_config$states
 
 # Use the same modern annual-inventory window as the tree extraction.
 invyr_min <- fia_config$invyr_min
@@ -69,19 +76,35 @@ cat(glue("Output (seedlings):  {out_seedling}\n"))
 cat(glue("Output (mortality):  {out_mort}\n"))
 cat(glue("States: {length(states)}\n"))
 cat(glue("INVYR range: {invyr_min}-{invyr_max}\n"))
-cat(glue("Mortality codes: {paste(all_codes, collapse=', ')}\n\n"))
+cat(glue("Mortality codes: {paste(all_codes, collapse=', ')}\n"))
+if (force_seedlings) cat("Mode: --force-seedlings (seedling parquets will be rebuilt)\n")
+cat("\n")
 
 # Load REF_SPECIES once so seedlings and mortality share the same species groups.
 ref_sp_path <- file.path(lookup_dir, "ref_species.parquet")
 if (!file_exists(ref_sp_path)) {
   stop("ref_species.parquet not found. Run 02_inspect_fia.R first.")
 }
+# Keep species names and groups so seedling products are analysis-ready.
 ref_sp <- as.data.table(read_parquet(ref_sp_path))
-ref_sp <- ref_sp[, .(SPCD, SFTWD_HRDWD)]
+ref_sp_cols <- intersect(
+  c("SPCD", "COMMON_NAME", "SCIENTIFIC_NAME", "GENUS", "SPECIES",
+    "SFTWD_HRDWD", "WOODLAND", "MAJOR_SPGRPCD", "JENKINS_SPGRPCD"),
+  names(ref_sp)
+)
+ref_sp <- ref_sp[, ..ref_sp_cols]
 setkey(ref_sp, SPCD)
 
-# Keep only the source columns needed to build the current seedling and mortality products.
-seedling_cols <- c("PLT_CN", "CONDID", "SUBP", "SPCD", "TREECOUNT", "INVYR")
+# Sum optional FIA fields as NA when a source table does not provide them.
+sum_or_na <- function(x) {
+  if (all(is.na(x))) NA_real_ else sum(x, na.rm = TRUE)
+}
+
+# Required columns define seedling identity; optional columns add stable IDs and density.
+seedling_cols_required <- c("PLT_CN", "CONDID", "SUBP", "SPCD", "TREECOUNT", "INVYR")
+seedling_cols_optional <- c("STATECD", "UNITCD", "COUNTYCD", "PLOT",
+                            "TREECOUNT_CALC", "TPA_UNADJ")
+seedling_cols <- c(seedling_cols_required, seedling_cols_optional)
 grm_cols      <- c("TRE_CN", "PLT_CN", "MICR_COMPONENT_AL_FOREST",
                    "MICR_TPAMORT_UNADJ_AL_FOREST")
 
@@ -102,8 +125,8 @@ for (i in seq_along(states)) {
   seed_out     <- file.path(out_seedling, glue("state={st}/seedlings_{st}.parquet"))
   mort_out     <- file.path(out_mort,     glue("state={st}/mortality_{st}.parquet"))
 
-  # Skip states whose seedling and mortality products already exist.
-  if (file_exists(seed_out) && file_exists(mort_out)) {
+  # Skip states whose products already exist unless we are refreshing seedlings.
+  if (!force_seedlings && file_exists(seed_out) && file_exists(mort_out)) {
     cat(glue("[{i}/{length(states)}] {st}: output exists - skipping\n"))
     n_skipped <- n_skipped + 1
     next
@@ -130,35 +153,75 @@ for (i in seq_along(states)) {
 
     # ------ SEEDLINGS ----------------------------------------------------------
 
-    if (!file_exists(seed_out)) {
+    if (force_seedlings || !file_exists(seed_out)) {
       # Seedling extraction can run even if mortality sources are missing.
       if (!file_exists(seed_file)) {
         cat("  SEEDLING.csv not found - skipping seedling extraction\n")
       } else {
-        # Read only the seedling fields needed for species-level regeneration counts.
-        seed_dt <- fread(seed_file, select = seedling_cols, showProgress = FALSE)
-        cat(glue("  Loaded: SEEDLING={format(nrow(seed_dt), big.mark=',')}\n"))
+        # Inspect the header first so optional fields do not break older state files.
+        avail_seed <- names(fread(seed_file, nrows = 0L, showProgress = FALSE))
+        missing_seed <- setdiff(seedling_cols_required, avail_seed)
 
-        # Keep positive seedling records from the modern annual inventory period.
-        seed_dt <- seed_dt[
-          INVYR >= invyr_min & INVYR <= invyr_max &
-          !is.na(TREECOUNT) & TREECOUNT > 0
-        ]
+        if (length(missing_seed) > 0) {
+          cat(glue("  SEEDLING missing required columns: {paste(missing_seed, collapse=', ')} - skipping\n"))
+        } else {
+          # Read required fields plus whichever optional density/identity fields exist.
+          select_seed <- intersect(seedling_cols, avail_seed)
+          seed_dt <- fread(seed_file, select = select_seed, showProgress = FALSE)
+          cat(glue("  Loaded: SEEDLING={format(nrow(seed_dt), big.mark=',')}\n"))
 
-        # Attach softwood/hardwood group so summaries can split functional groups.
-        setkey(seed_dt, SPCD)
-        seed_dt <- ref_sp[seed_dt, on = "SPCD"]
+          # Add absent optional ID fields as NA so all state parquets share one schema.
+          for (id_col in c("STATECD", "UNITCD", "COUNTYCD", "PLOT")) {
+            if (!id_col %in% names(seed_dt)) seed_dt[, (id_col) := NA_integer_]
+          }
 
-        # Preserve species identity while summing counts across conditions/subplots.
-        seed_agg <- seed_dt[, .(
-          treecount_total = sum(TREECOUNT, na.rm = TRUE)
-        ), by = .(PLT_CN, INVYR, SPCD, SFTWD_HRDWD)]
+          # Add absent optional count fields as NA so density-aware code can still run.
+          for (count_col in c("TREECOUNT_CALC", "TPA_UNADJ")) {
+            if (!count_col %in% names(seed_dt)) seed_dt[, (count_col) := NA_real_]
+          }
 
-        # Write the species-level seedling product used by later composition checks.
-        dir_create(dirname(seed_out))
-        write_parquet(as_tibble(seed_agg), seed_out, compression = "snappy")
-        cat(glue("  Seedlings: {format(nrow(seed_agg), big.mark=',')} rows -> {file_size(seed_out)}\n"))
-        rm(seed_dt, seed_agg)
+          # Keep positive seedling records from the modern annual inventory period.
+          seed_dt <- seed_dt[
+            INVYR >= invyr_min & INVYR <= invyr_max &
+              !is.na(TREECOUNT) & TREECOUNT > 0
+          ]
+
+          # Build the same stable plot id used in condition metadata.
+          seed_dt[, stable_plot_id := NA_character_]
+          seed_dt[
+            !is.na(STATECD) & !is.na(UNITCD) & !is.na(COUNTYCD) & !is.na(PLOT),
+            stable_plot_id := paste(STATECD, UNITCD, COUNTYCD, PLOT, sep = "_")
+          ]
+
+          # Attach species names and broad functional groups for composition analyses.
+          setkey(seed_dt, SPCD)
+          seed_dt <- ref_sp[seed_dt, on = "SPCD"]
+
+          # Group at condition/subplot/species grain so downstream joins stay honest.
+          species_cols <- intersect(
+            c("COMMON_NAME", "SCIENTIFIC_NAME", "GENUS", "SPECIES",
+              "SFTWD_HRDWD", "WOODLAND", "MAJOR_SPGRPCD", "JENKINS_SPGRPCD"),
+            names(seed_dt)
+          )
+          seed_group_cols <- c(
+            "stable_plot_id", "PLT_CN", "INVYR", "STATECD", "UNITCD", "COUNTYCD", "PLOT",
+            "CONDID", "SUBP", "SPCD", species_cols
+          )
+
+          # Sum raw counts and expanded density while preserving the sampling grain.
+          seed_agg <- seed_dt[, .(
+            treecount_total = sum(TREECOUNT, na.rm = TRUE),
+            treecount_calc_total = sum_or_na(TREECOUNT_CALC),
+            seedlings_tpa = sum_or_na(TPA_UNADJ),
+            n_seedling_records = .N
+          ), by = seed_group_cols]
+
+          # Write the species-level seedling product used by recruitment composition work.
+          dir_create(dirname(seed_out))
+          write_parquet(as_tibble(seed_agg), seed_out, compression = "snappy")
+          cat(glue("  Seedlings: {format(nrow(seed_agg), big.mark=',')} rows -> {file_size(seed_out)}\n"))
+          rm(seed_dt, seed_agg)
+        }
       }
     } else {
       cat("  Seedlings: output already exists\n")
