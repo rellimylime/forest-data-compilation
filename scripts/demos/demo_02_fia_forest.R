@@ -192,9 +192,29 @@ disturb_counts <- disturb |>
 cat("\nTop disturbance types:\n")
 print(head(disturb_counts, 15), n = 15)
 
-# Annual disturbance area fraction
+valid_disturbance_year_max <- if ("INVYR" %in% names(disturb)) {
+  max(disturb$INVYR, na.rm = TRUE)
+} else {
+  as.integer(format(Sys.Date(), "%Y"))
+}
+
+excluded_disturbance_years <- disturb |>
+  filter(!is.na(DSTRBYR), DSTRBYR > valid_disturbance_year_max) |>
+  count(DSTRBYR, sort = TRUE)
+
+if (nrow(excluded_disturbance_years) > 0) {
+  cat("\nExcluding disturbance years beyond the inventory range from annual plot:\n")
+  print(head(excluded_disturbance_years, 10), n = 10)
+}
+
+# Annual disturbance record counts. FIA uses sentinel/continuous values such as
+# 9999 for unknown timing; exclude those from calendar-year plots.
 dist_annual <- disturb |>
-  filter(!is.na(DSTRBYR), DSTRBYR >= 1990) |>
+  filter(
+    !is.na(DSTRBYR),
+    DSTRBYR >= 1990,
+    DSTRBYR <= valid_disturbance_year_max
+  ) |>
   count(DSTRBYR, disturbance_category) |>
   group_by(DSTRBYR) |>
   mutate(pct = n / sum(n)) |>
@@ -207,6 +227,11 @@ p_dist <- ggplot(dist_annual, aes(x = DSTRBYR, y = n, fill = disturbance_categor
                human = "#6A0572", other = "#888"),
     name = "Category"
   ) +
+  scale_x_continuous(
+    breaks = seq(1990, valid_disturbance_year_max, by = 5),
+    expand = expansion(mult = c(0.01, 0.02))
+  ) +
+  coord_cartesian(xlim = c(1990, valid_disturbance_year_max)) +
   labs(
     title   = "FIA Disturbance Records by Year and Category",
     x       = "Disturbance Year",
