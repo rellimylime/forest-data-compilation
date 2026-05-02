@@ -23,7 +23,9 @@ Source: FIADB User Guide v9.4, August 2025
 
 import os
 import re
+import json
 import sqlite3
+import html
 from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -1282,6 +1284,184 @@ def guide_rows_to_df(rows: List[Dict[str, Any]], include_table: bool = True) -> 
     return df[cols]
 
 
+def _text_matches(query: str, *values: Any) -> bool:
+    q = (query or "").strip().upper()
+    if not q:
+        return False
+    return any(q in str(value or "").upper() for value in values)
+
+
+def _static_variable_rows() -> List[Dict[str, str]]:
+    """Fallback variable/key index that does not require the extracted guide JSON."""
+    rows: List[Dict[str, str]] = []
+    seen = set()
+
+    universal_keys = {
+        "CN": "Primary sequence key used by every FIA table.",
+        "PLT_CN": "Foreign key used by child records to link back to PLOT.CN.",
+        "TRE_CN": "Foreign key used by GRM and woodland records to link back to TREE.CN.",
+        "SPCD": "FIA species code; join to REF_SPECIES for names and traits.",
+        "FORTYPCD": "Forest type code; join to REF_FOREST_TYPE for labels.",
+        "CONDID": "Condition number within a plot.",
+        "STATECD": "FIPS state code.",
+        "INVYR": "Inventory year for a plot visit.",
+        "EVAL_CN": "Foreign key to POP_EVAL.CN.",
+        "STRATUM_CN": "Foreign key to POP_STRATUM.CN.",
+        "SRV_CN": "Foreign key to SURVEY.CN.",
+        "CTY_CN": "Foreign key to COUNTY.CN.",
+        "PRJ_CN": "Foreign key to PROJECT.CN.",
+    }
+    for column, desc in universal_keys.items():
+        rows.append(
+            {
+                "column_name": column,
+                "descriptive_name": desc,
+                "oracle_table": "Multiple",
+                "table_category": "Keys",
+                "variable_family": "Keys / identifiers",
+            }
+        )
+        seen.add((column, "Multiple"))
+
+    for field, cb in FIELD_CODEBOOK.items():
+        key = (field, "Codebook")
+        if key in seen:
+            continue
+        rows.append(
+            {
+                "column_name": field,
+                "descriptive_name": cb.get("description", "Coded FIA field."),
+                "oracle_table": "Codebook",
+                "table_category": "Coded fields",
+                "variable_family": classify_variable_family(field, cb.get("description", "")),
+            }
+        )
+        seen.add(key)
+
+    for child, child_fk, parent, parent_pk, label in RELATIONSHIPS:
+        for table, column, desc in [
+            (child, child_fk, f"Join key from {child} to {parent}.{parent_pk}."),
+            (parent, parent_pk, f"Matched key for relationships from {child}.{child_fk}."),
+        ]:
+            key = (column, table)
+            if key in seen:
+                continue
+            rows.append(
+                {
+                    "column_name": column,
+                    "descriptive_name": desc,
+                    "oracle_table": table,
+                    "table_category": _TABLE_TO_CAT.get(table, "Unknown"),
+                    "variable_family": "Keys / identifiers",
+                }
+            )
+            seen.add(key)
+
+    return rows
+
+
+def search_dictionary(
+    guide_lookup: Dict[str, Any],
+    query: str,
+    *,
+    include_tables: bool = True,
+    include_variables: bool = True,
+    include_keys: bool = True,
+) -> Dict[str, List[Dict[str, str]]]:
+    """Search embedded FIA metadata, preferring the guide index when available."""
+    q = (query or "").strip()
+    if not q:
+        return {"tables": [], "variables": [], "keys": []}
+
+    table_results: List[Dict[str, str]] = []
+    if include_tables:
+        known_tables = sorted({t for tables in TABLE_CATEGORIES.values() for t in tables})
+        for table in known_tables:
+            category = _TABLE_TO_CAT.get(table, "Unknown")
+            desc = TABLE_DESCRIPTIONS.get(table, "")
+            guide_meta = guide_lookup.get("tables_by_name", {}).get(table, {})
+            guide_desc = guide_meta.get("official_summary") or guide_meta.get("description", "")
+            if _text_matches(q, table, category, desc, guide_desc):
+                table_results.append(
+                    {
+                        "title": table,
+                        "type": "Table",
+                        "body": guide_desc or desc or "No description available.",
+                        "meta": category,
+                    }
+                )
+
+    variable_results: List[Dict[str, str]] = []
+    if include_variables:
+        rows = guide_lookup.get("columns_rows") or _static_variable_rows()
+        for row in rows:
+            if _text_matches(
+                q,
+                row.get("column_name"),
+                row.get("descriptive_name"),
+                row.get("oracle_table"),
+                row.get("table_category"),
+                row.get("variable_family"),
+            ):
+                variable_results.append(
+                    {
+                        "title": str(row.get("column_name", "")),
+                        "type": "Variable",
+                        "body": str(row.get("descriptive_name") or "Variable indexed from embedded metadata."),
+                        "meta": f"{row.get('oracle_table', '')} · {row.get('variable_family', row.get('table_category', ''))}",
+                    }
+                )
+
+    key_results: List[Dict[str, str]] = []
+    if include_keys:
+        for child, child_fk, parent, parent_pk, label in RELATIONSHIPS:
+            if _text_matches(q, child, child_fk, parent, parent_pk, label):
+                key_results.append(
+                    {
+                        "title": f"{child}.{child_fk} -> {parent}.{parent_pk}",
+                        "type": "Key",
+                        "body": label or f"{child} links to {parent}.",
+                        "meta": f"{_TABLE_TO_CAT.get(child, 'Unknown')} -> {_TABLE_TO_CAT.get(parent, 'Unknown')}",
+                    }
+                )
+        for field, cb in FIELD_CODEBOOK.items():
+            codes_text = " ".join(str(v) for v in cb.get("codes", {}).values())
+            if _text_matches(q, field, cb.get("description"), codes_text):
+                key_results.append(
+                    {
+                        "title": field,
+                        "type": "Codebook",
+                        "body": cb.get("description", "Coded FIA field."),
+                        "meta": f"{len(cb.get('codes', {}))} coded values",
+                    }
+                )
+
+    return {
+        "tables": table_results[:80],
+        "variables": variable_results[:200],
+        "keys": key_results[:120],
+    }
+
+
+def render_search_cards(results: List[Dict[str, str]], limit: int = 12) -> None:
+    for result in results[:limit]:
+        st.markdown(
+            f"""
+            <div class="fia-result-card">
+              <div class="fia-result-head">
+                <span class="fia-result-title">{html.escape(result.get('title', ''))}</span>
+                <span class="fia-result-type">{html.escape(result.get('type', ''))}</span>
+              </div>
+              <div class="fia-result-body">{html.escape(result.get('body', ''))}</div>
+              <div class="fia-result-meta">{html.escape(result.get('meta', ''))}</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    if len(results) > limit:
+        st.caption(f"Showing {limit} of {len(results)} matches. Refine the search to narrow the list.")
+
+
 # =============================================================================
 # ANALYSIS PIPELINE CODE RENDERING HELPERS
 # =============================================================================
@@ -1497,6 +1677,223 @@ _TABLE_TO_CAT: Dict[str, str] = {
 }
 
 
+FIADB_DASHBOARD_CSS = """
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=DM+Mono:wght@300;400;500&display=swap');
+
+  :root {
+    --fia-bg: #0d1a12;
+    --fia-bg2: #111f17;
+    --fia-bg3: #152019;
+    --fia-bg4: #1a2a1f;
+    --fia-border: #1e3024;
+    --fia-border2: #2a4035;
+    --fia-text: #d4e8da;
+    --fia-text2: #8aab94;
+    --fia-text3: #567264;
+    --fia-text4: #3a5248;
+    --fia-accent: #5c9e72;
+    --fia-accent2: #7bbf92;
+    --fia-radius: 8px;
+    --fia-font: 'DM Sans', system-ui, sans-serif;
+    --fia-mono: 'DM Mono', 'Fira Mono', monospace;
+  }
+
+  html, body, [class*="css"] { font-family: var(--fia-font); }
+  .stApp { background: var(--fia-bg); color: var(--fia-text); }
+  [data-testid="stHeader"] {
+    display: none !important;
+  }
+  .block-container {
+    max-width: 1080px;
+    padding-top: 3.25rem;
+    padding-bottom: 4rem;
+  }
+  [data-testid="stSidebar"],
+  [data-testid="stSidebarNav"],
+  [data-testid="stSidebarCollapsedControl"],
+  button[kind="header"],
+  button[title="View fullscreen"] {
+    display: none !important;
+  }
+  section[data-testid="stSidebar"] {
+    width: 0 !important;
+    min-width: 0 !important;
+  }
+  [data-testid="stAppViewContainer"] > .main {
+    margin-left: 0 !important;
+  }
+  .fia-result-card {
+    background: var(--fia-bg2);
+    border: 1px solid var(--fia-border);
+    border-radius: var(--fia-radius);
+    margin-bottom: 0.45rem;
+    padding: 0.75rem 0.85rem;
+  }
+  .fia-result-head {
+    align-items: center;
+    display: flex;
+    gap: 0.5rem;
+    justify-content: space-between;
+    margin-bottom: 0.25rem;
+  }
+  .fia-result-title {
+    color: var(--fia-text);
+    font-family: var(--fia-mono);
+    font-size: 0.86rem;
+    font-weight: 500;
+  }
+  .fia-result-type {
+    background: var(--fia-bg4);
+    border: 1px solid var(--fia-border2);
+    border-radius: 999px;
+    color: var(--fia-text3);
+    flex-shrink: 0;
+    font-size: 0.68rem;
+    padding: 0.08rem 0.45rem;
+    text-transform: uppercase;
+  }
+  .fia-result-body {
+    color: var(--fia-text2);
+    font-size: 0.82rem;
+    line-height: 1.55;
+  }
+  .fia-result-meta {
+    color: var(--fia-text4);
+    font-family: var(--fia-mono);
+    font-size: 0.72rem;
+    margin-top: 0.35rem;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    color: var(--fia-text);
+    font-family: var(--fia-font);
+    letter-spacing: 0;
+  }
+  h1 { font-size: 1.45rem; font-weight: 600; margin-bottom: 0.25rem; }
+  h2 { font-size: 1.12rem; font-weight: 600; margin-top: 1.65rem; }
+  h3 { font-size: 0.98rem; font-weight: 600; }
+  p, li, .stMarkdown, [data-testid="stCaptionContainer"] { color: var(--fia-text2); }
+  a { color: var(--fia-accent2) !important; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  hr { border-color: var(--fia-border); margin: 1.35rem 0; }
+
+  code {
+    background: rgba(92, 158, 114, 0.1);
+    border-radius: 4px;
+    color: var(--fia-accent2);
+    font-family: var(--fia-mono);
+    font-size: 0.78rem;
+    padding: 1px 5px;
+  }
+
+  pre, pre code {
+    background: #080f0a !important;
+    border: 1px solid var(--fia-border);
+    border-radius: var(--fia-radius);
+    color: #9ad4a8 !important;
+    font-family: var(--fia-mono);
+    font-size: 0.78rem;
+    line-height: 1.65;
+  }
+
+  .fia-page-title {
+    color: var(--fia-text);
+    font-size: 1.45rem;
+    font-weight: 600;
+    line-height: 1.35;
+    margin-bottom: 0.25rem;
+    padding-top: 0.15rem;
+  }
+
+  .fia-page-lead {
+    color: var(--fia-text2);
+    line-height: 1.65;
+    max-width: 760px;
+    margin-bottom: 0.75rem;
+  }
+
+  .fia-kicker {
+    color: var(--fia-text4);
+    font-family: var(--fia-mono);
+    font-size: 0.75rem;
+    margin-bottom: 1.1rem;
+  }
+
+  [data-testid="stMetric"] {
+    background: var(--fia-bg2);
+    border: 1px solid var(--fia-border);
+    border-radius: var(--fia-radius);
+    padding: 12px 14px 10px;
+  }
+
+  [data-testid="stMetricLabel"] p {
+    color: var(--fia-text4);
+    font-size: 0.68rem;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+  }
+
+  [data-testid="stMetricValue"] {
+    color: var(--fia-text);
+    font-size: 1.35rem;
+    font-weight: 600;
+  }
+
+  .stTabs [data-baseweb="tab-list"] { border-bottom: 1px solid var(--fia-border); gap: 1px; }
+  .stTabs [data-baseweb="tab"] {
+    background: transparent;
+    color: var(--fia-text3);
+    font-family: var(--fia-font);
+    font-size: 0.82rem;
+    font-weight: 400;
+    padding: 7px 13px;
+  }
+  .stTabs [aria-selected="true"] { color: var(--fia-accent2) !important; font-weight: 500; }
+  .stTabs [data-baseweb="tab-highlight"] { background-color: var(--fia-accent); }
+
+  [data-testid="stDataFrame"], [data-testid="stTable"] {
+    border: 1px solid var(--fia-border);
+    border-radius: var(--fia-radius);
+    overflow: hidden;
+  }
+
+  [data-testid="stExpander"] {
+    background: var(--fia-bg2);
+    border: 1px solid var(--fia-border);
+    border-radius: var(--fia-radius);
+  }
+  [data-testid="stExpander"] summary:hover { background: var(--fia-bg3); }
+
+  div[data-baseweb="select"] > div,
+  div[data-baseweb="input"] > div,
+  textarea,
+  input {
+    background: var(--fia-bg2) !important;
+    border-color: var(--fia-border2) !important;
+    color: var(--fia-text) !important;
+  }
+  div[data-baseweb="checkbox"] label,
+  div[data-baseweb="checkbox"] p {
+    color: var(--fia-text2) !important;
+  }
+
+  .stButton button {
+    background: var(--fia-bg3);
+    border: 1px solid var(--fia-border2);
+    border-radius: var(--fia-radius);
+    color: var(--fia-text2);
+  }
+  .stButton button:hover { border-color: var(--fia-accent); color: var(--fia-accent2); }
+  .stAlert { border-radius: var(--fia-radius); }
+</style>
+"""
+
+
+def apply_fiadb_theme() -> None:
+    st.markdown(FIADB_DASHBOARD_CSS, unsafe_allow_html=True)
+
+
 def build_pyvis_graph(db_tables: List[str], graph_height: int = 460) -> str:
     # graph_height controls the canvas; the info panel below adds ~180px to the iframe.
     net = Network(
@@ -1559,32 +1956,33 @@ def build_pyvis_graph(db_tables: List[str], graph_height: int = 460) -> str:
     injection = f"""
 <style>
   html, body {{
-    margin: 0; padding: 0; background: #0e1117;
+    margin: 0; padding: 0; background: #0d1a12;
     display: flex; flex-direction: column; height: auto; overflow-x: hidden;
   }}
-  #mynetwork {{ background: #0e1117 !important; flex: 0 0 {graph_height}px; }}
+  #mynetwork {{ background: #0d1a12 !important; flex: 0 0 {graph_height}px; }}
   #fia-node-panel {{
     flex: 0 0 auto;
     padding: 12px 18px 10px;
-    background: #0d1117;
-    border-top: 3px solid #333;
-    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-    font-size: 13px; line-height: 1.5; color: #ddd;
+    background: #111f17;
+    border-top: 3px solid #2a4035;
+    border-bottom: 1px solid #1e3024;
+    font-family: 'DM Sans', system-ui, sans-serif;
+    font-size: 13px; line-height: 1.5; color: #d4e8da;
     transition: border-top-color 0.25s;
     min-height: 72px;
   }}
 </style>
 <div id="fia-node-panel">
-  <p id="fia-placeholder" style="margin:6px 0;color:#555;font-style:italic;">
-    &#8593; Click any node to see its description.
+  <p id="fia-placeholder" style="margin:6px 0;color:#567264;font-style:italic;">
+     &#8593; Click any node to see its description.
   </p>
   <div id="fia-info" style="display:none;">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-      <span id="fia-node-name" style="font-weight:700;font-size:15px;color:#fff;"></span>
-      <span id="fia-node-cat"  style="padding:2px 10px;border-radius:4px;color:white;font-size:11px;flex-shrink:0;"></span>
+      <span id="fia-node-name" style="font-weight:600;font-size:15px;color:#d4e8da;"></span>
+      <span id="fia-node-cat"  style="padding:2px 10px;border-radius:20px;color:white;font-size:11px;flex-shrink:0;"></span>
     </div>
-    <div id="fia-node-desc" style="color:#bbb;border-top:1px solid #2a2a2a;padding-top:8px;font-size:12px;"></div>
-    <div style="margin-top:6px;font-size:10px;color:#444;">Click empty space to clear.</div>
+    <div id="fia-node-desc" style="color:#8aab94;border-top:1px solid #1e3024;padding-top:8px;font-size:12px;"></div>
+    <div style="margin-top:6px;font-size:10px;color:#3a5248;">Click empty space to clear.</div>
   </div>
 </div>
 <script>
@@ -1653,16 +2051,36 @@ def build_graphviz_graph(db_tables: List[str]) -> "Digraph":
 # =============================================================================
 
 def main() -> None:
-    st.set_page_config(page_title="FIA Schema Navigator", layout="wide")
-    st.title("FIA Database Schema Navigator")
+    st.set_page_config(
+        page_title="FIADB Data Dictionary",
+        layout="wide",
+        initial_sidebar_state="collapsed",
+    )
+    apply_fiadb_theme()
+    st.markdown(
+        """
+        <div class="fia-page-title">FIADB Data Dictionary</div>
+        <div class="fia-page-lead">
+          Metadata-first navigator for the Forest Inventory and Analysis database:
+          browse table groups, inspect variables, follow joins, and copy analysis recipes
+          without loading bulk FIA records.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
     guide_data = load_user_guide_index()
     guide_lookup = prepare_user_guide_lookup(guide_data)
     guide_summary = guide_lookup.get("summary", {})
     guide_loaded = bool(guide_lookup.get("columns_rows"))
     if guide_loaded:
-        st.caption(
-            f"User Guide index cache loaded: {guide_summary.get('tables_index_rows', '?')} tables, "
-            f"{guide_summary.get('column_index_rows', '?')} table-column entries"
+        st.markdown(
+            f"""
+            <div class="fia-kicker">
+              User Guide index cache loaded: {guide_summary.get('tables_index_rows', '?')} tables,
+              {guide_summary.get('column_index_rows', '?')} table-column entries
+            </div>
+            """,
+            unsafe_allow_html=True,
         )
     st.caption(
         "FIADB v9.4 · August 2025 · Schema browsing via PRAGMA — zero bulk data loading"
@@ -1677,12 +2095,17 @@ def main() -> None:
     if hosted_db_path:
         st.success("Connected: using server-side FIADB database.")
     elif allow_local_path_input:
-        with st.expander("Connect to FIADB SQLite database (optional)", expanded=False):
+        with st.expander("Optional SQLite connection", expanded=False):
             db_path = st.text_input(
                 "Path to FIADB SQLite file",
                 placeholder="/path/to/FIADB_NATIONAL.db",
                 help="Full absolute path. Schema metadata is read instantly via PRAGMA.",
             )
+    else:
+        st.caption(
+            "Static dictionary mode is built in. Set `FIADB_ENABLE_LOCAL_PATH_INPUT=1` "
+            "only if you want to connect a local SQLite database for live column types, row estimates, and preview rows."
+        )
 
     conn: Optional[sqlite3.Connection] = None
     db_tables: List[str] = []
@@ -1696,6 +2119,46 @@ def main() -> None:
             st.error(f"Cannot open database: {e}")
     elif db_path:
         st.warning("File not found — showing static metadata only")
+
+    st.markdown("---")
+    st.markdown("### Search the dictionary")
+    search_cols = st.columns([2.2, 1.4])
+    global_query = search_cols[0].text_input(
+        "Search variables, tables, keys, and codebooks",
+        placeholder="Try SPCD, PLT_CN, mortality, REF_SPECIES, owner, carbon",
+        key="fiadb_global_search",
+    )
+    with search_cols[1]:
+        st.markdown("Include")
+        include_cols = st.columns(3)
+        include_tables = include_cols[0].checkbox("Tables", value=True, key="fiadb_include_tables")
+        include_variables = include_cols[1].checkbox("Variables", value=True, key="fiadb_include_variables")
+        include_keys = include_cols[2].checkbox("Keys", value=True, key="fiadb_include_keys")
+    if global_query.strip():
+        search_results = search_dictionary(
+            guide_lookup,
+            global_query,
+            include_tables=include_tables,
+            include_variables=include_variables,
+            include_keys=include_keys,
+        )
+        total_matches = sum(len(v) for v in search_results.values())
+        t1, t2, t3, t4 = st.columns(4)
+        t1.metric("Matches", total_matches)
+        t2.metric("Tables", len(search_results["tables"]))
+        t3.metric("Variables", len(search_results["variables"]))
+        t4.metric("Keys / codebooks", len(search_results["keys"]))
+        if total_matches:
+            result_tabs = st.tabs(["Tables", "Variables", "Keys"])
+            with result_tabs[0]:
+                render_search_cards(search_results["tables"])
+            with result_tabs[1]:
+                render_search_cards(search_results["variables"])
+            with result_tabs[2]:
+                render_search_cards(search_results["keys"])
+        else:
+            st.info("No matches found. Try a table name, variable code, plain-English concept, or join key.")
+        st.markdown("---")
 
     tabs = st.tabs([
         "Overview",
@@ -2013,7 +2476,11 @@ tables it links to and which tables link back to it.
                         "Connect a database file to inspect the actual columns."
                     )
                 else:
-                    st.info("Connect a database file (sidebar) to see column details.")
+                    st.info(
+                        "No embedded column list is available for this table. Static table descriptions, "
+                        "known joins, and coded fields still work without a database; connect SQLite only "
+                        "when you need live column types or preview rows."
+                    )
 
             # Codebook for this table's coded columns (works from live schema or guide index)
             if not col_df.empty:
@@ -2086,7 +2553,7 @@ An arrow from Table A to Table B means: *"Table A has a column that stores a row
 — in other words, you can join them on that column.
 
 **PLOT** is the central hub — almost every other table links back to it via `PLT_CN`.
-The color of each node shows which group the table belongs to (see the color key in the sidebar).
+The color of each node shows which group the table belongs to.
 
 > **How to use:** Hover over a node to see a description. Drag nodes to rearrange the layout.
 > Click a table name in the *Schema Browser* tab to explore its columns and connections in detail.
@@ -2100,6 +2567,7 @@ The color of each node shows which group the table belongs to (see the color key
             )
             html = build_pyvis_graph(db_tables, graph_height=graph_height)
             components.html(html, height=graph_height + 180, scrolling=False)
+            st.caption("Source code: [`05_fia/docs/dashboard/fiadb_dashboard.py`](05_fia/docs/dashboard/fiadb_dashboard.py)")
         elif _GRAPHVIZ_AVAILABLE:
             st.info(
                 "pyvis not installed — showing a static core-table diagram. "
@@ -2107,6 +2575,7 @@ The color of each node shows which group the table belongs to (see the color key
             )
             dot = build_graphviz_graph(db_tables)
             st.graphviz_chart(dot)
+            st.caption("Source code: [`05_fia/docs/dashboard/fiadb_dashboard.py`](05_fia/docs/dashboard/fiadb_dashboard.py)")
         else:
             st.warning(
                 "Install pyvis (`pip install pyvis`) for the interactive map, "
@@ -2326,31 +2795,53 @@ schema search to compare the guide index with the tables actually present in you
                     else:
                         st.caption("No live PRAGMA matches (or no text query provided).")
         else:
-            st.warning(
-                "User Guide index cache not found (`fiadb_user_guide_index_v94.json`). "
-                "The advanced variable explorer is unavailable until that file is present."
+            st.info(
+                "User Guide index cache not found, so this tab is using the embedded fallback index "
+                "of universal join keys, relationship keys, and coded fields. A SQLite database is optional."
             )
             query = st.text_input(
-                "Column name (partial match OK)",
-                placeholder="e.g. SPCD, PLT_CN, AGENTCD",
+                "Variable / table / key search",
+                placeholder="e.g. SPCD, PLT_CN, AGENTCD, PLOT, mortality",
                 key="legacy_column_search_query",
             )
-            if query and conn:
-                results = []
-                for table in db_tables:
-                    try:
-                        cur = conn.execute(f"PRAGMA table_info({table})")
-                        for row in cur.fetchall():
-                            if query.upper() in row[1].upper():
-                                results.append({"Table": table, "Column": row[1], "Type": row[2]})
-                    except Exception:
-                        pass
+            static_rows = _static_variable_rows()
+            if query:
+                results = [
+                    row for row in static_rows
+                    if _text_matches(
+                        query,
+                        row.get("column_name"),
+                        row.get("descriptive_name"),
+                        row.get("oracle_table"),
+                        row.get("table_category"),
+                    )
+                ]
                 if results:
-                    st.dataframe(pd.DataFrame(results), use_container_width=True, hide_index=True)
+                    st.dataframe(guide_rows_to_df(results, include_table=True), use_container_width=True, hide_index=True)
+                    st.caption(f"{len(results)} embedded fallback matches.")
+                elif conn:
+                    live_results = []
+                    for table in db_tables:
+                        try:
+                            cur = conn.execute(f"PRAGMA table_info({table})")
+                            for row in cur.fetchall():
+                                if query.upper() in row[1].upper():
+                                    live_results.append({"Table": table, "Column": row[1], "Type": row[2]})
+                        except Exception:
+                            pass
+                    if live_results:
+                        st.dataframe(pd.DataFrame(live_results), use_container_width=True, hide_index=True)
+                    else:
+                        st.info("No matches found.")
                 else:
-                    st.info("No matches found.")
-            elif query:
-                st.info("Connect a database file (sidebar) to search columns.")
+                    st.info("No matches found in the embedded fallback index.")
+            else:
+                st.markdown("**Common embedded keys and coded fields**")
+                st.dataframe(
+                    guide_rows_to_df(static_rows[:40], include_table=True),
+                    use_container_width=True,
+                    hide_index=True,
+                )
 
         st.markdown("---")
         st.subheader("Universal join keys")

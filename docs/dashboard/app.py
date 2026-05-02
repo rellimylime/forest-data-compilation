@@ -14,6 +14,8 @@
 # ==============================================================================
 
 import os
+import json
+import html
 from pathlib import Path
 
 import pandas as pd
@@ -21,14 +23,15 @@ import streamlit as st
 
 from utils import (
     REPO_ROOT, apply_dark_css, metric_card, parquet_meta,
-    file_status, repo_path, color_status, PLOTLY_AVAILABLE
+    file_status, repo_path, color_status, PLOTLY_AVAILABLE,
+    plot_source_link,
 )
 
 st.set_page_config(
     page_title="Forest Data Explorer",
     page_icon="🌲",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
 apply_dark_css()
 
@@ -158,38 +161,292 @@ PIPELINE = [
      "Monthly TerraClimate at FIA sites: 6 variables, 1958–2024 (23.5M rows)"),
 ]
 
+
+PAGE_ROUTES = {
+    "IDS": "pages/1_IDS_Survey.py",
+    "TerraClimate": "pages/2_Climate.py",
+    "PRISM": "pages/2_Climate.py",
+    "WorldClim": "pages/2_Climate.py",
+    "FIA": "pages/3_FIA_Forest.py",
+    "Architecture": "pages/4_Architecture.py",
+    "Data Catalog": "pages/5_Data_Catalog.py",
+}
+
+PAGE_SEARCH_INDEX = [
+    {
+        "title": "Architecture",
+        "page": "pages/4_Architecture.py",
+        "body": "Workflow map, pixel decomposition, IDS polygon extraction, FIA point extraction, and shared climate summary pattern.",
+    },
+    {
+        "title": "IDS Survey",
+        "page": "pages/1_IDS_Survey.py",
+        "body": "IDS damage areas, surveyed areas, host codes, DCA codes, maps, and lookup tables.",
+    },
+    {
+        "title": "Climate",
+        "page": "pages/2_Climate.py",
+        "body": "TerraClimate, PRISM, WorldClim variables, pixel maps, grids, schemas, and climate summaries.",
+    },
+    {
+        "title": "FIA Forest",
+        "page": "pages/3_FIA_Forest.py",
+        "body": "FIA derived products: tree metrics, filters, disturbance, damage agents, mortality, seedlings, treatments, site climate.",
+    },
+    {
+        "title": "Data Catalog",
+        "page": "pages/5_Data_Catalog.py",
+        "body": "All repository outputs, file paths, row counts, schemas, and load examples.",
+    },
+]
+
+SCRIPT_SEARCH_INDEX = [
+    {
+        "title": "Build climate summaries",
+        "path": "scripts/build_climate_summaries.R",
+        "body": "Build monthly area-weighted climate summaries for IDS observations from TerraClimate, PRISM, or WorldClim.",
+        "page": "pages/2_Climate.py",
+    },
+    {
+        "title": "Download FIA",
+        "path": "05_fia/scripts/01_download_fia.R",
+        "body": "Download USDA FIADB source files.",
+        "page": "pages/3_FIA_Forest.py",
+    },
+    {
+        "title": "Inspect FIA",
+        "path": "05_fia/scripts/02_inspect_fia.R",
+        "body": "Inspect FIADB schema and generate lookup tables.",
+        "page": "pages/3_FIA_Forest.py",
+    },
+    {
+        "title": "Extract FIA trees and conditions",
+        "path": "05_fia/scripts/03_extract_trees.R",
+        "body": "Extract TREE, COND, PLOT-related records and build basal-area inputs.",
+        "page": "pages/3_FIA_Forest.py",
+    },
+    {
+        "title": "Extract FIA seedlings and mortality",
+        "path": "05_fia/scripts/04_extract_seedlings_mortality.R",
+        "body": "Extract SEEDLING and TREE_GRM_COMPONENT mortality source records.",
+        "page": "pages/3_FIA_Forest.py",
+    },
+    {
+        "title": "Build FIA summaries",
+        "path": "05_fia/scripts/05_build_fia_summaries.R",
+        "body": "Build analysis-ready FIA summary parquets from extracted FIA source records.",
+        "page": "pages/3_FIA_Forest.py",
+    },
+    {
+        "title": "Extract FIA site climate",
+        "path": "05_fia/scripts/06_extract_site_climate.R",
+        "body": "Extract TerraClimate monthly values for FIA and ITRDB sites.",
+        "page": "pages/3_FIA_Forest.py",
+    },
+]
+
+FIA_GUIDE_INDEX_JSON = REPO_ROOT / "05_fia" / "docs" / "dashboard" / "fiadb_user_guide_index_v94.json"
+FIA_NAVIGATOR_URL = "http://localhost:8502"
+
+
+def _matches(query: str, *values) -> bool:
+    q = (query or "").strip().upper()
+    return bool(q) and any(q in str(value or "").upper() for value in values)
+
+
+@st.cache_data(show_spinner=False)
+def load_fia_guide_index() -> dict:
+    if not FIA_GUIDE_INDEX_JSON.exists():
+        return {}
+    try:
+        return json.loads(FIA_GUIDE_INDEX_JSON.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def fia_extraction_hint(table: str, column: str = "") -> str:
+    table = (table or "").upper()
+    column = (column or "").upper()
+    if table in {"TREE", "COND", "PLOT", "REF_SPECIES", "REF_FOREST_TYPE"} or column in {"SPCD", "DIA", "PLT_CN", "CONDID"}:
+        return "Start with `Rscript 05_fia/scripts/03_extract_trees.R`, then run `Rscript 05_fia/scripts/05_build_fia_summaries.R`."
+    if table in {"SEEDLING", "TREE_GRM_COMPONENT"} or "MORT" in column:
+        return "Start with `Rscript 05_fia/scripts/04_extract_seedlings_mortality.R`, then run `Rscript 05_fia/scripts/05_build_fia_summaries.R`."
+    if table.startswith("REF_"):
+        return "Use the FIA navigator for the source reference table, then add the field to the relevant FIA extraction/summarizer if needed."
+    return "Use the FIA navigator to inspect the source table/variable, then add it to the FIA extraction and summary scripts if it should become a workflow output."
+
+
+def search_workflow(query: str) -> tuple[list[dict], list[dict]]:
+    workflow_results = []
+    fia_source_results = []
+
+    for item in PAGE_SEARCH_INDEX:
+        if _matches(query, item["title"], item["body"]):
+            workflow_results.append(
+                {
+                    "kind": "Workflow page",
+                    "title": item["title"],
+                    "body": item["body"],
+                    "meta": "Already represented in the dashboard",
+                    "page": item["page"],
+                }
+            )
+
+    for section, label, rel_path, description in PIPELINE:
+        if _matches(query, section, label, rel_path, description):
+            exists = os.path.isfile(REPO_ROOT / rel_path)
+            workflow_results.append(
+                {
+                    "kind": "Workflow output",
+                    "title": label,
+                    "body": description,
+                    "meta": f"{section} · {'ready' if exists else 'not found'} · {rel_path}",
+                    "page": PAGE_ROUTES.get(section, "pages/5_Data_Catalog.py"),
+                }
+            )
+
+    for item in SCRIPT_SEARCH_INDEX:
+        if _matches(query, item["title"], item["path"], item["body"]):
+            workflow_results.append(
+                {
+                    "kind": "Workflow script",
+                    "title": item["title"],
+                    "body": item["body"],
+                    "meta": item["path"],
+                    "page": item["page"],
+                }
+            )
+
+    guide = load_fia_guide_index()
+    for row in (guide.get("tables_index", []) or []):
+        table = row.get("oracle_table", "")
+        desc = row.get("description", "")
+        if _matches(query, table, row.get("table_name"), desc):
+            fia_source_results.append(
+                {
+                    "kind": "FIA source table",
+                    "title": table,
+                    "body": (desc or "FIADB source table.").split("\n")[0][:360],
+                    "meta": fia_extraction_hint(table),
+                    "navigator": True,
+                }
+            )
+
+    for row in (guide.get("columns_index", []) or []):
+        column = row.get("column_name", "")
+        table = row.get("oracle_table", "")
+        desc = row.get("descriptive_name", "")
+        if _matches(query, column, table, desc):
+            fia_source_results.append(
+                {
+                    "kind": "FIA source variable",
+                    "title": f"{table}.{column}" if table else column,
+                    "body": desc or "FIADB source variable.",
+                    "meta": fia_extraction_hint(table, column),
+                    "navigator": True,
+                }
+            )
+
+    return workflow_results[:12], fia_source_results[:12]
+
+
+def render_search_result(result: dict, key_prefix: str) -> None:
+    st.markdown(
+        f"""
+        <div class="fd-card">
+          <div class="fd-card-title">{html.escape(result.get("title", ""))}</div>
+          <div class="fd-card-body">
+            <strong>{html.escape(result.get("kind", ""))}</strong><br>
+            {html.escape(result.get("body", ""))}
+            <br><code>{html.escape(result.get("meta", ""))}</code>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    if result.get("page"):
+        if st.button("Open dashboard page", key=f"{key_prefix}_{result['title']}_{result['kind']}"):
+            st.switch_page(result["page"])
+    elif result.get("navigator"):
+        st.markdown(
+            f"[Open FIA navigator]({FIA_NAVIGATOR_URL}) · run `streamlit run 05_fia/docs/dashboard/fiadb_dashboard.py --server.port 8502` if it is not already running."
+        )
+
 # ------------------------------------------------------------------------------
 # Page
 # ------------------------------------------------------------------------------
 
-st.title("🌲 Forest Data Compilation — Dashboard")
-st.markdown(
-    "Interactive explorer for the **forest-data-compilation** repository. "
-    "This pipeline integrates USDA Forest Service [IDS aerial survey data](01_ids/) "
-    "with three gridded climate datasets and FIA forest inventory plots. "
-    "Use the **sidebar** to navigate to each section."
-)
-
-st.info(
-    "If you are new to the repo, start with the `Architecture` page in the sidebar. "
-    "It gives the simplest guided view of the workflows before you dive into the data pages."
-)
-
 st.markdown(
     """
-    **Suggested order in this dashboard**
-
-    1. `Architecture` for the big picture.
-    2. `IDS Survey`, `Climate`, or `FIA Forest` for workstream-specific details.
-    3. `Data Catalog` for exact file paths, schemas, and load examples.
-    4. Use the repo docs when you need run order or deeper script-by-script detail.
-    """
+    <div class="fd-page-title">Forest Data Explorer</div>
+    <div class="fd-page-lead">
+      Interactive explorer for the forest-data-compilation repository. The pipeline brings
+      together USDA Forest Service IDS aerial survey data, gridded climate products, and
+      FIA forest inventory plots into a single navigable data workspace.
+    </div>
+    <div class="fd-callout">
+      Start with <code>Architecture</code> for the workflow map, then open <code>IDS Survey</code>,
+      <code>Climate</code>, or <code>FIA Forest</code> for workstream details. Use
+      <code>Data Catalog</code> when you need exact paths, schemas, and load examples.
+    </div>
+    """,
+    unsafe_allow_html=True,
 )
 
 st.markdown("---")
 
+# ── Workflow search ───────────────────────────────────────────────────────────
+st.markdown('<div class="fd-section-label">Workflow search</div>', unsafe_allow_html=True)
+search_cols = st.columns([2.3, 1])
+workflow_query = search_cols[0].text_input(
+    "Search outputs, pages, scripts, FIA tables, and FIA variables",
+    placeholder="Try plot_tree_metrics, SPCD, mortality, TerraClimate, COND, PRISM, damage agents",
+    key="workflow_search_query",
+)
+search_cols[1].markdown(
+    """
+    <div class="fd-card">
+      <div class="fd-card-title">How results route</div>
+      <div class="fd-card-body">
+        Dashboard outputs open the matching page. FIA source fields that are not dashboard outputs point to extraction code and the FIA navigator.
+      </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+if workflow_query.strip():
+    workflow_results, fia_source_results = search_workflow(workflow_query)
+    total_results = len(workflow_results) + len(fia_source_results)
+    r1, r2, r3 = st.columns(3)
+    r1.metric("Matches", total_results)
+    r2.metric("In workflow", len(workflow_results))
+    r3.metric("FIA source / unextracted", len(fia_source_results))
+
+    if total_results:
+        result_tabs = st.tabs(["Workflow", "FIA source / unextracted"])
+        with result_tabs[0]:
+            if workflow_results:
+                for i, result in enumerate(workflow_results):
+                    render_search_result(result, f"workflow_result_{i}")
+            else:
+                st.info("No dashboard output/page/script matches. Check the FIA source tab for raw FIADB matches.")
+        with result_tabs[1]:
+            if fia_source_results:
+                st.info(
+                    "These look like source FIADB tables or variables. They may not be extracted into a current workflow output yet."
+                )
+                for i, result in enumerate(fia_source_results):
+                    render_search_result(result, f"fia_source_result_{i}")
+            else:
+                st.info("No raw FIADB table or variable matches.")
+    else:
+        st.info("No matches yet. Try an output name, script name, FIA table, or FIA variable such as `SPCD`.")
+
+st.markdown("---")
+
 # ── Data inventory ────────────────────────────────────────────────────────────
-st.subheader("Pipeline Status")
+st.markdown('<div class="fd-section-label">Pipeline status</div>', unsafe_allow_html=True)
 st.caption(
     "File existence check across all expected outputs. "
     "For parquets, row counts are read from file metadata (instant, no data loaded)."
@@ -231,9 +488,18 @@ for sec in section_order:
     n_ok = (sec_df["Status"] == "✅").sum()
     n_total = len(sec_df)
     pct = 100 * n_ok / n_total if n_total else 0
-    bar = "█" * n_ok + "░" * (n_total - n_ok)
     st.markdown(
-        f"**{sec}** &nbsp; `{bar}` &nbsp; {n_ok}/{n_total} outputs ready",
+        f"""
+        <div class="fd-pipeline-row">
+          <div class="fd-pipeline-head">
+            <span class="fd-pipeline-name">{sec}</span>
+            <span class="fd-pipeline-count">{n_ok}/{n_total} ready</span>
+          </div>
+          <div class="fd-progress">
+            <div class="fd-progress-fill" style="width:{pct:.1f}%"></div>
+          </div>
+        </div>
+        """,
         unsafe_allow_html=True,
     )
 
@@ -247,7 +513,7 @@ st.dataframe(
 st.markdown("---")
 
 # ── QA / QC ───────────────────────────────────────────────────────────────────
-st.subheader("QA / QC")
+st.markdown('<div class="fd-section-label">QA / QC</div>', unsafe_allow_html=True)
 st.markdown(
     "The repository includes a `testthat`-based suite that validates output schemas, "
     "value ranges, key uniqueness, water year arithmetic, and pixel map correctness "
@@ -267,7 +533,7 @@ st.code(
 st.markdown("---")
 
 # ── Quick corpus stats ────────────────────────────────────────────────────────
-st.subheader("Quick Stats")
+st.markdown('<div class="fd-section-label">Quick stats</div>', unsafe_allow_html=True)
 c1, c2, c3, c4, c5 = st.columns(5)
 
 ids_path = str(repo_path("01_ids", "data", "processed", "ids_layers_cleaned.gpkg"))
@@ -309,21 +575,30 @@ else:
 st.markdown("---")
 
 # ── Navigation guide ──────────────────────────────────────────────────────────
-st.subheader("Navigation")
-st.markdown(
-    "| Page | What it covers |\n"
-    "|------|----------------|\n"
-    "| 🗺️ **IDS Survey** | Damage areas, damage points, surveyed areas; DCA/host code lookups; coverage map |\n"
-    "| 🌡️ **Climate** | TerraClimate, PRISM, WorldClim — variable catalogs, pixel grid visualization, schema explorer |\n"
-    "| 🌲 **FIA Forest** | All FIA summary parquets — tree metrics, plot filters, disturbance, damage agents, mortality, seedlings, site climate |\n"
-    "| 🔗 **Architecture** | Pixel decomposition workflow — how IDS polygon extraction and FIA point extraction share the same pattern |\n"
-    "| 📋 **Data Catalog** | Every output file — path, size, schema, R + Python load code snippets |\n"
-)
+st.markdown('<div class="fd-section-label">Navigation</div>', unsafe_allow_html=True)
+nav_cols = st.columns(5)
+nav_cards = [
+    ("Architecture", "Workflow map and shared extraction pattern"),
+    ("IDS Survey", "Damage areas, surveyed areas, DCA and host lookups"),
+    ("Climate", "TerraClimate, PRISM, WorldClim variables and grids"),
+    ("FIA Forest", "Tree metrics, filters, disturbance, mortality, climate"),
+    ("Data Catalog", "Output paths, row counts, schemas, load snippets"),
+]
+for col, (title, body) in zip(nav_cols, nav_cards):
+    col.markdown(
+        f"""
+        <div class="fd-card">
+          <div class="fd-card-title">{title}</div>
+          <div class="fd-card-body">{body}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 st.markdown("---")
 
 # ── Demo outputs ──────────────────────────────────────────────────────────────
-st.subheader("Demo Outputs")
+st.markdown('<div class="fd-section-label">Demo outputs</div>', unsafe_allow_html=True)
 st.caption(
     "Figures generated by the demo scripts. Run the scripts first — see README for instructions."
 )
@@ -342,7 +617,7 @@ _demo01_dir = _demo01_new if _demo01_new.is_dir() else (_demo01_old if _demo01_o
 
 with d_tab1:
     st.markdown(
-        "[`scripts/demo_01_ids_climate.R`](scripts/demo_01_ids_climate.R) — "
+        "[`scripts/demos/demo_01_ids_climate.R`](scripts/demos/demo_01_ids_climate.R) — "
         "MPB outbreak severity vs. water-year climate. Accepts `terraclimate` (default), `prism`, or `worldclim`."
     )
     if _demo01_dir is not None:
@@ -354,12 +629,13 @@ with d_tab1:
             p = _demo01_dir / fname
             if p.exists():
                 st.image(str(p), caption=cap, use_container_width=True)
+                plot_source_link("scripts/demos/demo_01_ids_climate.R")
     else:
-        st.info("Run `Rscript scripts/demo_01_ids_climate.R` to generate figures.")
+        st.info("Run `Rscript scripts/demos/demo_01_ids_climate.R` to generate figures.")
 
 with d_tab2:
     st.markdown(
-        "[`scripts/compare_mpb_climate_datasets.R`](scripts/compare_mpb_climate_datasets.R) — "
+        "[`scripts/demos/demo_04_compare_climate_datasets.R`](scripts/demos/demo_04_compare_climate_datasets.R) — "
         "TerraClimate, PRISM, and WorldClim plotted on the same axes for direct comparison. "
         "Run all three `demo_01` variants first."
     )
@@ -372,35 +648,38 @@ with d_tab2:
             p = _compare_dir / fname
             if p.exists():
                 st.image(str(p), caption=cap, use_container_width=True)
+                plot_source_link("scripts/demos/demo_04_compare_climate_datasets.R")
     else:
         st.info(
             "Run all three demo_01 variants, then: "
-            "`Rscript scripts/compare_mpb_climate_datasets.R`"
+            "`Rscript scripts/demos/demo_04_compare_climate_datasets.R`"
         )
 
 with d_tab3:
     st.markdown(
-        "[`scripts/demo_02_fia_forest.R`](scripts/demo_02_fia_forest.R) — "
+        "[`scripts/demos/demo_02_fia_forest.R`](scripts/demos/demo_02_fia_forest.R) — "
         "FIA exclusion flags, tree metrics, disturbance history, damage agents, treatments, seedlings, mortality."
     )
     _demo02_dir = REPO_ROOT / "output" / "demo_02_fia_forest"
     if _demo02_dir.is_dir():
         for p in sorted(_demo02_dir.glob("*.png")):
             st.image(str(p), caption=p.stem.replace("_", " "), use_container_width=True)
+            plot_source_link("scripts/demos/demo_02_fia_forest.R")
     else:
-        st.info("Run `Rscript scripts/demo_02_fia_forest.R` to generate figures.")
+        st.info("Run `Rscript scripts/demos/demo_02_fia_forest.R` to generate figures.")
 
 with d_tab4:
     st.markdown(
-        "[`scripts/demo_03_site_climate.R`](scripts/demo_03_site_climate.R) — "
+        "[`scripts/demos/demo_03_site_climate.R`](scripts/demos/demo_03_site_climate.R) — "
         "Monthly TerraClimate at 6,956 FIA sites — CWD trends, summer temperatures, long-term climatology."
     )
     _demo03_dir = REPO_ROOT / "output" / "demo_03_site_climate"
     if _demo03_dir.is_dir():
         for p in sorted(_demo03_dir.glob("*.png")):
             st.image(str(p), caption=p.stem.replace("_", " "), use_container_width=True)
+            plot_source_link("scripts/demos/demo_03_site_climate.R")
     else:
-        st.info("Run `Rscript scripts/demo_03_site_climate.R` to generate figures.")
+        st.info("Run `Rscript scripts/demos/demo_03_site_climate.R` to generate figures.")
 
 st.markdown("---")
 st.caption(

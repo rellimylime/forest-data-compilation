@@ -13,7 +13,7 @@ import streamlit as st
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from utils import (
     apply_dark_css, metric_card, dark_fig, parquet_meta,
-    load_parquet, repo_path,
+    load_parquet, repo_path, plot_source_link,
 )
 
 st.set_page_config(page_title="Climate Data", page_icon="🌡️", layout="wide")
@@ -398,6 +398,7 @@ with grid_tab:
                     margin=dict(l=0, r=0, t=30, b=0),
                 )
                 st.plotly_chart(fig, use_container_width=True)
+                plot_source_link("docs/dashboard/pages/2_Climate.py")
 
                 st.caption(
                     "Each dot is one unique raster pixel. "

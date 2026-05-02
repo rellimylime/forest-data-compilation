@@ -13,7 +13,7 @@ import streamlit as st
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from utils import (
     apply_dark_css, metric_card, dark_fig, scatter_geo_usa,
-    load_parquet, parquet_meta, load_csv, repo_path,
+    load_parquet, parquet_meta, load_csv, repo_path, plot_source_link,
 )
 
 st.set_page_config(page_title="IDS Survey", page_icon="🗺️", layout="wide")
@@ -160,6 +160,7 @@ with tab_dca:
             )
             from utils import dark_fig as _dark_fig
             st.plotly_chart(_dark_fig(fig), use_container_width=True)
+            plot_source_link("docs/dashboard/pages/1_IDS_Survey.py")
 
 # ==============================================================================
 # TAB 3 — HOST CODE LOOKUP
@@ -328,6 +329,7 @@ with tab_map:
                 ),
             )
             st.plotly_chart(fig, use_container_width=True)
+            plot_source_link("docs/dashboard/pages/1_IDS_Survey.py")
             st.caption(
                 "Each dot = one unique 4km TerraClimate pixel overlapping at least one "
                 "IDS damage area. Color intensity reflects damage area density within that pixel. "
