@@ -11,10 +11,11 @@ import pandas as pd
 import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from utils import apply_dark_css, parquet_meta, repo_path, color_status
+from utils import apply_dark_css, parquet_meta, repo_path, color_status, render_top_nav
 
 st.set_page_config(page_title="Data Catalog", page_icon="📋", layout="wide")
 apply_dark_css()
+render_top_nav()
 
 st.title("📋 Data Catalog")
 st.markdown(

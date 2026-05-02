@@ -15,11 +15,12 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from utils import (
     apply_dark_css, metric_card, dark_fig, scatter_geo_usa,
     load_parquet, parquet_meta, repo_path, color_status, PLOTLY_AVAILABLE,
-    plotly_chart_with_source,
+    plotly_chart_with_source, render_top_nav,
 )
 
 st.set_page_config(page_title="FIA Forest", page_icon="🌲", layout="wide")
 apply_dark_css()
+render_top_nav()
 
 if PLOTLY_AVAILABLE:
     import plotly.express as px

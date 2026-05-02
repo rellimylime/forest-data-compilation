@@ -14,10 +14,12 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from utils import (
     apply_dark_css, metric_card, dark_fig, scatter_geo_usa,
     load_parquet, parquet_meta, load_csv, repo_path, plot_source_link,
+    render_top_nav,
 )
 
 st.set_page_config(page_title="IDS Survey", page_icon="🗺️", layout="wide")
 apply_dark_css()
+render_top_nav()
 
 try:
     import plotly.express as px

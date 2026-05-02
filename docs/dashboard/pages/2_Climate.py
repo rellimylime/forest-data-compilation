@@ -13,11 +13,12 @@ import streamlit as st
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from utils import (
     apply_dark_css, metric_card, dark_fig, parquet_meta,
-    load_parquet, repo_path, plot_source_link,
+    load_parquet, repo_path, plot_source_link, render_top_nav,
 )
 
 st.set_page_config(page_title="Climate Data", page_icon="🌡️", layout="wide")
 apply_dark_css()
+render_top_nav()
 
 try:
     import plotly.express as px
