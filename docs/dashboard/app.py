@@ -24,7 +24,7 @@ import streamlit as st
 from utils import (
     REPO_ROOT, apply_dark_css, metric_card, parquet_meta,
     file_status, repo_path, color_status, PLOTLY_AVAILABLE,
-    plot_source_link,
+    plot_source_link, render_top_nav,
 )
 
 st.set_page_config(
@@ -34,6 +34,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 apply_dark_css()
+render_top_nav()
 
 # ------------------------------------------------------------------------------
 # Pipeline inventory — all expected outputs with metadata
@@ -393,8 +394,6 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-st.markdown("---")
-
 # ── Workflow search ───────────────────────────────────────────────────────────
 st.markdown('<div class="fd-section-label">Workflow search</div>', unsafe_allow_html=True)
 search_cols = st.columns([2.3, 1])
@@ -571,29 +570,6 @@ if os.path.isfile(fia_clim_path):
     )
 else:
     c5.markdown(metric_card("FIA Site Climate", "—", "run 06_extract_site_climate.R"), unsafe_allow_html=True)
-
-st.markdown("---")
-
-# ── Navigation guide ──────────────────────────────────────────────────────────
-st.markdown('<div class="fd-section-label">Navigation</div>', unsafe_allow_html=True)
-nav_cols = st.columns(5)
-nav_cards = [
-    ("Architecture", "Workflow map and shared extraction pattern"),
-    ("IDS Survey", "Damage areas, surveyed areas, DCA and host lookups"),
-    ("Climate", "TerraClimate, PRISM, WorldClim variables and grids"),
-    ("FIA Forest", "Tree metrics, filters, disturbance, mortality, climate"),
-    ("Data Catalog", "Output paths, row counts, schemas, load snippets"),
-]
-for col, (title, body) in zip(nav_cols, nav_cards):
-    col.markdown(
-        f"""
-        <div class="fd-card">
-          <div class="fd-card-title">{title}</div>
-          <div class="fd-card-body">{body}</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
 
 st.markdown("---")
 
