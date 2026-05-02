@@ -16,6 +16,36 @@ The first-pass analysis should use FIA condition disturbance and treatment field
 
 The current repository already has most of the FIA summary infrastructure. The main gap is that the current plot-level seedling summary intentionally collapses species identity. That is reasonable for dashboard-level plot metrics, but it is not sufficient for this recruitment and thermophilization analysis.
 
+## Current Status
+
+Tracks the Implementation Roadmap (below). Update this section as phases complete.
+
+| Phase | Status | Notes |
+| --- | --- | --- |
+| 1. Document and validate existing seedling products | Done | `plot_seedling_metrics.parquet` keeps plot-level totals; species identity preserved upstream in `seedlings/state={ST}/seedlings_{ST}.parquet`. |
+| 2. Stable plot and condition metadata | Done | `cond` extract carries `STATECD/UNITCD/COUNTYCD/PLOT/stable_plot_id` plus `LAT/LON/ELEV`. `plot_condition_metadata.parquet` produced by [build_condition_metadata.R](../05_fia/scripts/summaries/build_condition_metadata.R). |
+| 3. Species-level seedling summary | Done | `plot_seedling_species.parquet` produced by [build_seedling_species.R](../05_fia/scripts/summaries/build_seedling_species.R). |
+| 4. Disturbance classification | Done | `plot_disturbance_classification.parquet` and `plot_treatment_history.parquet` produced by the corresponding builder modules under `05_fia/scripts/summaries/`. |
+| 5. Species climate-affinity traits | In progress | Site climate rebuilt nationally (FIA-derived sites, see "Phase 5 implementation notes" below). Trait builder [01_build_species_climate_affinity.R](../06_traits/scripts/01_build_species_climate_affinity.R) is written but not yet executed. |
+| 6. Build analysis tables | Not started | |
+| 7. Model and summarize | Not started | |
+
+## Next Steps
+
+1. Run the trait builder against the freshly extracted national climate file:
+
+   ```bash
+   Rscript 06_traits/scripts/01_build_species_climate_affinity.R
+   ```
+
+   Expected output: `06_traits/data/processed/species_climate_affinity.parquet`, one row per FIA tree species (`SPCD`).
+
+2. Sanity-check the trait file:
+   - Spot-check well-known species (Douglas-fir 202, ponderosa 122, sugar maple 318, loblolly 131) — `temp_mean`, `precip_mean`, and `cwd_mean` should land in their expected ecological zones.
+   - Inspect the `n_occurrences` distribution — flag species with very small N before downstream models use their envelopes (filter is downstream by design).
+
+3. Begin Phase 6: build analysis tables. Join `plot_seedling_species` to `plot_condition_metadata` and `plot_disturbance_classification`, attach plot-level climate from `site_climate.parquet` (or a baseline summary derived from it), then attach species traits from `species_climate_affinity.parquet`. Aggregate to plot-visit community-weighted means per Step 8 of the analysis workflow.
+
 ## Why The Seedling Summary Drops Species Identity
 
 The seedling extraction step does **not** drop species identity.
@@ -627,6 +657,13 @@ Tasks:
 Expected outcome:
 
 - Each FIA tree species has a transparent climate-affinity estimate.
+
+Phase 5 implementation notes:
+
+- The committed `all_site_locations.csv` originally held 6,956 sites from a prior pilot extraction and only matched 198 of the ~410K national FIA plot locations. It was regenerated from the national `cond` extract by [06a_build_fia_site_list.R](../05_fia/scripts/06a_build_fia_site_list.R), producing 408,040 distinct stable plot locations. `site_id` is set to `stable_plot_id` (e.g. `8_2_109_63473`) so downstream products can join climate without an intermediate coordinate lookup.
+- Stale GEE checkpoints under `_gee_annual/` were removed before re-running [06_extract_site_climate.R](../05_fia/scripts/06_extract_site_climate.R), since `pixel_id` is tied to the input site set.
+- Re-extraction snapped 408,040 sites to 338,219 unique TerraClimate pixels and produced a 1.95B-row `site_climate.parquet` (5.85 GB) covering 1958-2024 monthly values for `tmmx`, `tmmn`, `pr`, `def`, `pet`, `aet`. Years 2025-2026 were skipped because TerraClimate has no data yet for those years.
+- The trait builder [01_build_species_climate_affinity.R](../06_traits/scripts/01_build_species_climate_affinity.R) reads this climate file plus `cond`, `trees` (filtered to `STATUSCD == 1`), and `ref_species`, deduplicates occurrences to one `(stable_plot_id, SPCD)` row so revisited plots do not double-count, and writes mean / p10 / p90 / min / max for annual mean temperature, annual precipitation, and annual CWD per species. Output: `06_traits/data/processed/species_climate_affinity.parquet`.
 
 ### Phase 6. Build Analysis Tables
 
