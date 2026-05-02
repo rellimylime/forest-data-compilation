@@ -98,6 +98,13 @@ meeting.md
 __pycache__/
 *.pyc
 
+# Re-ignore Python bytecode under docs/ (overrides the !/docs/** un-ignore above)
+/docs/**/__pycache__/
+/docs/**/*.pyc
+
+# Misplaced gcloud SDK install (typed "yes" instead of accepting default install path)
+yes/
+
 # Claude settings
 .claude/
 
