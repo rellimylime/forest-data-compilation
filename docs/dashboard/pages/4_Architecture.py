@@ -11,11 +11,12 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from utils import apply_dark_css, metric_card
+from utils import apply_dark_css, metric_card, render_top_nav
 
 
 st.set_page_config(page_title="Architecture", page_icon="🧭", layout="wide")
 apply_dark_css()
+render_top_nav()
 
 
 PAGE_CSS = """
