@@ -4,6 +4,7 @@
 # ==============================================================================
 
 import os
+import inspect
 from pathlib import Path
 
 import pandas as pd
@@ -27,6 +28,7 @@ except ImportError:
 # ------------------------------------------------------------------------------
 
 REPO_ROOT = Path(__file__).parent.parent.parent
+GITHUB_BLOB_BASE = "https://github.com/rellimylime/forest-data-compilation/blob/main"
 
 
 def repo_path(*parts) -> Path:
@@ -491,15 +493,36 @@ def metric_card(label, value, sub=""):
             f'</div>')
 
 
-def plot_source_link(path: str, label: str = "Source code") -> None:
-    """Render a compact link to the script that generated the displayed plot."""
-    st.caption(f"{label}: [`{path}`]({path})")
+def github_code_url(path: str, line: int | None = None, end_line: int | None = None) -> str:
+    """Return a GitHub blob URL for a repository path, optionally anchored to lines."""
+    url = f"{GITHUB_BLOB_BASE}/{path.replace(os.sep, '/')}"
+    if line and end_line and end_line != line:
+        return f"{url}#L{line}-L{end_line}"
+    if line:
+        return f"{url}#L{line}"
+    return url
 
 
-def plotly_chart_with_source(fig, path: str, **kwargs) -> None:
+def plot_source_link(
+    path: str,
+    label: str = "Source code",
+    line: int | None = None,
+    end_line: int | None = None,
+) -> None:
+    """Render a compact GitHub link to the code that generated the displayed plot."""
+    url = github_code_url(path, line=line, end_line=end_line)
+    line_label = f":L{line}" if line else ""
+    st.caption(f"{label}: [`{path}{line_label}`]({url})")
+
+
+def plotly_chart_with_source(fig, path: str, line: int | None = None, **kwargs) -> None:
     """Render a Plotly chart followed by the code link for the chart."""
     st.plotly_chart(fig, **kwargs)
-    plot_source_link(path)
+    if line is None:
+        frame = inspect.currentframe()
+        caller = frame.f_back if frame else None
+        line = caller.f_lineno if caller else None
+    plot_source_link(path, line=line)
 
 
 # ------------------------------------------------------------------------------

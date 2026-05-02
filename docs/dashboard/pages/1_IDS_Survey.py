@@ -162,7 +162,7 @@ with tab_dca:
             )
             from utils import dark_fig as _dark_fig
             st.plotly_chart(_dark_fig(fig), use_container_width=True)
-            plot_source_link("docs/dashboard/pages/1_IDS_Survey.py")
+            plot_source_link("docs/dashboard/pages/1_IDS_Survey.py", line=158)
 
 # ==============================================================================
 # TAB 3 — HOST CODE LOOKUP
@@ -331,7 +331,7 @@ with tab_map:
                 ),
             )
             st.plotly_chart(fig, use_container_width=True)
-            plot_source_link("docs/dashboard/pages/1_IDS_Survey.py")
+            plot_source_link("docs/dashboard/pages/1_IDS_Survey.py", line=297)
             st.caption(
                 "Each dot = one unique 4km TerraClimate pixel overlapping at least one "
                 "IDS damage area. Color intensity reflects damage area density within that pixel. "

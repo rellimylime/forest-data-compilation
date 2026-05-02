@@ -170,7 +170,7 @@ with tc_tab:
     inv = file_inventory_table(TC_VARS, _tc_summary_files())
     from utils import color_status
     st.dataframe(
-        inv.style.applymap(color_status, subset=["Status"]),
+        inv.style.map(color_status, subset=["Status"]),
         use_container_width=True, hide_index=True,
     )
 
@@ -232,7 +232,7 @@ with prism_tab:
     st.caption("One ~19–23 GB parquet per variable in `processed/climate/prism/damage_areas_summaries/`.")
     inv = file_inventory_table(PRISM_VARS, _prism_summary_files())
     st.dataframe(
-        inv.style.applymap(color_status, subset=["Status"]),
+        inv.style.map(color_status, subset=["Status"]),
         use_container_width=True, hide_index=True,
     )
 
@@ -277,7 +277,7 @@ with wc_tab:
     st.caption("One ~9–13 GB parquet per variable in `processed/climate/worldclim/damage_areas_summaries/`.")
     inv = file_inventory_table(WC_VARS, _wc_summary_files())
     st.dataframe(
-        inv.style.applymap(color_status, subset=["Status"]),
+        inv.style.map(color_status, subset=["Status"]),
         use_container_width=True, hide_index=True,
     )
 
@@ -399,7 +399,7 @@ with grid_tab:
                     margin=dict(l=0, r=0, t=30, b=0),
                 )
                 st.plotly_chart(fig, use_container_width=True)
-                plot_source_link("docs/dashboard/pages/2_Climate.py")
+                plot_source_link("docs/dashboard/pages/2_Climate.py", line=377)
 
                 st.caption(
                     "Each dot is one unique raster pixel. "

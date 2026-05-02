@@ -590,6 +590,11 @@ d_tab1, d_tab2, d_tab3, d_tab4 = st.tabs([
 _demo01_new = REPO_ROOT / "output" / "demo_01_ids_climate_terraclimate"
 _demo01_old = REPO_ROOT / "output" / "demo_mpb_terraclimate"
 _demo01_dir = _demo01_new if _demo01_new.is_dir() else (_demo01_old if _demo01_old.is_dir() else None)
+_demo01_source_lines = {
+    "01_outbreak_timeline.png": 163,
+    "02_climate_timeseries.png": 187,
+    "03_outbreak_vs_climate.png": 214,
+}
 
 with d_tab1:
     st.markdown(
@@ -605,7 +610,7 @@ with d_tab1:
             p = _demo01_dir / fname
             if p.exists():
                 st.image(str(p), caption=cap, use_container_width=True)
-                plot_source_link("scripts/demos/demo_01_ids_climate.R")
+                plot_source_link("scripts/demos/demo_01_ids_climate.R", line=_demo01_source_lines.get(fname))
     else:
         st.info("Run `Rscript scripts/demos/demo_01_ids_climate.R` to generate figures.")
 
@@ -616,6 +621,10 @@ with d_tab2:
         "Run all three `demo_01` variants first."
     )
     _compare_dir = REPO_ROOT / "output" / "demo_mpb_comparison"
+    _compare_source_lines = {
+        "01_climate_comparison.png": 57,
+        "02_outbreak_vs_climate_comparison.png": 88,
+    }
     if _compare_dir.is_dir():
         for fname, cap in [
             ("01_climate_comparison.png",             "Water-year climate at MPB sites — all three datasets"),
@@ -624,7 +633,10 @@ with d_tab2:
             p = _compare_dir / fname
             if p.exists():
                 st.image(str(p), caption=cap, use_container_width=True)
-                plot_source_link("scripts/demos/demo_04_compare_climate_datasets.R")
+                plot_source_link(
+                    "scripts/demos/demo_04_compare_climate_datasets.R",
+                    line=_compare_source_lines.get(fname),
+                )
     else:
         st.info(
             "Run all three demo_01 variants, then: "
@@ -637,10 +649,15 @@ with d_tab3:
         "FIA exclusion flags, tree metrics, disturbance history, damage agents, treatments, seedlings, mortality."
     )
     _demo02_dir = REPO_ROOT / "output" / "demo_02_fia_forest"
+    _demo02_source_lines = {
+        "01_ba_annual.png": 138,
+        "02_diversity_dist.png": 154,
+        "03_disturbance_annual.png": 223,
+    }
     if _demo02_dir.is_dir():
         for p in sorted(_demo02_dir.glob("*.png")):
             st.image(str(p), caption=p.stem.replace("_", " "), use_container_width=True)
-            plot_source_link("scripts/demos/demo_02_fia_forest.R")
+            plot_source_link("scripts/demos/demo_02_fia_forest.R", line=_demo02_source_lines.get(p.name))
     else:
         st.info("Run `Rscript scripts/demos/demo_02_fia_forest.R` to generate figures.")
 
@@ -650,10 +667,15 @@ with d_tab4:
         "Monthly TerraClimate at 6,956 FIA sites — CWD trends, summer temperatures, long-term climatology."
     )
     _demo03_dir = REPO_ROOT / "output" / "demo_03_site_climate"
+    _demo03_source_lines = {
+        "01_cwd_timeseries.png": 159,
+        "02_summer_tmax.png": 185,
+        "03_climate_space.png": 202,
+    }
     if _demo03_dir.is_dir():
         for p in sorted(_demo03_dir.glob("*.png")):
             st.image(str(p), caption=p.stem.replace("_", " "), use_container_width=True)
-            plot_source_link("scripts/demos/demo_03_site_climate.R")
+            plot_source_link("scripts/demos/demo_03_site_climate.R", line=_demo03_source_lines.get(p.name))
     else:
         st.info("Run `Rscript scripts/demos/demo_03_site_climate.R` to generate figures.")
 

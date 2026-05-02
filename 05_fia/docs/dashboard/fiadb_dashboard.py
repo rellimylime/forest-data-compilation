@@ -2567,7 +2567,10 @@ The color of each node shows which group the table belongs to.
             )
             html = build_pyvis_graph(db_tables, graph_height=graph_height)
             components.html(html, height=graph_height + 180, scrolling=False)
-            st.caption("Source code: [`05_fia/docs/dashboard/fiadb_dashboard.py`](05_fia/docs/dashboard/fiadb_dashboard.py)")
+            st.caption(
+                "Source code: "
+                "[`05_fia/docs/dashboard/fiadb_dashboard.py:L1897`](https://github.com/rellimylime/forest-data-compilation/blob/main/05_fia/docs/dashboard/fiadb_dashboard.py#L1897)"
+            )
         elif _GRAPHVIZ_AVAILABLE:
             st.info(
                 "pyvis not installed — showing a static core-table diagram. "
@@ -2575,7 +2578,10 @@ The color of each node shows which group the table belongs to.
             )
             dot = build_graphviz_graph(db_tables)
             st.graphviz_chart(dot)
-            st.caption("Source code: [`05_fia/docs/dashboard/fiadb_dashboard.py`](05_fia/docs/dashboard/fiadb_dashboard.py)")
+            st.caption(
+                "Source code: "
+                "[`05_fia/docs/dashboard/fiadb_dashboard.py:L2026`](https://github.com/rellimylime/forest-data-compilation/blob/main/05_fia/docs/dashboard/fiadb_dashboard.py#L2026)"
+            )
         else:
             st.warning(
                 "Install pyvis (`pip install pyvis`) for the interactive map, "
