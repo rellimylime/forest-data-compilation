@@ -95,6 +95,8 @@ local/
 .devcontainer/
 .vscode/
 meeting.md
+__pycache__/
+*.pyc
 
 # Claude settings
 .claude/
