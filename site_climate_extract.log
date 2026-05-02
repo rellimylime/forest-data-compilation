@@ -1,0 +1,143 @@
+
+NOTE: Dependency discovery took 56 seconds during snapshot.
+Consider using .renvignore to ignore files, or switching to explicit snapshots.
+See `?renv::dependencies` for more information.
+
+- /Users/ermiller/forest-data-compilation/yes/google-cloud-sdk/lib/googlecloudsdk/generated_clients/apis           : 206 files
+- /Users/ermiller/forest-data-compilation/yes/google-cloud-sdk/lib/third_party/pygments/lexers/__pycache__         : 236 files
+- /Users/ermiller/forest-data-compilation/yes/google-cloud-sdk/lib/third_party/pygments/lexers                     : 237 files
+- /Users/ermiller/forest-data-compilation/yes/google-cloud-sdk/platform/bundledpythonunix/share/terminfo/w         : 240 files
+- /Users/ermiller/forest-data-compilation/.git/objects                                                             : 256 files
+- /Users/ermiller/forest-data-compilation/yes/google-cloud-sdk/platform/bundledpythonunix/share/terminfo/t         : 268 files
+- /Users/ermiller/forest-data-compilation/yes/google-cloud-sdk/platform/bundledpythonunix/share/terminfo/d         : 294 files
+- /Users/ermiller/forest-data-compilation/yes/google-cloud-sdk/platform/bundledpythonunix/share/terminfo/a         : 335 files
+- /Users/ermiller/forest-data-compilation/yes/google-cloud-sdk/lib/third_party/botocore/data                       : 377 files
+- /Users/ermiller/forest-data-compilation/yes/google-cloud-sdk/lib/third_party/kubernetes/client/models/__pycache__: 601 files
+- /Users/ermiller/forest-data-compilation/yes/google-cloud-sdk/lib/third_party/kubernetes/client/models            : 602 files
+
+- The project is out-of-sync -- use `renv::status()` for details.
+here() starts at /Users/ermiller/forest-data-compilation
+Linking to GEOS 3.10.2, GDAL 3.4.1, PROJ 8.2.1; sf_use_s2() is TRUE
+
+Attaching package: ‘arrow’
+
+The following object is masked from ‘package:utils’:
+
+    timestamp
+
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+proj_create: /opt/anaconda3/share/proj/proj.db lacks DATABASE.LAYOUT.VERSION.MAJOR / DATABASE.LAYOUT.VERSION.MINOR metadata. It comes from another PROJ installation.
+proj_create: no database context specified
+There appears to be a problem with the PROJ installation
+terra 1.8.93
+
+Attaching package: ‘terra’
+
+The following object is masked from ‘package:tidyr’:
+
+    extract
+
+The following object is masked from ‘package:arrow’:
+
+    buffer
+
+Warning messages:
+1: In readLines(file, warn = readLines.warn) :
+  incomplete final line found on '/Users/ermiller/forest-data-compilation/config.yaml'
+2: In readLines(file, warn = readLines.warn) :
+  incomplete final line found on '/Users/ermiller/forest-data-compilation/local/user_config.yaml'
+408040 sites loaded
+408040 sites → 338219 unique pixels (1.2 sites/pixel)
+/Users/ermiller/.conda/envs/rgee/lib/python3.10/site-packages/google/api_core/_python_version_support.py:275: FutureWarning: You are using a Python version (3.10.19) which Google will stop supporting in new releases of google.api_core once it reaches its end of life (2026-10-04). Please upgrade to the latest Python version, or at least Python 3.11, to continue receiving updates for google.api_core past that date.
+  warnings.warn(message, FutureWarning)
+Warning message:
+In readLines(file, warn = readLines.warn) :
+  incomplete final line found on '/Users/ermiller/forest-data-compilation/local/user_config.yaml'
+Extracting 6 variables × 12 months × 69 years (1958–2026) at 338219 pixels...
+Extracting 6 variables for 338219 unique pixels across 69 years
+  Monthly stacking: 12 months x 6 vars = 72 bands per image
+  Batch size: 2500 pixels (adjusted for stacked extraction)
+  1958:  saved 4011396 rows (27.4 min)
+  1959:  saved 4011396 rows (27.0 min)
+  1960:  saved 4011396 rows (26.9 min)
+  1961:  saved 4011396 rows (27.4 min)
+  1962:  saved 4011396 rows (27.5 min)
+  1963:  saved 4011396 rows (27.3 min)
+  1964:  saved 4011396 rows (27.7 min)
+  1965:  saved 4011396 rows (27.0 min)
+  1966:  saved 4011396 rows (27.7 min)
+  1967:  saved 4011396 rows (27.4 min)
+  1968:  saved 4011396 rows (27.3 min)
+  1969:  saved 4011396 rows (27.7 min)
+  1970:  saved 4011396 rows (27.9 min)
+  1971:  saved 4011396 rows (27.2 min)
+  1972:  saved 4011396 rows (27.2 min)
+  1973:  saved 4011396 rows (27.6 min)
+  1974:  saved 4011396 rows (27.4 min)
+  1975:  saved 4011396 rows (28.0 min)
+  1976:  saved 4011396 rows (28.2 min)
+  1977:  saved 4011396 rows (28.4 min)
+  1978:  saved 4011396 rows (27.1 min)
+  1979:  saved 4011396 rows (27.8 min)
+  1980:  saved 4011396 rows (27.8 min)
+  1981:  saved 4011396 rows (27.9 min)
+  1982:  saved 4011396 rows (27.5 min)
+  1983:  saved 4011396 rows (27.5 min)
+  1984:  saved 4011396 rows (28.0 min)
+  1985:  saved 4011396 rows (28.1 min)
+  1986:  saved 4011396 rows (27.6 min)
+  1987:  saved 4011396 rows (27.7 min)
+  1988:  saved 4011396 rows (27.5 min)
+  1989:  saved 4011396 rows (27.5 min)
+  1990:  saved 4011396 rows (27.1 min)
+  1991:  saved 4011396 rows (27.4 min)
+  1992:  saved 4011396 rows (28.1 min)
+  1993:  saved 4011396 rows (27.7 min)
+  1994:  saved 4011396 rows (27.3 min)
+  1995:  saved 4011396 rows (27.5 min)
+  1996:  saved 4011396 rows (27.5 min)
+  1997:  saved 4011396 rows (27.7 min)
+  1998:  saved 4011396 rows (27.6 min)
+  1999:  saved 4011396 rows (27.1 min)
+  2000:  saved 4011396 rows (27.9 min)
+  2001:  saved 4011396 rows (27.6 min)
+  2002:  saved 4011396 rows (31.9 min)
+  2003:  saved 4011396 rows (27.0 min)
+  2004:  saved 4011396 rows (27.3 min)
+  2005:  saved 4011396 rows (27.2 min)
+  2006:  saved 4011396 rows (27.0 min)
+  2007:  saved 4011396 rows (28.1 min)
+  2008:  saved 4011396 rows (27.3 min)
+  2009:  saved 4011396 rows (27.1 min)
+  2010:  saved 4011396 rows (27.5 min)
+  2011:  saved 4011396 rows (27.3 min)
+  2012:  saved 4011396 rows (27.5 min)
+  2013:  saved 4011396 rows (27.0 min)
+  2014:  saved 4011396 rows (27.2 min)
+  2015:  saved 4011396 rows (27.1 min)
+  2016:  saved 4011396 rows (27.0 min)
+  2017:  saved 4011396 rows (27.7 min)
+  2018:  saved 4011396 rows (27.8 min)
+  2019:  saved 4011396 rows (27.5 min)
+  2020:  saved 4011396 rows (27.0 min)
+  2021:  saved 4011288 rows (26.7 min)
+  2022:  saved 4011396 rows (27.1 min)
+  2023:  saved 4011396 rows (27.4 min)
+  2024:  saved 4011396 rows (26.6 min)
+  2025: skipped (no GEE data for 2025)
+  2026: skipped (no GEE data for 2026)
+Consolidating 67 annual files...
+             used    (Mb)  gc trigger     (Mb)    max used     (Mb)
+Ncells    5664589   302.6    11258430    601.3    11258430    601.3
+Vcells 7809447536 59581.4 16387964534 125030.3 15603375858 119044.4
+Saved: site_climate.parquet (5.85G, 1,948,480,488 rows)
