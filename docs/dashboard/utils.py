@@ -184,6 +184,36 @@ DARK_CSS = """
     margin: 1.7rem 0 0.7rem;
   }
 
+  .fd-navbar-brand {
+    color: var(--fd-text);
+    font-size: 0.95rem;
+    font-weight: 600;
+    line-height: 2.35rem;
+    white-space: nowrap;
+  }
+
+  .fd-navbar-rule {
+    border-bottom: 1px solid var(--fd-border);
+    margin: 0 0 1.35rem;
+    padding-bottom: 0.45rem;
+  }
+
+  [data-testid="stPageLink"] {
+    align-items: center;
+    min-height: 2.35rem;
+  }
+
+  [data-testid="stPageLink"] a {
+    color: var(--fd-text2) !important;
+    font-size: 0.86rem;
+    font-weight: 500;
+    text-decoration: none !important;
+  }
+
+  [data-testid="stPageLink"] a:hover {
+    color: var(--fd-accent2) !important;
+  }
+
   .metric-card {
     background: var(--fd-bg2);
     border: 1px solid var(--fd-border);
@@ -389,6 +419,23 @@ DARK_CSS = """
 
 def apply_dark_css():
     st.markdown(DARK_CSS, unsafe_allow_html=True)
+
+
+FIA_NAVIGATOR_URL = "http://localhost:8502"
+
+
+def render_top_nav() -> None:
+    """Render the shared top navigation for the multipage dashboard."""
+    cols = st.columns([1.45, 0.7, 1.0, 0.75, 0.85, 1.0, 0.85, 1.15])
+    cols[0].markdown('<div class="fd-navbar-brand">Forest Data Explorer</div>', unsafe_allow_html=True)
+    cols[1].page_link("app.py", label="Home")
+    cols[2].page_link("pages/4_Architecture.py", label="Architecture")
+    cols[3].page_link("pages/1_IDS_Survey.py", label="IDS")
+    cols[4].page_link("pages/2_Climate.py", label="Climate")
+    cols[5].page_link("pages/3_FIA_Forest.py", label="FIA Forest")
+    cols[6].page_link("pages/5_Data_Catalog.py", label="Catalog")
+    cols[7].link_button("FIA Navigator", FIA_NAVIGATOR_URL, use_container_width=True)
+    st.markdown('<div class="fd-navbar-rule"></div>', unsafe_allow_html=True)
 
 
 # ------------------------------------------------------------------------------
