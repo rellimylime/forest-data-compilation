@@ -54,6 +54,26 @@ build_treatment_history <- function(out_dir, cond_ds) {
   
       # Keep only actual treatments (non-zero, non-NA)
       treat_long <- treat_long[!is.na(TRTCD) & TRTCD != 0L]
+
+      # Keep raw FIADB TRTYR, but add a calendar-year field for plotting and
+      # time-window analyses. Values like 1/0/9999 are non-calendar sentinels;
+      # years after INVYR are not interpretable as prior treatment timing.
+      treat_long[, TRTYR_raw := as.integer(TRTYR)]
+      treat_long[, TRTYR_calendar := as.integer(TRTYR)]
+      treat_long[
+        is.na(TRTYR_calendar) |
+          TRTYR_calendar < 1900L |
+          TRTYR_calendar == 9999L |
+          TRTYR_calendar > INVYR,
+        TRTYR_calendar := NA_integer_
+      ]
+      treat_long[, treatment_year_status := fcase(
+        is.na(TRTYR_raw), "missing",
+        TRTYR_raw == 9999L, "continuous_or_unknown",
+        TRTYR_raw < 1900L, "non_calendar_sentinel",
+        TRTYR_raw > INVYR, "after_inventory_year",
+        default = "calendar_year"
+      )]
   
       # Join labels
       setkey(treat_long, TRTCD)
