@@ -64,6 +64,28 @@ From [05_thermophilization_by_class_time.R](../06_traits/scripts/05_thermophiliz
 - **Disease East shows a growing signal.** Disease-East plots are +0.15 deg C at 0-5 years but +0.34 deg C at 5-10 years, with a large drier-affinity jump at 5-10 years (+18.7 mm CWD). This looks like a real and possibly intensifying pattern, but only a small fraction of disease plots have a usable disturbance year (see next caveat), so this is a partial picture.
 - **The 10-20 year bins should be ignored.** Cell sample sizes drop to n = 2-79 and the bootstrap confidence intervals get very wide. The -1.66 deg C fire-East 10-20 yr cell (n=13) is almost certainly noise from the small sample, not a real signal.
 
+### What's driving the disease-East signal: northern hardwoods
+
+From [06_disease_east_drilldown.R](../06_traits/scripts/06_disease_east_drilldown.R), `disease_east_by_forest_type.parquet`, and `disease_east_top_recruits.parquet`:
+
+The +0.42 deg C cross-sectional disease-East signal is not spread evenly across the forest types in that group -- it is overwhelmingly concentrated in **maple-beech-birch (northern hardwood) forests**. 3,115 of the 5,883 disease-East plots (53%) sit in this single forest type, and they show **delta_temp = +0.74 [+0.69, +0.80]** with a tight CI. This is the forest type where beech bark disease and beech leaf disease are most active. The introduced-pest explanation looks well-supported.
+
+Three smaller positive signals also show up:
+
+- Oak-gum-cypress (bottomland hardwoods, n=151): +0.68 deg C [+0.42, +0.93]. Possibly laurel wilt killing southern Lauraceae (redbay, sassafras).
+- Aspen-birch (n=179): +0.53 deg C [+0.20, +0.85].
+- Loblolly-shortleaf pine (n=373): +0.18 deg C [+0.02, +0.35].
+
+Three forest types show *cooling* (negative delta_temp) under disease, which the previous pooled analysis hid:
+
+- Spruce-fir (n=166): -0.53 deg C [-0.76, -0.30]. Likely balsam woolly adelgid killing Fraser/balsam fir, with red spruce and other boreal recruits filling in (even cooler-affinity than the firs being lost).
+- Longleaf-slash pine (n=211): -0.31 deg C [-0.64, +0.02], marginal.
+- Elm-ash-cottonwood (n=187): -0.26 deg C [-0.58, +0.03], marginal. Worth investigating given emerald ash borer should produce *warmer*-affinity recruits, not cooler.
+
+The top 20 most-recruiting species at disease-East plots are dominated by cool-affinity northern conifers (balsam fir, red spruce, white pine). This is not a contradiction of the warming signal: the list ranks total counts across all forest types, while the CWM signal is the per-plot mean *relative to climatically-matched undisturbed plots in the same forest type*. The warming signal doesn't require warm-affinity species to dominate the recruits in absolute terms; it only requires that the disease plots have slightly more warm-affinity recruits than the matched controls.
+
+The next step is to identify *which species* are over-represented at disease plots within the maple-beech-birch forest type, compared to matched control plots in the same forest type. That directly identifies the species driving the +0.74 deg C signal.
+
 ### Caveat: many disturbed plots have no usable disturbance year
 
 How often FIA records a real year (versus the "continuous/unknown" 9999 code) varies a lot by disturbance type. From `disturbance_year_coverage.parquet`:
