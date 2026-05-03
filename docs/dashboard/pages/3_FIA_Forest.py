@@ -61,6 +61,10 @@ AGENT_COLORS = {
     "abiotic": "#4e79a7", "human": "#bab0ac", "other": "#8c8c8c", "unknown": "#555555",
 }
 
+APP_BG = "#0d1a12"
+APP_LAND = "#162219"
+APP_BORDER = "#2a4035"
+
 STATE_EAST_TO_WEST = [
     "ME", "NH", "VT", "MA", "RI", "CT", "NJ", "DE", "MD", "DC",
     "NY", "PA", "FL", "SC", "NC", "VA", "WV", "OH", "MI", "IN",
@@ -181,18 +185,18 @@ def state_choropleth(
     )
     fig.update_layout(
         height=520,
-        paper_bgcolor="#0e1117",
-        plot_bgcolor="#0e1117",
+        paper_bgcolor=APP_BG,
+        plot_bgcolor=APP_BG,
         font_color="#ddd",
         margin=dict(l=0, r=0, t=45, b=0),
         coloraxis_colorbar=dict(bgcolor="#161b22", tickcolor="#ddd", title_font_color="#ddd"),
     )
     fig.update_geos(
-        bgcolor="#0e1117",
-        lakecolor="#0e1117",
-        landcolor="#1c2128",
-        coastlinecolor="#444",
-        subunitcolor="#2a4035",
+        bgcolor=APP_BG,
+        lakecolor=APP_BG,
+        landcolor=APP_LAND,
+        coastlinecolor=APP_BORDER,
+        subunitcolor=APP_BORDER,
         showlakes=True,
         showland=True,
         showcoastlines=True,
@@ -465,13 +469,13 @@ with tab_forests:
                                  color_continuous_scale="Viridis", opacity=0.6,
                                  labels={map_metric: labels.get(map_metric, map_metric)})
             fig.update_traces(marker_size=5 if map_state != "All states" else 3)
-            geo_cfg = dict(bgcolor="#0e1117", landcolor="#1c2128", lakecolor="#0e1117",
-                           coastlinecolor="#444", showland=True, showlakes=True, showcoastlines=True)
+            geo_cfg = dict(bgcolor=APP_BG, landcolor=APP_LAND, lakecolor=APP_BG,
+                           coastlinecolor=APP_BORDER, showland=True, showlakes=True, showcoastlines=True)
             if map_state != "All states":
                 geo_cfg.update(fitbounds="locations", resolution=50)
             else:
                 geo_cfg["scope"] = "usa"
-            fig.update_layout(paper_bgcolor="#0e1117", geo=geo_cfg, font_color="#ddd",
+            fig.update_layout(paper_bgcolor=APP_BG, geo=geo_cfg, font_color="#ddd",
                               coloraxis_colorbar=dict(bgcolor="#161b22", tickcolor="#ddd",
                                                       title_font_color="#ddd"),
                               margin=dict(l=0, r=0, t=10, b=0))
