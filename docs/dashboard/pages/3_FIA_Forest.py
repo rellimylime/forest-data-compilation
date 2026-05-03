@@ -80,12 +80,31 @@ STATE_CODE_BY_ABBR = {
     "WI": 55, "WY": 56,
 }
 STATE_ABBR_BY_CODE = {value: key for key, value in STATE_CODE_BY_ABBR.items()}
+STATE_NAME_BY_ABBR = {
+    "AL": "Alabama", "AK": "Alaska", "AZ": "Arizona", "AR": "Arkansas",
+    "CA": "California", "CO": "Colorado", "CT": "Connecticut",
+    "DE": "Delaware", "DC": "District of Columbia", "FL": "Florida",
+    "GA": "Georgia", "HI": "Hawaii", "ID": "Idaho", "IL": "Illinois",
+    "IN": "Indiana", "IA": "Iowa", "KS": "Kansas", "KY": "Kentucky",
+    "LA": "Louisiana", "ME": "Maine", "MD": "Maryland",
+    "MA": "Massachusetts", "MI": "Michigan", "MN": "Minnesota",
+    "MS": "Mississippi", "MO": "Missouri", "MT": "Montana",
+    "NE": "Nebraska", "NV": "Nevada", "NH": "New Hampshire",
+    "NJ": "New Jersey", "NM": "New Mexico", "NY": "New York",
+    "NC": "North Carolina", "ND": "North Dakota", "OH": "Ohio",
+    "OK": "Oklahoma", "OR": "Oregon", "PA": "Pennsylvania",
+    "RI": "Rhode Island", "SC": "South Carolina", "SD": "South Dakota",
+    "TN": "Tennessee", "TX": "Texas", "UT": "Utah", "VT": "Vermont",
+    "VA": "Virginia", "WA": "Washington", "WV": "West Virginia",
+    "WI": "Wisconsin", "WY": "Wyoming",
+}
 
 
 def state_order(values) -> list:
     """Return present states in approximate east-to-west order."""
     present = [value for value in pd.Series(values).dropna().unique().tolist()]
     by_label = {str(value).upper(): value for value in present}
+    by_name = {STATE_NAME_BY_ABBR[abbr].upper(): value for value in present for abbr in STATE_NAME_BY_ABBR if str(value).upper() == STATE_NAME_BY_ABBR[abbr].upper()}
     by_code = {}
     for value in present:
         try:
@@ -97,6 +116,8 @@ def state_order(values) -> list:
     for abbr in STATE_EAST_TO_WEST:
         if abbr in by_label:
             ordered.append(by_label[abbr])
+        elif STATE_NAME_BY_ABBR.get(abbr, "").upper() in by_name:
+            ordered.append(by_name[STATE_NAME_BY_ABBR[abbr].upper()])
         elif STATE_CODE_BY_ABBR.get(abbr) in by_code:
             ordered.append(by_code[STATE_CODE_BY_ABBR[abbr]])
 
@@ -115,20 +136,66 @@ def apply_state_order(df: pd.DataFrame, state_col: str) -> tuple[pd.DataFrame, l
     return out, order
 
 
-def state_plot_height(n_states: int, minimum: int = 500) -> int:
-    return max(minimum, min(1150, 24 * max(n_states, 1) + 150))
+STATE_ABBR_BY_NAME = {name.upper(): abbr for abbr, name in STATE_NAME_BY_ABBR.items()}
 
 
-def order_state_yaxis(fig, order: list) -> None:
-    fig.update_yaxes(categoryorder="array", categoryarray=list(reversed(order)))
+def state_abbr(value) -> str | None:
+    text = str(value).strip()
+    upper = text.upper()
+    if upper in STATE_CODE_BY_ABBR:
+        return upper
+    if upper in STATE_ABBR_BY_NAME:
+        return STATE_ABBR_BY_NAME[upper]
+    try:
+        return STATE_ABBR_BY_CODE.get(int(float(text)))
+    except (TypeError, ValueError):
+        return None
 
 
-def finish_state_bar(fig, order: list):
-    fig = dark_fig(fig)
-    order_state_yaxis(fig, order)
+def add_state_abbr(df: pd.DataFrame, state_col: str) -> pd.DataFrame:
+    out = df.copy()
+    out["_state_abbr"] = out[state_col].map(state_abbr)
+    return out.dropna(subset=["_state_abbr"])
+
+
+def state_choropleth(
+    df: pd.DataFrame,
+    state_col: str,
+    value_col: str,
+    title: str,
+    color_scale: str = "YlGn",
+    value_label: str | None = None,
+):
+    map_df = add_state_abbr(df, state_col)
+    fig = px.choropleth(
+        map_df,
+        locations="_state_abbr",
+        locationmode="USA-states",
+        color=value_col,
+        scope="usa",
+        hover_name=state_col,
+        hover_data={value_col: ":,.2f", "_state_abbr": False},
+        color_continuous_scale=color_scale,
+        labels={value_col: value_label or value_col},
+        title=title,
+    )
     fig.update_layout(
-        height=state_plot_height(len(order)),
-        margin=dict(l=86, r=20, t=20, b=40),
+        height=520,
+        paper_bgcolor="#0e1117",
+        plot_bgcolor="#0e1117",
+        font_color="#ddd",
+        margin=dict(l=0, r=0, t=45, b=0),
+        coloraxis_colorbar=dict(bgcolor="#161b22", tickcolor="#ddd", title_font_color="#ddd"),
+    )
+    fig.update_geos(
+        bgcolor="#0e1117",
+        lakecolor="#0e1117",
+        landcolor="#1c2128",
+        coastlinecolor="#444",
+        subunitcolor="#2a4035",
+        showlakes=True,
+        showland=True,
+        showcoastlines=True,
     )
     return fig
 
@@ -299,7 +366,7 @@ with tab_filters:
                     hover_data={"Basis": True, "Rate (%)": ":.2f", "_color": False},
                 )
                 fig.update_layout(showlegend=False, yaxis=dict(autorange="reversed"))
-                source_plotly_chart(dark_fig(fig), source_line=295, use_container_width=True)
+                source_plotly_chart(dark_fig(fig), source_line=362, use_container_width=True)
 
         with col_r:
             st.subheader("What each flag means")
@@ -353,7 +420,7 @@ with tab_filters:
             st.subheader("pct_forested distribution")
             fig = px.histogram(flags_df, x="pct_forested", nbins=30,
                                color_discrete_sequence=["#59a14f"])
-            source_plotly_chart(dark_fig(fig), source_line=354, use_container_width=True)
+            source_plotly_chart(dark_fig(fig), source_line=421, use_container_width=True)
 
         if tree_df is not None and "LAT" in tree_df.columns and PLOTLY_AVAILABLE:
             st.markdown("---")
@@ -366,7 +433,7 @@ with tab_filters:
                 map_flags = map_flags.sample(50_000, random_state=42)
             fig = scatter_geo_usa(map_flags, "LAT", "LON", "Plot status",
                                   color_map={"Excluded": "#f85149", "Clean": "#59a14f"})
-            source_plotly_chart(fig, source_line=367, use_container_width=True)
+            source_plotly_chart(fig, source_line=433, use_container_width=True)
 
 # ==============================================================================
 # TAB 3 — TREE METRICS
@@ -408,7 +475,7 @@ with tab_forests:
                               coloraxis_colorbar=dict(bgcolor="#161b22", tickcolor="#ddd",
                                                       title_font_color="#ddd"),
                               margin=dict(l=0, r=0, t=10, b=0))
-            source_plotly_chart(fig, source_line=397, use_container_width=True)
+            source_plotly_chart(fig, source_line=464, use_container_width=True)
 
         col1, col2 = st.columns(2)
         with col1:
@@ -417,29 +484,34 @@ with tab_forests:
                 fig = px.histogram(tree_df[tree_df["ba_live_total"] > 0],
                                    x="ba_live_total", nbins=60,
                                    color_discrete_sequence=["#59a14f"])
-                source_plotly_chart(dark_fig(fig), source_line=417, use_container_width=True)
+                source_plotly_chart(dark_fig(fig), source_line=484, use_container_width=True)
         with col2:
             st.subheader("Shannon Diversity (BA-weighted)")
             if "shannon_h_ba" in tree_df.columns and PLOTLY_AVAILABLE:
                 fig = px.histogram(tree_df[tree_df["shannon_h_ba"] > 0],
                                    x="shannon_h_ba", nbins=50,
                                    color_discrete_sequence=["#4e79a7"])
-                source_plotly_chart(dark_fig(fig), source_line=424, use_container_width=True)
+                source_plotly_chart(dark_fig(fig), source_line=491, use_container_width=True)
 
         if all(c in tree_df.columns for c in ["ba_live_softwood", "ba_live_hardwood", "state"]):
             st.subheader("Softwood vs. Hardwood BA by state")
             sw_hw = (tree_df.groupby("state")[["ba_live_softwood", "ba_live_hardwood"]]
                      .mean().reset_index()
                      .rename(columns={"ba_live_softwood": "Softwood", "ba_live_hardwood": "Hardwood"}))
-            sw_hw, state_order_present = apply_state_order(sw_hw, "state")
             if PLOTLY_AVAILABLE:
-                fig = px.bar(sw_hw.melt(id_vars="state", var_name="Type", value_name="Mean BA"),
-                             x="Mean BA", y="state", color="Type", barmode="stack",
-                             orientation="h",
-                             color_discrete_map={"Softwood": "#f28e2b", "Hardwood": "#59a14f"},
-                             labels={"state": "State"})
-                fig = finish_state_bar(fig, state_order_present)
-                source_plotly_chart(fig, source_line=436, use_container_width=True)
+                ba_metric = st.radio(
+                    "Basal area metric",
+                    ["Softwood", "Hardwood"],
+                    horizontal=True,
+                    key="state_ba_metric",
+                )
+                fig = state_choropleth(
+                    sw_hw, "state", ba_metric,
+                    f"Mean {ba_metric} Basal Area by State",
+                    color_scale="YlGn",
+                    value_label="Mean BA",
+                )
+                source_plotly_chart(fig, source_line=508, use_container_width=True)
 
         size_cols = [c for c in ["ba_live_sapling", "ba_live_intermediate", "ba_live_mature"]
                      if c in tree_df.columns]
@@ -452,15 +524,21 @@ with tab_forests:
             sz_melt = sz.melt(id_vars="state",
                               value_vars=[rename_map[c] for c in size_cols if c in rename_map],
                               var_name="Size class", value_name="Mean BA")
-            sz_melt, state_order_present = apply_state_order(sz_melt, "state")
             if PLOTLY_AVAILABLE:
-                fig = px.bar(sz_melt, x="Mean BA", y="state", color="Size class", barmode="stack",
-                             orientation="h",
-                             color_discrete_map={"Sapling": "#76b7b2", "Intermediate": "#59a14f",
-                                                 "Mature": "#4e79a7"},
-                             labels={"state": "State"})
-                fig = finish_state_bar(fig, state_order_present)
-                source_plotly_chart(fig, source_line=457, use_container_width=True)
+                size_class = st.radio(
+                    "Size class",
+                    [rename_map[c] for c in size_cols if c in rename_map],
+                    horizontal=True,
+                    key="state_size_class",
+                )
+                fig = state_choropleth(
+                    sz_melt[sz_melt["Size class"] == size_class],
+                    "state", "Mean BA",
+                    f"Mean {size_class} Basal Area by State",
+                    color_scale="YlGnBu",
+                    value_label="Mean BA",
+                )
+                source_plotly_chart(fig, source_line=534, use_container_width=True)
 
 # ==============================================================================
 # TAB 4 — DISTURBANCE
@@ -479,7 +557,7 @@ with tab_disturb:
                              color="disturbance_category", color_discrete_map=DIST_COLORS,
                              labels={"disturbance_category": "Category", "count": "Records"})
                 fig.update_layout(showlegend=False)
-                source_plotly_chart(dark_fig(fig), source_line=478, use_container_width=True)
+                source_plotly_chart(dark_fig(fig), source_line=556, use_container_width=True)
         with col2:
             st.subheader("Fire type breakdown")
             fire_df = disturb_df[disturb_df["disturbance_category"] == "fire"]
@@ -488,7 +566,7 @@ with tab_disturb:
                 fig = px.pie(fire_counts, names="disturbance_label", values="count",
                              color_discrete_sequence=["#e15759", "#ff9d9a", "#c85250"])
                 fig.update_layout(paper_bgcolor="#0e1117", font_color="#ddd")
-                source_plotly_chart(fig, source_line=488, use_container_width=True)
+                source_plotly_chart(fig, source_line=566, use_container_width=True)
 
         if "DSTRBYR" in disturb_df.columns:
             st.subheader("Year of disturbance")
@@ -496,7 +574,7 @@ with tab_disturb:
             if len(yr_df) > 0 and PLOTLY_AVAILABLE:
                 fig = px.histogram(yr_df, x="DSTRBYR", color="disturbance_category",
                                    color_discrete_map=DIST_COLORS, nbins=50)
-                source_plotly_chart(dark_fig(fig), source_line=497, use_container_width=True)
+                source_plotly_chart(dark_fig(fig), source_line=575, use_container_width=True)
 
         st.subheader("Top disturbance types")
         label_counts = (disturb_df.groupby(["disturbance_label", "disturbance_category"])
@@ -506,7 +584,7 @@ with tab_disturb:
             fig = px.bar(label_counts, x="count", y="disturbance_label", orientation="h",
                          color="disturbance_category", color_discrete_map=DIST_COLORS)
             fig.update_layout(yaxis=dict(autorange="reversed"))
-            source_plotly_chart(dark_fig(fig), source_line=506, use_container_width=True)
+            source_plotly_chart(dark_fig(fig), source_line=584, use_container_width=True)
 
         if all(c in disturb_df.columns for c in ["LAT", "LON"]) and PLOTLY_AVAILABLE:
             st.subheader("Disturbance event locations")
@@ -515,7 +593,7 @@ with tab_disturb:
                 map_df = map_df.sample(50_000, random_state=42)
             fig = scatter_geo_usa(map_df, "LAT", "LON", "disturbance_category",
                                   color_map=DIST_COLORS, hover_name="disturbance_label")
-            source_plotly_chart(fig, source_line=516, use_container_width=True)
+            source_plotly_chart(fig, source_line=594, use_container_width=True)
 
 # ==============================================================================
 # TAB 5 — DAMAGE AGENTS
@@ -535,7 +613,7 @@ with tab_agents:
                 fig = px.bar(top_agents, x="n_trees_tpa", y="agent_label", orientation="h",
                              color="agent_category", color_discrete_map=AGENT_COLORS)
                 fig.update_layout(yaxis=dict(autorange="reversed"))
-                source_plotly_chart(dark_fig(fig), source_line=535, use_container_width=True)
+                source_plotly_chart(dark_fig(fig), source_line=613, use_container_width=True)
         with col2:
             st.subheader("BA affected by agent category")
             cat_ba = (agents_df[agents_df["agent_category"].notna()]
@@ -545,7 +623,7 @@ with tab_agents:
                 fig = px.bar(cat_ba, x="ba_per_acre", y="agent_category", orientation="h",
                              color="agent_category", color_discrete_map=AGENT_COLORS)
                 fig.update_layout(showlegend=False, yaxis=dict(autorange="reversed"))
-                source_plotly_chart(dark_fig(fig), source_line=545, use_container_width=True)
+                source_plotly_chart(dark_fig(fig), source_line=623, use_container_width=True)
 
         if "state" in agents_df.columns and PLOTLY_AVAILABLE:
             st.subheader("Agent category × state heatmap")
@@ -560,7 +638,7 @@ with tab_agents:
                                  labels={"color": "Affected TPA (sum)"})
                 fig.update_layout(paper_bgcolor="#0e1117", font_color="#ddd",
                                   margin=dict(l=140, r=20, t=20, b=60))
-                source_plotly_chart(fig, source_line=559, use_container_width=True)
+                source_plotly_chart(fig, source_line=637, use_container_width=True)
 
         if tree_df is not None and "LAT" in tree_df.columns and PLOTLY_AVAILABLE:
             st.subheader("Damage agent locations")
@@ -572,7 +650,7 @@ with tab_agents:
                 map_df2 = map_df2.sample(50_000, random_state=42)
             fig = scatter_geo_usa(map_df2, "LAT", "LON", "agent_category",
                                   color_map=AGENT_COLORS, hover_name="agent_label")
-            source_plotly_chart(fig, source_line=573, use_container_width=True)
+            source_plotly_chart(fig, source_line=651, use_container_width=True)
 
 # ==============================================================================
 # TAB 6 — MORTALITY & REGENERATION
@@ -598,17 +676,30 @@ with tab_mort:
                              color="component_type",
                              color_discrete_map={"natural": "#e15759", "harvest": "#4e79a7"})
                 fig.update_layout(yaxis=dict(autorange="reversed"))
-                source_plotly_chart(dark_fig(fig), source_line=597, use_container_width=True)
+                source_plotly_chart(dark_fig(fig), source_line=675, use_container_width=True)
 
             if "state" in mort_plot.columns and PLOTLY_AVAILABLE:
                 nat_harv = (mort_plot.groupby(["state", "component_type"])
                              ["tpamort_per_acre"].sum().reset_index())
-                nat_harv, state_order_present = apply_state_order(nat_harv, "state")
-                fig2 = px.bar(nat_harv, x="tpamort_per_acre", y="state", color="component_type",
-                               color_discrete_map={"natural": "#e15759", "harvest": "#4e79a7"},
-                              barmode="stack", orientation="h", labels={"state": "State"})
-                fig2 = finish_state_bar(fig2, state_order_present)
-                source_plotly_chart(fig2, source_line=607, use_container_width=True)
+                component_options = ["All mortality"] + sorted(nat_harv["component_type"].dropna().unique().tolist())
+                component_choice = st.selectbox(
+                    "Mortality map",
+                    component_options,
+                    key="state_mortality_component",
+                )
+                if component_choice == "All mortality":
+                    mort_state = nat_harv.groupby("state")["tpamort_per_acre"].sum().reset_index()
+                    map_title = "Mortality by State"
+                else:
+                    mort_state = nat_harv[nat_harv["component_type"] == component_choice]
+                    map_title = f"{component_choice.title()} Mortality by State"
+                fig2 = state_choropleth(
+                    mort_state, "state", "tpamort_per_acre",
+                    map_title,
+                    color_scale="OrRd",
+                    value_label="TPA mortality",
+                )
+                source_plotly_chart(fig2, source_line=696, use_container_width=True)
 
     with seed_col:
         st.subheader("Seedling regeneration")
@@ -625,22 +716,31 @@ with tab_mort:
                                                value_vars=[c for c in ["Softwood", "Hardwood"]
                                                            if c in seed_state.columns],
                                                var_name="Type", value_name="Seedling count")
-                    sw_melt, state_order_present = apply_state_order(sw_melt, "state")
-                    fig = px.bar(sw_melt, x="Seedling count", y="state", color="Type", barmode="stack",
-                                 orientation="h",
-                                 color_discrete_map={"Softwood": "#f28e2b", "Hardwood": "#59a14f"},
-                                 labels={"state": "State"})
-                    fig = finish_state_bar(fig, state_order_present)
-                    source_plotly_chart(fig, source_line=629, use_container_width=True)
+                    seed_type = st.radio(
+                        "Seedling type",
+                        sw_melt["Type"].dropna().unique().tolist(),
+                        horizontal=True,
+                        key="state_seed_type",
+                    )
+                    fig = state_choropleth(
+                        sw_melt[sw_melt["Type"] == seed_type],
+                        "state", "Seedling count",
+                        f"{seed_type} Seedling Count by State",
+                        color_scale="YlGn",
+                        value_label="Seedling count",
+                    )
+                    source_plotly_chart(fig, source_line=725, use_container_width=True)
 
             if "shannon_h_count" in seed_df.columns and "state" in seed_df.columns and PLOTLY_AVAILABLE:
                 seed_div = (seed_df.groupby("state")["shannon_h_count"].mean().reset_index()
                             .rename(columns={"shannon_h_count": "Mean Shannon H"}))
-                seed_div, state_order_present = apply_state_order(seed_div, "state")
-                fig = px.bar(seed_div, x="Mean Shannon H", y="state", orientation="h",
-                             color_discrete_sequence=["#76b7b2"], labels={"state": "State"})
-                fig = finish_state_bar(fig, state_order_present)
-                source_plotly_chart(fig, source_line=640, use_container_width=True)
+                fig = state_choropleth(
+                    seed_div, "state", "Mean Shannon H",
+                    "Mean Seedling Diversity by State",
+                    color_scale="BuGn",
+                    value_label="Mean Shannon H",
+                )
+                source_plotly_chart(fig, source_line=737, use_container_width=True)
 
 # ==============================================================================
 # TAB 7 — TREATMENT HISTORY
@@ -672,7 +772,7 @@ with tab_treatments:
                              labels={"treatment_label": "", "count": "Records",
                                      "treatment_category": "Category"})
                 fig.update_layout(yaxis=dict(autorange="reversed"))
-                source_plotly_chart(dark_fig(fig), source_line=670, use_container_width=True)
+                source_plotly_chart(dark_fig(fig), source_line=770, use_container_width=True)
 
             with col2:
                 st.subheader("By state")
@@ -680,13 +780,29 @@ with tab_treatments:
                     state_col = "state" if "state" in treat_df.columns else "STATECD"
                     state_treat = (treat_df.groupby([state_col, "treatment_category"])
                                     .size().reset_index(name="count"))
-                    state_treat, state_order_present = apply_state_order(state_treat, state_col)
-                    fig = px.bar(state_treat, x="count", y=state_col, color="treatment_category",
-                                  color_discrete_map=CAT_COLORS, barmode="stack",
-                                  orientation="h",
-                                  labels={state_col: "State", "count": "Records"})
-                    fig = finish_state_bar(fig, state_order_present)
-                    source_plotly_chart(fig, source_line=684, use_container_width=True)
+                    treatment_options = ["All categories"] + sorted(
+                        state_treat["treatment_category"].dropna().unique().tolist()
+                    )
+                    treatment_choice = st.selectbox(
+                        "Treatment map",
+                        treatment_options,
+                        key="state_treatment_category",
+                    )
+                    if treatment_choice == "All categories":
+                        treatment_map = state_treat.groupby(state_col)["count"].sum().reset_index()
+                        treatment_title = "Treatment Records by State"
+                    else:
+                        treatment_map = state_treat[state_treat["treatment_category"] == treatment_choice]
+                        treatment_title = f"{treatment_choice.replace('_', ' ').title()} Treatment Records by State"
+                    fig = state_choropleth(
+                        treatment_map,
+                        state_col,
+                        "count",
+                        treatment_title,
+                        color_scale="YlOrBr",
+                        value_label="Treatment records",
+                    )
+                    source_plotly_chart(fig, source_line=797, use_container_width=True)
 
         if "TRTYR" in treat_df.columns and PLOTLY_AVAILABLE:
             st.subheader("Treatment year distribution")
@@ -714,7 +830,7 @@ with tab_treatments:
                     labels={"treatment_year": "Treatment Year", "records": "Treatment records"},
                 )
                 fig.update_xaxes(tickformat="d", dtick=5)
-                source_plotly_chart(dark_fig(fig), source_line=708, use_container_width=True)
+                source_plotly_chart(dark_fig(fig), source_line=824, use_container_width=True)
                 st.caption(
                     f"Plotted {len(tyr):,} records with calendar years from "
                     f"{tyr['treatment_year'].min()}-{tyr['treatment_year'].max()}. "
