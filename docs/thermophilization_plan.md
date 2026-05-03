@@ -86,6 +86,29 @@ The top 20 most-recruiting species at disease-East plots are dominated by cool-a
 
 The next step is to identify *which species* are over-represented at disease plots within the maple-beech-birch forest type, compared to matched control plots in the same forest type. That directly identifies the species driving the +0.74 deg C signal.
 
+### The maple-beech-birch warming signal is a beech sprout response, not classic thermophilization
+
+From [07_disease_mbb_species_shift.R](../06_traits/scripts/07_disease_mbb_species_shift.R) and `disease_mbb_species_comparison.parquet`:
+
+The single biggest species shift on maple-beech-birch disease plots is American beech *increasing*, not decreasing. Beech is **54% of the seedling community at disease plots vs 21% at matched controls** -- a delta_share of +0.33, and more than twenty times larger than the next biggest positive shift (striped maple at +0.013). Every other species shift is small by comparison.
+
+This is the well-known **beech sprout response to beech bark disease**. When mature beech are damaged by the BBD scale-insect-plus-fungus complex (and increasingly by beech leaf disease), the dying trees produce prolific root suckers, creating dense beech thickets that dominate the seedling layer. The FIA disease code is correctly tagging BBD-affected plots, and what we're measuring is the well-documented ecological aftermath.
+
+How this produces a "warming" signal:
+
+- Beech temp_mean = 10.23 deg C, which is the warmest of the species commonly recruiting in northern hardwood forests.
+- Species losing share at disease plots are mostly cool-affinity: balsam fir (4.84 deg C, -0.064), sugar maple (8.4 deg C, -0.047), eastern white pine (7.9 deg C, -0.013), eastern hemlock (7.8 deg C, -0.009). Red maple also loses share (-0.027) -- beech sprouts apparently outcompete even the classic gap-filler.
+- Share-weighted mean climate affinity of species gaining ground: 9.96 deg C. Of species losing ground: 8.52 deg C. Difference: +1.44 deg C, consistent with the +0.74 deg C plot-level CWM shift.
+
+Implication: the +0.74 deg C MBB disease signal is mathematically real but ecologically **not "thermophilization"** in the classic sense (warm-climate species advancing into newly opened gaps). It is closer to **disease-driven monodominance**: BBD damages mature beech -> beech root sprouts dominate -> community-weighted mean shifts toward beech's climate affinity, which happens to be warmer than the diverse cool-conifer / sugar-maple mix at undisturbed plots. Whether to count this as a thermophilization finding or to separate it out is a judgment call for the boss; both readings are defensible. The honest framing is that the disease signal in northern hardwoods is dominated by beech bark disease's sprout response, with the warmer-affinity recruiting community as a byproduct.
+
+Notable side findings:
+
+- **White ash is under-represented at MBB disease plots (-0.048)**. Consistent with emerald ash borer killing both adult ash (the seed source) and ash regeneration. Ash temp_mean (10.4) is similar to beech, so the loss does not strongly push CWM in either direction, but it is a real EAB fingerprint visible in the data.
+- **Red maple is under-represented (-0.027)** in spite of its usual gap-fill behavior in eastern forests. Beech sprouting is dense enough to suppress even red maple regeneration.
+
+Active follow-up: re-run the MBB disease CWM with American beech excluded. If the +0.74 deg C signal disappears entirely, it is purely the beech sprout story. If a smaller residual signal remains (e.g. +0.2 deg C), there is a true climate-driven thermophilization layer underneath the beech response that deserves its own writeup.
+
 ### Caveat: many disturbed plots have no usable disturbance year
 
 How often FIA records a real year (versus the "continuous/unknown" 9999 code) varies a lot by disturbance type. From `disturbance_year_coverage.parquet`:
