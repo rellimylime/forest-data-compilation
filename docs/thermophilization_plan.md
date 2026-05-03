@@ -26,25 +26,97 @@ Tracks the Implementation Roadmap (below). Update this section as phases complet
 | 2. Stable plot and condition metadata | Done | `cond` extract carries `STATECD/UNITCD/COUNTYCD/PLOT/stable_plot_id` plus `LAT/LON/ELEV`. `plot_condition_metadata.parquet` produced by [build_condition_metadata.R](../05_fia/scripts/summaries/build_condition_metadata.R). |
 | 3. Species-level seedling summary | Done | `plot_seedling_species.parquet` produced by [build_seedling_species.R](../05_fia/scripts/summaries/build_seedling_species.R). |
 | 4. Disturbance classification | Done | `plot_disturbance_classification.parquet` and `plot_treatment_history.parquet` produced by the corresponding builder modules under `05_fia/scripts/summaries/`. |
-| 5. Species climate-affinity traits | In progress | Site climate rebuilt nationally (FIA-derived sites, see "Phase 5 implementation notes" below). Trait builder [01_build_species_climate_affinity.R](../06_traits/scripts/01_build_species_climate_affinity.R) is written but not yet executed. |
-| 6. Build analysis tables | Not started | |
-| 7. Model and summarize | Not started | |
+| 5. Species climate-affinity traits | Done | `species_climate_affinity.parquet` written by [01_build_species_climate_affinity.R](../06_traits/scripts/01_build_species_climate_affinity.R): 603 species, 925,947 unique (stable_plot, SPCD) occurrences, 1981-2010 baseline. Spot-checks for Douglas-fir, ponderosa, sugar maple, loblolly all landed in expected ecological zones. |
+| 6. Build analysis tables | In progress | Done: per-plot CWM ([02_build_plot_recruitment_cwm.R](../06_traits/scripts/02_build_plot_recruitment_cwm.R)) -> `plot_recruitment_cwm.parquet` (475,055 conditions). Done: disturbed-to-control matching ([03_match_disturbed_to_controls.R](../06_traits/scripts/03_match_disturbed_to_controls.R)) -> `plot_matches.parquet` (57,055 / 57,062 disturbed plots matched, K=5, median match distance 0.013 SD). |
+| 7. Model and summarize | In progress | First stratified summaries ([04_stratified_thermophilization.R](../06_traits/scripts/04_stratified_thermophilization.R)) written. See "Findings So Far" below. |
+
+## Findings So Far
+
+First-pass national results from [04_stratified_thermophilization.R](../06_traits/scripts/04_stratified_thermophilization.R), based on 57,055 disturbed FIA conditions matched K=5 to 330,437 control conditions, stratified by `disturbance_class x region_east_west`. Bootstrap 95% CIs (1000 resamples).
+
+Sign convention: positive `delta_temp` means recruits favor warmer-climate species than the matched control; positive `delta_cwd` means recruits favor higher-deficit (drier) species.
+
+### Patterns vs the original West > East thermophilization hypothesis
+
+The hypothesis is **partially supported on the CWD (drought) axis but not the temperature axis**, and there are two surprising signals worth investigating in their own right.
+
+| Signal | Reading |
+| --- | --- |
+| Fire, temperature | East +0.18 deg C [0.14, 0.22], West +0.13 deg C [0.07, 0.18]. Both regions show significant warm-affinity recruitment after fire, but the East signal is *larger* than West. The "less change in East" prediction does not hold for temperature. |
+| Fire, CWD | East +4.8 mm [3.7, 5.9], West +6.6 mm [2.3, 11.5]. Both regions show drought-affinity recruitment, with West larger as predicted. **The boss's hypothesis is alive on the CWD axis.** |
+| Crown fire (high-severity), West | n=680, delta_temp +0.14 [0.03, 0.26], delta_cwd +6.3 [-3.2, 14.7]. Severe fire in the West does drive modest thermophilization, with a marginal drier-affinity signal. |
+| Crown fire (high-severity), East | n=35. Too small to read despite large point estimates. |
+| Insect disturbance | East -0.14 [-0.18, -0.11], West -0.10 [-0.13, -0.06]. Both regions recruit *cooler*-affinity species after insect mortality. Real signal (CIs exclude zero), opposite direction from hypothesis. |
+| Disease, East | +0.42 deg C [0.38, 0.46]. The largest delta_temp signal in any cell, larger than any fire signal. |
+| Disease, West | Null. |
+| Weather (wind/drought/other) | Null in both regions for temperature and inconsistent for CWD. |
+
+### Caveats from first-pass time-since-disturbance analysis
+
+The pooled time-bin table (`thermophilization_by_time_region.parquet`) shows much weaker signals than the class x region table. This is because the time bins pool fire (positive delta_temp) and insect (negative delta_temp), which cancel. Time-bin results are not trustworthy until they are also stratified by disturbance class.
+
+Additionally, only 24,896 of 57,055 disturbed plots have a usable `time_since_disturbance` value. The remaining ~32,000 likely have FIA's 9999 ("continuous/unknown") year code, which the disturbance classifier converts to NA. This is documented as a follow-up validation item rather than a bug.
 
 ## Next Steps
 
-1. Run the trait builder against the freshly extracted national climate file:
+Active investigations (in priority order). Work proceeds top-down; each completed item should add a row to "Findings So Far" or trigger a follow-up.
 
-   ```bash
-   Rscript 06_traits/scripts/01_build_species_climate_affinity.R
-   ```
+1. **Stratify time-since-disturbance bins by `disturbance_class`** ([05_thermophilization_by_class_time.R](../06_traits/scripts/05_thermophilization_by_class_time.R)). Resolves the pooling confound that hides the temporal signal in the current time-bin output. Expected to reveal whether fire-driven thermophilization grows or fades with time, and whether insect cooling persists or reverses.
+2. **Drill into the disease-East signal**. Add a `forest_type_group x disturbance_class_primary` breakdown for the East-disease cell. Hypothesis: the +0.42 deg C signal is concentrated in ash, hemlock, or beech forests being killed by introduced pests (emerald ash borer, hemlock woolly adelgid, beech bark disease) and replaced by warmer-affinity recruits.
+3. **Investigate the insect cooling signal**. Two competing explanations:
+   (a) Compositional — insect-killed warm-affinity hosts (e.g., southern bark beetles in pine) are being replaced by cool-affinity understory species that were already present.
+   (b) Baseline confound — insect-disturbed plots happen to sit at cooler baseline climates than matched controls. Diagnostic: compare `dist_temp_z` distributions for insect-disturbed vs their matched controls. If matching balanced baseline climate (it should have, given the 0.013 SD median distance), explanation (a) is the right one.
+4. **Tighten the matching caliper to 0.5 SD** and re-run. Current 2 SD caliper is essentially never binding. A tighter caliper is a free robustness check: if the headline signals survive, they are not artifacts of marginally-similar matches.
+5. **Stratify by tighter forest type units** (e.g., `FORTYPCD` or finer than `forest_type_group`) for the cells with the largest signals (disease-East, fire). Confirms the headline signal is not a forest-type compositional artifact.
 
-   Expected output: `06_traits/data/processed/species_climate_affinity.parquet`, one row per FIA tree species (`SPCD`).
+Backlog (deferred until the active list above clarifies the headline picture). Each is its own analysis or data product:
 
-2. Sanity-check the trait file:
-   - Spot-check well-known species (Douglas-fir 202, ponderosa 122, sugar maple 318, loblolly 131) — `temp_mean`, `precip_mean`, and `cwd_mean` should land in their expected ecological zones.
-   - Inspect the `n_occurrences` distribution — flag species with very small N before downstream models use their envelopes (filter is downstream by design).
+1. **Within-plot pre/post analysis using `PREV_PLT_CN`** (Step 9 of the workflow). The strongest causal evidence available from FIA's panel design. Requires a stable repeated-plot panel where the same plot is observed both before and after a recorded disturbance.
+2. **Mortality-derived severity** (originally Step 4 "option 2"). Replaces the presence-as-severity proxy for beetle/disease/wind by deriving severity from `TREE` mortality. Higher fidelity but more code; only needed if presence-based results disagree with mortality-based results.
+3. **Saplings as a complementary recruitment signal**. CWM over `TREE` records below the merch-size threshold gives a longer-window companion to the seedling CWM. If saplings show the same pattern, the signal is robust across recruitment time scales.
+4. **P2VEG and invasive plant products** (Phase 4 of the data plan). The boss explicitly emphasized shrubs, forbs, grasses. Required to claim "understory" in the manuscript rather than only "tree regeneration."
+5. **Ecoregion stratification**. Replace the East/West split with EPA Level III ecoregions for the second-pass analysis.
+6. **Effect-modification by elevation, baseline climate quintile, and forest age** as covariates. Where the climate signal is strongest within a class.
 
-3. Begin Phase 6: build analysis tables. Join `plot_seedling_species` to `plot_condition_metadata` and `plot_disturbance_classification`, attach plot-level climate from `site_climate.parquet` (or a baseline summary derived from it), then attach species traits from `species_climate_affinity.parquet`. Aggregate to plot-visit community-weighted means per Step 8 of the analysis workflow.
+## Open Questions And Validation Backlog
+
+These are checks and unresolved questions, not new analyses. Each should be answered or punted with a written reason before the manuscript stage.
+
+### Trait-table validation
+
+- Spot-check warm-affinity *vs* cool-affinity ranking. The top 20 species by `temp_mean` should include known thermophiles (sweetgum, longleaf pine, live oak, slash pine); the bottom 20 should be boreal/subalpine (white spruce, subalpine fir, balsam fir).
+- Sensitivity to `MIN_OCCURRENCES`. Re-run [02_build_plot_recruitment_cwm.R](../06_traits/scripts/02_build_plot_recruitment_cwm.R) with thresholds of 50 and 100 in addition to the current 30. CWM headline numbers should be stable.
+- Confirm that `frac_seedlings_with_traits` median = 1.0 holds when the threshold is raised. If not, the rare-species drop is biting in some forest types.
+
+### Matching validation
+
+- Verify that the 7 unmatched disturbed plots are not concentrated in any one stratum (would indicate a coverage hole, not just edge cases).
+- Check baseline-climate balance per stratum: standardized mean difference (SMD) of `temp_z` and `prec_z` between disturbed and synthetic control. Should be << 0.1 SD given the median match distance.
+- Sensitivity to K. Re-run with K=3 and K=10. Headline deltas should be insensitive.
+- Sensitivity to with-replacement. The current design lets a control serve multiple disturbed plots. Re-run a without-replacement variant to confirm the difference is small. Bootstrap CIs already account for the dependence, so this is a robustness check, not a substantive change.
+
+### Disturbance classification validation
+
+- Why do ~32K (~56%) of disturbed plots have NA `time_since_disturbance`? Confirmed-or-refuted hypothesis: most are FIA 9999 ("continuous") year codes. Diagnostic: count `has_continuous_disturbance_year == TRUE` among NA-time plots.
+- Confirm that `disturbed_vs_control == "disturbed"` excludes `is_human_or_harvest` and `has_any_treatment` (it should — see [build_disturbance_classification.R](../05_fia/scripts/summaries/build_disturbance_classification.R) line 178-186 — but worth verifying empirically that no disturbance_class cell is contaminated by harvest).
+
+### Bootstrap stability
+
+- Re-run [04_stratified_thermophilization.R](../06_traits/scripts/04_stratified_thermophilization.R) with a different seed. CI bounds should shift by < 0.005 deg C in the disease-East cell. If they shift more, increase `N_BOOT` from 1000 to 5000.
+
+### Distributional sanity
+
+- For each of the largest-signal cells (disease-East, fire-West, insect-East), plot the distribution of per-plot `delta_temp`. Confirm the mean is representative, not driven by a long tail. If skewed, report median + IQR alongside mean + CI.
+
+### Ecological sanity
+
+- For the disease-East cell, list the top 20 most-recruiting species. Check whether they are demonstrably warmer-affinity than the species being killed in those forests.
+- For the insect cell, list top recruiting species. If they are subcanopy hardwoods that were already present, that supports explanation (3a) above.
+
+### Reporting hygiene
+
+- Decide a single sign convention for the manuscript: present `delta_temp` as deg C and `delta_cwd` as mm, both labeled as "disturbed minus matched control." Avoid flipping signs across figures.
+- Decide whether to report the East-fire +0.18 deg C signal as a primary finding, given it contradicts the West-larger prediction. The honest reading is that fire drives thermophilization in *both* regions on temperature and somewhat more strongly in the West on CWD; the East/West story is more nuanced than the original framing.
 
 ## Why The Seedling Summary Drops Species Identity
 
