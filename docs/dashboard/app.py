@@ -247,7 +247,7 @@ SCRIPT_SEARCH_INDEX = [
 ]
 
 FIA_GUIDE_INDEX_JSON = REPO_ROOT / "05_fia" / "docs" / "dashboard" / "fiadb_user_guide_index_v94.json"
-FIA_NAVIGATOR_URL = "http://localhost:8502"
+FIA_NAVIGATOR_URL = "https://rellimylime.github.io/forest-data-compilation/fia-explorer.html"
 
 
 def _matches(query: str, *values) -> bool:
@@ -370,7 +370,7 @@ def render_search_result(result: dict, key_prefix: str) -> None:
             st.switch_page(result["page"])
     elif result.get("navigator"):
         st.markdown(
-            f"[Open FIA navigator]({FIA_NAVIGATOR_URL}) · run `streamlit run 05_fia/docs/dashboard/fiadb_dashboard.py --server.port 8502` if it is not already running."
+            f"[Open the FIA Forest Explorer]({FIA_NAVIGATOR_URL})"
         )
 
 # ------------------------------------------------------------------------------
