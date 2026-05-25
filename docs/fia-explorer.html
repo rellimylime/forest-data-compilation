@@ -1137,41 +1137,47 @@
                     <path d="M400 40 L560 40 L560 200 L490 200 Z" fill="rgba(168, 120, 74, 0.26)"/>
                     <path d="M400 40 L490 200 L560 200" stroke="#d4a657" stroke-width="1.5" fill="none" opacity="0.85" stroke-dasharray="6 4"/>
 
-                    <!-- Macroplots (58.9 ft radius, dashed grey rings, optional in FIA design) -->
-                    <circle cx="300" cy="240" r="71" fill="none" stroke="#5d7c69" stroke-width="0.7" stroke-dasharray="3 2" opacity="0.65"/>
-                    <circle cx="300" cy="96" r="71" fill="none" stroke="#5d7c69" stroke-width="0.7" stroke-dasharray="3 2" opacity="0.55"/>
-                    <circle cx="425" cy="312" r="71" fill="none" stroke="#5d7c69" stroke-width="0.7" stroke-dasharray="3 2" opacity="0.55"/>
-                    <circle cx="175" cy="312" r="71" fill="none" stroke="#5d7c69" stroke-width="0.7" stroke-dasharray="3 2" opacity="0.55"/>
+                    <!-- Cluster wrapper: scales the 4 subplots/macroplots/microplots and their labels
+                         to 0.85 around SP1 (300,240) so SP2's macroplot ring clears the canvas top
+                         and SP3/SP4 macroplots clear the legend below. Conditions, legend, condition
+                         labels, and title sit outside this wrapper and are unaffected. -->
+                    <g transform="translate(45 36) scale(0.85)">
+                      <!-- Macroplots (58.9 ft radius, dashed grey rings, optional in FIA design) -->
+                      <circle cx="300" cy="240" r="71" fill="none" stroke="#5d7c69" stroke-width="0.7" stroke-dasharray="3 2" opacity="0.65"/>
+                      <circle cx="300" cy="96" r="71" fill="none" stroke="#5d7c69" stroke-width="0.7" stroke-dasharray="3 2" opacity="0.55"/>
+                      <circle cx="425" cy="312" r="71" fill="none" stroke="#5d7c69" stroke-width="0.7" stroke-dasharray="3 2" opacity="0.55"/>
+                      <circle cx="175" cy="312" r="71" fill="none" stroke="#5d7c69" stroke-width="0.7" stroke-dasharray="3 2" opacity="0.55"/>
 
-                    <!-- 120 ft distance line from SP1 to SP2 (drawn underneath the subplot circles) -->
-                    <line x1="300" y1="211" x2="300" y2="125" stroke="#95b69e" stroke-width="0.7" stroke-dasharray="2 2"/>
+                      <!-- 120 ft distance line from SP1 to SP2 (drawn underneath the subplot circles) -->
+                      <line x1="300" y1="211" x2="300" y2="125" stroke="#95b69e" stroke-width="0.7" stroke-dasharray="2 2"/>
 
-                    <!-- Subplots:  SP1 center, SP2 N (360 deg), SP3 SE (120 deg), SP4 SW (240 deg) -->
-                    <circle cx="300" cy="240" r="29" fill="rgba(10,18,13,0.50)" stroke="#9ad9b1" stroke-width="2"/>
-                    <text x="300" y="246" fill="#dfeee4" font-size="14" font-family="DM Mono" text-anchor="middle" font-weight="600">1</text>
-                    <circle cx="300" cy="96" r="29" fill="rgba(10,18,13,0.50)" stroke="#7bbf92" stroke-width="1.6"/>
-                    <text x="300" y="102" fill="#dfeee4" font-size="14" font-family="DM Mono" text-anchor="middle" font-weight="600">2</text>
-                    <circle cx="425" cy="312" r="29" fill="rgba(10,18,13,0.50)" stroke="#7bbf92" stroke-width="1.6"/>
-                    <text x="425" y="318" fill="#dfeee4" font-size="14" font-family="DM Mono" text-anchor="middle" font-weight="600">3</text>
-                    <circle cx="175" cy="312" r="29" fill="rgba(10,18,13,0.50)" stroke="#7bbf92" stroke-width="1.6"/>
-                    <text x="175" y="318" fill="#dfeee4" font-size="14" font-family="DM Mono" text-anchor="middle" font-weight="600">4</text>
+                      <!-- Subplots:  SP1 center, SP2 N (360 deg), SP3 SE (120 deg), SP4 SW (240 deg) -->
+                      <circle cx="300" cy="240" r="29" fill="rgba(10,18,13,0.50)" stroke="#9ad9b1" stroke-width="2"/>
+                      <text x="300" y="246" fill="#dfeee4" font-size="14" font-family="DM Mono" text-anchor="middle" font-weight="600">1</text>
+                      <circle cx="300" cy="96" r="29" fill="rgba(10,18,13,0.50)" stroke="#7bbf92" stroke-width="1.6"/>
+                      <text x="300" y="102" fill="#dfeee4" font-size="14" font-family="DM Mono" text-anchor="middle" font-weight="600">2</text>
+                      <circle cx="425" cy="312" r="29" fill="rgba(10,18,13,0.50)" stroke="#7bbf92" stroke-width="1.6"/>
+                      <text x="425" y="318" fill="#dfeee4" font-size="14" font-family="DM Mono" text-anchor="middle" font-weight="600">3</text>
+                      <circle cx="175" cy="312" r="29" fill="rgba(10,18,13,0.50)" stroke="#7bbf92" stroke-width="1.6"/>
+                      <text x="175" y="318" fill="#dfeee4" font-size="14" font-family="DM Mono" text-anchor="middle" font-weight="600">4</text>
 
-                    <!-- microplots (6.8 ft, offset 12 ft east of each subplot center) -->
-                    <circle cx="314" cy="240" r="8" fill="rgba(168,120,74,0.35)" stroke="#c89868" stroke-width="0.9"/>
-                    <circle cx="314" cy="96" r="8" fill="rgba(168,120,74,0.25)" stroke="#c89868" stroke-width="0.7"/>
-                    <circle cx="439" cy="312" r="8" fill="rgba(168,120,74,0.25)" stroke="#c89868" stroke-width="0.7"/>
-                    <circle cx="189" cy="312" r="8" fill="rgba(168,120,74,0.25)" stroke="#c89868" stroke-width="0.7"/>
+                      <!-- microplots (6.8 ft, offset 12 ft east of each subplot center) -->
+                      <circle cx="314" cy="240" r="8" fill="rgba(168,120,74,0.35)" stroke="#c89868" stroke-width="0.9"/>
+                      <circle cx="314" cy="96" r="8" fill="rgba(168,120,74,0.25)" stroke="#c89868" stroke-width="0.7"/>
+                      <circle cx="439" cy="312" r="8" fill="rgba(168,120,74,0.25)" stroke="#c89868" stroke-width="0.7"/>
+                      <circle cx="189" cy="312" r="8" fill="rgba(168,120,74,0.25)" stroke="#c89868" stroke-width="0.7"/>
 
-                    <!-- 120 ft distance label -->
-                    <g transform="translate(310 174)">
-                      <rect x="-4" y="-11" width="52" height="16" rx="3" fill="rgba(10,18,13,0.88)"/>
-                      <text x="2" y="2" fill="#95b69e" font-size="10" font-family="DM Mono">120 ft</text>
+                      <!-- 120 ft distance label -->
+                      <g transform="translate(310 174)">
+                        <rect x="-4" y="-11" width="52" height="16" rx="3" fill="rgba(10,18,13,0.88)"/>
+                        <text x="2" y="2" fill="#95b69e" font-size="10" font-family="DM Mono">120 ft</text>
+                      </g>
+
+                      <!-- azimuth tags near each satellite subplot -->
+                      <text x="278" y="172" fill="#5d7c69" font-size="9" font-family="DM Mono" text-anchor="end">360&deg;</text>
+                      <text x="385" y="270" fill="#5d7c69" font-size="9" font-family="DM Mono">120&deg;</text>
+                      <text x="215" y="270" fill="#5d7c69" font-size="9" font-family="DM Mono" text-anchor="end">240&deg;</text>
                     </g>
-
-                    <!-- azimuth tags near each satellite subplot -->
-                    <text x="278" y="172" fill="#5d7c69" font-size="9" font-family="DM Mono" text-anchor="end">360&deg;</text>
-                    <text x="385" y="270" fill="#5d7c69" font-size="9" font-family="DM Mono">120&deg;</text>
-                    <text x="215" y="270" fill="#5d7c69" font-size="9" font-family="DM Mono" text-anchor="end">240&deg;</text>
 
                     <!-- ring-type legend (bottom-right, below SP3 macroplot) -->
                     <g transform="translate(370 388)">
