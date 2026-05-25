@@ -6,9 +6,10 @@ Educational tour of FIA's nested spatial scales: ecoregion -> plot grid ->
 variable measured at each scale and the processed parquet summaries derived
 from FIADB.
 
-The whole experience lives in static/v2.html. This script is a thin Streamlit
-shell that hides Streamlit chrome and embeds the design as a full-window
-component. Edit static/v2.html directly to iterate on the design.
+The whole experience lives in docs/fia-explorer.html (also served via
+GitHub Pages). This script is a thin Streamlit shell that hides Streamlit
+chrome and embeds the design as a full-window component. Edit
+docs/fia-explorer.html directly to iterate on the design.
 
 Usage:
   streamlit run 05_fia/docs/dashboard/fiadb_dashboard.py
@@ -20,8 +21,8 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 
-HERE = Path(__file__).parent
-HTML_PATH = HERE / "static" / "v2.html"
+REPO_ROOT = Path(__file__).resolve().parents[3]
+HTML_PATH = REPO_ROOT / "docs" / "fia-explorer.html"
 
 
 st.set_page_config(
