@@ -1,0 +1,275 @@
+{
+  "title": "Static FIA dashboard figures and aggregates",
+  "description": "PNG figures and compact JSON/CSV aggregates generated from local FIA summary parquets. The dashboard prefers the aggregates for interactive Plotly rendering and falls back to PNGs when parquets are unavailable.",
+  "figures": [
+    {
+      "file": "flag_rates.png",
+      "title": "FIA plot filters and disturbance flags",
+      "description": "Percent of plot visits flagged by exclusion and disturbance fields.",
+      "path": "docs/dashboard/static/figures/fia/flag_rates.png",
+      "source_script": "docs/dashboard/scripts/build_static_figures.py"
+    },
+    {
+      "file": "plot_status_map.png",
+      "title": "Clean and excluded FIA plot locations",
+      "description": "Sampled FIA plot locations after joining plot filters to coordinates.",
+      "path": "docs/dashboard/static/figures/fia/plot_status_map.png",
+      "source_script": "docs/dashboard/scripts/build_static_figures.py"
+    },
+    {
+      "file": "plot_locations_ba.png",
+      "title": "Live basal area at FIA plot locations",
+      "description": "Sampled FIA plot locations colored by live basal area.",
+      "path": "docs/dashboard/static/figures/fia/plot_locations_ba.png",
+      "source_script": "docs/dashboard/scripts/build_static_figures.py"
+    },
+    {
+      "file": "tree_metric_distributions.png",
+      "title": "FIA forest structure distributions",
+      "description": "Live basal area and BA-weighted Shannon diversity distributions.",
+      "path": "docs/dashboard/static/figures/fia/tree_metric_distributions.png",
+      "source_script": "docs/dashboard/scripts/build_static_figures.py"
+    },
+    {
+      "file": "disturbance_category_counts.png",
+      "title": "Disturbance events by category",
+      "description": "FIA disturbance-history records grouped into natural disturbance categories.",
+      "path": "docs/dashboard/static/figures/fia/disturbance_category_counts.png",
+      "source_script": "docs/dashboard/scripts/build_static_figures.py"
+    },
+    {
+      "file": "fire_type_breakdown.png",
+      "title": "Fire type breakdown",
+      "description": "FIA fire disturbance records by disturbance label.",
+      "path": "docs/dashboard/static/figures/fia/fire_type_breakdown.png",
+      "source_script": "docs/dashboard/scripts/build_static_figures.py"
+    },
+    {
+      "file": "top_disturbance_types.png",
+      "title": "Top FIA disturbance types",
+      "description": "The 20 most common FIA disturbance labels.",
+      "path": "docs/dashboard/static/figures/fia/top_disturbance_types.png",
+      "source_script": "docs/dashboard/scripts/build_static_figures.py"
+    },
+    {
+      "file": "disturbance_event_locations.png",
+      "title": "Disturbance event locations",
+      "description": "Sampled FIA disturbance events by category.",
+      "path": "docs/dashboard/static/figures/fia/disturbance_event_locations.png",
+      "source_script": "docs/dashboard/scripts/build_static_figures.py"
+    },
+    {
+      "file": "damage_agent_top20.png",
+      "title": "Top 20 damage agents",
+      "description": "Damage agents ranked by summed affected trees per acre.",
+      "path": "docs/dashboard/static/figures/fia/damage_agent_top20.png",
+      "source_script": "docs/dashboard/scripts/build_static_figures.py"
+    },
+    {
+      "file": "agent_category_ba.png",
+      "title": "Basal area affected by damage category",
+      "description": "Summed affected basal area by FIA damage-agent category.",
+      "path": "docs/dashboard/static/figures/fia/agent_category_ba.png",
+      "source_script": "docs/dashboard/scripts/build_static_figures.py"
+    },
+    {
+      "file": "agent_category_state_heatmap.png",
+      "title": "Damage category by state",
+      "description": "State by damage-agent-category heatmap using log1p affected TPA.",
+      "path": "docs/dashboard/static/figures/fia/agent_category_state_heatmap.png",
+      "source_script": "docs/dashboard/scripts/build_static_figures.py"
+    },
+    {
+      "file": "damage_agent_locations.png",
+      "title": "Damage agent locations",
+      "description": "Sampled FIA plots with damage-agent records by category.",
+      "path": "docs/dashboard/static/figures/fia/damage_agent_locations.png",
+      "source_script": "docs/dashboard/scripts/build_static_figures.py"
+    }
+  ],
+  "data": [
+    {
+      "name": "flag_rates",
+      "kind": "json",
+      "description": "Plot-filter and disturbance flag rates (percent of plot visits).",
+      "path": "docs/dashboard/static/data/fia/flag_rates.json",
+      "source_script": "docs/dashboard/scripts/build_static_figures.py"
+    },
+    {
+      "name": "pct_forested_hist",
+      "kind": "json",
+      "description": "pct_forested histogram (forested fraction per plot visit).",
+      "path": "docs/dashboard/static/data/fia/pct_forested_hist.json",
+      "source_script": "docs/dashboard/scripts/build_static_figures.py"
+    },
+    {
+      "name": "plot_status_points",
+      "kind": "csv",
+      "description": "Sampled clean/excluded plot points for interactive plotting.",
+      "rows": 12000,
+      "path": "docs/dashboard/static/data/fia/plot_status_points.csv",
+      "source_script": "docs/dashboard/scripts/build_static_figures.py"
+    },
+    {
+      "name": "plot_tree_points",
+      "kind": "csv",
+      "description": "Sampled FIA plot locations with live BA, Shannon H, and species richness for interactive maps.",
+      "rows": 12000,
+      "path": "docs/dashboard/static/data/fia/plot_tree_points.csv",
+      "source_script": "docs/dashboard/scripts/build_static_figures.py"
+    },
+    {
+      "name": "ba_live_hist",
+      "kind": "json",
+      "description": "Live basal-area histogram (clipped at 99th percentile).",
+      "path": "docs/dashboard/static/data/fia/ba_live_hist.json",
+      "source_script": "docs/dashboard/scripts/build_static_figures.py"
+    },
+    {
+      "name": "shannon_h_hist",
+      "kind": "json",
+      "description": "Shannon diversity histogram (BA-weighted, clipped at 99th percentile).",
+      "path": "docs/dashboard/static/data/fia/shannon_h_hist.json",
+      "source_script": "docs/dashboard/scripts/build_static_figures.py"
+    },
+    {
+      "name": "state_softwood_hardwood_ba",
+      "kind": "csv",
+      "description": "Mean softwood/hardwood basal area per state.",
+      "rows": 50,
+      "path": "docs/dashboard/static/data/fia/state_softwood_hardwood_ba.csv",
+      "source_script": "docs/dashboard/scripts/build_static_figures.py"
+    },
+    {
+      "name": "state_size_class_ba",
+      "kind": "csv",
+      "description": "Mean basal area per state by tree size class.",
+      "rows": 50,
+      "path": "docs/dashboard/static/data/fia/state_size_class_ba.csv",
+      "source_script": "docs/dashboard/scripts/build_static_figures.py"
+    },
+    {
+      "name": "disturbance_category_counts",
+      "kind": "json",
+      "description": "FIA disturbance-history record counts grouped by category.",
+      "path": "docs/dashboard/static/data/fia/disturbance_category_counts.json",
+      "source_script": "docs/dashboard/scripts/build_static_figures.py"
+    },
+    {
+      "name": "fire_type_breakdown",
+      "kind": "json",
+      "description": "Fire-type record counts within FIA disturbance history.",
+      "path": "docs/dashboard/static/data/fia/fire_type_breakdown.json",
+      "source_script": "docs/dashboard/scripts/build_static_figures.py"
+    },
+    {
+      "name": "disturbance_year_counts",
+      "kind": "csv",
+      "description": "Year x category counts of FIA disturbance records (1950-2025).",
+      "rows": 274,
+      "path": "docs/dashboard/static/data/fia/disturbance_year_counts.csv",
+      "source_script": "docs/dashboard/scripts/build_static_figures.py"
+    },
+    {
+      "name": "top_disturbance_types",
+      "kind": "json",
+      "description": "Top 20 disturbance labels with category and record count.",
+      "path": "docs/dashboard/static/data/fia/top_disturbance_types.json",
+      "source_script": "docs/dashboard/scripts/build_static_figures.py"
+    },
+    {
+      "name": "disturbance_event_points",
+      "kind": "csv",
+      "description": "Sampled disturbance event points (lat/lon/category/label).",
+      "rows": 15000,
+      "path": "docs/dashboard/static/data/fia/disturbance_event_points.csv",
+      "source_script": "docs/dashboard/scripts/build_static_figures.py"
+    },
+    {
+      "name": "damage_agent_top20",
+      "kind": "json",
+      "description": "Top 20 damage agents ranked by summed affected TPA.",
+      "path": "docs/dashboard/static/data/fia/damage_agent_top20.json",
+      "source_script": "docs/dashboard/scripts/build_static_figures.py"
+    },
+    {
+      "name": "agent_category_ba",
+      "kind": "json",
+      "description": "Summed affected basal area per FIA damage-agent category.",
+      "path": "docs/dashboard/static/data/fia/agent_category_ba.json",
+      "source_script": "docs/dashboard/scripts/build_static_figures.py"
+    },
+    {
+      "name": "agent_state_heatmap",
+      "kind": "csv",
+      "description": "Long-format damage-agent category x state x summed TPA.",
+      "rows": 621,
+      "path": "docs/dashboard/static/data/fia/agent_state_heatmap.csv",
+      "source_script": "docs/dashboard/scripts/build_static_figures.py"
+    },
+    {
+      "name": "damage_agent_points",
+      "kind": "csv",
+      "description": "Sampled FIA plots with damage-agent points by category.",
+      "rows": 15000,
+      "path": "docs/dashboard/static/data/fia/damage_agent_points.csv",
+      "source_script": "docs/dashboard/scripts/build_static_figures.py"
+    },
+    {
+      "name": "mortality_by_agent",
+      "kind": "csv",
+      "description": "Mortality TPA by inferred agent label and component_type.",
+      "rows": 8,
+      "path": "docs/dashboard/static/data/fia/mortality_by_agent.csv",
+      "source_script": "docs/dashboard/scripts/build_static_figures.py"
+    },
+    {
+      "name": "state_mortality",
+      "kind": "csv",
+      "description": "Summed mortality TPA per state and component_type.",
+      "rows": 50,
+      "path": "docs/dashboard/static/data/fia/state_mortality.csv",
+      "source_script": "docs/dashboard/scripts/build_static_figures.py"
+    },
+    {
+      "name": "state_seedlings",
+      "kind": "csv",
+      "description": "Summed softwood/hardwood seedling counts per state.",
+      "rows": 50,
+      "path": "docs/dashboard/static/data/fia/state_seedlings.csv",
+      "source_script": "docs/dashboard/scripts/build_static_figures.py"
+    },
+    {
+      "name": "state_seedling_diversity",
+      "kind": "csv",
+      "description": "Mean seedling Shannon diversity per state.",
+      "rows": 50,
+      "path": "docs/dashboard/static/data/fia/state_seedling_diversity.csv",
+      "source_script": "docs/dashboard/scripts/build_static_figures.py"
+    },
+    {
+      "name": "treatment_label_counts",
+      "kind": "csv",
+      "description": "Record counts by treatment label and category.",
+      "rows": 5,
+      "path": "docs/dashboard/static/data/fia/treatment_label_counts.csv",
+      "source_script": "docs/dashboard/scripts/build_static_figures.py"
+    },
+    {
+      "name": "state_treatments",
+      "kind": "csv",
+      "description": "Treatment record counts per state and category.",
+      "rows": 187,
+      "path": "docs/dashboard/static/data/fia/state_treatments.csv",
+      "source_script": "docs/dashboard/scripts/build_static_figures.py"
+    },
+    {
+      "name": "treatment_year_counts",
+      "kind": "csv",
+      "description": "Treatment year x category counts.",
+      "rows": 164,
+      "path": "docs/dashboard/static/data/fia/treatment_year_counts.csv",
+      "source_script": "docs/dashboard/scripts/build_static_figures.py"
+    }
+  ]
+}

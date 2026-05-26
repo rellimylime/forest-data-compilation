@@ -1,0 +1,622 @@
+agent_category,state,n_trees_tpa
+abiotic,AK,1806.7466
+abiotic,AL,3863.5855
+abiotic,AR,114.3429
+abiotic,AZ,469.4076
+abiotic,CA,633.3306
+abiotic,CO,914.7430
+abiotic,CT,84.2526
+abiotic,DE,12.0361
+abiotic,FL,84.2526
+abiotic,GA,7203.6011
+abiotic,HI,369.3290
+abiotic,IA,541.6241
+abiotic,ID,276.8301
+abiotic,IL,1209.6272
+abiotic,IN,78.2346
+abiotic,KS,84.2526
+abiotic,KY,619.8587
+abiotic,LA,818.4543
+abiotic,MA,132.3970
+abiotic,MD,6.0180
+abiotic,ME,60.1805
+abiotic,MI,589.7685
+abiotic,MN,1871.6123
+abiotic,MO,3057.1674
+abiotic,MS,42.1263
+abiotic,MT,668.0031
+abiotic,NC,2431.2906
+abiotic,ND,6.0180
+abiotic,NE,30.0902
+abiotic,NH,42.1263
+abiotic,NJ,84.2526
+abiotic,NM,1077.2302
+abiotic,NV,306.9203
+abiotic,NY,324.9745
+abiotic,OH,800.4001
+abiotic,OK,427.2813
+abiotic,OR,3362.7107
+abiotic,PA,1239.7175
+abiotic,SC,463.3895
+abiotic,SD,36.1083
+abiotic,TN,2846.5358
+abiotic,TX,655.9670
+abiotic,UT,776.3279
+abiotic,VA,866.5986
+abiotic,VT,96.2887
+abiotic,WA,1751.2903
+abiotic,WI,571.7144
+abiotic,WV,649.9490
+abiotic,WY,270.8121
+animal,AK,3173.3636
+animal,AL,96.2887
+animal,AR,234.7038
+animal,AZ,264.7940
+animal,CA,1611.0492
+animal,CO,1005.0137
+animal,CT,589.7685
+animal,DE,156.4692
+animal,FL,174.5233
+animal,GA,300.9023
+animal,HI,1478.5028
+animal,IA,2984.9508
+animal,ID,734.2016
+animal,IL,4712.1300
+animal,IN,1817.4499
+animal,KS,3051.1493
+animal,KY,90.2707
+animal,LA,138.4151
+animal,MA,1143.4287
+animal,MD,854.5625
+animal,ME,16567.6806
+animal,MI,20262.7609
+animal,MN,73715.0455
+animal,MO,17199.5755
+animal,MS,655.9670
+animal,MT,1065.1941
+animal,NC,204.6136
+animal,ND,1101.3024
+animal,NE,932.7971
+animal,NH,5187.5557
+animal,NJ,890.6708
+animal,NM,643.9309
+animal,NV,198.5955
+animal,NY,10158.4616
+animal,OH,4080.2352
+animal,OK,403.2091
+animal,OR,6765.4308
+animal,PA,12228.6695
+animal,RI,168.5053
+animal,SC,48.1444
+animal,SD,5109.3211
+animal,TN,469.4076
+animal,TX,264.7940
+animal,UT,391.1730
+animal,VA,1161.4829
+animal,VT,4146.4337
+animal,WA,7572.3078
+animal,WI,33472.3719
+animal,WV,5235.7000
+animal,WY,300.9023
+bark beetles,AK,3582.5907
+bark beetles,AL,174.5233
+bark beetles,AR,12.0361
+bark beetles,AZ,60.1805
+bark beetles,CA,6.0180
+bark beetles,CO,18914.7186
+bark beetles,FL,24.0722
+bark beetles,GA,168.5053
+bark beetles,ID,2052.1537
+bark beetles,LA,12.0361
+bark beetles,MS,144.4331
+bark beetles,MT,12764.2756
+bark beetles,NE,162.4872
+bark beetles,NM,463.3895
+bark beetles,NV,24.0722
+bark beetles,OR,0.9992
+bark beetles,SC,12.0361
+bark beetles,SD,12.0361
+bark beetles,TN,96.2887
+bark beetles,UT,577.7324
+bark beetles,VA,12.0361
+bark beetles,WA,51.1419
+bark beetles,WY,2996.9869
+boring insects,AR,6.0180
+boring insects,CT,216.6497
+boring insects,DE,66.1985
+boring insects,GA,18.0541
+boring insects,IA,782.3460
+boring insects,IL,1155.4648
+boring insects,IN,2503.5071
+boring insects,KS,96.2887
+boring insects,KY,1185.5551
+boring insects,MA,216.6497
+boring insects,MD,84.2526
+boring insects,ME,12.0361
+boring insects,MI,6674.0130
+boring insects,MN,842.5264
+boring insects,MO,926.7791
+boring insects,NC,24.0722
+boring insects,NE,96.2887
+boring insects,NH,144.4331
+boring insects,NJ,674.0212
+boring insects,NY,6902.6988
+boring insects,OH,4399.1916
+boring insects,PA,3237.7087
+boring insects,SC,6.0180
+boring insects,SD,6.0180
+boring insects,TN,90.2707
+boring insects,VA,854.5625
+boring insects,VT,72.2166
+boring insects,WI,7444.3229
+boring insects,WV,2040.1176
+canker/rust,AL,39255.7141
+canker/rust,AR,15027.0609
+canker/rust,CA,1235.5031
+canker/rust,CT,902.7069
+canker/rust,FL,25004.9811
+canker/rust,GA,99839.3831
+canker/rust,IA,6.0180
+canker/rust,IN,36.1083
+canker/rust,KY,186.5594
+canker/rust,LA,15201.5842
+canker/rust,MA,3923.7660
+canker/rust,MD,6.0180
+canker/rust,ME,51586.6903
+canker/rust,MI,3544.6291
+canker/rust,MS,35777.2835
+canker/rust,NC,24114.3103
+canker/rust,NH,25955.8324
+canker/rust,NJ,523.5700
+canker/rust,NY,56076.1526
+canker/rust,OH,72.2166
+canker/rust,OK,403.2091
+canker/rust,OR,4560.1688
+canker/rust,PA,14527.5630
+canker/rust,RI,126.3790
+canker/rust,SC,44346.9810
+canker/rust,TN,2118.3522
+canker/rust,TX,13925.7584
+canker/rust,VA,6806.4100
+canker/rust,VT,26118.3196
+canker/rust,WA,1963.7134
+canker/rust,WI,42.1263
+canker/rust,WV,9027.0690
+competition,AK,21017.6205
+competition,AL,1203.6092
+competition,AR,1384.1506
+competition,AZ,282.8482
+competition,CA,8038.3592
+competition,CO,132.3970
+competition,CT,12.0361
+competition,DE,12.0361
+competition,FL,2419.2545
+competition,GA,1305.9160
+competition,HI,2222.1375
+competition,ID,126.3790
+competition,IN,643.9309
+competition,KY,96.2887
+competition,LA,1299.8979
+competition,MD,24.0722
+competition,MI,72.2166
+competition,MN,1703.1070
+competition,MO,72.2166
+competition,MS,216.6497
+competition,MT,962.8874
+competition,NC,306.9203
+competition,ND,6.0180
+competition,NE,12.0361
+competition,NM,138.4151
+competition,NV,517.5520
+competition,NY,6.0180
+competition,OH,24.0722
+competition,OK,818.4543
+competition,OR,103003.8569
+competition,PA,174.5233
+competition,SC,2028.0815
+competition,SD,162.4872
+competition,TN,655.9670
+competition,TX,908.7249
+competition,UT,294.8843
+competition,VA,3821.4592
+competition,WA,59167.5982
+competition,WI,24.0722
+competition,WV,174.5233
+competition,WY,72.2166
+defoliators,AK,1005.1595
+defoliators,AZ,144.4331
+defoliators,CA,0.9992
+defoliators,CO,27267.7664
+defoliators,CT,3833.4953
+defoliators,DE,752.2558
+defoliators,IA,12.0361
+defoliators,ID,7468.3951
+defoliators,IN,12.0361
+defoliators,MA,6018.0460
+defoliators,MD,337.0106
+defoliators,ME,1727.1792
+defoliators,MI,29067.1622
+defoliators,MN,12349.0304
+defoliators,MT,31450.3084
+defoliators,NH,890.6708
+defoliators,NJ,4922.7616
+defoliators,NM,4838.5090
+defoliators,NY,14659.9601
+defoliators,OH,42.1263
+defoliators,OR,1418.3146
+defoliators,PA,27737.1740
+defoliators,RI,3466.3945
+defoliators,UT,752.2558
+defoliators,VA,186.5594
+defoliators,VT,866.5986
+defoliators,WA,59544.5352
+defoliators,WI,9261.7728
+defoliators,WV,2322.9658
+defoliators,WY,1751.2514
+disease,AK,91010.3283
+disease,AL,72132.2994
+disease,AR,166140.1959
+disease,AZ,42800.3432
+disease,CA,91911.7017
+disease,CO,125747.0712
+disease,CT,9598.7834
+disease,DE,3701.0983
+disease,FL,65392.0878
+disease,GA,211937.5260
+disease,HI,39002.4785
+disease,IA,18240.6974
+disease,ID,33616.8050
+disease,IL,23668.9749
+disease,IN,36367.0520
+disease,KS,31402.1640
+disease,KY,109895.5380
+disease,LA,93315.8213
+disease,MA,17229.6657
+disease,MD,12120.3446
+disease,ME,209494.1993
+disease,MI,183526.3308
+disease,MN,312240.2987
+disease,MO,87785.2370
+disease,MS,257590.4229
+disease,MT,79456.2613
+disease,NC,90986.8375
+disease,ND,12186.5431
+disease,NE,7606.8101
+disease,NH,45063.1284
+disease,NJ,22555.6364
+disease,NM,38894.6313
+disease,NV,26593.7453
+disease,NY,185753.0078
+disease,OH,71861.4873
+disease,OK,142970.7188
+disease,OR,112445.6355
+disease,PA,143295.6933
+disease,RI,4766.2924
+disease,SC,87731.0746
+disease,SD,6150.4430
+disease,TN,85432.1810
+disease,TX,466446.7094
+disease,UT,67709.0355
+disease,VA,94886.5313
+disease,VT,42451.2965
+disease,WA,49486.2611
+disease,WI,197470.1434
+disease,WV,102962.7490
+disease,WY,15845.5151
+fire,AK,1380.5065
+fire,AL,3171.5102
+fire,AR,2328.9838
+fire,AZ,7793.3696
+fire,CA,17799.9200
+fire,CO,2888.6621
+fire,FL,5963.8836
+fire,GA,6998.9875
+fire,HI,402.6885
+fire,IA,48.1444
+fire,ID,7937.8027
+fire,IL,234.7038
+fire,IN,306.9203
+fire,KS,824.4723
+fire,KY,1305.9160
+fire,LA,1516.5476
+fire,MA,12.0361
+fire,MD,12.0361
+fire,ME,6.0180
+fire,MI,728.1836
+fire,MN,1468.4032
+fire,MO,4904.7075
+fire,MS,1606.8183
+fire,MT,9207.6104
+fire,NC,3604.8096
+fire,ND,120.3609
+fire,NE,216.6497
+fire,NJ,433.2993
+fire,NM,5921.7573
+fire,NV,818.4543
+fire,NY,42.1263
+fire,OH,78.2346
+fire,OK,4591.7691
+fire,OR,24998.8844
+fire,PA,240.7218
+fire,RI,30.0902
+fire,SC,3394.1779
+fire,SD,770.3099
+fire,TN,2780.3373
+fire,TX,7715.1350
+fire,UT,1203.6092
+fire,VA,3406.2140
+fire,WA,9713.7476
+fire,WI,349.0467
+fire,WV,559.6783
+fire,WY,1113.3385
+foliage/wilt disease,CT,6.0180
+foliage/wilt disease,FL,138.4151
+foliage/wilt disease,GA,12.0361
+foliage/wilt disease,IA,367.1008
+foliage/wilt disease,IL,228.6857
+foliage/wilt disease,IN,276.8301
+foliage/wilt disease,KS,126.3790
+foliage/wilt disease,ME,12.0361
+foliage/wilt disease,MI,361.0828
+foliage/wilt disease,MN,1402.2047
+foliage/wilt disease,MO,252.7579
+foliage/wilt disease,NC,6.0180
+foliage/wilt disease,NE,54.1624
+foliage/wilt disease,NJ,18.0541
+foliage/wilt disease,NY,84.2526
+foliage/wilt disease,OH,48.1444
+foliage/wilt disease,OK,6.0180
+foliage/wilt disease,PA,48.1444
+foliage/wilt disease,SC,6.0180
+foliage/wilt disease,SD,42.1263
+foliage/wilt disease,TN,54.1624
+foliage/wilt disease,VT,18.0541
+foliage/wilt disease,WI,1522.5656
+foliage/wilt disease,WV,60.1805
+human,AK,48.1444
+human,AL,661.9851
+human,AR,385.1549
+human,AZ,1468.4032
+human,CA,734.2977
+human,CO,625.8768
+human,CT,48.1444
+human,DE,48.1444
+human,FL,625.8768
+human,GA,1089.2663
+human,HI,93.0194
+human,IA,499.4978
+human,ID,150.4512
+human,IL,403.2091
+human,IN,818.4543
+human,KS,288.8662
+human,KY,589.7685
+human,LA,661.9851
+human,MA,102.3068
+human,MD,108.3248
+human,ME,2569.7056
+human,MI,1323.9701
+human,MN,3412.2321
+human,MO,1697.0890
+human,MS,637.9129
+human,MT,397.1910
+human,NC,998.9956
+human,ND,48.1444
+human,NE,126.3790
+human,NH,156.4692
+human,NJ,282.8482
+human,NM,1095.2844
+human,NV,764.2918
+human,NY,1793.3777
+human,OH,686.0572
+human,OK,216.6497
+human,OR,1899.9881
+human,PA,1053.1581
+human,RI,12.0361
+human,SC,403.2091
+human,SD,66.1985
+human,TN,583.7505
+human,TX,878.6347
+human,UT,589.7685
+human,VA,541.6241
+human,VT,1414.2408
+human,WA,1557.0473
+human,WI,2425.2725
+human,WV,445.3354
+human,WY,30.0902
+insects,AK,28839.1437
+insects,AL,1540.6198
+insects,AR,932.7971
+insects,AZ,5374.1151
+insects,CA,5285.4436
+insects,CO,29819.4179
+insects,CT,72.2166
+insects,DE,288.8662
+insects,FL,4712.1300
+insects,GA,4459.3721
+insects,HI,636.8717
+insects,IA,1685.0529
+insects,ID,12511.5176
+insects,IL,6421.2551
+insects,IN,734.2016
+insects,KS,2353.0560
+insects,KY,2587.7598
+insects,LA,2978.9328
+insects,MA,324.9745
+insects,MD,950.8513
+insects,ME,9033.0870
+insects,MI,14088.2457
+insects,MN,63701.0169
+insects,MO,55089.1931
+insects,MS,1173.5190
+insects,MT,30210.5909
+insects,NC,3418.2501
+insects,ND,2335.0018
+insects,NE,559.6783
+insects,NH,1396.1867
+insects,NJ,631.8948
+insects,NM,25047.1075
+insects,NV,5747.2339
+insects,NY,8479.4268
+insects,OH,2750.2470
+insects,OK,1378.1325
+insects,OR,41260.1635
+insects,PA,7065.1860
+insects,RI,12.0361
+insects,SC,1077.2302
+insects,SD,932.7971
+insects,TN,4639.9135
+insects,TX,2058.1717
+insects,UT,6559.6701
+insects,VA,3923.7660
+insects,VT,1624.8724
+insects,WA,19720.9094
+insects,WI,18818.4298
+insects,WV,4537.6067
+insects,WY,4531.5886
+other,AK,4116.9267
+other,AL,1197.5912
+other,AR,138.4151
+other,AZ,848.5445
+other,CA,2890.2520
+other,CO,174.5233
+other,CT,246.7399
+other,DE,90.2707
+other,FL,337.0106
+other,GA,60.1805
+other,HI,4357.6485
+other,IA,2960.8786
+other,ID,686.0572
+other,IL,986.9595
+other,IN,1666.9987
+other,KS,1390.1686
+other,KY,72.2166
+other,LA,770.3099
+other,MA,668.0031
+other,MD,409.2271
+other,ME,529.5880
+other,MI,18553.6358
+other,MN,46471.3512
+other,MO,6258.7678
+other,MS,108.3248
+other,MT,637.9129
+other,NC,138.4151
+other,ND,2942.8245
+other,NE,974.9235
+other,NH,2136.4063
+other,NJ,529.5880
+other,NM,306.9203
+other,NV,204.6136
+other,NY,10567.6888
+other,OH,944.8332
+other,OK,84.2526
+other,OR,19084.2875
+other,PA,5699.0896
+other,RI,78.2346
+other,SC,72.2166
+other,SD,553.6602
+other,TN,505.5159
+other,TX,631.8948
+other,UT,668.0031
+other,VA,54.1624
+other,VT,1679.0348
+other,WA,11713.0127
+other,WI,59530.5110
+other,WV,493.4798
+other,WY,222.6677
+root/butt disease,AK,12.0361
+root/butt disease,AL,18.0541
+root/butt disease,AR,36.1083
+root/butt disease,CA,1319.6602
+root/butt disease,DE,6.0180
+root/butt disease,FL,6.0180
+root/butt disease,GA,90.2707
+root/butt disease,IN,12.0361
+root/butt disease,KY,6.0180
+root/butt disease,LA,12.0361
+root/butt disease,MI,6.0180
+root/butt disease,MN,48.1444
+root/butt disease,MO,30.0902
+root/butt disease,NC,6.0180
+root/butt disease,ND,6.0180
+root/butt disease,NE,6.0180
+root/butt disease,NJ,24.0722
+root/butt disease,NY,12.0361
+root/butt disease,OH,30.0902
+root/butt disease,OK,102.3068
+root/butt disease,OR,6434.0822
+root/butt disease,PA,144.4331
+root/butt disease,SC,54.1624
+root/butt disease,TN,12.0361
+root/butt disease,TX,48.1444
+root/butt disease,WA,4927.0086
+root/butt disease,WI,96.2887
+root/butt disease,WV,54.1624
+sucking insects,CT,1059.1761
+sucking insects,DE,6.0180
+sucking insects,GA,2226.6770
+sucking insects,ID,523.5700
+sucking insects,KY,72.2166
+sucking insects,MA,2190.5687
+sucking insects,MD,12.0361
+sucking insects,ME,36950.8024
+sucking insects,MI,2924.7704
+sucking insects,MN,24.0722
+sucking insects,MT,12.0361
+sucking insects,NC,1354.0603
+sucking insects,NH,3237.7087
+sucking insects,NJ,752.2558
+sucking insects,NV,12.0361
+sucking insects,NY,11542.6122
+sucking insects,OH,427.2813
+sucking insects,OR,5031.1032
+sucking insects,PA,11933.7852
+sucking insects,RI,330.9925
+sucking insects,SC,54.1624
+sucking insects,TN,1666.9987
+sucking insects,UT,30.0902
+sucking insects,VA,896.6889
+sucking insects,VT,3526.5750
+sucking insects,WA,6610.0793
+sucking insects,WV,5163.4835
+unknown,AK,123.1097
+unknown,AL,72.2166
+unknown,AZ,17031.0702
+unknown,CA,144.4102
+unknown,CO,5668.9993
+unknown,CT,12.0361
+unknown,DE,6.0180
+unknown,FL,541.6241
+unknown,GA,18.0541
+unknown,ID,1456.3671
+unknown,IN,54.1624
+unknown,LA,90.2707
+unknown,MA,6.0180
+unknown,MD,12.0361
+unknown,ME,18.0541
+unknown,MI,481.4437
+unknown,MN,198.5955
+unknown,MO,114.3429
+unknown,MS,12.0361
+unknown,MT,1612.8363
+unknown,NC,60.1805
+unknown,NE,12.0361
+unknown,NH,72.2166
+unknown,NJ,24.0722
+unknown,NM,5295.8805
+unknown,NV,2557.6696
+unknown,NY,24.0722
+unknown,OH,48.1444
+unknown,OK,18.0541
+unknown,OR,326.1805
+unknown,PA,30.0902
+unknown,SC,12.0361
+unknown,SD,18.0541
+unknown,TN,60.1805
+unknown,TX,96.2887
+unknown,UT,25390.1361
+unknown,VA,6.0180
+unknown,VT,6.0180
+unknown,WA,229.4132
+unknown,WI,228.6857
+unknown,WV,30.0902
+unknown,WY,252.7579

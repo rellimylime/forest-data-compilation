@@ -24,7 +24,7 @@ import streamlit as st
 from utils import (
     REPO_ROOT, apply_dark_css, metric_card, parquet_meta,
     file_status, repo_path, color_status, PLOTLY_AVAILABLE,
-    plot_source_link, render_top_nav,
+    plot_source_link, render_top_nav, route_grid,
 )
 
 st.set_page_config(
@@ -154,12 +154,46 @@ PIPELINE = [
     ("FIA", "Condition / forest type",
      "05_fia/data/processed/summaries/plot_cond_fortypcd.parquet",
      "Condition-level forest type and disturbance codes pass-through"),
+    ("FIA", "Condition metadata",
+     "05_fia/data/processed/summaries/plot_condition_metadata.parquet",
+     "Condition-level stable plot IDs, coordinates, forest type groups, and forested area fields"),
+    ("FIA", "Seedling species",
+     "05_fia/data/processed/summaries/plot_seedling_species.parquet",
+     "Species-level seedling counts per plot condition, preserving SPCD for recruitment analyses"),
+    ("FIA", "Disturbance classification",
+     "05_fia/data/processed/summaries/plot_disturbance_classification.parquet",
+     "Control/disturbed eligibility, natural disturbance classes, timing, and matching strata"),
     ("FIA", "Site pixel map",
      "05_fia/data/processed/site_climate/site_pixel_map.parquet",
      "TerraClimate 4km pixel assignments for 6,956 FIA plot locations"),
     ("FIA", "Site climate",
      "05_fia/data/processed/site_climate/site_climate.parquet",
      "Monthly TerraClimate at FIA sites: 6 variables, 1958–2024 (23.5M rows)"),
+
+    ("Species niches", "Species climate niches",
+     "06_species_niches/data/processed/species_climate_niches.parquet",
+     "External occurrence-based climate envelopes for FIA tree species"),
+    ("Thermophilization", "Recruitment CWM",
+     "07_thermophilization/data/processed/plot_recruitment_cwm.parquet",
+     "Seedling community-weighted climate affinity per FIA condition visit"),
+    ("Thermophilization", "Matched disturbed-control pairs",
+     "07_thermophilization/data/processed/plot_matches.parquet",
+     "Five climate-matched controls per disturbed FIA condition with pairwise CWM deltas"),
+    ("Thermophilization", "Class x region summary",
+     "07_thermophilization/data/processed/thermophilization_by_class_region.parquet",
+     "Bootstrap mean deltas by disturbance class and East/West region"),
+    ("Thermophilization", "High-severity fire summary",
+     "07_thermophilization/data/processed/thermophilization_high_severity.parquet",
+     "Crown-fire high-severity proxy summary by East/West region"),
+    ("Thermophilization", "Time x region summary",
+     "07_thermophilization/data/processed/thermophilization_by_time_region.parquet",
+     "Time-since-disturbance summary pooled across natural disturbance classes"),
+    ("Thermophilization", "Class x time x region summary",
+     "07_thermophilization/data/processed/thermophilization_by_class_time_region.parquet",
+     "Time-since-disturbance summary stratified by disturbance class and region"),
+    ("Thermophilization", "Disturbance year coverage",
+     "07_thermophilization/data/processed/disturbance_year_coverage.parquet",
+     "Diagnostic for how often FIA has usable disturbance years"),
 ]
 
 
@@ -169,6 +203,7 @@ PAGE_ROUTES = {
     "PRISM": "pages/2_Climate.py",
     "WorldClim": "pages/2_Climate.py",
     "FIA": "pages/3_FIA_Forest.py",
+    "Thermophilization": "pages/6_Thermophilization.py",
     "Architecture": "pages/4_Architecture.py",
     "Data Catalog": "pages/5_Data_Catalog.py",
 }
@@ -193,6 +228,11 @@ PAGE_SEARCH_INDEX = [
         "title": "FIA Forest",
         "page": "pages/3_FIA_Forest.py",
         "body": "FIA derived products: tree metrics, filters, disturbance, damage agents, mortality, seedlings, treatments, site climate.",
+    },
+    {
+        "title": "Thermophilization",
+        "page": "pages/6_Thermophilization.py",
+        "body": "FIA recruitment thermophilization workflow: species climate affinity, seedling CWM, disturbed-control matching, deltas, and species-shift checks.",
     },
     {
         "title": "Data Catalog",
@@ -243,6 +283,30 @@ SCRIPT_SEARCH_INDEX = [
         "path": "05_fia/scripts/06_extract_site_climate.R",
         "body": "Extract TerraClimate monthly values for FIA and ITRDB sites.",
         "page": "pages/3_FIA_Forest.py",
+    },
+    {
+        "title": "Build recruitment CWM",
+        "path": "07_thermophilization/scripts/01_build_plot_recruitment_cwm.R",
+        "body": "Compute seedling community-weighted climate affinity per FIA condition visit.",
+        "page": "pages/6_Thermophilization.py",
+    },
+    {
+        "title": "Match disturbed controls",
+        "path": "07_thermophilization/scripts/02_match_disturbed_to_controls.R",
+        "body": "Match disturbed FIA conditions to clean controls by forest type, region, inventory year, and baseline climate.",
+        "page": "pages/6_Thermophilization.py",
+    },
+    {
+        "title": "Stratified thermophilization",
+        "path": "07_thermophilization/scripts/03_stratified_thermophilization.R",
+        "body": "Summarize recruitment thermophilization deltas by disturbance class, region, time, and high-severity proxy.",
+        "page": "pages/6_Thermophilization.py",
+    },
+    {
+        "title": "Thermophilization by class and time",
+        "path": "07_thermophilization/scripts/04_thermophilization_by_class_time.R",
+        "body": "Summarize deltas by disturbance class, region, and time since disturbance; writes disturbance-year coverage diagnostics.",
+        "page": "pages/6_Thermophilization.py",
     },
 ]
 
@@ -386,8 +450,9 @@ st.markdown(
       FIA forest inventory plots into a single navigable data workspace.
     </div>
     <div class="fd-callout">
-      Start with <code>Architecture</code> for the workflow map, then open <code>IDS Survey</code>,
-      <code>Climate</code>, or <code>FIA Forest</code> for workstream details. Use
+      Start with <code>Architecture</code> for the workflow map, then open <code>Climate</code>
+      for gridding and matching, <code>FIA Forest</code> for inventory outputs, or
+      <code>Thermophilization</code> for the recruitment analysis layer. Use
       <code>Data Catalog</code> when you need exact paths, schemas, and load examples.
     </div>
     """,
@@ -395,11 +460,44 @@ st.markdown(
 )
 
 # ── Workflow search ───────────────────────────────────────────────────────────
+st.markdown(
+    route_grid(
+        [
+            {
+                "title": "Architecture",
+                "body": "The calm map of how IDS, climate, FIA, and downstream analyses fit together.",
+                "pills": ["start here", "workflow map"],
+            },
+            {
+                "title": "Climate gridding",
+                "body": "How raster pixels are matched to IDS polygons and FIA points, with reusable output schemas.",
+                "pills": ["pixel_map", "IDS", "FIA"],
+            },
+            {
+                "title": "FIA outputs",
+                "body": "Tree, seedling, disturbance, treatment, mortality, damage-agent, and site-climate products.",
+                "pills": ["PLT_CN", "INVYR", "CONDID"],
+            },
+            {
+                "title": "Thermophilization",
+                "body": "Species climate affinity, seedling CWM, matched controls, deltas, and species-level checks.",
+                "pills": ["SPCD", "CWM", "delta"],
+            },
+            {
+                "title": "Data Catalog",
+                "body": "Exact output paths, current file status, row counts, schemas, and load snippets.",
+                "pills": ["paths", "schemas"],
+            },
+        ]
+    ),
+    unsafe_allow_html=True,
+)
+
 st.markdown('<div class="fd-section-label">Workflow search</div>', unsafe_allow_html=True)
 search_cols = st.columns([2.3, 1])
 workflow_query = search_cols[0].text_input(
     "Search outputs, pages, scripts, FIA tables, and FIA variables",
-    placeholder="Try plot_tree_metrics, SPCD, mortality, TerraClimate, COND, PRISM, damage agents",
+    placeholder="Try plot_tree_metrics, SPCD, CWM, thermophilization, TerraClimate, COND, damage agents",
     key="workflow_search_query",
 )
 search_cols[1].markdown(
@@ -481,7 +579,7 @@ inv_df = pd.DataFrame(rows)
 
 # Summary counts by section
 st.markdown("#### By section")
-section_order = ["IDS", "TerraClimate", "PRISM", "WorldClim", "FIA"]
+section_order = ["IDS", "TerraClimate", "PRISM", "WorldClim", "FIA", "Thermophilization"]
 for sec in section_order:
     sec_df = inv_df[inv_df["Section"] == sec]
     n_ok = (sec_df["Status"] == "✅").sum()

@@ -1,0 +1,102 @@
+[
+  {
+    "agent_label": "Stem decay",
+    "agent_category": "disease",
+    "n_trees_tpa": 3671245.989778
+  },
+  {
+    "agent_label": "Root/butt diseases",
+    "agent_category": "disease",
+    "n_trees_tpa": 372865.632964
+  },
+  {
+    "agent_label": "Fusiform rust",
+    "agent_category": "canker/rust",
+    "n_trees_tpa": 321490.035366
+  },
+  {
+    "agent_label": "Cankers (non-rust)",
+    "agent_category": "disease",
+    "n_trees_tpa": 271484.752748
+  },
+  {
+    "agent_label": "Wild animals",
+    "agent_category": "animal",
+    "n_trees_tpa": 252990.624026
+  },
+  {
+    "agent_label": "Other damages",
+    "agent_category": "other",
+    "n_trees_tpa": 216444.73951800002
+  },
+  {
+    "agent_label": "Competition",
+    "agent_category": "competition",
+    "n_trees_tpa": 215565.891306
+  },
+  {
+    "agent_label": "Beech bark disease",
+    "agent_category": "canker/rust",
+    "n_trees_tpa": 192427.02085
+  },
+  {
+    "agent_label": "Boring insects",
+    "agent_category": "insects",
+    "n_trees_tpa": 181473.202036
+  },
+  {
+    "agent_label": "Fire",
+    "agent_category": "fire",
+    "n_trees_tpa": 150951.583892
+  },
+  {
+    "agent_label": "Western spruce budworm",
+    "agent_category": "defoliators",
+    "n_trees_tpa": 135641.927632
+  },
+  {
+    "agent_label": "Defoliators",
+    "agent_category": "insects",
+    "n_trees_tpa": 119310.448174
+  },
+  {
+    "agent_label": "Gypsy moth",
+    "agent_category": "defoliators",
+    "n_trees_tpa": 95596.66071
+  },
+  {
+    "agent_label": "Bark beetles",
+    "agent_category": "insects",
+    "n_trees_tpa": 89920.444544
+  },
+  {
+    "agent_label": "Stem rusts",
+    "agent_category": "disease",
+    "n_trees_tpa": 84330.39319
+  },
+  {
+    "agent_label": "Unknown",
+    "agent_category": "unknown",
+    "n_trees_tpa": 62471.976766
+  },
+  {
+    "agent_label": "Balsam woolly adelgid",
+    "agent_category": "sucking insects",
+    "n_trees_tpa": 54297.09256
+  },
+  {
+    "agent_label": "Decline complexes/dieback/wilts",
+    "agent_category": "disease",
+    "n_trees_tpa": 51442.38727
+  },
+  {
+    "agent_label": "Abiotic damage",
+    "agent_category": "abiotic",
+    "n_trees_tpa": 44729.776464
+  },
+  {
+    "agent_label": "Emerald ash borer",
+    "agent_category": "boring insects",
+    "n_trees_tpa": 40772.26165
+  }
+]

@@ -5,6 +5,8 @@
 
 import os
 import inspect
+import html
+import json
 from pathlib import Path
 
 import pandas as pd
@@ -27,13 +29,49 @@ except ImportError:
 # Repo root — resolved relative to this file's location (docs/dashboard/)
 # ------------------------------------------------------------------------------
 
-REPO_ROOT = Path(__file__).parent.parent.parent
+DASHBOARD_DIR = Path(__file__).parent
+STATIC_DIR = DASHBOARD_DIR / "static"
+REPO_ROOT = DASHBOARD_DIR.parent.parent
 GITHUB_BLOB_BASE = "https://github.com/rellimylime/forest-data-compilation/blob/main"
 
 
 def repo_path(*parts) -> Path:
     """Return an absolute path relative to the repo root."""
     return REPO_ROOT.joinpath(*parts)
+
+
+def static_path(*parts) -> Path:
+    """Return an absolute path relative to docs/dashboard/static."""
+    return STATIC_DIR.joinpath(*parts)
+
+
+def load_static_json(*parts, default=None):
+    """Load dashboard metadata from docs/dashboard/static for GitHub-hosted apps."""
+    path = static_path(*parts)
+    if not path.is_file():
+        return default
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return default
+
+
+@st.cache_data(show_spinner=False)
+def load_static_data_json(name: str, subdir: str = "fia"):
+    """Load a JSON aggregate emitted by build_static_figures.py."""
+    return load_static_json("data", subdir, f"{name}.json", default=None)
+
+
+@st.cache_data(show_spinner=False)
+def load_static_data_csv(name: str, subdir: str = "fia"):
+    """Load a CSV aggregate emitted by build_static_figures.py."""
+    path = static_path("data", subdir, f"{name}.csv")
+    if not path.is_file():
+        return None
+    try:
+        return pd.read_csv(path)
+    except (OSError, pd.errors.ParserError):
+        return None
 
 
 # ------------------------------------------------------------------------------
@@ -209,10 +247,26 @@ DARK_CSS = """
     color: var(--fd-text2) !important;
     font-size: 0.86rem;
     font-weight: 500;
+    line-height: 1.25;
     text-decoration: none !important;
+    white-space: normal;
   }
 
   [data-testid="stPageLink"] a:hover {
+    color: var(--fd-accent2) !important;
+  }
+
+  .fd-nav-link {
+    color: var(--fd-text2) !important;
+    display: inline-flex;
+    font-size: 0.86rem;
+    font-weight: 500;
+    line-height: 2.35rem;
+    text-decoration: none !important;
+    white-space: normal;
+  }
+
+  .fd-nav-link:hover {
     color: var(--fd-accent2) !important;
   }
 
@@ -264,6 +318,183 @@ DARK_CSS = """
     color: var(--fd-text3);
     font-size: 0.82rem;
     line-height: 1.55;
+  }
+
+  .fd-card-body strong {
+    color: var(--fd-text2);
+    font-weight: 600;
+  }
+
+  .fd-kicker {
+    align-items: center;
+    background: rgba(92, 158, 114, 0.07);
+    border: 1px solid rgba(92, 158, 114, 0.3);
+    border-radius: 999px;
+    color: var(--fd-accent2);
+    display: inline-flex;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.09em;
+    margin-bottom: 0.8rem;
+    padding: 4px 10px;
+    text-transform: uppercase;
+  }
+
+  .fd-grid {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    margin: 0.8rem 0 1.2rem;
+  }
+
+  .fd-workflow-grid {
+    display: grid;
+    gap: 10px;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    margin: 0.8rem 0 1.3rem;
+  }
+
+  .fd-step-card {
+    background: var(--fd-bg2);
+    border: 1px solid var(--fd-border);
+    border-radius: var(--fd-radius);
+    min-height: 132px;
+    padding: 14px 15px;
+    position: relative;
+  }
+
+  .fd-step-card::before {
+    background: var(--fd-accent);
+    border-radius: 99px;
+    content: "";
+    height: calc(100% - 26px);
+    left: 0;
+    opacity: 0.45;
+    position: absolute;
+    top: 13px;
+    width: 2px;
+  }
+
+  .fd-step-label {
+    color: var(--fd-text3);
+    font-family: var(--fd-mono);
+    font-size: 0.64rem;
+    letter-spacing: 0.07em;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+
+  .fd-step-title {
+    color: var(--fd-text);
+    font-size: 0.92rem;
+    font-weight: 600;
+    line-height: 1.35;
+    margin-bottom: 5px;
+  }
+
+  .fd-step-body {
+    color: var(--fd-text2);
+    font-size: 0.8rem;
+    line-height: 1.55;
+  }
+
+  .fd-route-card {
+    background: var(--fd-bg2);
+    border: 1px solid var(--fd-border);
+    border-radius: var(--fd-radius);
+    min-height: 118px;
+    padding: 15px 16px;
+  }
+
+  .fd-route-card:hover {
+    border-color: var(--fd-border2);
+  }
+
+  .fd-route-title {
+    color: var(--fd-text);
+    font-size: 0.93rem;
+    font-weight: 600;
+    line-height: 1.32;
+    margin-bottom: 5px;
+    overflow-wrap: anywhere;
+  }
+
+  .fd-route-body {
+    color: var(--fd-text2);
+    font-size: 0.8rem;
+    line-height: 1.55;
+  }
+
+  .fd-pill {
+    background: var(--fd-bg3);
+    border: 1px solid var(--fd-border2);
+    border-radius: 999px;
+    color: var(--fd-text3);
+    display: inline-flex;
+    font-family: var(--fd-mono);
+    font-size: 0.68rem;
+    line-height: 1.4;
+    margin: 3px 5px 3px 0;
+    padding: 2px 8px;
+  }
+
+  .fd-pill-green {
+    background: rgba(92, 158, 114, 0.13);
+    border-color: rgba(92, 158, 114, 0.32);
+    color: var(--fd-accent2);
+  }
+
+  .fd-pill-blue {
+    background: rgba(74, 130, 168, 0.13);
+    border-color: rgba(74, 130, 168, 0.32);
+    color: #90b8d0;
+  }
+
+  .fd-pill-amber {
+    background: rgba(196, 143, 63, 0.13);
+    border-color: rgba(196, 143, 63, 0.32);
+    color: #d4aa64;
+  }
+
+  .fd-mini-table {
+    border: 1px solid var(--fd-border);
+    border-radius: var(--fd-radius);
+    margin: 0.7rem 0 1rem;
+    overflow: hidden;
+  }
+
+  .fd-mini-row {
+    display: grid;
+    gap: 10px;
+    grid-template-columns: 1fr 1.4fr;
+    padding: 10px 12px;
+  }
+
+  .fd-mini-row:nth-child(odd) {
+    background: rgba(255, 255, 255, 0.012);
+  }
+
+  .fd-mini-key {
+    color: var(--fd-text);
+    font-weight: 600;
+  }
+
+  .fd-mini-value {
+    color: var(--fd-text2);
+  }
+
+  .fd-file-path {
+    color: var(--fd-accent2);
+    font-family: var(--fd-mono);
+    font-size: 0.74rem;
+    overflow-wrap: anywhere;
+  }
+
+  .fd-status-line {
+    color: var(--fd-text3);
+    font-family: var(--fd-mono);
+    font-size: 0.72rem;
+    margin-top: 7px;
   }
 
   .fd-callout {
@@ -426,17 +657,29 @@ def apply_dark_css():
 FIA_NAVIGATOR_URL = "http://localhost:8502"
 
 
+def _safe_page_link(container, page: str, label: str) -> None:
+    """Render Streamlit page links, with a direct-run fallback for page QA."""
+    try:
+        container.page_link(page, label=label)
+    except KeyError:
+        container.markdown(
+            f'<a class="fd-nav-link" href="{html.escape(page)}">{html.escape(label)}</a>',
+            unsafe_allow_html=True,
+        )
+
+
 def render_top_nav() -> None:
     """Render the shared top navigation for the multipage dashboard."""
-    cols = st.columns([1.45, 0.7, 1.0, 0.75, 0.85, 1.0, 0.85, 1.15])
+    cols = st.columns([1.35, 0.58, 0.98, 0.68, 0.75, 0.88, 0.68, 0.72, 1.05])
     cols[0].markdown('<div class="fd-navbar-brand">Forest Data Explorer</div>', unsafe_allow_html=True)
-    cols[1].page_link("app.py", label="Home")
-    cols[2].page_link("pages/4_Architecture.py", label="Architecture")
-    cols[3].page_link("pages/1_IDS_Survey.py", label="IDS")
-    cols[4].page_link("pages/2_Climate.py", label="Climate")
-    cols[5].page_link("pages/3_FIA_Forest.py", label="FIA Forest")
-    cols[6].page_link("pages/5_Data_Catalog.py", label="Catalog")
-    cols[7].link_button("FIA Navigator", FIA_NAVIGATOR_URL, use_container_width=True)
+    _safe_page_link(cols[1], "app.py", "Home")
+    _safe_page_link(cols[2], "pages/4_Architecture.py", "Architecture")
+    _safe_page_link(cols[3], "pages/1_IDS_Survey.py", "IDS")
+    _safe_page_link(cols[4], "pages/2_Climate.py", "Climate")
+    _safe_page_link(cols[5], "pages/3_FIA_Forest.py", "FIA Forest")
+    _safe_page_link(cols[6], "pages/6_Thermophilization.py", "Thermo")
+    _safe_page_link(cols[7], "pages/5_Data_Catalog.py", "Catalog")
+    cols[8].link_button("FIA Navigator", FIA_NAVIGATOR_URL, use_container_width=True)
     st.markdown('<div class="fd-navbar-rule"></div>', unsafe_allow_html=True)
 
 
@@ -469,6 +712,7 @@ def scatter_geo_usa(df, lat_col, lon_col, color_col, color_map=None,
     fig = px.scatter_geo(df.dropna(subset=[lat_col, lon_col, color_col]), **kwargs)
     fig.update_traces(marker_size=size)
     fig.update_layout(
+        height=560,
         paper_bgcolor="#0d1a12",
         plot_bgcolor="#0d1a12",
         geo=dict(bgcolor="#0d1a12", landcolor="#162219",
@@ -491,6 +735,48 @@ def metric_card(label, value, sub=""):
             f'<div class="value">{value}</div>'
             f'<div class="sub">{sub}</div>'
             f'</div>')
+
+
+def page_header(kicker: str, title: str, lead: str) -> str:
+    """Return the shared page header HTML."""
+    return (
+        f'<div class="fd-kicker">{html.escape(kicker)}</div>'
+        f'<div class="fd-page-title">{html.escape(title)}</div>'
+        f'<div class="fd-page-lead">{html.escape(lead)}</div>'
+    )
+
+
+def route_card(title: str, body: str, pills: list[str] | None = None) -> str:
+    pill_html = "".join(f'<span class="fd-pill">{html.escape(pill)}</span>' for pill in (pills or []))
+    return (
+        '<div class="fd-route-card">'
+        f'<div class="fd-route-title">{html.escape(title)}</div>'
+        f'<div class="fd-route-body">{html.escape(body)}</div>'
+        f'{pill_html}'
+        '</div>'
+    )
+
+
+def route_grid(cards: list[dict]) -> str:
+    return '<div class="fd-grid">' + "".join(
+        route_card(card["title"], card["body"], card.get("pills")) for card in cards
+    ) + '</div>'
+
+
+def workflow_step(label: str, title: str, body: str) -> str:
+    return (
+        '<div class="fd-step-card">'
+        f'<div class="fd-step-label">{html.escape(label)}</div>'
+        f'<div class="fd-step-title">{html.escape(title)}</div>'
+        f'<div class="fd-step-body">{html.escape(body)}</div>'
+        '</div>'
+    )
+
+
+def workflow_grid(steps: list[dict]) -> str:
+    return '<div class="fd-workflow-grid">' + "".join(
+        workflow_step(step["label"], step["title"], step["body"]) for step in steps
+    ) + '</div>'
 
 
 def github_code_url(path: str, line: int | None = None, end_line: int | None = None) -> str:

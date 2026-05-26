@@ -385,6 +385,33 @@ CATALOG = {
             "py_code": 'cond = pd.read_parquet("05_fia/data/processed/summaries/plot_cond_fortypcd.parquet")',
         },
         {
+            "label":   "plot_condition_metadata.parquet",
+            "path":    "05_fia/data/processed/summaries/plot_condition_metadata.parquet",
+            "format":  "Parquet",
+            "desc":    "Condition-level stable plot IDs, coordinates, elevation, forest type labels, "
+                       "forest type groups, and forested area fields. One row per PLT_CN x INVYR x CONDID.",
+            "r_code":  'meta <- arrow::read_parquet("05_fia/data/processed/summaries/plot_condition_metadata.parquet")',
+            "py_code": 'meta = pd.read_parquet("05_fia/data/processed/summaries/plot_condition_metadata.parquet")',
+        },
+        {
+            "label":   "plot_seedling_species.parquet",
+            "path":    "05_fia/data/processed/summaries/plot_seedling_species.parquet",
+            "format":  "Parquet",
+            "desc":    "Species-level seedling counts by condition and subplot. Preserves SPCD and species names "
+                       "for recruitment CWM and species-shift analyses.",
+            "r_code":  'seed_spp <- arrow::read_parquet("05_fia/data/processed/summaries/plot_seedling_species.parquet")',
+            "py_code": 'seed_spp = pd.read_parquet("05_fia/data/processed/summaries/plot_seedling_species.parquet")',
+        },
+        {
+            "label":   "plot_disturbance_classification.parquet",
+            "path":    "05_fia/data/processed/summaries/plot_disturbance_classification.parquet",
+            "format":  "Parquet",
+            "desc":    "Analysis-facing disturbance classification: control/disturbed eligibility, natural "
+                       "disturbance class, timing fields, high-severity proxy, forest type group, and East/West region.",
+            "r_code":  'dist_class <- arrow::read_parquet("05_fia/data/processed/summaries/plot_disturbance_classification.parquet")',
+            "py_code": 'dist_class = pd.read_parquet("05_fia/data/processed/summaries/plot_disturbance_classification.parquet")',
+        },
+        {
             "label":   "site_pixel_map.parquet",
             "path":    "05_fia/data/processed/site_climate/site_pixel_map.parquet",
             "format":  "Parquet",
@@ -415,6 +442,74 @@ CATALOG = {
                 'precip = (clim[clim["variable"] == "pr"]\n'
                 '          .groupby(["site_id", "water_year"])["value"].sum())'
             ),
+        },
+    ],
+    "Species niches": [
+        {
+            "label": "species_climate_niches.parquet",
+            "path": "06_species_niches/data/processed/species_climate_niches.parquet",
+            "format": "Parquet",
+            "desc": "One row per FIA species code with realized climate affinity: annual temperature, precipitation, and moisture or climate water deficit summaries.",
+            "r_code": 'traits <- arrow::read_parquet("06_species_niches/data/processed/species_climate_niches.parquet")',
+            "py_code": 'traits = pd.read_parquet("06_species_niches/data/processed/species_climate_niches.parquet")',
+        },
+    ],
+    "Thermophilization": [
+        {
+            "label": "plot_recruitment_cwm.parquet",
+            "path": "07_thermophilization/data/processed/plot_recruitment_cwm.parquet",
+            "format": "Parquet",
+            "desc": "Community-weighted mean climate affinity for the seedling community in each FIA condition visit.",
+            "r_code": 'cwm <- arrow::read_parquet("07_thermophilization/data/processed/plot_recruitment_cwm.parquet")',
+            "py_code": 'cwm = pd.read_parquet("07_thermophilization/data/processed/plot_recruitment_cwm.parquet")',
+        },
+        {
+            "label": "plot_matches.parquet",
+            "path": "07_thermophilization/data/processed/plot_matches.parquet",
+            "format": "Parquet",
+            "desc": "Matched disturbed-control pairs. Carries disturbed and control CWM fields plus delta_cwm_temp, delta_cwm_precip, and delta_cwm_cwd.",
+            "r_code": 'matches <- arrow::read_parquet("07_thermophilization/data/processed/plot_matches.parquet")',
+            "py_code": 'matches = pd.read_parquet("07_thermophilization/data/processed/plot_matches.parquet")',
+        },
+        {
+            "label": "thermophilization_by_class_region.parquet",
+            "path": "07_thermophilization/data/processed/thermophilization_by_class_region.parquet",
+            "format": "Parquet",
+            "desc": "Bootstrap mean deltas by disturbance class and East/West region.",
+            "r_code": 'class_region <- arrow::read_parquet("07_thermophilization/data/processed/thermophilization_by_class_region.parquet")',
+            "py_code": 'class_region = pd.read_parquet("07_thermophilization/data/processed/thermophilization_by_class_region.parquet")',
+        },
+        {
+            "label": "thermophilization_high_severity.parquet",
+            "path": "07_thermophilization/data/processed/thermophilization_high_severity.parquet",
+            "format": "Parquet",
+            "desc": "High-severity proxy summary, currently crown fire, by East/West region.",
+            "r_code": 'high_sev <- arrow::read_parquet("07_thermophilization/data/processed/thermophilization_high_severity.parquet")',
+            "py_code": 'high_sev = pd.read_parquet("07_thermophilization/data/processed/thermophilization_high_severity.parquet")',
+        },
+        {
+            "label": "thermophilization_by_time_region.parquet",
+            "path": "07_thermophilization/data/processed/thermophilization_by_time_region.parquet",
+            "format": "Parquet",
+            "desc": "Time-since-disturbance summary pooled across disturbance classes.",
+            "r_code": 'time_region <- arrow::read_parquet("07_thermophilization/data/processed/thermophilization_by_time_region.parquet")',
+            "py_code": 'time_region = pd.read_parquet("07_thermophilization/data/processed/thermophilization_by_time_region.parquet")',
+        },
+        {
+            "label": "thermophilization_by_class_time_region.parquet",
+            "path": "07_thermophilization/data/processed/thermophilization_by_class_time_region.parquet",
+            "format": "Parquet",
+            "desc": "Time-since-disturbance summary stratified by disturbance class and East/West region.",
+            "r_code": 'class_time <- arrow::read_parquet("07_thermophilization/data/processed/thermophilization_by_class_time_region.parquet")',
+            "py_code": 'class_time = pd.read_parquet("07_thermophilization/data/processed/thermophilization_by_class_time_region.parquet")',
+        },
+        {
+            "label": "disturbance_year_coverage.parquet",
+            "path": "07_thermophilization/data/processed/disturbance_year_coverage.parquet",
+            "format": "Parquet",
+            "desc": "Diagnostic table showing how often FIA has a usable disturbance year for each disturbance class and region.",
+            "r_code": 'coverage <- arrow::read_parquet("07_thermophilization/data/processed/disturbance_year_coverage.parquet")',
+            "py_code": 'coverage = pd.read_parquet("07_thermophilization/data/processed/disturbance_year_coverage.parquet")',
         },
     ],
 }

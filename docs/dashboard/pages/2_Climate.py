@@ -14,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from utils import (
     apply_dark_css, metric_card, dark_fig, parquet_meta,
     load_parquet, repo_path, plot_source_link, render_top_nav,
+    route_grid, workflow_grid,
 )
 
 st.set_page_config(page_title="Climate Data", page_icon="🌡️", layout="wide")
@@ -30,6 +31,29 @@ st.title("🌡️ Climate Datasets")
 st.markdown(
     "Three gridded climate datasets are extracted for every IDS damage area using the "
     "**pixel decomposition** pattern — see the Architecture page for how it works."
+)
+
+st.markdown(
+    route_grid(
+        [
+            {
+                "title": "IDS polygons",
+                "body": "Damage areas are decomposed into every overlapping raster pixel and summarized with coverage fractions.",
+                "pills": ["DAMAGE_AREA_ID", "coverage_fraction"],
+            },
+            {
+                "title": "FIA points",
+                "body": "Stable FIA plot locations snap to one TerraClimate pixel, then receive a complete monthly site-climate history.",
+                "pills": ["site_id", "pixel_id"],
+            },
+            {
+                "title": "Shared summary pattern",
+                "body": "Climate values are extracted once per unique pixel and joined back to observation keys only when summaries are built.",
+                "pills": ["pixel values", "summaries"],
+            },
+        ]
+    ),
+    unsafe_allow_html=True,
 )
 
 # ------------------------------------------------------------------------------
@@ -131,12 +155,130 @@ SUMMARY_SCHEMA = [
 # Sub-tabs: TerraClimate | PRISM | WorldClim
 # ==============================================================================
 
-tc_tab, prism_tab, wc_tab, grid_tab = st.tabs([
+workflow_tab, match_tab, tc_tab, prism_tab, wc_tab, grid_tab = st.tabs([
+    "Workflow",
+    "Matching Examples",
     "🌐 TerraClimate",
     "🇺🇸 PRISM",
     "🌍 WorldClim",
     "🔲 Pixel Grid",
 ])
+
+# ==============================================================================
+# WORKFLOW GUIDE
+# ==============================================================================
+with workflow_tab:
+    st.subheader("Grid first, summarize second")
+    st.markdown(
+        "The climate layer is deliberately split into small reusable tables. A pixel map "
+        "records the relationship between an observation and the raster grid; pixel-value "
+        "files hold climate histories for unique pixels; summary tables join the two only "
+        "when an analysis needs observation-level climate."
+    )
+    st.markdown(
+        workflow_grid(
+            [
+                {
+                    "label": "1",
+                    "title": "Choose observation geometry",
+                    "body": "IDS uses damage polygons and points; FIA uses stable plot point locations.",
+                },
+                {
+                    "label": "2",
+                    "title": "Build a pixel map",
+                    "body": "Polygons keep coverage fractions. Points receive the containing climate pixel.",
+                },
+                {
+                    "label": "3",
+                    "title": "Extract unique pixels",
+                    "body": "Climate values are pulled once per pixel-month instead of once per observation-month.",
+                },
+                {
+                    "label": "4",
+                    "title": "Join and summarize",
+                    "body": "IDS polygons get area-weighted summaries. FIA points get direct site histories.",
+                },
+            ]
+        ),
+        unsafe_allow_html=True,
+    )
+
+    st.markdown("#### Two matching modes")
+    st.markdown(
+        "| Target | Geometry | Pixel relationship | Final output |\n"
+        "|---|---|---|---|\n"
+        "| IDS damage areas | Polygon | Many pixels with `coverage_fraction` weights | `processed/climate/<dataset>/damage_areas_summaries/<variable>.parquet` |\n"
+        "| IDS damage points | Point | One containing pixel | point pixel maps / values where enabled |\n"
+        "| FIA plot sites | Point | One TerraClimate pixel per `site_id` | `05_fia/data/processed/site_climate/site_climate.parquet` |\n"
+    )
+
+    st.info(
+        "The same idea can be reused for any new dataset: create stable observation IDs, "
+        "build an observation-to-pixel map for the chosen climate grid, extract unique "
+        "pixels, then join by `pixel_id`."
+    )
+
+
+# ==============================================================================
+# MATCHING EXAMPLES
+# ==============================================================================
+with match_tab:
+    st.subheader("How to connect climate to other repo outputs")
+    ids_col, fia_col = st.columns(2)
+    with ids_col:
+        st.markdown("#### IDS example: climate at damage polygons")
+        st.markdown(
+            "Use `DAMAGE_AREA_ID` to move from the cleaned IDS layer to the per-variable "
+            "climate summary. The summary already contains the area-weighted climate value "
+            "for each polygon-month."
+        )
+        st.code(
+            'library(sf)\n'
+            'library(arrow)\n'
+            'library(dplyr)\n\n'
+            'damage <- st_read(\n'
+            '  "01_ids/data/processed/ids_layers_cleaned.gpkg",\n'
+            '  layer = "damage_areas",\n'
+            '  query = "SELECT DAMAGE_AREA_ID, DCA_CODE, HOST_CODE, YEAR FROM damage_areas WHERE DCA_CODE = 11006"\n'
+            ')\n\n'
+            'tc_def <- open_dataset("processed/climate/terraclimate/damage_areas_summaries/def.parquet")\n'
+            'mpb_cwd <- tc_def |>\n'
+            '  filter(calendar_month %in% 6:8) |>\n'
+            '  collect() |>\n'
+            '  inner_join(st_drop_geometry(damage), by = "DAMAGE_AREA_ID")',
+            language="r",
+        )
+
+    with fia_col:
+        st.markdown("#### FIA example: baseline climate at plot sites")
+        st.markdown(
+            "FIA site climate is keyed by `site_id`, which matches `stable_plot_id` in "
+            "condition metadata and disturbance-classification outputs."
+        )
+        st.code(
+            'library(arrow)\n'
+            'library(dplyr)\n\n'
+            'clim <- open_dataset("05_fia/data/processed/site_climate/site_climate.parquet")\n'
+            'dist <- read_parquet("05_fia/data/processed/summaries/plot_disturbance_classification.parquet")\n\n'
+            'baseline <- clim |>\n'
+            '  filter(year >= 1981, year <= 2010, variable %in% c("tmmx", "tmmn", "pr", "def")) |>\n'
+            '  collect() |>\n'
+            '  group_by(site_id, variable) |>\n'
+            '  summarise(value_1981_2010 = mean(value, na.rm = TRUE), .groups = "drop")\n\n'
+            'dist_with_climate <- dist |>\n'
+            '  left_join(baseline, by = c("stable_plot_id" = "site_id"))',
+            language="r",
+        )
+
+    st.markdown("#### Output checklist after workflows run")
+    st.markdown(
+        "| Workflow | What you get | Use it for |\n"
+        "|---|---|---|\n"
+        "| IDS foundation | cleaned GeoPackage layers and lookups | damage/host filtering, survey geometry, map joins |\n"
+        "| IDS + climate | pixel maps, yearly pixel values, per-variable damage-area summaries | outbreak climate histories and lag analyses |\n"
+        "| FIA summaries | tree, seedling, mortality, disturbance, treatment, condition, and damage-agent parquets | plot-level forest structure and disturbance questions |\n"
+        "| FIA site climate | site pixel map and long monthly TerraClimate table | baseline climate, climate matching, thermophilization inputs |\n"
+    )
 
 # ==============================================================================
 # TERRACLIMATE

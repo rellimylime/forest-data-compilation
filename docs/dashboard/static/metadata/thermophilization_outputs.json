@@ -1,0 +1,105 @@
+{
+    "title":  "Thermophilization workflow outputs",
+    "description":  "GitHub-hostable metadata for the FIA recruitment thermophilization dashboard page. These entries let the app explain expected products even when large local parquet outputs are unavailable.",
+    "outputs":  [
+                    {
+                        "section":  "FIA foundation",
+                        "label":  "Condition metadata",
+                        "file":  "plot_condition_metadata.parquet",
+                        "path":  "05_fia/data/processed/summaries/plot_condition_metadata.parquet",
+                        "producer":  "05_fia/scripts/summaries/build_condition_metadata.R",
+                        "grain":  "PLT_CN x INVYR x CONDID",
+                        "role":  "Stable plot IDs, condition geography, forest type group, and area fields."
+                    },
+                    {
+                        "section":  "FIA foundation",
+                        "label":  "Seedling species",
+                        "file":  "plot_seedling_species.parquet",
+                        "path":  "05_fia/data/processed/summaries/plot_seedling_species.parquet",
+                        "producer":  "05_fia/scripts/summaries/build_seedling_species.R",
+                        "grain":  "PLT_CN x INVYR x CONDID x SUBP x SPCD",
+                        "role":  "Species-level seedling counts used to build recruitment community metrics."
+                    },
+                    {
+                        "section":  "FIA foundation",
+                        "label":  "Disturbance classification",
+                        "file":  "plot_disturbance_classification.parquet",
+                        "path":  "05_fia/data/processed/summaries/plot_disturbance_classification.parquet",
+                        "producer":  "05_fia/scripts/summaries/build_disturbance_classification.R",
+                        "grain":  "PLT_CN x INVYR x CONDID",
+                        "role":  "Control/disturbed eligibility, natural disturbance class, timing, and matching strata."
+                    },
+                    {
+                        "section":  "Species niches",
+                        "label":  "Species climate niches",
+                        "file":  "species_climate_niches.parquet",
+                        "path":  "06_species_niches/data/processed/species_climate_niches.parquet",
+                        "producer":  "06_species_niches/WORKFLOW.md",
+                        "grain":  "SPCD",
+                        "role":  "External occurrence-based climate envelopes for FIA tree species."
+                    },
+                    {
+                        "section":  "Climate traits",
+                        "label":  "Recruitment CWM",
+                        "file":  "plot_recruitment_cwm.parquet",
+                        "path":  "07_thermophilization/data/processed/plot_recruitment_cwm.parquet",
+                        "producer":  "07_thermophilization/scripts/01_build_plot_recruitment_cwm.R",
+                        "grain":  "PLT_CN x INVYR x CONDID",
+                        "role":  "Seedling community-weighted climate affinity: temperature, precipitation, and CWD."
+                    },
+                    {
+                        "section":  "Matching",
+                        "label":  "Matched pairs",
+                        "file":  "plot_matches.parquet",
+                        "path":  "07_thermophilization/data/processed/plot_matches.parquet",
+                        "producer":  "07_thermophilization/scripts/02_match_disturbed_to_controls.R",
+                        "grain":  "disturbed condition x matched control x rank",
+                        "role":  "Nearest undisturbed controls per disturbed condition, with pairwise CWM deltas."
+                    },
+                    {
+                        "section":  "Headline results",
+                        "label":  "Class x region",
+                        "file":  "thermophilization_by_class_region.parquet",
+                        "path":  "07_thermophilization/data/processed/thermophilization_by_class_region.parquet",
+                        "producer":  "07_thermophilization/scripts/03_stratified_thermophilization.R",
+                        "grain":  "disturbance_class x East/West",
+                        "role":  "Mean delta and bootstrap 95% CI for temperature, precipitation, and CWD."
+                    },
+                    {
+                        "section":  "Headline results",
+                        "label":  "High severity",
+                        "file":  "thermophilization_high_severity.parquet",
+                        "path":  "07_thermophilization/data/processed/thermophilization_high_severity.parquet",
+                        "producer":  "07_thermophilization/scripts/03_stratified_thermophilization.R",
+                        "grain":  "East/West",
+                        "role":  "High-severity proxy summary, currently crown fire."
+                    },
+                    {
+                        "section":  "Headline results",
+                        "label":  "Time x region",
+                        "file":  "thermophilization_by_time_region.parquet",
+                        "path":  "07_thermophilization/data/processed/thermophilization_by_time_region.parquet",
+                        "producer":  "07_thermophilization/scripts/03_stratified_thermophilization.R",
+                        "grain":  "time bin x East/West",
+                        "role":  "Time-since-disturbance summary pooled across disturbance classes."
+                    },
+                    {
+                        "section":  "Headline results",
+                        "label":  "Class x time x region",
+                        "file":  "thermophilization_by_class_time_region.parquet",
+                        "path":  "07_thermophilization/data/processed/thermophilization_by_class_time_region.parquet",
+                        "producer":  "07_thermophilization/scripts/04_thermophilization_by_class_time.R",
+                        "grain":  "disturbance_class x East/West x time bin",
+                        "role":  "Time-since-disturbance summary that keeps natural disturbance classes separate."
+                    },
+                    {
+                        "section":  "Diagnostics",
+                        "label":  "Disturbance-year coverage",
+                        "file":  "disturbance_year_coverage.parquet",
+                        "path":  "07_thermophilization/data/processed/disturbance_year_coverage.parquet",
+                        "producer":  "07_thermophilization/scripts/04_thermophilization_by_class_time.R",
+                        "grain":  "disturbance_class x East/West",
+                        "role":  "How often FIA provides a usable disturbance year instead of an unknown or continuous code."
+                    }
+                ]
+}

@@ -1,0 +1,102 @@
+[
+  {
+    "disturbance_label": "Ground fire",
+    "disturbance_category": "fire",
+    "count": 13420
+  },
+  {
+    "disturbance_label": "Domestic animal/livestock",
+    "disturbance_category": "animal",
+    "count": 13174
+  },
+  {
+    "disturbance_label": "Disease damage to trees",
+    "disturbance_category": "disease",
+    "count": 11173
+  },
+  {
+    "disturbance_label": "Insect damage to trees",
+    "disturbance_category": "insects",
+    "count": 11163
+  },
+  {
+    "disturbance_label": "Insect damage",
+    "disturbance_category": "insects",
+    "count": 10818
+  },
+  {
+    "disturbance_label": "Disease damage",
+    "disturbance_category": "disease",
+    "count": 6569
+  },
+  {
+    "disturbance_label": "Wind/hurricane/tornado",
+    "disturbance_category": "weather",
+    "count": 6306
+  },
+  {
+    "disturbance_label": "Human-induced",
+    "disturbance_category": "other",
+    "count": 5327
+  },
+  {
+    "disturbance_label": "Fire damage (general)",
+    "disturbance_category": "fire",
+    "count": 4867
+  },
+  {
+    "disturbance_label": "Vegetation (competition/vines)",
+    "disturbance_category": "vegetation",
+    "count": 4320
+  },
+  {
+    "disturbance_label": "Flooding",
+    "disturbance_category": "weather",
+    "count": 3974
+  },
+  {
+    "disturbance_label": "Ice",
+    "disturbance_category": "weather",
+    "count": 2510
+  },
+  {
+    "disturbance_label": "Beaver",
+    "disturbance_category": "animal",
+    "count": 2407
+  },
+  {
+    "disturbance_label": "Weather damage",
+    "disturbance_category": "weather",
+    "count": 2347
+  },
+  {
+    "disturbance_label": "Drought",
+    "disturbance_category": "weather",
+    "count": 1884
+  },
+  {
+    "disturbance_label": "Crown fire",
+    "disturbance_category": "fire",
+    "count": 1882
+  },
+  {
+    "disturbance_label": "Deer/ungulate",
+    "disturbance_category": "animal",
+    "count": 1783
+  },
+  {
+    "disturbance_label": "Animal damage",
+    "disturbance_category": "animal",
+    "count": 810
+  },
+  {
+    "disturbance_label": "Unknown/other",
+    "disturbance_category": "other",
+    "count": 569
+  },
+  {
+    "disturbance_label": "Avalanche",
+    "disturbance_category": "geologic",
+    "count": 261
+  }
+]

@@ -63,6 +63,11 @@ rsconnect/
 !**/data/**/
 !**/data/**/.gitkeep
 
+# Dashboard static aggregates: small JSON/CSV that drive the deployed
+# dashboard's interactive charts (no parquets, ~2 MB total).
+!docs/dashboard/static/data/
+!docs/dashboard/static/data/**
+
 # FIA raw CSVs too large for GitHub (TREE tables are 100MB-840MB per state)
 05_fia/data/raw/**/*_TREE.csv
 05_fia/data/raw/**/*_TREE_GRM_COMPONENT.csv

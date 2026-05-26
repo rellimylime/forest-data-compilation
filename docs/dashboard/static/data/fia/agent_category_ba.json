@@ -1,0 +1,82 @@
+[
+  {
+    "category": "foliage/wilt disease",
+    "ba_per_acre": 2671.4957723436814,
+    "color": "#9c755f"
+  },
+  {
+    "category": "root/butt disease",
+    "ba_per_acre": 9471.886084302108,
+    "color": "#f28e2b"
+  },
+  {
+    "category": "competition",
+    "ba_per_acre": 16467.61675370399,
+    "color": "#8c8c8c"
+  },
+  {
+    "category": "bark beetles",
+    "ba_per_acre": 20028.434106683068,
+    "color": "#e15759"
+  },
+  {
+    "category": "boring insects",
+    "ba_per_acre": 23243.337932377628,
+    "color": "#edc948"
+  },
+  {
+    "category": "human",
+    "ba_per_acre": 24388.777349701773,
+    "color": "#bab0ac"
+  },
+  {
+    "category": "abiotic",
+    "ba_per_acre": 24671.755399212176,
+    "color": "#4e79a7"
+  },
+  {
+    "category": "sucking insects",
+    "ba_per_acre": 35417.76099686208,
+    "color": "#76b7b2"
+  },
+  {
+    "category": "unknown",
+    "ba_per_acre": 68239.39795011883,
+    "color": "#555555"
+  },
+  {
+    "category": "fire",
+    "ba_per_acre": 131763.28500413737,
+    "color": "#e15759"
+  },
+  {
+    "category": "defoliators",
+    "ba_per_acre": 134377.04688465685,
+    "color": "#59a14f"
+  },
+  {
+    "category": "other",
+    "ba_per_acre": 135607.49699435625,
+    "color": "#8c8c8c"
+  },
+  {
+    "category": "animal",
+    "ba_per_acre": 171473.40088684374,
+    "color": "#8c8c8c"
+  },
+  {
+    "category": "canker/rust",
+    "ba_per_acre": 245253.82877900687,
+    "color": "#ff9da7"
+  },
+  {
+    "category": "insects",
+    "ba_per_acre": 255134.46660365319,
+    "color": "#b6d77a"
+  },
+  {
+    "category": "disease",
+    "ba_per_acre": 3248859.6673761182,
+    "color": "#ffbf7f"
+  }
+]

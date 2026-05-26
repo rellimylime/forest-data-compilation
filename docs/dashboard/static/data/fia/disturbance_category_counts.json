@@ -1,0 +1,42 @@
+[
+  {
+    "category": "geologic",
+    "count": 594,
+    "color": "#bab0ac"
+  },
+  {
+    "category": "vegetation",
+    "count": 4320,
+    "color": "#76b7b2"
+  },
+  {
+    "category": "other",
+    "count": 5896,
+    "color": "#8c8c8c"
+  },
+  {
+    "category": "weather",
+    "count": 17021,
+    "color": "#4e79a7"
+  },
+  {
+    "category": "disease",
+    "count": 17870,
+    "color": "#f28e2b"
+  },
+  {
+    "category": "animal",
+    "count": 18545,
+    "color": "#9c755f"
+  },
+  {
+    "category": "fire",
+    "count": 20169,
+    "color": "#e15759"
+  },
+  {
+    "category": "insects",
+    "count": 22181,
+    "color": "#59a14f"
+  }
+]

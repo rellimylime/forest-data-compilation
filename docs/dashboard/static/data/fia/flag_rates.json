@@ -1,0 +1,51 @@
+[
+  {
+    "flag": "exclude_any",
+    "label": "Any exclusion",
+    "basis": "OR of all four",
+    "color": "#e15759",
+    "rate_pct": 11.297812894581403
+  },
+  {
+    "flag": "exclude_nonforest",
+    "label": "Nonforest condition",
+    "basis": "COND_STATUS_CD = 5",
+    "color": "#e15759",
+    "rate_pct": 4.852658118036165
+  },
+  {
+    "flag": "exclude_human_dist",
+    "label": "Human disturbance",
+    "basis": "DSTRBCD = 80",
+    "color": "#f28e2b",
+    "rate_pct": 0.41979148439418995
+  },
+  {
+    "flag": "exclude_harvest",
+    "label": "Harvest",
+    "basis": "TRTCD = 10",
+    "color": "#4e79a7",
+    "rate_pct": 4.404771000048469
+  },
+  {
+    "flag": "exclude_harvest_agent",
+    "label": "Harvest (agent code)",
+    "basis": "AGENTCD 80-89",
+    "color": "#a371f7",
+    "rate_pct": 5.26710978902808
+  },
+  {
+    "flag": "has_fire",
+    "label": "Fire present",
+    "basis": "DSTRBCD 30/31/32",
+    "color": "#e15759",
+    "rate_pct": 1.4472537339672102
+  },
+  {
+    "flag": "has_insect",
+    "label": "Insect present",
+    "basis": "DSTRBCD 10/11/12",
+    "color": "#59a14f",
+    "rate_pct": 1.6498380393519603
+  }
+]
