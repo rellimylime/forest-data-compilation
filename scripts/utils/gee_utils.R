@@ -22,7 +22,14 @@ init_gee <- function() {
   
   local_config <- read_yaml(here("local/user_config.yaml"))
   
-  # Python path now set via .Renviron - just import and initialize
+  # reticulate >= 1.41 can provision a uv-managed Python environment from
+  # declared requirements. Keep this here instead of relying on .Renviron, which
+  # would bake a machine-specific Python path into the workflow.
+  reticulate::py_require(
+    packages = "earthengine-api==1.7.29",
+    python_version = ">=3.10,<3.13"
+  )
+
   ee <- import("ee")
   ee$Initialize(project = local_config$gee_project)
   
