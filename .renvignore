@@ -1,0 +1,22 @@
+# Generated and bulky data products are not R dependency sources.
+**/data/**
+processed/**
+output/**
+logs/**
+
+# Local-only configuration, editor state, and caches.
+local/**
+.git/**
+.Rproj.user/**
+.vscode/**
+.devcontainer/**
+__pycache__/**
+
+# Archived/deferred code should not influence the active project lockfile.
+archive/**
+
+# One-off logs and exported/reference files.
+*.log
+*.pdf
+tree.txt
+meeting.md
