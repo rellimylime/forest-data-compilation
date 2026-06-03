@@ -41,6 +41,7 @@ has_flag <- function(flag) flag %in% args
 
 limit_arg <- get_arg("--limit", NA_character_)
 if (!is.na(limit_arg)) limit_arg <- as.integer(limit_arg)
+is_smoke_run <- !is.na(limit_arg)
 force <- has_flag("--force")
 
 if (!requireNamespace("BIEN", quietly = TRUE)) {
@@ -50,20 +51,34 @@ if (!requireNamespace("BIEN", quietly = TRUE)) {
 config <- load_config()
 niche_config <- config$processed$species_niches
 processed_dir <- here(niche_config$output_dir)
+smoke_data_dir <- here("06_species_niches/data/smoke")
 raw_range_dir <- here(niche_config$range_dir)
-qa_dir <- here("06_species_niches/qa/outputs")
+qa_dir <- if (is_smoke_run) here("06_species_niches/qa/smoke") else here("06_species_niches/qa/outputs")
 
 dir_create(processed_dir)
+if (is_smoke_run) dir_create(smoke_data_dir)
 dir_create(raw_range_dir)
 dir_create(qa_dir)
 
 availability_path <- file.path(processed_dir, niche_config$files$bien_range_availability)
-polygons_path <- file.path(processed_dir, niche_config$files$species_range_polygons)
+# Smoke runs prefer smoke availability from script 02 when present, otherwise
+# they use production availability so this script remains runnable on its own.
+if (is_smoke_run) {
+  smoke_availability_path <- file.path(smoke_data_dir, sprintf("bien_range_availability_limit_%d.parquet", limit_arg))
+  if (file.exists(smoke_availability_path)) {
+    availability_path <- smoke_availability_path
+  }
+}
+
+polygons_path <- file.path(
+  if (is_smoke_run) smoke_data_dir else processed_dir,
+  niche_config$files$species_range_polygons
+)
 summary_path <- file.path(qa_dir, "bien_range_polygon_summary.csv")
 failed_path <- file.path(qa_dir, "bien_range_polygon_failures.csv")
 
-if (!is.na(limit_arg)) {
-  polygons_path <- file.path(processed_dir, sprintf("species_range_polygons_limit_%d.gpkg", limit_arg))
+if (is_smoke_run) {
+  polygons_path <- file.path(smoke_data_dir, sprintf("species_range_polygons_limit_%d.gpkg", limit_arg))
   summary_path <- file.path(qa_dir, sprintf("bien_range_polygon_summary_limit_%d.csv", limit_arg))
   failed_path <- file.path(qa_dir, sprintf("bien_range_polygon_failures_limit_%d.csv", limit_arg))
 }

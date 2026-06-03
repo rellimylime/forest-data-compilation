@@ -35,6 +35,7 @@ has_flag <- function(flag) flag %in% args
 
 limit_arg <- get_arg("--limit", NA_character_)
 if (!is.na(limit_arg)) limit_arg <- as.integer(limit_arg)
+is_smoke_run <- !is.na(limit_arg)
 
 config <- load_config()
 niche_config <- config$processed$species_niches
@@ -45,24 +46,28 @@ fia_summary_config <- config$processed$fia$summaries
 }
 
 processed_dir <- here(niche_config$output_dir)
-qa_dir <- here("06_species_niches/qa/outputs")
+smoke_data_dir <- here("06_species_niches/data/smoke")
+qa_dir <- if (is_smoke_run) here("06_species_niches/qa/smoke") else here("06_species_niches/qa/outputs")
 metadata_dir <- here("06_species_niches/metadata/processed")
 
+# Smoke runs are intentionally separated from production outputs so local test
+# history stays useful without cluttering the main processed/QA folders.
 species_universe_path <- file.path(
-  processed_dir,
+  if (is_smoke_run) smoke_data_dir else processed_dir,
   niche_config$files$species_universe
 )
 qa_suffix <- ""
 
-if (!is.na(limit_arg)) {
+if (is_smoke_run) {
   species_universe_path <- file.path(
-    processed_dir,
+    smoke_data_dir,
     sprintf("species_universe_limit_%d.parquet", limit_arg)
   )
   qa_suffix <- sprintf("_limit_%d", limit_arg)
 }
 
 dir_create(processed_dir)
+if (is_smoke_run) dir_create(smoke_data_dir)
 dir_create(qa_dir)
 dir_create(metadata_dir)
 

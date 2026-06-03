@@ -612,7 +612,9 @@ species_range_climate <- open_dataset(existing_batches, format = "parquet") |>
   arrange(species_key, month, variable, metric)
 
 write_parquet(as_tibble(species_range_climate), out_file, compression = "snappy")
-write_output_metadata(out_file)
+if (!is_smoke_run) {
+  write_output_metadata(out_file)
+}
 
 qa_summary <- species_range_climate |>
   group_by(variable, metric, climate_period) |>

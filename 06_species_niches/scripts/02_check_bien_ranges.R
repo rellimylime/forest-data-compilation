@@ -32,6 +32,7 @@ get_arg <- function(flag, default = NULL) {
 
 limit_arg <- get_arg("--limit", NA_character_)
 if (!is.na(limit_arg)) limit_arg <- as.integer(limit_arg)
+is_smoke_run <- !is.na(limit_arg)
 batch_size <- as.integer(get_arg("--batch-size", "70"))
 
 if (!requireNamespace("BIEN", quietly = TRUE)) {
@@ -41,15 +42,30 @@ if (!requireNamespace("BIEN", quietly = TRUE)) {
 config <- load_config()
 niche_config <- config$processed$species_niches
 processed_dir <- here(niche_config$output_dir)
-qa_dir <- here("06_species_niches/qa/outputs")
+smoke_data_dir <- here("06_species_niches/data/smoke")
+qa_dir <- if (is_smoke_run) here("06_species_niches/qa/smoke") else here("06_species_niches/qa/outputs")
 dir_create(processed_dir)
+if (is_smoke_run) dir_create(smoke_data_dir)
 dir_create(qa_dir)
 
+# Smoke runs prefer a smoke species universe if script 01 just produced one,
+# but fall back to the production universe so this script can still be tested
+# independently.
 species_universe_path <- file.path(processed_dir, niche_config$files$species_universe)
-availability_path <- file.path(processed_dir, niche_config$files$bien_range_availability)
+if (is_smoke_run) {
+  smoke_species_universe_path <- file.path(smoke_data_dir, sprintf("species_universe_limit_%d.parquet", limit_arg))
+  if (file.exists(smoke_species_universe_path)) {
+    species_universe_path <- smoke_species_universe_path
+  }
+}
 
-if (!is.na(limit_arg)) {
-  availability_path <- file.path(processed_dir, sprintf("bien_range_availability_limit_%d.parquet", limit_arg))
+availability_path <- file.path(
+  if (is_smoke_run) smoke_data_dir else processed_dir,
+  niche_config$files$bien_range_availability
+)
+
+if (is_smoke_run) {
+  availability_path <- file.path(smoke_data_dir, sprintf("bien_range_availability_limit_%d.parquet", limit_arg))
 }
 
 if (!file.exists(species_universe_path)) {
@@ -186,20 +202,20 @@ summary <- availability[, .(
   n_needs_review = sum(needs_range_review),
   pct_available = round(100 * mean(bien_range_available), 1)
 )]
-fwrite(summary, file.path(qa_dir, if (is.na(limit_arg)) "bien_range_availability_summary.csv" else sprintf("bien_range_availability_summary_limit_%d.csv", limit_arg)))
+fwrite(summary, file.path(qa_dir, if (!is_smoke_run) "bien_range_availability_summary.csv" else sprintf("bien_range_availability_summary_limit_%d.csv", limit_arg)))
 
 by_layer <- availability[, .(
   n_species = .N,
   n_available = sum(bien_range_available),
   pct_available = round(100 * mean(bien_range_available), 1)
 ), by = community_layers]
-fwrite(by_layer, file.path(qa_dir, if (is.na(limit_arg)) "bien_range_availability_by_layer.csv" else sprintf("bien_range_availability_by_layer_limit_%d.csv", limit_arg)))
+fwrite(by_layer, file.path(qa_dir, if (!is_smoke_run) "bien_range_availability_by_layer.csv" else sprintf("bien_range_availability_by_layer_limit_%d.csv", limit_arg)))
 
 missing_species <- availability[needs_range_review == TRUE]
-fwrite(missing_species, file.path(qa_dir, if (is.na(limit_arg)) "bien_range_missing_species.csv" else sprintf("bien_range_missing_species_limit_%d.csv", limit_arg)))
+fwrite(missing_species, file.path(qa_dir, if (!is_smoke_run) "bien_range_missing_species.csv" else sprintf("bien_range_missing_species_limit_%d.csv", limit_arg)))
 
 metadata_script <- here("scripts/utils/parquet_metadata.R")
-if (file.exists(metadata_script) && is.na(limit_arg)) {
+if (file.exists(metadata_script) && !is_smoke_run) {
   source(metadata_script)
   write_parquet_metadata(availability_path, sample_size = Inf)
 }
