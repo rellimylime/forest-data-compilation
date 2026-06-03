@@ -88,6 +88,14 @@ processed/**
 !processed/**/
 !processed/**/.gitkeep
 
+# Species niche smoke-test outputs: useful local history, not commit material.
+06_species_niches/qa/smoke/**
+!06_species_niches/qa/smoke/
+!06_species_niches/qa/smoke/.gitkeep
+06_species_niches/data/smoke/**
+!06_species_niches/data/smoke/
+!06_species_niches/data/smoke/.gitkeep
+
 # Large binary file types (safety net for files outside data/ dirs)
 *.nc
 *.gpkg
