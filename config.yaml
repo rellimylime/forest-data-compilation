@@ -1,7 +1,7 @@
 # forest-data-compilation configuration
 # Nested structure: access paths like config['raw']['ads']['files']['region1']['url']
 
-base_path: '/home/ermiller/forest-data-compilation'
+base_path: "."
 
 # ==============================================================================
 # RAW DATA
@@ -79,11 +79,11 @@ raw:
     variables:
       tmmx:
         description: "Maximum temperature"
-        units: "°C"
+        units: "deg C"
         scale: 0.1
       tmmn:
         description: "Minimum temperature"
-        units: "°C"
+        units: "deg C"
         scale: 0.1
       pr:
         description: "Precipitation accumulation"
@@ -154,19 +154,19 @@ raw:
         scale: 1
       tmean:
         description: "Mean temperature"
-        units: "°C"
+        units: "deg C"
         scale: 1
       tmin:
         description: "Minimum temperature"
-        units: "°C"
+        units: "deg C"
         scale: 1
       tmax:
         description: "Maximum temperature"
-        units: "°C"
+        units: "deg C"
         scale: 1
       tdmean:
         description: "Mean dew point temperature"
-        units: "°C"
+        units: "deg C"
         scale: 1
       vpdmin:
         description: "Minimum vapor pressure deficit"
@@ -202,11 +202,11 @@ raw:
     variables:
       tmin:
         description: "Minimum temperature"
-        units: "°C"
+        units: "deg C"
         scale: 1
       tmax:
         description: "Maximum temperature"
-        units: "°C"
+        units: "deg C"
         scale: 1
       prec:
         description: "Precipitation"
@@ -330,8 +330,8 @@ raw:
   #   # Bounding box for CDS API: [north, west, south, east]
   #   cds_area: [72, -180, 17, -64]
   #   variables:
-  #   t2m:    {description: "2m temperature", units: "°C", scale: 1, era5_name: "2m_temperature", convert_kelvin: true}
-  #   d2m:    {description: "2m dewpoint temperature", units: "°C", scale: 1, era5_name: "2m_dewpoint_temperature", convert_kelvin: true}
+  #   t2m:    {description: "2m temperature", units: "deg C", scale: 1, era5_name: "2m_temperature", convert_kelvin: true}
+  #   d2m:    {description: "2m dewpoint temperature", units: "deg C", scale: 1, era5_name: "2m_dewpoint_temperature", convert_kelvin: true}
   #   tp:     {description: "Total precipitation", units: "mm", scale: 1000, era5_name: "total_precipitation"}
   #   sf:     {description: "Snowfall", units: "mm we", scale: 1000, era5_name: "snowfall"}
   #   sd:     {description: "Snow depth", units: "m we", scale: 1, era5_name: "snow_depth"}
@@ -343,17 +343,17 @@ raw:
   #   ssrd:   {description: "Surface solar radiation downwards", units: "MJ/m2", scale: 0.000001, era5_name: "surface_solar_radiation_downwards"}
   #   ssr:    {description: "Surface net solar radiation", units: "MJ/m2", scale: 0.000001, era5_name: "surface_net_solar_radiation"}
   #   str:    {description: "Surface net thermal radiation", units: "MJ/m2", scale: 0.000001, era5_name: "surface_net_thermal_radiation"}
-  #   stl1:   {description: "Soil temperature level 1 (0-7cm)", units: "°C", scale: 1, era5_name: "soil_temperature_level_1", convert_kelvin: true}
-  #   stl2:   {description: "Soil temperature level 2 (7-28cm)", units: "°C", scale: 1, era5_name: "soil_temperature_level_2", convert_kelvin: true}
+  #   stl1:   {description: "Soil temperature level 1 (0-7cm)", units: "deg C", scale: 1, era5_name: "soil_temperature_level_1", convert_kelvin: true}
+  #   stl2:   {description: "Soil temperature level 2 (7-28cm)", units: "deg C", scale: 1, era5_name: "soil_temperature_level_2", convert_kelvin: true}
   #   swvl1:  {description: "Volumetric soil water layer 1 (0-7cm)", units: "m3/m3", scale: 1, era5_name: "volumetric_soil_water_layer_1"}
   #   swvl2:  {description: "Volumetric soil water layer 2 (7-28cm)", units: "m3/m3", scale: 1, era5_name: "volumetric_soil_water_layer_2"}
   #   e:      {description: "Total evaporation", units: "mm", scale: 1000, era5_name: "total_evaporation"}
   #   pev:    {description: "Potential evaporation", units: "mm", scale: 1000, era5_name: "potential_evaporation"}
   #   lai_hv: {description: "Leaf area index, high vegetation", units: "m2/m2", scale: 1, era5_name: "leaf_area_index_high_vegetation"}
   #   lai_lv: {description: "Leaf area index, low vegetation", units: "m2/m2", scale: 1, era5_name: "leaf_area_index_low_vegetation"}
-  #   skt:    {description: "Skin temperature", units: "°C", scale: 1, era5_name: "skin_temperature", convert_kelvin: true}
-  #   stl3:   {description: "Soil temperature level 3 (28-100cm)", units: "°C", scale: 1, era5_name: "soil_temperature_level_3", convert_kelvin: true}
-  #   stl4:   {description: "Soil temperature level 4 (100-289cm)", units: "°C", scale: 1, era5_name: "soil_temperature_level_4", convert_kelvin: true}
+  #   skt:    {description: "Skin temperature", units: "deg C", scale: 1, era5_name: "skin_temperature", convert_kelvin: true}
+  #   stl3:   {description: "Soil temperature level 3 (28-100cm)", units: "deg C", scale: 1, era5_name: "soil_temperature_level_3", convert_kelvin: true}
+  #   stl4:   {description: "Soil temperature level 4 (100-289cm)", units: "deg C", scale: 1, era5_name: "soil_temperature_level_4", convert_kelvin: true}
   #   swvl3:  {description: "Volumetric soil water layer 3 (28-100cm)", units: "m3/m3", scale: 1, era5_name: "volumetric_soil_water_layer_3"}
   #   swvl4:  {description: "Volumetric soil water layer 4 (100-289cm)", units: "m3/m3", scale: 1, era5_name: "volumetric_soil_water_layer_4"}
   #   smlt:   {description: "Snowmelt", units: "mm", scale: 1000, era5_name: "snowmelt"}
@@ -438,6 +438,19 @@ processed:
         plot_cond_fortypcd: "plot_cond_fortypcd.parquet"
         plot_disturbance_history: "plot_disturbance_history.parquet"
         plot_damage_agents: "plot_damage_agents.parquet"
+
+  species_niches:
+    local_dir: "06_species_niches/data/processed"
+    output_dir: "06_species_niches/data/processed"
+    description: "Species-level BIEN range and TerraClimate niche products for thermophilization and community climate-affinity analyses"
+    raw_dir: "06_species_niches/data/raw"
+    range_dir: "06_species_niches/data/raw/bien_ranges"
+    files:
+      species_universe: "species_universe.parquet"
+      bien_range_availability: "bien_range_availability.parquet"
+      species_range_polygons: "species_range_polygons.gpkg"
+      species_range_climate: "species_range_climate.parquet"
+      species_climate_niches: "species_climate_niches.parquet"
 
   # Standardized climate outputs (long format, dataset-agnostic)
   climate:
