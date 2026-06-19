@@ -14,6 +14,7 @@
 # Usage examples:
 #   Rscript 06_species_niches/scripts/04_extract_terraclimate_from_ranges.R
 #   Rscript 06_species_niches/scripts/04_extract_terraclimate_from_ranges.R --limit 25
+#   Rscript 06_species_niches/scripts/04_extract_terraclimate_from_ranges.R --range-scope=us_study_area
 #   Rscript 06_species_niches/scripts/04_extract_terraclimate_from_ranges.R --force --batch-size 10
 #
 # Prerequisites:
@@ -58,6 +59,7 @@ max_retries            <- as.integer(get_arg("--max-retries", "3"))
 retry_wait_seconds     <- as.integer(get_arg("--retry-wait", "30"))
 force                  <- has_flag("--force")
 mean_only              <- has_flag("--mean-only")
+range_scope            <- get_arg("--range-scope", "global")
 
 variables <- strsplit(
   get_arg("--variables", "tmmx,tmmn,pr,def,pet,aet"),
@@ -70,6 +72,11 @@ if (!is.na(limit_arg)) {
   limit_arg <- as.integer(limit_arg)
 }
 is_smoke_run <- !is.na(limit_arg)
+
+allowed_range_scopes <- c("global", "us_study_area")
+if (!range_scope %in% allowed_range_scopes) {
+  stop(glue("--range-scope must be one of: {paste(allowed_range_scopes, collapse = ', ')}"))
+}
 
 if (start_year > end_year) {
   stop("--start-year must be less than or equal to --end-year.")
@@ -100,11 +107,14 @@ climate_period <- sprintf("%d-%d", start_year, end_year)
 # prevents a small --limit smoke test from being mistaken for a completed full
 # extraction later.
 run_tag <- paste(
-  climate_period,
-  paste(variables, collapse = "-"),
-  if (mean_only) "mean" else "mean-p10-p50-p90",
-  if (!is.na(limit_arg)) paste0("limit-", limit_arg) else "full",
-  sep = "__"
+  c(
+    climate_period,
+    paste(variables, collapse = "-"),
+    if (mean_only) "mean" else "mean-p10-p50-p90",
+    if (range_scope == "global") NULL else range_scope,
+    if (!is.na(limit_arg)) paste0("limit-", limit_arg) else "full"
+  ),
+  collapse = "__"
 )
 run_tag <- gsub("[^A-Za-z0-9_.-]+", "_", run_tag)
 batch_dir <- file.path(
@@ -137,25 +147,36 @@ out_file <- file.path(
 qa_summary_file <- file.path(qa_dir, "species_range_climate_summary.csv")
 failure_file <- file.path(qa_dir, "species_range_climate_failures.csv")
 
+if (range_scope != "global" && !is_smoke_run) {
+  out_file <- file.path(processed_dir, sprintf("species_range_climate_%s.parquet", range_scope))
+  qa_summary_file <- file.path(qa_dir, sprintf("species_range_climate_summary_%s.csv", range_scope))
+  failure_file <- file.path(qa_dir, sprintf("species_range_climate_failures_%s.csv", range_scope))
+}
+
 if (is_smoke_run) {
+  smoke_suffix <- if (range_scope == "global") {
+    sprintf("limit_%d", limit_arg)
+  } else {
+    sprintf("%s_limit_%d", range_scope, limit_arg)
+  }
+
   out_file <- file.path(
     smoke_data_dir,
-    sprintf("species_range_climate_limit_%d.parquet", limit_arg)
+    sprintf("species_range_climate_%s.parquet", smoke_suffix)
   )
   qa_summary_file <- file.path(
     qa_dir,
-    sprintf("species_range_climate_summary_limit_%d.csv", limit_arg)
+    sprintf("species_range_climate_summary_%s.csv", smoke_suffix)
   )
   failure_file <- file.path(
     qa_dir,
-    sprintf("species_range_climate_failures_limit_%d.csv", limit_arg)
+    sprintf("species_range_climate_failures_%s.csv", smoke_suffix)
   )
 }
 
 dir_create(processed_dir)
 if (is_smoke_run) dir_create(smoke_data_dir)
 dir_create(qa_dir)
-dir_create(batch_dir)
 
 if (!file_exists(range_path)) {
   stop(glue("Range polygon file not found: {range_path}"))
@@ -173,11 +194,15 @@ if (length(missing_vars) > 0) {
 cat("TerraClimate range extraction\n")
 cat("==============================\n\n")
 cat(glue("Climate period: {climate_period}"), "\n")
+cat(glue("Range scope: {range_scope}"), "\n")
 cat(glue("Variables: {paste(variables, collapse = ', ')}"), "\n")
 cat(glue("Reducer: {if (mean_only) 'mean' else 'mean + p10/p50/p90'}"), "\n")
 cat(glue("Batch size: {batch_size} polygons"), "\n\n")
 cat(glue("Retries per batch: {max_retries}"), "\n")
 cat(glue("Retry wait: {retry_wait_seconds} seconds"), "\n\n")
+if (file.exists(out_file) && !force) {
+  cat(glue("Existing final output found; rerun will reuse completed batches and refresh final QA: {out_file}"), "\n\n")
+}
 
 range_climate_failures <- list()
 
@@ -489,6 +514,84 @@ write_output_metadata <- function(path) {
   }
 }
 
+write_parquet_safely <- function(df, path, compression = "snappy") {
+  # Write to a temporary file first so an interrupted process cannot leave a
+  # half-written batch or final parquet at the canonical path.
+  dir_create(dirname(path))
+  tmp_path <- tempfile(
+    pattern = paste0(path_file(path), "_tmp_"),
+    tmpdir = dirname(path),
+    fileext = ".parquet"
+  )
+  on.exit(unlink(tmp_path, force = TRUE), add = TRUE)
+
+  write_parquet(df, tmp_path, compression = compression)
+  file_copy(tmp_path, path, overwrite = TRUE)
+}
+
+write_csv_safely <- function(df, path) {
+  # CSV outputs are small QA products, but writing them safely keeps reruns from
+  # clobbering a good QA file if R exits mid-write.
+  dir_create(dirname(path))
+  tmp_path <- tempfile(
+    pattern = paste0(path_file(path), "_tmp_"),
+    tmpdir = dirname(path),
+    fileext = ".csv"
+  )
+  on.exit(unlink(tmp_path, force = TRUE), add = TRUE)
+
+  write.csv(df, tmp_path, row.names = FALSE)
+  file_copy(tmp_path, path, overwrite = TRUE)
+}
+
+make_species_set_hash <- function(species_keys) {
+  # Batch files are keyed to the ordered species set because batch IDs are based
+  # on row positions. If the upstream BIEN availability/polygon set changes,
+  # this hash changes and stale batch files cannot be accidentally reused.
+  tmp_path <- tempfile(fileext = ".txt")
+  on.exit(unlink(tmp_path, force = TRUE), add = TRUE)
+  writeLines(as.character(species_keys), tmp_path, useBytes = TRUE)
+  unname(tools::md5sum(tmp_path))
+}
+
+make_study_area_polygon <- function(config) {
+  # This is a bounding-box clip using the repo's all-US FIA study extent, not a
+  # political boundary. It keeps Alaska and Hawaii while removing BIEN range
+  # portions from the Old World and southern hemisphere.
+  study_area <- config$params$study_area
+  bbox <- st_bbox(
+    c(
+      xmin = study_area$xmin,
+      ymin = study_area$ymin,
+      xmax = study_area$xmax,
+      ymax = study_area$ymax
+    ),
+    crs = st_crs(4326)
+  )
+  st_as_sfc(bbox)
+}
+
+clip_ranges_to_scope <- function(ranges, range_scope, config) {
+  if (range_scope == "global") {
+    ranges$range_scope <- "global"
+    return(ranges)
+  }
+
+  study_area <- make_study_area_polygon(config)
+  ranges_4326 <- st_transform(ranges, 4326)
+  ranges_4326 <- st_make_valid(ranges_4326)
+
+  clipped <- suppressWarnings(st_intersection(ranges_4326, study_area))
+  clipped <- clipped[!st_is_empty(clipped), ]
+
+  if (nrow(clipped) == 0) {
+    stop("No BIEN range polygons intersected the configured study area.")
+  }
+
+  clipped$range_scope <- range_scope
+  clipped
+}
+
 # ------------------------------------------------------------------------------
 # Load species ranges and metadata
 # ------------------------------------------------------------------------------
@@ -499,9 +602,19 @@ ranges <- st_read(range_path, quiet = TRUE)
 ranges <- ranges |>
   mutate(species_key = as.character(species_key))
 
+ranges <- clip_ranges_to_scope(
+  ranges = ranges,
+  range_scope = range_scope,
+  config = config
+)
+
 if (!is.na(limit_arg)) {
   ranges <- ranges[seq_len(min(limit_arg, nrow(ranges))), ]
 }
+
+species_set_hash <- make_species_set_hash(ranges$species_key)
+batch_dir <- file.path(batch_dir, paste0("species_set_", substr(species_set_hash, 1, 12)))
+dir_create(batch_dir)
 
 availability <- read_parquet(availability_path) |>
   mutate(species_key = as.character(species_key))
@@ -518,6 +631,7 @@ species_metadata <- availability |>
   distinct(species_key, .keep_all = TRUE)
 
 cat(glue("  Loaded {format(nrow(ranges), big.mark = ',')} range polygons"), "\n\n")
+cat(glue("  Species-set batch cache: {batch_dir}"), "\n\n")
 
 # ------------------------------------------------------------------------------
 # Build the TerraClimate image and reducer in Earth Engine
@@ -580,7 +694,7 @@ for (batch_id in seq_len(n_batches)) {
     climate_period = climate_period
   )
 
-  write_parquet(as_tibble(batch_long), batch_file, compression = "snappy")
+  write_parquet_safely(as_tibble(batch_long), batch_file, compression = "snappy")
 
   elapsed <- as.numeric(difftime(Sys.time(), t0, units = "mins"))
   cat(glue("saved {format(nrow(batch_long), big.mark = ',')} rows ({round(elapsed, 1)} min)\n"))
@@ -593,8 +707,12 @@ for (batch_id in seq_len(n_batches)) {
 cat("\n[5/5] Consolidating batches...\n")
 
 existing_batches <- batch_files[file.exists(batch_files)]
-if (length(existing_batches) == 0) {
-  stop("No batch outputs were written; cannot build final species range climate table.")
+missing_batches <- batch_files[!file.exists(batch_files)]
+if (length(missing_batches) > 0) {
+  stop(glue(
+    "Missing {length(missing_batches)} batch output(s); refusing to build a partial final table. ",
+    "Rerun without --force to fill missing batches, or inspect the first missing file: {missing_batches[[1]]}"
+  ))
 }
 
 species_range_climate <- open_dataset(existing_batches, format = "parquet") |>
@@ -609,15 +727,16 @@ species_range_climate <- open_dataset(existing_batches, format = "parquet") |>
     month, variable, metric, value,
     climate_period, climate_source, range_source
   ) |>
+  mutate(range_scope = range_scope) |>
   arrange(species_key, month, variable, metric)
 
-write_parquet(as_tibble(species_range_climate), out_file, compression = "snappy")
+write_parquet_safely(as_tibble(species_range_climate), out_file, compression = "snappy")
 if (!is_smoke_run) {
   write_output_metadata(out_file)
 }
 
 qa_summary <- species_range_climate |>
-  group_by(variable, metric, climate_period) |>
+  group_by(variable, metric, climate_period, range_scope) |>
   summarize(
     n_species = n_distinct(species_key),
     n_rows = n(),
@@ -628,7 +747,7 @@ qa_summary <- species_range_climate |>
     .groups = "drop"
   )
 
-write.csv(qa_summary, qa_summary_file, row.names = FALSE)
+write_csv_safely(qa_summary, qa_summary_file)
 
 if (length(range_climate_failures) > 0) {
   failures <- bind_rows(range_climate_failures)
@@ -637,9 +756,9 @@ if (length(range_climate_failures) > 0) {
     failures <- bind_rows(existing_failures, failures) |>
       distinct(species_key, climate_period, variables, failure_reason, .keep_all = TRUE)
   }
-  write.csv(failures, failure_file, row.names = FALSE)
+  write_csv_safely(failures, failure_file)
 } else if (!file.exists(failure_file)) {
-  write.csv(
+  write_csv_safely(
     tibble(
       species_key = character(),
       bien_query_name = character(),
@@ -650,8 +769,7 @@ if (length(range_climate_failures) > 0) {
       simplify_tolerance_deg = numeric(),
       failure_time = character()
     ),
-    failure_file,
-    row.names = FALSE
+    failure_file
   )
 }
 
