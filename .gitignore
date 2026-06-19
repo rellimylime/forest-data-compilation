@@ -98,6 +98,14 @@ processed/**
 !06_species_niches/data/smoke/
 !06_species_niches/data/smoke/.gitkeep
 
+# Thermophilization smoke-test outputs: useful local history, not commit material.
+07_thermophilization/qa/smoke/**
+!07_thermophilization/qa/smoke/
+!07_thermophilization/qa/smoke/.gitkeep
+07_thermophilization/data/smoke/**
+!07_thermophilization/data/smoke/
+!07_thermophilization/data/smoke/.gitkeep
+
 # Large binary file types (safety net for files outside data/ dirs)
 *.nc
 *.gpkg
