@@ -110,7 +110,17 @@ normalize_bien_result <- function(result) {
   query_col <- intersect(c("species", "species_name", "name", "submitted_name"), names(dt))[1]
   if (is.na(query_col)) query_col <- names(dt)[1]
 
-  status_col <- intersect(c("range_lookup_status", "status", "match_status"), names(dt))[1]
+  status_col <- intersect(
+    c(
+      "range_map_available?", "range_map_available", "rangemapavailable",
+      "range_lookup_status", "status", "match_status"
+    ),
+    names(dt)
+  )[1]
+  if (is.na(status_col)) {
+    range_status_hits <- grep("range.*available", names(dt), value = TRUE)
+    if (length(range_status_hits) > 0) status_col <- range_status_hits[[1]]
+  }
   matched_col <- intersect(c("matched_species", "matched_name", "bien_species", "species_matched"), names(dt))[1]
 
   out <- data.table(
@@ -119,8 +129,12 @@ normalize_bien_result <- function(result) {
     range_lookup_error = if ("range_lookup_error" %in% names(dt)) as.character(dt$range_lookup_error) else NA_character_
   )
 
-  status_text <- if (!is.na(status_col)) tolower(as.character(dt[[status_col]])) else ""
-  out[, bien_range_available := !grepl("no|missing|absent|error|fail", status_text) & is.na(range_lookup_error)]
+  status_text <- if (!is.na(status_col)) tolower(trimws(as.character(dt[[status_col]]))) else NA_character_
+  out[, bien_range_available := fifelse(
+    is.na(status_text),
+    FALSE,
+    status_text %in% c("yes", "y", "true", "available", "1")
+  ) & is.na(range_lookup_error)]
   out[, range_lookup_status := fifelse(bien_range_available, "available", fifelse(!is.na(range_lookup_error), "api_error", "missing"))]
   out[, range_match_status := fifelse(bien_range_available, "available", range_match_status)]
 
