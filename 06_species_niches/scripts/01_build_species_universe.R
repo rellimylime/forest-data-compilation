@@ -106,8 +106,13 @@ split_binomial <- function(scientific_name) {
 is_pseudo_or_aggregate_taxon <- function(scientific_name, source_species_code = NULL,
                                          flag_p2_aggregate_code = FALSE) {
   name <- tolower(clean_text(scientific_name))
+  # Treat genus-level or unknown records as pseudo taxa. Botanical varieties
+  # and subspecies remain valid targets because BIEN can return range maps for
+  # many trinomial names and the existing niche products include them.
+  word_count <- lengths(strsplit(name, "\\s+"))
   out <- is.na(name) |
-    grepl("\\b(sp|spp|ssp|var)\\.?\\b", name) |
+    word_count < 2 |
+    grepl("\\b(sp|spp)\\.?\\b", name) |
     grepl("\\bunknown\\b|\\bunidentified\\b|\\bother\\b|\\bhybrid\\b|\\bgroup\\b|\\bcomplex\\b", name) |
     grepl("\\bx\\b|\\b×\\b", name)
 
@@ -224,7 +229,9 @@ standardize_understory_species <- function(summary_path, raw_dir) {
 
   dt[, source_code_system := "nrcs_plants_symbol"]
   dt[, source_species_code := as.character(.SD[[1]]), .SDcols = symbol_col]
-  dt[, species_key := paste0("nrcs_plants_symbol:", source_species_code)]
+  # Historical downstream products use p2veg:* as the project key, while
+  # source_code_system records that the code authority is NRCS PLANTS.
+  dt[, species_key := paste0("p2veg:", source_species_code)]
   dt[, scientific_name := clean_text(scientific_name)]
   dt[, common_name := clean_text(common_name)]
   dt[, source_table := "P2VEG_SUBPLOT_SPP"]
@@ -315,7 +322,7 @@ universe[, specific_epithet := name_parts$specific_epithet]
 universe[, is_pseudo_taxon := is_pseudo_or_aggregate_taxon(
   scientific_name,
   source_species_code,
-  flag_p2_aggregate_code = source_code_system == "nrcs_plants_symbol"
+  flag_p2_aggregate_code = FALSE
 )]
 universe[, has_scientific_name := !is.na(scientific_name)]
 universe[, needs_niche := has_scientific_name & !is_pseudo_taxon]
