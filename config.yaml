@@ -452,6 +452,13 @@ processed:
       species_range_climate: "species_range_climate.parquet"
       species_climate_niches: "species_climate_niches.parquet"
 
+  thermophilization:
+    local_dir: "07_thermophilization/data/processed"
+    output_dir: "07_thermophilization/data/processed"
+    description: "Analysis-ready recruitment climate-affinity products built from FIA communities and species niche tables"
+    files:
+      plot_recruitment_cwm: "plot_recruitment_cwm.parquet"
+
   # Standardized climate outputs (long format, dataset-agnostic)
   climate:
     output_dir: "processed/climate"
