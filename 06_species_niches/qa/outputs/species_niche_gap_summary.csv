@@ -1,0 +1,6 @@
+gap_stage,n_species,n_seedling_cwm_missing_species,total_cwm_missing_weight,total_cwm_missing_seedlings_tpa
+no_bien_range_map,802,102,6644172.978332,6644172.978332
+not_checked_against_bien,525,0,0,0
+not_targeted_for_niche,143,58,17268402.726436,17268402.726436
+outside_or_empty_after_study_area_clip,33,6,3673.298836,3673.298836
+usable_study_area_niche,5093,0,0,0

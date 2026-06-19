@@ -1,0 +1,24 @@
+check_name,status,severity,observed,expected,details
+required_file_exists_species_universe,pass,error,TRUE,TRUE,C:/Users/ermil/Projects/forest-data-compilation/06_species_niches/data/processed/species_universe.parquet
+required_file_exists_bien_availability,pass,error,TRUE,TRUE,C:/Users/ermil/Projects/forest-data-compilation/06_species_niches/data/processed/bien_range_availability.parquet
+required_file_exists_species_range_polygons,pass,error,TRUE,TRUE,C:/Users/ermil/Projects/forest-data-compilation/06_species_niches/data/processed/species_range_polygons.gpkg
+species_universe_required_columns,pass,error,"",none missing,
+species_universe_unique_species_key,pass,error,6554,6554,species_key should be one row per source species code
+species_universe_no_genus_only_niche_targets,pass,error,0,0,Genus-only records cannot support species-level BIEN niches
+species_universe_no_pseudo_niche_targets,pass,error,0,0,
+species_universe_major_layers_present,pass,error,"",none missing,"The universe should include tree regeneration plus P2VEG shrubs, forbs, and graminoids."
+species_universe_sapling_layer_review,fail,warning,0,> 0,Saplings may be represented inside TREE summaries rather than as a distinct species-universe layer. Review before claiming sapling-specific coverage.
+bien_availability_one_row_per_niche_target,pass,error,extra=0; missing=0,extra=0; missing=0,
+bien_availability_unique_species_key,pass,error,5894,5894,
+bien_availability_has_missing_ranges,pass,warning,1680,> 0,"If this is zero, the BIEN status parser is probably broken"
+bien_missing_fraction_review,fail,warning,28.5%,<= 25%,"A higher missing fraction is not automatically wrong, but it needs explicit documentation and high-weight species review."
+bien_availability_review_flags_consistent,pass,error,0,0,
+bien_polygons_one_feature_per_species,pass,error,unique_species=4214; features=4214,unique_species equals features,"If this fails, downstream extraction must intentionally aggregate multipart or duplicate features."
+bien_polygons_match_available_species,pass,error,available_missing_polygons=0; polygon_without_available=0,available_missing_polygons=0; polygon_without_available=0,
+bien_polygons_no_empty_geometries,pass,error,0,0,
+bien_polygons_no_invalid_geometries,pass,error,0,0,
+bien_polygons_positive_area,fail,warning,18,0,Negative/zero area can indicate antimeridian or geometry-area QA problems
+range_climate_species_match_polygons,fail,warning,stale=913; missing=34,stale=0; missing=0,Warning means script 04 should be rerun from current polygons
+compact_niche_species_match_polygons,fail,warning,stale=913; missing=34,stale=0; missing=0,Warning means script 05 should be rerun after script 04
+compact_niche_required_indicators,pass,error,"",none missing,
+cwm_built_from_current_niche_species,fail,warning,us_study_area;NA,us_study_area,Also inspect 07_thermophilization QA after rerunning CWM
