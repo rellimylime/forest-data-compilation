@@ -544,6 +544,49 @@ write_csv_safely <- function(df, path) {
   file_copy(tmp_path, path, overwrite = TRUE)
 }
 
+empty_failure_table <- function() {
+  tibble(
+    species_key = character(),
+    bien_query_name = character(),
+    failure_stage = character(),
+    failure_reason = character(),
+    climate_period = character(),
+    variables = character(),
+    simplify_tolerance_deg = numeric(),
+    failure_time = character()
+  )
+}
+
+normalize_failure_table <- function(df) {
+  # Empty CSVs are easy for read.csv() to type as logical columns. Keep an
+  # explicit schema so reruns can bind old and new failure logs safely.
+  if (is.null(df) || nrow(df) == 0) {
+    return(empty_failure_table())
+  }
+
+  out <- as_tibble(df)
+  template <- empty_failure_table()
+  missing_cols <- setdiff(names(template), names(out))
+  for (col in missing_cols) {
+    out[[col]] <- template[[col]]
+  }
+
+  out <- out |>
+    select(all_of(names(template))) |>
+    mutate(
+      species_key = as.character(species_key),
+      bien_query_name = as.character(bien_query_name),
+      failure_stage = as.character(failure_stage),
+      failure_reason = as.character(failure_reason),
+      climate_period = as.character(climate_period),
+      variables = as.character(variables),
+      simplify_tolerance_deg = as.numeric(simplify_tolerance_deg),
+      failure_time = as.character(failure_time)
+    )
+
+  out
+}
+
 make_species_set_hash <- function(species_keys) {
   # Batch files are keyed to the ordered species set because batch IDs are based
   # on row positions. If the upstream BIEN availability/polygon set changes,
@@ -750,27 +793,18 @@ qa_summary <- species_range_climate |>
 write_csv_safely(qa_summary, qa_summary_file)
 
 if (length(range_climate_failures) > 0) {
-  failures <- bind_rows(range_climate_failures)
+  failures <- normalize_failure_table(bind_rows(range_climate_failures))
   if (file.exists(failure_file)) {
-    existing_failures <- read.csv(failure_file, stringsAsFactors = FALSE)
+    existing_failures <- normalize_failure_table(read.csv(failure_file, stringsAsFactors = FALSE))
     failures <- bind_rows(existing_failures, failures) |>
       distinct(species_key, climate_period, variables, failure_reason, .keep_all = TRUE)
   }
   write_csv_safely(failures, failure_file)
 } else if (!file.exists(failure_file)) {
-  write_csv_safely(
-    tibble(
-      species_key = character(),
-      bien_query_name = character(),
-      failure_stage = character(),
-      failure_reason = character(),
-      climate_period = character(),
-      variables = character(),
-      simplify_tolerance_deg = numeric(),
-      failure_time = character()
-    ),
-    failure_file
-  )
+  write_csv_safely(empty_failure_table(), failure_file)
+} else {
+  existing_failures <- normalize_failure_table(read.csv(failure_file, stringsAsFactors = FALSE))
+  write_csv_safely(existing_failures, failure_file)
 }
 
 cat("\nDone.\n")

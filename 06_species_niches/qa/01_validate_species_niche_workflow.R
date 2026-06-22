@@ -35,6 +35,7 @@ paths <- list(
   bien_availability = file.path(processed_dir, "bien_range_availability.parquet"),
   species_range_polygons = file.path(processed_dir, "species_range_polygons.gpkg"),
   range_climate_us = file.path(processed_dir, "species_range_climate_us_study_area.parquet"),
+  niches_global = file.path(processed_dir, "species_climate_niches.parquet"),
   niches_us = file.path(processed_dir, "species_climate_niches_us_study_area.parquet"),
   cwm = here("07_thermophilization/data/processed/plot_recruitment_cwm.parquet")
 )
@@ -437,6 +438,7 @@ fwrite(polygon_area_summary, file.path(qa_dir, "bien_polygons_area_summary.csv")
 # ------------------------------------------------------------------------------
 
 range_climate <- read_optional_parquet(paths$range_climate_us)
+global_niches <- read_optional_parquet(paths$niches_global)
 niches <- read_optional_parquet(paths$niches_us)
 cwm <- read_optional_parquet(paths$cwm)
 
@@ -451,7 +453,7 @@ if (!is.null(range_climate)) {
     "warning",
     glue("stale={nrow(stale_range_species)}; missing={nrow(missing_range_species)}"),
     "stale=0; missing=0",
-    "Warning means script 04 should be rerun from current polygons"
+    "Stale species mean script 04 should be rerun. Missing species after a current rerun are study-area climate coverage gaps to document."
   )
   fwrite(stale_range_species, file.path(qa_dir, "range_climate_stale_species.csv"))
   fwrite(missing_range_species, file.path(qa_dir, "range_climate_missing_polygon_species.csv"))
@@ -470,7 +472,7 @@ if (!is.null(niches)) {
     "warning",
     glue("stale={nrow(stale_niche_species)}; missing={nrow(missing_niche_species)}"),
     "stale=0; missing=0",
-    "Warning means script 05 should be rerun after script 04"
+    "Stale species mean script 05 should be rerun. Missing species after a current rerun are unresolved compact-niche gaps to document."
   )
   fwrite(stale_niche_species, file.path(qa_dir, "compact_niche_stale_species.csv"))
   fwrite(missing_niche_species, file.path(qa_dir, "compact_niche_missing_polygon_species.csv"))
@@ -495,14 +497,43 @@ if (!is.null(niches)) {
 }
 
 if (!is.null(cwm) && !is.null(niches)) {
+  cwm_with_niche <- cwm[cwm_weight_with_niche > 0]
+  cwm_zero_coverage <- cwm[cwm_weight_total > 0 & cwm_weight_with_niche == 0]
+
+  cwm_scopes <- unique(cwm_with_niche$range_scope)
+  niche_scopes <- unique(niches$range_scope)
+  uses_global_fallback <- "us_study_area_with_global_fallback" %in% cwm_scopes
+  fallback_scope_ok <- uses_global_fallback &&
+    !is.null(global_niches) &&
+    "niche_scopes_used" %in% names(cwm) &&
+    all(
+      unlist(strsplit(
+        unique(na.omit(cwm_with_niche$niche_scopes_used)),
+        ";",
+        fixed = TRUE
+      )) %in% c("us_study_area", "global_fallback", "")
+    )
+
   checks <- add_check(
     checks,
     "cwm_built_from_current_niche_species",
-    status_from(all(unique(cwm$range_scope) %in% unique(niches$range_scope))),
+    status_from(
+      nrow(cwm_with_niche) > 0 &&
+        (all(cwm_scopes %in% niche_scopes) || fallback_scope_ok)
+    ),
     "warning",
-    paste(unique(cwm$range_scope), collapse = ";"),
-    paste(unique(niches$range_scope), collapse = ";"),
-    "Also inspect 07_thermophilization QA after rerunning CWM"
+    paste(cwm_scopes, collapse = ";"),
+    paste(c(niche_scopes, if (!is.null(global_niches)) "us_study_area_with_global_fallback" else NULL), collapse = ";"),
+    "Checks only rows with nonzero niche coverage. Fallback mode is valid when CWM tracks niche_scopes_used and the global niche table exists."
+  )
+  checks <- add_check(
+    checks,
+    "cwm_zero_niche_coverage_review",
+    status_from(nrow(cwm_zero_coverage) == 0),
+    "warning",
+    nrow(cwm_zero_coverage),
+    0,
+    "Plot-condition rows with seedlings but no usable species niche. These rows should be filtered or documented before modeling."
   )
 }
 

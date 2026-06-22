@@ -10,15 +10,16 @@ species_universe_major_layers_present,pass,error,"",none missing,"The universe s
 species_universe_sapling_layer_review,fail,warning,0,> 0,Saplings may be represented inside TREE summaries rather than as a distinct species-universe layer. Review before claiming sapling-specific coverage.
 bien_availability_one_row_per_niche_target,pass,error,extra=0; missing=0,extra=0; missing=0,
 bien_availability_unique_species_key,pass,error,5894,5894,
-bien_availability_has_missing_ranges,pass,warning,1680,> 0,"If this is zero, the BIEN status parser is probably broken"
+bien_availability_has_missing_ranges,pass,warning,1678,> 0,"If this is zero, the BIEN status parser is probably broken"
 bien_missing_fraction_review,fail,warning,28.5%,<= 25%,"A higher missing fraction is not automatically wrong, but it needs explicit documentation and high-weight species review."
 bien_availability_review_flags_consistent,pass,error,0,0,
-bien_polygons_one_feature_per_species,pass,error,unique_species=4214; features=4214,unique_species equals features,"If this fails, downstream extraction must intentionally aggregate multipart or duplicate features."
+bien_polygons_one_feature_per_species,pass,error,unique_species=4216; features=4216,unique_species equals features,"If this fails, downstream extraction must intentionally aggregate multipart or duplicate features."
 bien_polygons_match_available_species,pass,error,available_missing_polygons=0; polygon_without_available=0,available_missing_polygons=0; polygon_without_available=0,
 bien_polygons_no_empty_geometries,pass,error,0,0,
 bien_polygons_no_invalid_geometries,pass,error,0,0,
 bien_polygons_positive_area,fail,warning,18,0,Negative/zero area can indicate antimeridian or geometry-area QA problems
-range_climate_species_match_polygons,fail,warning,stale=913; missing=34,stale=0; missing=0,Warning means script 04 should be rerun from current polygons
-compact_niche_species_match_polygons,fail,warning,stale=913; missing=34,stale=0; missing=0,Warning means script 05 should be rerun after script 04
+range_climate_species_match_polygons,fail,warning,stale=0; missing=30,stale=0; missing=0,Stale species mean script 04 should be rerun. Missing species after a current rerun are study-area climate coverage gaps to document.
+compact_niche_species_match_polygons,fail,warning,stale=0; missing=30,stale=0; missing=0,Stale species mean script 05 should be rerun. Missing species after a current rerun are unresolved compact-niche gaps to document.
 compact_niche_required_indicators,pass,error,"",none missing,
-cwm_built_from_current_niche_species,fail,warning,us_study_area;NA,us_study_area,Also inspect 07_thermophilization QA after rerunning CWM
+cwm_built_from_current_niche_species,pass,warning,us_study_area_with_global_fallback,us_study_area;us_study_area_with_global_fallback,Checks only rows with nonzero niche coverage. Fallback mode is valid when CWM tracks niche_scopes_used and the global niche table exists.
+cwm_zero_niche_coverage_review,fail,warning,2921,0,Plot-condition rows with seedlings but no usable species niche. These rows should be filtered or documented before modeling.

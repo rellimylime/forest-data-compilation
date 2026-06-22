@@ -59,7 +59,7 @@ if (nrow(failed_required) > 0) {
 
 stale_handoff_checks <- validation_checks[
   check_name %in% c("range_climate_species_match_polygons", "compact_niche_species_match_polygons") &
-    status != "pass"
+    grepl("stale=[1-9][0-9]*", observed)
 ]
 if (nrow(stale_handoff_checks) > 0) {
   stop(

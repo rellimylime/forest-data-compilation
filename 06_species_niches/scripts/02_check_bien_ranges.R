@@ -44,6 +44,7 @@ niche_config <- config$processed$species_niches
 processed_dir <- here(niche_config$output_dir)
 smoke_data_dir <- here("06_species_niches/data/smoke")
 qa_dir <- if (is_smoke_run) here("06_species_niches/qa/smoke") else here("06_species_niches/qa/outputs")
+override_path <- here("06_species_niches/lookups/manual_bien_name_overrides_reviewed.csv")
 dir_create(processed_dir)
 if (is_smoke_run) dir_create(smoke_data_dir)
 dir_create(qa_dir)
@@ -74,6 +75,55 @@ if (!file.exists(species_universe_path)) {
 
 make_bien_query_name <- function(scientific_name) {
   gsub("\\s+", "_", trimws(as.character(scientific_name)))
+}
+
+read_ready_overrides <- function(path) {
+  # Manual overrides are deliberately conservative. Only rows that have already
+  # been reviewed and marked ready_for_pipeline are allowed to change the BIEN
+  # query name. All other review rows remain documentation only.
+  if (!file.exists(path)) {
+    return(data.table(
+      species_key = character(),
+      source_scientific_name = character(),
+      recommended_bien_name = character(),
+      override_decision = character(),
+      override_confidence = character(),
+      override_review_status = character(),
+      override_notes = character()
+    ))
+  }
+
+  overrides <- fread(path)
+  required_cols <- c(
+    "species_key", "source_scientific_name", "recommended_bien_name",
+    "decision", "confidence", "review_status", "notes"
+  )
+  missing_cols <- setdiff(required_cols, names(overrides))
+  if (length(missing_cols) > 0) {
+    stop(glue("Manual BIEN override table is missing column(s): {paste(missing_cols, collapse = ', ')}"))
+  }
+
+  ready <- overrides[
+    review_status == "ready_for_pipeline" &
+      !is.na(recommended_bien_name) &
+      trimws(recommended_bien_name) != "",
+    .(
+      species_key,
+      source_scientific_name,
+      recommended_bien_name,
+      override_decision = decision,
+      override_confidence = confidence,
+      override_review_status = review_status,
+      override_notes = notes
+    )
+  ]
+
+  if (anyDuplicated(ready$species_key)) {
+    duplicated_keys <- unique(ready$species_key[duplicated(ready$species_key)])
+    stop(glue("Manual BIEN override table has duplicate ready species_key value(s): {paste(duplicated_keys, collapse = ', ')}"))
+  }
+
+  ready
 }
 
 query_bien_batch <- function(names_batch) {
@@ -146,8 +196,29 @@ cat("=============================\n\n")
 
 species_universe <- as.data.table(read_parquet(species_universe_path))
 to_check <- species_universe[needs_niche == TRUE & has_scientific_name == TRUE]
-to_check[, bien_query_name := make_bien_query_name(scientific_name)]
 to_check <- unique(to_check, by = "species_key")
+
+ready_overrides <- read_ready_overrides(override_path)
+to_check <- merge(to_check, ready_overrides, by = "species_key", all.x = TRUE)
+to_check[, original_bien_query_name := make_bien_query_name(scientific_name)]
+to_check[, bien_query_scientific_name := fifelse(
+  !is.na(recommended_bien_name) & trimws(recommended_bien_name) != "",
+  recommended_bien_name,
+  scientific_name
+)]
+to_check[, bien_query_name := make_bien_query_name(bien_query_scientific_name)]
+to_check[, uses_manual_bien_override := !is.na(recommended_bien_name) & trimws(recommended_bien_name) != ""]
+to_check[, manual_bien_override_name := fifelse(uses_manual_bien_override, recommended_bien_name, NA_character_)]
+
+if (nrow(ready_overrides) > 0) {
+  unused_overrides <- ready_overrides[!species_key %in% to_check$species_key]
+  if (nrow(unused_overrides) > 0) {
+    fwrite(
+      unused_overrides,
+      file.path(qa_dir, if (!is_smoke_run) "manual_bien_overrides_unused.csv" else sprintf("manual_bien_overrides_unused_limit_%d.csv", limit_arg))
+    )
+  }
+}
 
 if (!is.na(limit_arg)) {
   to_check <- head(to_check, limit_arg)
@@ -158,6 +229,7 @@ name_batches <- split(unique_names, ceiling(seq_along(unique_names) / batch_size
 
 cat(glue("Species to check: {format(nrow(to_check), big.mark = ',')}"), "\n")
 cat(glue("Unique BIEN names: {format(length(unique_names), big.mark = ',')}"), "\n")
+cat(glue("Manual ready overrides applied: {format(sum(to_check$uses_manual_bien_override, na.rm = TRUE), big.mark = ',')}"), "\n")
 cat(glue("Batches: {length(name_batches)}"), "\n\n")
 
 results <- vector("list", length(name_batches))
@@ -200,7 +272,11 @@ availability[, range_review_reason := fifelse(
 setcolorder(availability, c(
   "species_key", "source_code_system", "source_species_code",
   "scientific_name", "common_name", "genus", "specific_epithet",
-  "community_layers", "growth_habits", "bien_query_name",
+  "community_layers", "growth_habits",
+  "original_bien_query_name", "bien_query_scientific_name",
+  "bien_query_name", "uses_manual_bien_override",
+  "manual_bien_override_name", "override_decision",
+  "override_confidence", "override_review_status",
   "bien_range_available", "range_lookup_status", "range_match_status",
   "needs_range_review", "range_review_reason", "range_lookup_error"
 ))
@@ -214,6 +290,8 @@ summary <- availability[, .(
   n_missing = sum(!bien_range_available & range_lookup_status != "api_error"),
   n_api_error = sum(range_lookup_status == "api_error"),
   n_needs_review = sum(needs_range_review),
+  n_manual_overrides = sum(uses_manual_bien_override, na.rm = TRUE),
+  n_manual_overrides_available = sum(uses_manual_bien_override & bien_range_available, na.rm = TRUE),
   pct_available = round(100 * mean(bien_range_available), 1)
 )]
 fwrite(summary, file.path(qa_dir, if (!is_smoke_run) "bien_range_availability_summary.csv" else sprintf("bien_range_availability_summary_limit_%d.csv", limit_arg)))
@@ -227,6 +305,21 @@ fwrite(by_layer, file.path(qa_dir, if (!is_smoke_run) "bien_range_availability_b
 
 missing_species <- availability[needs_range_review == TRUE]
 fwrite(missing_species, file.path(qa_dir, if (!is_smoke_run) "bien_range_missing_species.csv" else sprintf("bien_range_missing_species_limit_%d.csv", limit_arg)))
+
+manual_override_audit <- availability[
+  uses_manual_bien_override == TRUE,
+  .(
+    species_key, source_code_system, source_species_code,
+    scientific_name, common_name, original_bien_query_name,
+    manual_bien_override_name, bien_query_name,
+    override_decision, override_confidence, override_review_status,
+    bien_range_available, range_lookup_status, range_review_reason
+  )
+]
+fwrite(
+  manual_override_audit,
+  file.path(qa_dir, if (!is_smoke_run) "manual_bien_overrides_applied.csv" else sprintf("manual_bien_overrides_applied_limit_%d.csv", limit_arg))
+)
 
 metadata_script <- here("scripts/utils/parquet_metadata.R")
 if (file.exists(metadata_script) && !is_smoke_run) {

@@ -1,0 +1,12 @@
+priority,tnrs_review_class,n_species,total_cwm_missing_weight
+high,synonym_candidate,2,5152588.755186
+medium,accepted_name_but_no_bien_range,2,879117.866195
+low,accepted_name_but_no_bien_range,71,441545.513107
+low,not_in_tnrs_file,1,37332.710593
+low,parent_species_candidate,5,17017.119113
+low,synonym_candidate,21,116571.014138
+documentation,accepted_name_but_no_bien_range,465,0
+documentation,low_score_review,64,0
+documentation,not_in_tnrs_file,1,0
+documentation,parent_species_candidate,521,0
+documentation,synonym_candidate,527,0

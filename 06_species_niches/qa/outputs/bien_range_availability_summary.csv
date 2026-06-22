@@ -1,2 +1,2 @@
-n_species,n_available,n_missing,n_api_error,n_needs_review,pct_available
-5894,4214,1680,0,1680,71.5
+n_species,n_available,n_missing,n_api_error,n_needs_review,n_manual_overrides,n_manual_overrides_available,pct_available
+5894,4216,1678,0,1678,2,2,71.5
