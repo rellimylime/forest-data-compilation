@@ -1,6 +1,6 @@
 # FIA - Forest Inventory and Analysis
 
-**Navigation:** [Repo Home](../README.md) | [Docs Hub](../docs/README.md) | [Setup](../scripts/SETUP.md) | [Reproduce](../docs/REPRODUCE.md) | [Pipeline Map](../docs/PIPELINE_MAP.md) | [Data Products](../docs/DATA_PRODUCTS.md) | [Technical Workflow](WORKFLOW.md) | [Scripts](scripts/)
+**Navigation:** [Repo Home](../README.md) | [Docs Hub](../docs/README.md) | [Setup](../scripts/SETUP.md) | [Reproduce](../docs/REPRODUCE.md) | [Pipeline Map](../docs/PIPELINE_MAP.md) | [Data Products](../docs/DATA_PRODUCTS.md) | [FIA Visual Explainer](../docs/fia-explorer.html) | [Technical Workflow](WORKFLOW.md) | [Scripts](scripts/)
 
 ## What this workstream does
 
@@ -15,6 +15,9 @@ Use this workstream if you need:
 - species and forest-type lookup tables
 - per-state parquet partitions for tree, condition, seedling, mortality, damage-agent, and harvest-flag data
 - monthly TerraClimate at FIA site locations
+
+If you are still getting oriented to FIA plot layout, subplots, microplots, or
+FIADB table grain, start with the static [FIA visual explainer](../docs/fia-explorer.html).
 
 ## Quick facts
 
@@ -118,6 +121,7 @@ The repo keeps the parent output folders in git, while the deeper `state={ST}/` 
 | If you want... | Go to... |
 |---|---|
 | per-script technical detail and field definitions | [WORKFLOW.md](WORKFLOW.md) |
+| visual explanation of plot design and FIADB table grain | [docs/fia-explorer.html](../docs/fia-explorer.html) |
 | exact reproduction order | [docs/REPRODUCE.md](../docs/REPRODUCE.md) |
 | output inventory | [docs/DATA_PRODUCTS.md](../docs/DATA_PRODUCTS.md) |
 | shared climate architecture for the optional site-climate step | [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md) |
@@ -125,6 +129,7 @@ The repo keeps the parent output folders in git, while the deeper `state={ST}/` 
 ## See also
 
 - [Docs Hub](../docs/README.md)
+- [FIA Visual Explainer](../docs/fia-explorer.html)
 - [Technical Workflow](WORKFLOW.md)
 - [Data Products](../docs/DATA_PRODUCTS.md)
 - [Pipeline Map](../docs/PIPELINE_MAP.md)
