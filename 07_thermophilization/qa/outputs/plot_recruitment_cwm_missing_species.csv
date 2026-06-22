@@ -1,25 +1,35 @@
 species_key,SPCD,scientific_name,common_name,n_condition_rows,treecount_total,treecount_calc_total,seedlings_tpa,cwm_weight_total
 fia_spcd:356,356,Amelanchier spp.,serviceberry spp.,36509,178922,178866,13377854.503425,13377854.503425
-fia_spcd:832,832,Quercus prinus,chestnut oak,10415,44295,44192,3279806.069154,3279806.069154
 fia_spcd:500,500,Crataegus spp.,hawthorn spp.,13824,39421,39345,2930018.059885,2930018.059885
-fia_spcd:42,42,Chamaecyparis nootkatensis,Alaska yellow-cedar,1212,24982,24982,1872782.686032,1872782.686032
+fia_spcd:431,431,Chrysolepis chrysophylla var. chrysophylla,"giant chinkapin, golden chinkapin",1198,10112,10112,758048.935864,758048.935864
 fia_spcd:694,694,Nyssa biflora,swamp tupelo,3200,9470,9470,709921.223758,709921.223758
+fia_spcd:381,381,Sideroxylon lanuginosum ssp. lanuginosum,gum bumelia,2555,8150,8150,610967.051149,610967.051149
+fia_spcd:18,18,Abies lasiocarpa var. arizonica,corkbark fir,430,4823,4823,361557.557146,361557.557146
 fia_spcd:920,920,Salix spp.,willow spp.,372,3235,3226,241313.244133,241313.244133
 fia_spcd:660,660,Malus spp.,apple spp.,1012,3167,3167,235091.125468,235091.125468
+fia_spcd:463,463,Celtis laevigata var. reticulata,netleaf hackberry,673,2901,2901,217474.2842,217474.2842
 fia_spcd:760,760,Prunus spp.,Prunus,740,2542,2542,190036.990815,190036.990815
+fia_spcd:747,747,Populus balsamifera ssp. trichocarpa,black cottonwood,331,2336,2336,176643.599529,176643.599529
+fia_spcd:919,919,Sapindus saponaria var. drummondii,western soapberry,346,2317,2317,173694.559375,173694.559375
 fia_spcd:7783,7783,Metrosideros polymorpha,ohia lehua,188,2257,2257,169196.642437,169196.642437
 fia_spcd:999,999,Tree unknown,other or unknown live tree,361,1506,1505,107350.284376,107350.284376
 fia_spcd:6547,6547,Cibotium glaucum,hapuu,152,1143,1143,85685.317794,85685.317794
 fia_spcd:501,501,Crataegus crus-galli,cockspur hawthorn,342,837,837,62745.941305,62745.941305
 fia_spcd:8421,8421,Pyrus calleryana,Callery pear,295,708,708,53075.41987,53075.41987
+fia_spcd:143,143,Pinus monophylla var. fallax,Arizona pinyon pine,222,631,631,47303.093147,47303.093147
 fia_spcd:53,53,Cupressus forbesii,Tecate cypress,2,562,562,42130.488737,42130.488737
+fia_spcd:745,745,Populus deltoides ssp. monilifera,plains cottonwood,24,550,550,41230.905343,41230.905343
 fia_spcd:998,998,Tree broadleaf,unknown dead hardwood,225,498,498,37332.710593,37332.710593
+fia_spcd:8487,8487,Quercus sinuata var. breviloba,bastard oak,47,494,494,37032.849522,37032.849522
 fia_spcd:6514,6514,Cheirodendron trigynum,olapalapa,78,441,441,33059.689537,33059.689537
 fia_spcd:323,323,Acer leucoderme,chalk maple,90,410,410,30735.765784,30735.765784
+fia_spcd:67,67,Juniperus virginiana var. silicicola,southern redcedar,138,374,374,28037.015586,28037.015586
 fia_spcd:6004,6004,Acacia confusa,small Philippine acacia,10,363,363,27212.397527,27212.397527
 fia_spcd:580,580,Halesia spp.,silverbell spp.,134,361,361,27062.466916,27062.466916
+fia_spcd:808,808,Quercus sinuata var. sinuata,Durand oak,64,318,318,23838.959799,23838.959799
 fia_spcd:6548,6548,Cibotium menziesii,hapuu li,81,307,307,23014.341677,23014.341677
 fia_spcd:571,571,Gymnocladus dioicus,Kentucky coffeetree,104,282,282,21065.244344,21065.244344
+fia_spcd:334,334,Aesculus glabra var. arguta,Texas buckeye,81,258,258,19341.042849,19341.042849
 fia_spcd:7926,7926,Myrsine sandwicensis,kokea lau lii,40,247,247,18516.424743,18516.424743
 fia_spcd:7724,7724,Melicope clusiifolia,kukaemoa,38,223,223,16717.257975,16717.257975
 fia_spcd:6260,6260,Broussaisia arguta,kanawao,34,222,222,16642.292692,16642.292692
@@ -32,10 +42,12 @@ fia_spcd:400,400,Carya spp.,hickory spp.,90,181,181,12594.167424,12594.167424
 fia_spcd:915,915,Areca spp.,other palms,41,164,164,12294.306314,12294.306314
 fia_spcd:70,70,Larix spp.,larch spp.,33,164,164,12294.306312,12294.306312
 fia_spcd:860,860,Citrus spp.,citrus spp.,41,153,153,11469.688207,11469.688207
+fia_spcd:953,953,Tilia americana var. caroliniana,Carolina basswood,54,151,151,11319.757635,11319.757635
 fia_spcd:57,57,Juniperus spp.,redcedar/juniper spp.,51,149,149,11169.827073,11169.827073
 fia_spcd:7922,7922,Myrsine lessertiana,kolea lau nui,41,136,136,10195.278398,10195.278398
 fia_spcd:412,412,Carya ovalis,red hickory,62,134,134,10045.347827,10045.347827
 fia_spcd:7453,7453,Ilex anomala,Hawaii holly,46,130,130,9745.486701,9745.486701
+fia_spcd:423,423,Castanea pumila var. ozarkensis,Ozark chinkapin,93,126,126,9445.625555,9445.625555
 fia_spcd:970,970,Ulmus spp.,elm spp.,31,111,111,8171.215776,8171.215776
 fia_spcd:8641,8641,Sophora chrysophylla,mamani,18,95,95,7121.701825,7121.701825
 fia_spcd:800,800,Quercus spp.,oak spp.,28,89,89,6671.910133,6671.910133
@@ -47,6 +59,7 @@ fia_spcd:6006,6006,Acacia koa,koa,23,60,60,4497.916941,4497.916941
 fia_spcd:460,460,Celtis spp.,hackberry spp.,27,59,59,4422.951657,4422.951657
 fia_spcd:740,740,Populus spp.,cottonwood and poplar spp.,21,51,51,3823.229398,3823.229398
 fia_spcd:650,650,Magnolia spp.,magnolia spp.,36,84,84,3748.264115,3748.264115
+fia_spcd:952,952,Tilia americana var. heterophylla,white basswood,33,54,54,3673.298828,3673.298828
 fia_spcd:8344,8344,Prosopis pallida,kiawe,9,46,46,3448.40299,3448.40299
 fia_spcd:513,513,Eucalyptus grandis,grand eucalyptus,9,44,44,3298.472425,3298.472425
 fia_spcd:6724,6724,Coprosma spp.,mirrorplant,12,43,43,3223.507141,3223.507141
@@ -58,7 +71,6 @@ fia_spcd:413,413,Carya carolinae-septentrionalis,southern shagbark hickory,14,28
 fia_spcd:6483,6483,Chamaesyce celastroides,ekoko,2,27,27,2024.062626,2024.062626
 fia_spcd:8400,8400,Psychotria spp.,wild coffee,4,27,27,2024.062625,2024.062625
 fia_spcd:8296,8296,Poncirus trifoliata,hardy orange,7,27,27,2024.062624,2024.062624
-fia_spcd:6010,6010,Acacia mearnsii,black wattle,3,26,26,1949.097344,1949.097344
 fia_spcd:6546,6546,Cibotium chamissoi,Chamissos manfern,9,26,26,1949.097341,1949.097341
 fia_spcd:8373,8373,Psychotria hawaiiensis,kopikoula,16,24,24,1799.166773,1799.166773
 fia_spcd:6496,6496,Chamaesyce spp.,sandmat,1,23,23,1724.201496,1724.201496
@@ -101,17 +113,14 @@ fia_spcd:7883,7883,Myoporum sandwicense,naio,6,9,9,674.687539,674.687539
 fia_spcd:8365,8365,Psychotria fauriei,Koolau Range wild coffee,2,8,8,599.722259,599.722259
 fia_spcd:7344,7344,Hedyotis hillebrandii,manono,5,8,8,599.722258,599.722258
 fia_spcd:729,729,Platanus spp.,sycamore spp.,1,7,7,524.756977,524.756977
-fia_spcd:8085,8085,Pandanus tectorius,Tahitian screwpine,2,7,7,524.756977,524.756977
 fia_spcd:8708,8708,Syzygium spp.,syzygium,1,7,7,524.756977,524.756977
 fia_spcd:8755,8755,Terminalia kaernbachii,tropical almond,1,7,7,524.756977,524.756977
 fia_spcd:8895,8895,Wikstroemia phillyreifolia,Hawaii false ohelo,2,7,7,524.756977,524.756977
 fia_spcd:8899,8899,Wikstroemia spp.,false ohelo,3,7,7,524.756977,524.756977
-fia_spcd:7144,7144,Falcataria moluccana,peacocksplume,5,7,7,524.756975,524.756975
 fia_spcd:6058,6058,Albizia falcataria,ukall ra ngebard,1,6,6,449.791695,449.791695
 fia_spcd:6159,6159,Archontophoenix alexandrae,Alexandra palm,2,6,6,449.791695,449.791695
 fia_spcd:7729,7729,Melicope hawaiensis,mokihana kukae moa,2,6,6,449.791695,449.791695
 fia_spcd:8212,8212,Pisonia brunoniana,Australasian catchbirdtree,1,6,6,449.791695,449.791695
-fia_spcd:7805,7805,Miconia calvescens,velvet tree,2,6,6,449.791694,449.791694
 fia_spcd:8944,8944,Zanthoxylum clava-herculis,Hercules' club,5,6,6,449.791693,449.791693
 fia_spcd:137,137,Pinus washoensis,Washoe pine,4,5,5,374.826411,374.826411
 fia_spcd:450,450,Catalpa spp.,catalpa spp.,6,6,6,374.82641,374.82641
@@ -138,13 +147,11 @@ fia_spcd:8388,8388,Psychotria kaduana,kopiko kea,1,2,2,149.930565,149.930565
 fia_spcd:857,857,Casuarina lepidophloia,belah,1,2,2,149.930565,149.930565
 fia_spcd:8738,8738,Taxus baccata,English yew,1,2,2,149.930565,149.930565
 fia_spcd:683,683,Morus microphylla,Texas mulberry,2,2,2,149.930564,149.930564
-fia_spcd:7978,7978,Ochna thomasiana,Thomas birds-eye bush,1,2,2,149.930564,149.930564
 fia_spcd:8831,8831,Trema orientalis,oriental trema,2,2,2,149.930564,149.930564
 fia_spcd:909,909,Roystonea spp.,royal palm spp.,2,2,2,149.930564,149.930564
 fia_spcd:220,220,Taxodium spp.,baldcypress spp.,1,1,1,74.965282,74.965282
 fia_spcd:378,378,Betula x utahensis,northwestern paper birch,1,1,1,74.965282,74.965282
 fia_spcd:5800,5800,Cupressocyparis leylandii,Leyland cypress,1,1,1,74.965282,74.965282
-fia_spcd:6111,6111,Anadenanthera peregrina,Anadenanthera peregrina,1,1,1,74.965282,74.965282
 fia_spcd:6143,6143,Antidesma pulvinatum,hame,1,1,1,74.965282,74.965282
 fia_spcd:6286,6286,Buddleja asiatica,dogtail,1,1,1,74.965282,74.965282
 fia_spcd:6396,6396,Carica spp.,papaya,1,1,1,74.965282,74.965282

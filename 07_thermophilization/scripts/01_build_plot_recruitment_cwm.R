@@ -21,6 +21,7 @@
 #   Rscript 07_thermophilization/scripts/01_build_plot_recruitment_cwm.R --limit=100
 #   Rscript 07_thermophilization/scripts/01_build_plot_recruitment_cwm.R --weight=treecount_total
 #   Rscript 07_thermophilization/scripts/01_build_plot_recruitment_cwm.R --range-scope=global
+#   Rscript 07_thermophilization/scripts/01_build_plot_recruitment_cwm.R --range-scope=us_study_area_with_global_fallback
 # ==============================================================================
 
 suppressPackageStartupMessages({
@@ -59,14 +60,15 @@ if (!is.na(limit_arg)) limit_arg <- as.integer(limit_arg)
 is_smoke_run <- !is.na(limit_arg)
 
 weight_col <- get_arg("--weight", "seedlings_tpa")
-range_scope <- get_arg("--range-scope", "us_study_area")
+range_scope <- get_arg("--range-scope", "us_study_area_with_global_fallback")
+analysis_range_scope <- range_scope
 
 allowed_weights <- c("seedlings_tpa", "treecount_calc_total", "treecount_total", "presence")
 if (!weight_col %in% allowed_weights) {
   stop(glue("--weight must be one of: {paste(allowed_weights, collapse = ', ')}"))
 }
 
-allowed_range_scopes <- c("global", "us_study_area")
+allowed_range_scopes <- c("global", "us_study_area", "us_study_area_with_global_fallback")
 if (!range_scope %in% allowed_range_scopes) {
   stop(glue("--range-scope must be one of: {paste(allowed_range_scopes, collapse = ', ')}"))
 }
@@ -88,12 +90,16 @@ qa_dir <- if (is_smoke_run) {
 }
 
 seedling_species_path <- file.path(fia_summary_dir, "plot_seedling_species.parquet")
-niche_file <- if (range_scope == "global") {
-  config$processed$species_niches$files$species_climate_niches
-} else {
-  sprintf("species_climate_niches_%s.parquet", range_scope)
-}
-niche_path <- file.path(niche_dir, niche_file)
+study_area_niche_path <- file.path(niche_dir, "species_climate_niches_us_study_area.parquet")
+global_niche_path <- file.path(niche_dir, config$processed$species_niches$files$species_climate_niches)
+availability_path <- file.path(niche_dir, config$processed$species_niches$files$bien_range_availability)
+
+niche_path <- switch(
+  range_scope,
+  "global" = global_niche_path,
+  "us_study_area" = study_area_niche_path,
+  "us_study_area_with_global_fallback" = study_area_niche_path
+)
 
 out_file <- file.path(
   if (is_smoke_run) smoke_data_dir else thermo_dir,
@@ -106,7 +112,7 @@ out_file <- file.path(
 
 qa_suffix <- if (is_smoke_run) {
   sprintf("%s_limit_%d", range_scope, limit_arg)
-} else if (range_scope != "us_study_area") {
+} else if (range_scope != "us_study_area_with_global_fallback") {
   range_scope
 } else {
   ""
@@ -133,6 +139,12 @@ if (!file.exists(seedling_species_path)) {
 }
 if (!file.exists(niche_path)) {
   stop(glue("Species climate niche table not found: {niche_path}"))
+}
+if (range_scope == "us_study_area_with_global_fallback" && !file.exists(global_niche_path)) {
+  stop(glue("Global species climate niche table not found for fallback mode: {global_niche_path}"))
+}
+if (range_scope == "us_study_area_with_global_fallback" && !file.exists(availability_path)) {
+  stop(glue("BIEN availability table not found for fallback mode: {availability_path}"))
 }
 
 # ------------------------------------------------------------------------------
@@ -197,12 +209,45 @@ cat("Plot Recruitment CWM Build\n")
 cat("==========================\n\n")
 cat(glue("Seedling species input: {seedling_species_path}"), "\n")
 cat(glue("Species niche input:    {niche_path}"), "\n")
+if (range_scope == "us_study_area_with_global_fallback") {
+  cat(glue("Global fallback input:  {global_niche_path}"), "\n")
+}
 cat(glue("Range scope:            {range_scope}"), "\n")
 cat(glue("Weighting:              {weight_col}"), "\n")
 cat(glue("Output:                 {out_file}"), "\n\n")
 
 seedlings <- as.data.table(read_parquet(seedling_species_path))
 niches <- as.data.table(read_parquet(niche_path))
+
+if (range_scope == "us_study_area_with_global_fallback") {
+  availability <- as.data.table(read_parquet(availability_path))
+  current_bien_available_keys <- availability[
+    as.logical(bien_range_available) == TRUE,
+    unique(species_key)
+  ]
+
+  global_niches <- as.data.table(read_parquet(global_niche_path))
+  global_fallback <- global_niches[
+    species_key %in% current_bien_available_keys &
+      !species_key %in% niches$species_key
+  ]
+
+  niches[, `:=`(
+    niche_scope_used = "us_study_area",
+    niche_fallback_reason = NA_character_
+  )]
+  global_fallback[, `:=`(
+    niche_scope_used = "global_fallback",
+    niche_fallback_reason = "no_study_area_niche"
+  )]
+
+  niches <- rbindlist(list(niches, global_fallback), fill = TRUE, use.names = TRUE)
+} else {
+  niches[, `:=`(
+    niche_scope_used = range_scope,
+    niche_fallback_reason = NA_character_
+  )]
+}
 
 if (!"SPCD" %in% names(seedlings)) {
   stop("Seedling species table must contain SPCD.")
@@ -301,7 +346,7 @@ niche_keep_cols <- intersect(
     "species_key", "source_code_system", "source_species_code",
     "scientific_name", "common_name", "community_layers",
     "climate_period", "climate_source", "range_source", "range_scope",
-    "niche_method", indicator_cols
+    "niche_scope_used", "niche_fallback_reason", "niche_method", indicator_cols
   ),
   names(niches)
 )
@@ -328,8 +373,12 @@ cwm <- joined[
     treecount_calc_with_niche = as.numeric(sum(ifelse(has_niche, treecount_calc_total, 0.0), na.rm = TRUE)),
     seedlings_tpa_total = as.numeric(sum(seedlings_tpa, na.rm = TRUE)),
     seedlings_tpa_with_niche = as.numeric(sum(ifelse(has_niche, seedlings_tpa, 0.0), na.rm = TRUE)),
+    seedlings_tpa_with_study_area_niche = as.numeric(sum(ifelse(has_niche & niche_scope_used == "us_study_area", seedlings_tpa, 0.0), na.rm = TRUE)),
+    seedlings_tpa_with_global_fallback_niche = as.numeric(sum(ifelse(has_niche & niche_scope_used == "global_fallback", seedlings_tpa, 0.0), na.rm = TRUE)),
     cwm_weight_total = as.numeric(sum(cwm_weight, na.rm = TRUE)),
     cwm_weight_with_niche = as.numeric(sum(ifelse(has_niche, cwm_weight, 0.0), na.rm = TRUE)),
+    cwm_weight_with_study_area_niche = as.numeric(sum(ifelse(has_niche & niche_scope_used == "us_study_area", cwm_weight, 0.0), na.rm = TRUE)),
+    cwm_weight_with_global_fallback_niche = as.numeric(sum(ifelse(has_niche & niche_scope_used == "global_fallback", cwm_weight, 0.0), na.rm = TRUE)),
     cwm_temp = weighted_mean_or_na(tmean_annual_mean, cwm_weight),
     cwm_heat = weighted_mean_or_na(tmean_warmest_month_mean, cwm_weight),
     cwm_cold = weighted_mean_or_na(tmean_coldest_month_mean, cwm_weight),
@@ -341,7 +390,8 @@ cwm <- joined[
     climate_period = first_nonmissing_character(climate_period),
     climate_source = first_nonmissing_character(climate_source),
     range_source = first_nonmissing_character(range_source),
-    range_scope = first_nonmissing_character(range_scope),
+    range_scope = analysis_range_scope,
+    niche_scopes_used = paste(sort(unique(niche_scope_used[has_niche])), collapse = ";"),
     niche_method = first_nonmissing_character(niche_method)
   ),
   by = condition_cols
@@ -360,6 +410,16 @@ cwm[, frac_seedling_species_with_niche := fifelse(
   NA_real_
 )]
 cwm[, weight_column := weight_col]
+cwm[, frac_weight_with_global_fallback_niche := fifelse(
+  cwm_weight_total > 0,
+  cwm_weight_with_global_fallback_niche / cwm_weight_total,
+  NA_real_
+)]
+cwm[, frac_weight_with_study_area_niche := fifelse(
+  cwm_weight_total > 0,
+  cwm_weight_with_study_area_niche / cwm_weight_total,
+  NA_real_
+)]
 
 setcolorder(
   cwm,
@@ -367,12 +427,13 @@ setcolorder(
     condition_cols,
     "weight_column",
     "range_scope",
+    "niche_scopes_used",
     "climate_period",
     "climate_source",
     "range_source",
     "niche_method",
     setdiff(names(cwm), c(
-      condition_cols, "weight_column", "range_scope", "climate_period",
+      condition_cols, "weight_column", "range_scope", "niche_scopes_used", "climate_period",
       "climate_source", "range_source", "niche_method"
     ))
   )
@@ -392,6 +453,8 @@ summary <- data.table(
     "median_frac_weight_with_niche",
     "p10_frac_weight_with_niche",
     "n_condition_rows_below_95pct_niche_coverage"
+    ,"n_condition_rows_using_global_fallback"
+    ,"median_frac_weight_with_global_fallback_niche"
   ),
   value = c(
     nrow(cwm),
@@ -401,7 +464,9 @@ summary <- data.table(
     uniqueN(joined[has_niche == FALSE, SPCD]),
     stats::median(cwm$frac_weight_with_niche, na.rm = TRUE),
     as.numeric(stats::quantile(cwm$frac_weight_with_niche, 0.10, na.rm = TRUE)),
-    sum(cwm$frac_weight_with_niche < 0.95, na.rm = TRUE)
+    sum(cwm$frac_weight_with_niche < 0.95, na.rm = TRUE),
+    sum(cwm$cwm_weight_with_global_fallback_niche > 0, na.rm = TRUE),
+    stats::median(cwm$frac_weight_with_global_fallback_niche, na.rm = TRUE)
   )
 )
 summary[, `:=`(
@@ -417,7 +482,9 @@ state_coverage <- cwm[
     n_condition_rows_with_cwm = sum(!is.na(cwm_temp)),
     median_frac_weight_with_niche = stats::median(frac_weight_with_niche, na.rm = TRUE),
     p10_frac_weight_with_niche = as.numeric(stats::quantile(frac_weight_with_niche, 0.10, na.rm = TRUE)),
-    n_condition_rows_below_95pct_niche_coverage = sum(frac_weight_with_niche < 0.95, na.rm = TRUE)
+    n_condition_rows_below_95pct_niche_coverage = sum(frac_weight_with_niche < 0.95, na.rm = TRUE),
+    n_condition_rows_using_global_fallback = sum(cwm_weight_with_global_fallback_niche > 0, na.rm = TRUE),
+    median_frac_weight_with_global_fallback_niche = stats::median(frac_weight_with_global_fallback_niche, na.rm = TRUE)
   ),
   by = state
 ][order(state)]
