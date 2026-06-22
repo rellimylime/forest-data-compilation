@@ -1,3 +1,0 @@
-"species_key","bien_query_name","failure_stage","failure_reason","climate_period","variables","simplify_tolerance_deg","failure_time"
-"fia_spcd:771","Prunus_avium","terraclimate_range_extraction","ee.ee_exception.EEException: An internal error has occurred (request: 86e619f0-7108-4b13-a209-aa4ba2277911) (computation: ""BLQH24NPFV2YKTCUGBFBVUC6"")
-Run `reticulate::py_last_error()` for details.","1981-2010","tmmx,tmmn,pr,def,pet,aet",0,"2026-06-02 22:15:36.467706"

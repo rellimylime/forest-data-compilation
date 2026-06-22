@@ -52,6 +52,10 @@ docs/
 !05_fia/docs/fia_data_dashboard.py
 !05_fia/docs/build_fiadb_user_guide_index.py
 !05_fia/docs/fiadb_user_guide_index_v94.json
+!06_species_niches/docs/
+!06_species_niches/docs/**
+!07_thermophilization/docs/
+!07_thermophilization/docs/**
 # translation temp files
 po/*~
 
@@ -85,10 +89,17 @@ rsconnect/
 # site_climate.parquet and site_pixel_map.parquet are intentionally NOT un-ignored:
 # the national extraction is 5.85 GB, well over GitHub's 100 MB hard limit.
 
-# Processed outputs (cross-dataset derived products)
-processed/**
-!processed/**/
-!processed/**/.gitkeep
+# Root processed outputs are legacy/local-only. Active modules keep their own
+# data directories and documented output locations.
+processed/
+
+# Archived or local-only material. Keep locally if useful, but do not publish
+# in the polished repo.
+archive/**
+output/**
+logs/**
+tree.txt
+site_climate_extract.log
 
 # Species niche smoke-test outputs: useful local history, not commit material.
 06_species_niches/qa/smoke/**
@@ -97,6 +108,32 @@ processed/**
 06_species_niches/data/smoke/**
 !06_species_niches/data/smoke/
 !06_species_niches/data/smoke/.gitkeep
+
+# Species niche QA outputs: keep official summaries trackable, but leave
+# detailed ledgers, queues, rankings, and diagnostics as local regenerated
+# artifacts.
+06_species_niches/qa/outputs/**
+!06_species_niches/qa/outputs/
+!06_species_niches/qa/outputs/.gitkeep
+!06_species_niches/qa/outputs/species_universe_metrics.csv
+!06_species_niches/qa/outputs/species_universe_layer_counts.csv
+!06_species_niches/qa/outputs/species_universe_bad_genus_targets.csv
+!06_species_niches/qa/outputs/species_universe_pseudo_taxa.csv
+!06_species_niches/qa/outputs/bien_range_availability_summary.csv
+!06_species_niches/qa/outputs/bien_range_availability_by_layer.csv
+!06_species_niches/qa/outputs/bien_range_missing_species.csv
+!06_species_niches/qa/outputs/manual_bien_overrides_applied.csv
+!06_species_niches/qa/outputs/species_range_climate_summary.csv
+!06_species_niches/qa/outputs/species_range_climate_summary_us_study_area.csv
+!06_species_niches/qa/outputs/species_climate_niches_summary.csv
+!06_species_niches/qa/outputs/species_climate_niches_summary_us_study_area.csv
+!06_species_niches/qa/outputs/species_niche_validation_decision.csv
+!06_species_niches/qa/outputs/species_niche_validation_summary.csv
+!06_species_niches/qa/outputs/species_niche_validation_checks.csv
+!06_species_niches/qa/outputs/species_niche_gap_summary.csv
+!06_species_niches/qa/outputs/species_niche_gap_action_summary.csv
+!06_species_niches/qa/outputs/study_area_climate_gap_summary.csv
+!06_species_niches/qa/outputs/tnrs_bien_missing_name_review_summary.csv
 
 # Thermophilization smoke-test outputs: useful local history, not commit material.
 07_thermophilization/qa/smoke/**

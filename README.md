@@ -2,13 +2,17 @@
 
 **Navigation:** [Docs Hub](docs/README.md) | [Setup](scripts/SETUP.md) | [Reproduce](docs/REPRODUCE.md) | [Pipeline Map](docs/PIPELINE_MAP.md) | [Data Products](docs/DATA_PRODUCTS.md) | [Dashboard](docs/dashboard/)
 
-Compiled and cleaned forest disturbance, climate, and inventory datasets for analysis. The repository contains two active production paths plus one archived reference path:
+Compiled and cleaned forest disturbance, climate, inventory, species-niche, and
+thermophilization datasets for analysis. The repository contains these active
+production paths:
 
 - `IDS + climate`: clean USDA Forest Service Insect and Disease Survey data, then extract TerraClimate, PRISM, or WorldClim climate values at IDS locations.
 - `FIA`: compile Forest Inventory and Analysis plot data into analysis-ready forest structure, disturbance, treatment, and site-climate outputs.
-- `archive/05_era5`: archived ERA5 extraction code and directory skeleton retained for reference, not part of the current production run order.
+- `Species niches`: build BIEN range-map climate niches for FIA/P2VEG species.
+- `Thermophilization`: join species niches to FIA recruitment composition and build community-weighted climate-affinity summaries.
 
-A minimal server-aligned `data/` and `processed/` skeleton is kept in git with `.gitkeep` placeholders where the real raw or intermediate files are too large to store in the repository.
+Module-level `data/` directories keep `.gitkeep` placeholders where useful, but
+large raw, intermediate, and generated outputs are kept out of git.
 
 ## Start Here
 
@@ -28,7 +32,8 @@ If you want a specific workstream right away:
 - [PRISM overview](03_prism/README.md)
 - [WorldClim overview](04_worldclim/README.md)
 - [FIA overview](05_fia/README.md)
-- [Archived ERA5 reference](archive/05_era5/README.md)
+- [Species niche overview](06_species_niches/README.md)
+- [Thermophilization overview](07_thermophilization/README.md)
 
 ## Workstreams
 
@@ -39,7 +44,8 @@ If you want a specific workstream right away:
 | `03_prism/` | Extract monthly PRISM climate values for CONUS IDS observations | [03_prism/README.md](03_prism/README.md) |
 | `04_worldclim/` | Extract monthly WorldClim values from locally downloaded GeoTIFFs | [04_worldclim/README.md](04_worldclim/README.md) |
 | `05_fia/` | Build FIA plot-level summaries, disturbance/treatment history, and site climate | [05_fia/README.md](05_fia/README.md) |
-| `archive/05_era5/` | Archived ERA5 monthly extraction workflow kept as a reference implementation | [archive/05_era5/README.md](archive/05_era5/README.md) |
+| `06_species_niches/` | Build species-level climate niche indicators from BIEN range maps and TerraClimate | [06_species_niches/README.md](06_species_niches/README.md) |
+| `07_thermophilization/` | Build FIA recruitment CWM products that consume the species niche table | [07_thermophilization/README.md](07_thermophilization/README.md) |
 
 ## At a Glance
 
@@ -50,9 +56,10 @@ flowchart LR
   B --> D[Climate workflows]
   D --> E[Climate outputs]
   C --> F[FIA outputs]
-  E --> G[Demos and dashboard]
-  F --> G
-  B -. archived option .-> H[ERA5 reference workflow]
+  F --> G[Species niches]
+  G --> H[Thermophilization]
+  E --> I[Dashboard and review outputs]
+  H --> I
 ```
 
 ## Reproduction Paths
@@ -73,9 +80,13 @@ flowchart LR
 2. Use [05_fia/WORKFLOW.md](05_fia/WORKFLOW.md) for per-script technical detail.
 3. Use [docs/DATA_PRODUCTS.md](docs/DATA_PRODUCTS.md) to see which outputs are tracked in git, which are local-only, and which directories are placeholders.
 
-### Archived ERA5
+### Species Niches And Thermophilization
 
-Use [archive/05_era5/README.md](archive/05_era5/README.md) only if you need the historical ERA5 extraction reference. It is intentionally excluded from the active production checklist in [docs/REPRODUCE.md](docs/REPRODUCE.md).
+1. Build the species universe and BIEN range-map climate niches with
+   [06_species_niches/README.md](06_species_niches/README.md).
+2. Build FIA recruitment community-weighted means with
+   [07_thermophilization/README.md](07_thermophilization/README.md).
+3. Review the QA summaries in each module before modeling.
 
 ## Key Documents
 
@@ -96,7 +107,7 @@ Use [archive/05_era5/README.md](archive/05_era5/README.md) only if you need the 
 |---|---|
 | [scripts/utils/](scripts/utils/) | Shared utility functions for config loading, time conversion, climate extraction, GEE helpers, and metadata |
 | [scripts/build_climate_summaries.R](scripts/build_climate_summaries.R) | Shared climate summary builder used by TerraClimate, PRISM, and WorldClim |
-| [scripts/demos/](scripts/demos/) | Demo analyses showing how to use outputs after the pipelines are run |
+| [scripts/demos/](scripts/demos/) | Demo analyses showing how to use outputs after the pipelines are run; generated demo outputs are local-only |
 | [docs/dashboard/](docs/dashboard/) | Streamlit dashboard for browsing outputs, schemas, and examples |
 
 ## Current Output Snapshot
@@ -109,12 +120,14 @@ Use [archive/05_era5/README.md](archive/05_era5/README.md) only if you need the 
 | WorldClim summaries | Complete | Local GeoTIFF-based workflow |
 | FIA plot summaries | Complete | Reviewable summary parquets are tracked in git |
 | FIA site climate | Complete | Input template, pixel map, and long-format climate parquet are tracked |
-| ERA5 reference workflow | Archived | Skeleton and documentation kept for reference; not in active production flow |
+| Species niches | Active | BIEN range-map niche workflow with QA summaries and documented missing-data handling |
+| Thermophilization | Active | FIA recruitment CWM products consume the species niche table |
 
 ## See also
 
 - [Docs Hub](docs/README.md)
 - [IDS README](01_ids/README.md)
 - [FIA README](05_fia/README.md)
-- [Archived ERA5 README](archive/05_era5/README.md)
+- [Species Niche README](06_species_niches/README.md)
+- [Thermophilization README](07_thermophilization/README.md)
 - [Pipeline Map](docs/PIPELINE_MAP.md)

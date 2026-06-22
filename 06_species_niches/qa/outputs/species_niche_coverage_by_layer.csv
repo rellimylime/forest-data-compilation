@@ -1,7 +1,0 @@
-layer,n_species_universe,n_species_targets,n_not_targeted,n_bien_available,n_bien_missing,pct_targeted,pct_bien_available_of_targets
-forbs,3533,3159,374,2310,849,89.4,73.1
-graminoids,932,810,122,604,206,86.9,74.6
-p2veg_tree_layers,510,468,42,312,156,91.8,66.7
-seedlings,608,550,58,433,117,90.5,78.7
-shrubs,1522,1356,166,923,433,89.1,68.1
-trees,555,504,51,397,107,90.8,78.8
