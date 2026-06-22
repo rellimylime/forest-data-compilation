@@ -192,17 +192,11 @@ Tracked summary files:
 - `06_species_niches/qa/outputs/tnrs_bien_missing_name_review_summary.csv`
 - `06_species_niches/lookups/manual_bien_name_overrides_reviewed.csv`
 
-The full ledger, action queue, TNRS candidate table, and species-level
-diagnostic files are generated locally in `qa/outputs/` but are intentionally
-ignored by Git to keep commits readable. Regenerate the gap and TNRS review
-outputs any time scripts `01` through `05` are rerun or manual name overrides
-change.
+The full ledger, action queue, TNRS candidate table, and species-level diagnostic files are generated locally in `qa/outputs/` but are intentionally ignored by Git to keep commits readable. Regenerate the gap and TNRS review outputs any time scripts `01` through `05` are rerun or manual name overrides change.
 
 ## Missing Data And Name Review
 
-Several different issues can prevent a source species from getting a usable
-climate niche. They need different responses, so the workflow keeps them
-separate instead of treating all missing values as the same problem.
+Several different issues can prevent a source species from getting a usable climate niche. They need different responses, so the workflow keeps them separate instead of treating all missing values as the same problem.
 
 | Issue | Plain-language meaning | How we handle it |
 | --- | --- | --- |
@@ -213,11 +207,7 @@ separate instead of treating all missing values as the same problem.
 | BIEN range exists, but no study-area climate rows | BIEN has a polygon, but the study-area-clipped TerraClimate extraction produces no rows. | Diagnose whether the BIEN polygon is outside the configured study-area bounding box or whether there is an extraction/geometry issue. Use global fallback only with an explicit flag. |
 | Valid species with no BIEN range | The name appears valid, but BIEN does not provide a range map. | Keep missing, document the impact, or add an alternate range source if the species has high CWM weight. |
 
-TNRS is used as a first-pass taxonomic name-resolution tool. Important TNRS
-fields are the submitted name, match score, taxonomic status, accepted name,
-accepted species, source, warnings, and unmatched terms. TNRS results are
-evidence, not automatic replacements. A reviewed name override should only be
-used by the pipeline when it appears in:
+TNRS is used as a first-pass taxonomic name-resolution tool. Important TNRS fields are the submitted name, match score, taxonomic status, accepted name, accepted species, source, warnings, and unmatched terms. TNRS results are evidence, not automatic replacements. A reviewed name override should only be used by the pipeline when it appears in:
 
 ```text
 06_species_niches/lookups/manual_bien_name_overrides_reviewed.csv
@@ -229,8 +219,7 @@ with:
 review_status = ready_for_pipeline
 ```
 
-Script `02_check_bien_ranges.R` applies only those ready overrides and writes an
-audit table:
+Script `02_check_bien_ranges.R` applies only those ready overrides and writes an audit table:
 
 ```text
 06_species_niches/qa/outputs/manual_bien_overrides_applied.csv
@@ -246,9 +235,7 @@ Current reviewed examples:
 | `Metrosideros polymorpha` | Documented exclusion from the main analysis; valid name but no BIEN range, and alternate Hawaii range source would be needed for a future targeted analysis. |
 | `Acer leucoderme` | Documented exclusion from the main analysis; do not substitute broad `Acer saccharum` because it would over-broaden chalk maple's niche. |
 
-The main CWM models should keep `frac_weight_with_niche` and related coverage
-columns. Low coverage means the community-weighted mean is based on only part of
-the observed seedling community, not that the BIEN range itself is small.
+The main CWM models should keep `frac_weight_with_niche` and related coverage columns. Low coverage means the community-weighted mean is based on only part of the observed seedling community, not that the BIEN range itself is small.
 
 For QA file details behind these categories, see [Species Niche QA: Gap Ledger](qa/README.md#gap-ledger).
 
@@ -290,9 +277,7 @@ Current warning topics to inspect:
 
 ### How The QA Issues Are Organized
 
-The validator uses `error` for broken handoffs and `warning` for issues that
-need scientific review. A warning is not automatically a bad dataset; it means
-the issue must be fixed, filtered, or documented before final modeling.
+The validator uses `error` for broken handoffs and `warning` for issues that need scientific review. A warning is not automatically a bad dataset; it means the issue must be fixed, filtered, or documented before final modeling.
 
 | QA category | What it means | Current state | What to do |
 | --- | --- | --- | --- |
@@ -323,10 +308,7 @@ Not every gap has the same importance.
 
 Downstream scripts must keep coverage columns, such as `frac_weight_with_niche`, so models can filter or flag plot conditions whose community-weighted means rely on incomplete species niche coverage.
 
-The current default CWM mode is `us_study_area_with_global_fallback`: study-area
-niches are used first, and global niches fill only species without study-area
-niches. The CWM product tracks fallback influence with columns such as
-`niche_scopes_used` and `frac_weight_with_global_fallback_niche`.
+The current default CWM mode is `us_study_area_with_global_fallback`: study-area niches are used first, and global niches fill only species without study-area niches. The CWM product tracks fallback influence with columns such as `niche_scopes_used` and `frac_weight_with_global_fallback_niche`.
 
 ## Remote Server Handoff
 

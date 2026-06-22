@@ -654,9 +654,6 @@ def apply_dark_css():
     st.markdown(DARK_CSS, unsafe_allow_html=True)
 
 
-FIA_NAVIGATOR_URL = "http://localhost:8502"
-
-
 def _safe_page_link(container, page: str, label: str) -> None:
     """Render Streamlit page links, with a direct-run fallback for page QA."""
     try:
@@ -679,7 +676,7 @@ def render_top_nav() -> None:
     _safe_page_link(cols[5], "pages/3_FIA_Forest.py", "FIA Forest")
     _safe_page_link(cols[6], "pages/6_Thermophilization.py", "Thermo")
     _safe_page_link(cols[7], "pages/5_Data_Catalog.py", "Catalog")
-    cols[8].link_button("FIA Navigator", FIA_NAVIGATOR_URL, use_container_width=True)
+    _safe_page_link(cols[8], "pages/7_FIA_Navigator.py", "FIA Navigator")
     st.markdown('<div class="fd-navbar-rule"></div>', unsafe_allow_html=True)
 
 

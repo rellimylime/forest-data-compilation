@@ -1,6 +1,6 @@
 # Documentation Hub
 
-**Navigation:** [Repo Home](../README.md) | [Docs Hub](README.md) | [Setup](../scripts/SETUP.md) | [Reproduce](REPRODUCE.md) | [Pipeline Map](PIPELINE_MAP.md) | [Data Products](DATA_PRODUCTS.md)
+**Navigation:** [Repo Home](../README.md) | [Docs Hub](README.md) | [Setup](../scripts/SETUP.md) | [Shared Scripts](../scripts/README.md) | [Reproduce](REPRODUCE.md) | [Pipeline Map](PIPELINE_MAP.md) | [Data Products](DATA_PRODUCTS.md)
 
 This is the main navigation page for the repository documentation. Use it to move between the high-level overview, exact reproduction steps, technical workflow references, and the code that implements each workstream. The companion [Data Products](DATA_PRODUCTS.md) page also documents the minimal server-aligned directory skeleton that is now tracked with `.gitkeep` placeholders where needed.
 
@@ -15,6 +15,8 @@ This is the main navigation page for the repository documentation. Use it to mov
 | Understand shared climate architecture | [Architecture](ARCHITECTURE.md) |
 | Review QC and validation coverage | [Testing and QC](TESTING.md) |
 | Set up the environment | [Setup](../scripts/SETUP.md) |
+| Understand root-level helper scripts | [Shared Scripts](../scripts/README.md) |
+| Understand FIA plot design visually | [FIA visual explainer](fia-explorer.html) |
 | Use the main visual guide while working locally | [Dashboard entrypoint](dashboard/app.py) |
 
 ## Reviewer Paths
@@ -33,6 +35,7 @@ This is the main navigation page for the repository documentation. Use it to mov
 
 ### I want to inspect the FIA pipeline
 
+- [FIA visual explainer](fia-explorer.html)
 - [FIA overview](../05_fia/README.md)
 - [FIA technical workflow](../05_fia/WORKFLOW.md)
 - [FIA scripts](../05_fia/scripts/)
@@ -43,7 +46,7 @@ This is the main navigation page for the repository documentation. Use it to mov
 - [TerraClimate overview](../02_terraclimate/README.md)
 - [PRISM overview](../03_prism/README.md)
 - [WorldClim overview](../04_worldclim/README.md)
-- [Shared climate summary script](../scripts/build_climate_summaries.R)
+- [Shared scripts overview](../scripts/README.md)
 
 ### I want to inspect the archived ERA5 reference
 
@@ -82,6 +85,7 @@ This is the main navigation page for the repository documentation. Use it to mov
 | [Data Products](DATA_PRODUCTS.md) | Main outputs, tracked review files, local-only artifacts, and server-aligned directory paths |
 | [Architecture](ARCHITECTURE.md) | Shared climate extraction concepts and data model |
 | [Testing and QC](TESTING.md) | Optional diagnostics, validation steps, and known QC gaps |
+| [FIA visual explainer](fia-explorer.html) | Static visual guide to FIA plot design, sampling grain, and FIADB tables |
 
 ## Where the Code Lives
 
@@ -92,9 +96,7 @@ This is the main navigation page for the repository documentation. Use it to mov
 | Production | [03_prism/scripts/](../03_prism/scripts/) | PRISM production scripts |
 | Production | [04_worldclim/scripts/](../04_worldclim/scripts/) | WorldClim production scripts |
 | Production | [05_fia/scripts/](../05_fia/scripts/) | FIA production scripts |
-| Shared | [scripts/utils/](../scripts/utils/) | Reusable helpers across workstreams |
-| Shared | [scripts/build_climate_summaries.R](../scripts/build_climate_summaries.R) | Shared climate summary builder |
-| Demo | [scripts/demos/](../scripts/demos/) | Example analyses using finished outputs |
+| Shared | [scripts/](../scripts/README.md) | Setup helper, shared climate summary builder, reusable utilities, demos, and test runner |
 | Archived | [archive/05_era5/scripts/](../archive/05_era5/scripts/) | ERA5 reference implementation retained outside the active run path |
 | Dashboard | [docs/dashboard/](dashboard/) | Streamlit app and pages |
 

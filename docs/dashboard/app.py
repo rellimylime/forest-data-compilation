@@ -311,7 +311,7 @@ SCRIPT_SEARCH_INDEX = [
 ]
 
 FIA_GUIDE_INDEX_JSON = REPO_ROOT / "05_fia" / "docs" / "dashboard" / "fiadb_user_guide_index_v94.json"
-FIA_NAVIGATOR_URL = "https://rellimylime.github.io/forest-data-compilation/fia-explorer.html"
+FIA_NAVIGATOR_PAGE = "pages/7_FIA_Navigator.py"
 
 
 def _matches(query: str, *values) -> bool:
@@ -433,9 +433,8 @@ def render_search_result(result: dict, key_prefix: str) -> None:
         if st.button("Open dashboard page", key=f"{key_prefix}_{result['title']}_{result['kind']}"):
             st.switch_page(result["page"])
     elif result.get("navigator"):
-        st.markdown(
-            f"[Open the FIA Forest Explorer]({FIA_NAVIGATOR_URL})"
-        )
+        if st.button("Open FIA navigator", key=f"{key_prefix}_{result['title']}_{result['kind']}_navigator"):
+            st.switch_page(FIA_NAVIGATOR_PAGE)
 
 # ------------------------------------------------------------------------------
 # Page

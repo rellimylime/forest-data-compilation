@@ -4,15 +4,11 @@ This folder contains validation scripts for the species climate niche workflow. 
 
 ## Navigation
 
-Start with the module overview in [../README.md](../README.md). Use this QA
-README when you need to interpret warnings or decide which output file to open.
-For methods rationale, formulas, and range-scope definitions, see
-[../docs/methods_species_niches.md](../docs/methods_species_niches.md).
+Start with the module overview in [../README.md](../README.md). Use this QA README when you need to interpret warnings or decide which output file to open. For methods rationale, formulas, and range-scope definitions, see [../docs/methods_species_niches.md](../docs/methods_species_niches.md).
 
 ## Minimal Outputs To Read First
 
-Most people do not need to open every CSV in `qa/outputs/`. Start with this
-small set:
+Most people do not need to open every CSV in `qa/outputs/`. Start with this small set:
 
 | File | Why it exists |
 | --- | --- |
@@ -22,9 +18,7 @@ small set:
 | `species_niche_gap_action_summary.csv` | Prioritized missing-data action types, grouped by importance. |
 | `study_area_climate_gap_summary.csv` | Summary of BIEN ranges that exist globally but do not produce study-area climate rows. |
 
-The other output files are supporting diagnostics. They are useful when a
-specific warning fails, but they are local regenerated artifacts rather than
-commit material.
+The other output files are supporting diagnostics. They are useful when a specific warning fails, but they are local regenerated artifacts rather than commit material.
 
 ## Main Validation Command
 
@@ -96,10 +90,7 @@ Use these tables to quantify that variability:
 06_species_niches/qa/outputs/bien_range_missing_species.csv
 ```
 
-Missing BIEN ranges are not all equally important: a rare forb with no BIEN
-range is a smaller problem than a common seedling species with high downstream
-CWM weight. The long ranked and action-queue files are generated locally when
-needed, but they are intentionally not tracked in Git.
+Missing BIEN ranges are not all equally important: a rare forb with no BIEN range is a smaller problem than a common seedling species with high downstream CWM weight. The long ranked and action-queue files are generated locally when needed, but they are intentionally not tracked in Git.
 
 ## Taxonomic Name Review
 
@@ -159,10 +150,7 @@ Main outputs:
 
 These files explain why each species does or does not have a usable climate niche. They should be regenerated any time the species universe, BIEN range availability, range climate extraction, compact niche table, or CWM table is rebuilt.
 
-Detailed ledgers, action queues, rankings, and species-level diagnostic files
-are still written in `qa/outputs/` for local review, but they are ignored by
-Git. This keeps the repository readable while preserving the ability to inspect
-individual problem species during development.
+Detailed ledgers, action queues, rankings, and species-level diagnostic files are still written in `qa/outputs/` for local review, but they are ignored by Git. This keeps the repository readable while preserving the ability to inspect individual problem species during development.
 
 The action queue separates:
 
@@ -175,9 +163,7 @@ The study-area climate diagnostics separate species whose BIEN polygons are outs
 
 ## Supporting Outputs
 
-These files are generated for traceability, but they are usually opened only
-after a warning points to them. Most are ignored by Git and can be regenerated
-from the QA scripts.
+These files are generated for traceability, but they are usually opened only after a warning points to them. Most are ignored by Git and can be regenerated from the QA scripts.
 
 | File pattern | When to open it |
 | --- | --- |

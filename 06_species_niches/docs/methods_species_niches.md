@@ -40,17 +40,11 @@ BIEN range maps can be global or transcontinental, especially for cosmopolitan P
 
 `global` preserves the full BIEN polygons. `us_study_area` clips BIEN polygons to the configured all-U.S. study-area bounding box in `config.yaml` (`params.study_area`, including Alaska and Hawaii). This is a bounding-box clip, not a political-boundary clip, so it should be described as "study-area clipped" rather than "U.S. boundary clipped."
 
-The downstream FIA CWM product uses `us_study_area_with_global_fallback` by
-default. In that mode, study-area niche values are preferred, and global BIEN
-niche values are used only for FIA-observed species without study-area niche
-values. This avoids dropping FIA-observed species solely because BIEN maps their
-range outside the configured study-area bounding box, while preserving flags
-that identify how much of each CWM comes from global fallback values.
+The downstream FIA CWM product uses `us_study_area_with_global_fallback` by default. In that mode, study-area niche values are preferred, and global BIEN niche values are used only for FIA-observed species without study-area niche values. This avoids dropping FIA-observed species solely because BIEN maps their range outside the configured study-area bounding box, while preserving flags that identify how much of each CWM comes from global fallback values.
 
 ## Compact Niche Indicators
 
-The range overlay keeps monthly climate summaries in `species_range_climate*.parquet`, but downstream CWM analyses should consume a small, interpretable set of species indicators from
-`species_climate_niches*.parquet`.
+The range overlay keeps monthly climate summaries in `species_range_climate*.parquet`, but downstream CWM analyses should consume a small, interpretable set of species indicators from `species_climate_niches*.parquet`.
 
 The current compact table uses eight indicators:
 
@@ -113,10 +107,7 @@ FIA condition-level products should not be confused with subplot-level products.
 
 ## Taxonomic Name Review
 
-BIEN range lookup depends on scientific names, while FIA and P2VEG species codes
-may use older names, synonyms, infraspecific taxa, or genus-level records. The
-plain-language handling rules for these missing-data cases are summarized in the
-module README under "Missing Data And Name Review."
+BIEN range lookup depends on scientific names, while FIA and P2VEG species codes may use older names, synonyms, infraspecific taxa, or genus-level records. The plain-language handling rules for these missing-data cases are summarized in the module README under "Missing Data And Name Review."
 
 ```text
 06_species_niches/README.md
@@ -126,17 +117,10 @@ The short version:
 
 - TNRS is used as a first-pass name-resolution tool for BIEN-missing species.
 - TNRS results are evidence, not automatic replacements.
-- A reviewed override is only pipeline-ready when it is listed in
-  `06_species_niches/lookups/manual_bien_name_overrides_reviewed.csv` with
-  `review_status = ready_for_pipeline`.
-- Genus-level `sp.` / `spp.` observations are excluded from the main
-  species-level CWM and tracked through coverage/gap QA.
-- Infraspecific `var.` and `ssp.` records are legitimate FIA/NRCS taxonomic
-  ranks, not genus-level pseudo taxa. They should be queried exactly first; a
-  parent-species fallback is acceptable only after review and should be flagged
-  because it broadens the niche assignment.
-- Ambiguous high-impact names, such as old forestry names that map to multiple
-  modern taxa, remain flagged until an ecological/taxonomic decision is made.
+- A reviewed override is only pipeline-ready when it is listed in `06_species_niches/lookups/manual_bien_name_overrides_reviewed.csv` with   `review_status = ready_for_pipeline`.
+- Genus-level `sp.` / `spp.` observations are excluded from the main species-level CWM and tracked through coverage/gap QA.
+- Infraspecific `var.` and `ssp.` records are legitimate FIA/NRCS taxonomic ranks, not genus-level pseudo taxa. They should be queried exactly first; a parent-species fallback is acceptable only after review and should be flagged because it broadens the niche assignment.
+- Ambiguous high-impact names, such as old forestry names that map to multiple modern taxa, remain flagged until an ecological/taxonomic decision is made.
 
 ## QA Belongs Here, Not In The Analysis
 

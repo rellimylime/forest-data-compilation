@@ -69,9 +69,7 @@ If you want a quick manual validation pass before a review:
 
 ## Overview
 
-The repo uses an R `testthat`-based suite organized per module. A single runner script
-executes any combination of modules and exits with a non-zero status on failure, making
-it suitable for both interactive development and release QA.
+The repo uses an R `testthat`-based suite organized per module. A single runner script executes any combination of modules and exits with a non-zero status on failure, making it suitable for both interactive development and release QA.
 
 **Framework:** R `testthat`
 **Runner:** `scripts/run_tests.R`
@@ -100,9 +98,7 @@ STRICT_OUTPUT_CHECKS=true Rscript scripts/run_tests.R
 
 **Exit codes:** `0` = all pass, `1` = any failure or missing test directory.
 
-**Strict vs non-strict:** In non-strict mode, tests that require a missing output file
-call `skip()` instead of `fail()`. This lets you run the suite on a partially-built repo
-without false failures. Use `--strict` when validating a complete dataset.
+**Strict vs non-strict:** In non-strict mode, tests that require a missing output file call `skip()` instead of `fail()`. This lets you run the suite on a partially-built repo without false failures. Use `--strict` when validating a complete dataset.
 
 ---
 

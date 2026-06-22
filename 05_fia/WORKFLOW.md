@@ -1,6 +1,6 @@
 # FIA Data Pipeline - Technical Workflow
 
-**Navigation:** [Repo Home](../README.md) | [Docs Hub](../docs/README.md) | [Setup](../scripts/SETUP.md) | [Reproduce](../docs/REPRODUCE.md) | [Pipeline Map](../docs/PIPELINE_MAP.md) | [Data Products](../docs/DATA_PRODUCTS.md) | [FIA README](README.md) | [Scripts](scripts/)
+**Navigation:** [Repo Home](../README.md) | [Docs Hub](../docs/README.md) | [Setup](../scripts/SETUP.md) | [Reproduce](../docs/REPRODUCE.md) | [Pipeline Map](../docs/PIPELINE_MAP.md) | [Data Products](../docs/DATA_PRODUCTS.md) | [FIA Visual Explainer](../docs/fia-explorer.html) | [FIA README](README.md) | [Scripts](scripts/)
 
 For a quick-start guide and directory overview, see **README.md**.
 This document covers per-script technical details, data flow, usage examples, and field references.
@@ -33,6 +33,9 @@ FIA uses a nationally consistent design: four 24-ft radius subplots per plot,
 each 1/24 acre. Each tree >=5" DBH is tallied on the subplot. Smaller trees
 (1-4.9") are tallied on a 6.8-ft radius microplot (1/300 acre). Seedlings (<1"
 DBH) are counted on the microplot.
+
+For a visual version of this layout and the related FIADB table grain, see the
+static [FIA visual explainer](../docs/fia-explorer.html).
 
 The `TPA_UNADJ` field on each TREE record is the unadjusted per-acre expansion
 factor derived from the subplot sampling design. Summing `TPA_UNADJ * BA` across
