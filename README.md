@@ -1,18 +1,15 @@
 # Forest Data Compilation
 
-**Navigation:** [Docs Hub](docs/README.md) | [Setup](scripts/SETUP.md) | [Reproduce](docs/REPRODUCE.md) | [Pipeline Map](docs/PIPELINE_MAP.md) | [Data Products](docs/DATA_PRODUCTS.md) | [Dashboard](docs/dashboard/)
+**Navigation:** [Docs Hub](docs/README.md) | [Setup](scripts/SETUP.md) | [Shared Scripts](scripts/README.md) | [Reproduce](docs/REPRODUCE.md) | [Pipeline Map](docs/PIPELINE_MAP.md) | [Data Products](docs/DATA_PRODUCTS.md) | [Dashboard](docs/dashboard/)
 
-Compiled and cleaned forest disturbance, climate, inventory, species-niche, and
-thermophilization datasets for analysis. The repository contains these active
-production paths:
+Compiled and cleaned forest disturbance, climate, inventory, species-niche, and thermophilization datasets for analysis. The repository contains these active production paths:
 
 - `IDS + climate`: clean USDA Forest Service Insect and Disease Survey data, then extract TerraClimate, PRISM, or WorldClim climate values at IDS locations.
 - `FIA`: compile Forest Inventory and Analysis plot data into analysis-ready forest structure, disturbance, treatment, and site-climate outputs.
 - `Species niches`: build BIEN range-map climate niches for FIA/P2VEG species.
 - `Thermophilization`: join species niches to FIA recruitment composition and build community-weighted climate-affinity summaries.
 
-Module-level `data/` directories keep `.gitkeep` placeholders where useful, but
-large raw, intermediate, and generated outputs are kept out of git.
+Module-level `data/` directories keep `.gitkeep` placeholders where useful, but large raw, intermediate, and generated outputs are kept out of git.
 
 ## Start Here
 
@@ -98,17 +95,17 @@ flowchart LR
 | [docs/DATA_PRODUCTS.md](docs/DATA_PRODUCTS.md) | Output inventory, storage locations, server-aligned skeleton, and producer scripts |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Shared climate extraction architecture |
 | [docs/TESTING.md](docs/TESTING.md) | QC, validation, and coverage gaps |
+| [docs/fia-explorer.html](docs/fia-explorer.html) | Static FIA visual explainer for plot design, sampling grain, and FIADB tables |
 | [scripts/SETUP.md](scripts/SETUP.md) | Environment setup, dependencies, and dashboard launch |
+| [scripts/README.md](scripts/README.md) | Shared root scripts, utilities, demos, and tests |
 | [docs/dashboard/app.py](docs/dashboard/app.py) | Local dashboard entrypoint; start on the `Architecture` page in the sidebar |
 
 ## Shared Code
 
-| Location | Role |
-|---|---|
-| [scripts/utils/](scripts/utils/) | Shared utility functions for config loading, time conversion, climate extraction, GEE helpers, and metadata |
-| [scripts/build_climate_summaries.R](scripts/build_climate_summaries.R) | Shared climate summary builder used by TerraClimate, PRISM, and WorldClim |
-| [scripts/demos/](scripts/demos/) | Demo analyses showing how to use outputs after the pipelines are run; generated demo outputs are local-only |
-| [docs/dashboard/](docs/dashboard/) | Streamlit dashboard for browsing outputs, schemas, and examples |
+Shared helpers live under [scripts/](scripts/README.md). This includes setup,
+test running, reusable utilities, optional demos, and the shared IDS climate
+summary builder used by TerraClimate, PRISM, and WorldClim. The Streamlit review
+app lives under [docs/dashboard/](docs/dashboard/).
 
 ## Current Output Snapshot
 
@@ -128,6 +125,7 @@ flowchart LR
 - [Docs Hub](docs/README.md)
 - [IDS README](01_ids/README.md)
 - [FIA README](05_fia/README.md)
+- [FIA Visual Explainer](docs/fia-explorer.html)
 - [Species Niche README](06_species_niches/README.md)
 - [Thermophilization README](07_thermophilization/README.md)
 - [Pipeline Map](docs/PIPELINE_MAP.md)
