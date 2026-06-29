@@ -2,4 +2,4 @@ decision_item,value,meaning
 proceed_to_script_04,TRUE,TRUE means scripts 01-03 are structurally consistent enough to begin or resume TerraClimate extraction.
 proceed_to_modeling,FALSE,TRUE means no unresolved validator warnings remain. Current downstream modeling should wait until this is TRUE.
 failed_required_checks,0,Count of failed error-severity checks. Any value above zero blocks the workflow.
-failed_warning_checks,6,"Count of failed warning-severity checks. These do not always block extraction, but must be reviewed before final modeling."
+failed_warning_checks,4,"Count of failed warning-severity checks. These do not always block extraction, but must be reviewed before final modeling."

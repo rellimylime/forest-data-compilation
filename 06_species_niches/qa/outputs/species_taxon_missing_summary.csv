@@ -1,0 +1,12 @@
+taxon_resolution_status,tnrs_review_class,n_source_codes,n_unique_source_taxa,n_unique_reporting_taxa,total_cwm_missing_weight
+no_bien_range_for_current_taxon,"",4,4,4,0
+no_bien_range_for_current_taxon,accepted_name_but_no_bien_range,538,471,471,1320663.379302
+no_bien_range_for_current_taxon,low_score_review,64,64,64,0
+no_bien_range_for_current_taxon,not_in_tnrs_file,2,2,2,37332.710593
+no_bien_range_for_current_taxon,parent_species_candidate,494,491,491,1880054.317258
+no_bien_range_for_current_taxon,synonym_candidate,356,354,354,639554.218269
+not_species_level_or_not_targeted,,662,628,0,17268402.726436
+tnrs_candidate_has_bien_range_unreviewed,parent_species_candidate,15,15,15,1349.375081
+tnrs_candidate_has_bien_range_unreviewed,synonym_candidate,104,102,102,2623.784884
+tnrs_candidate_missing_bien_range,parent_species_candidate,17,13,13,15667.744032
+tnrs_candidate_missing_bien_range,synonym_candidate,88,81,81,113947.229254

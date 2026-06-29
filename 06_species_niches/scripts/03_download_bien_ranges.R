@@ -3,9 +3,9 @@
 # Download and cache BIEN range polygons for species with available BIEN maps.
 #
 # BIEN::BIEN_ranges_species(..., match_names_only = FALSE) writes shapefile
-# sidecars to the current working directory. This script runs each request in an
-# isolated temporary directory, reads the written shapefile, and caches it as a
-# per-species GeoPackage.
+# sidecars to the current working directory. Each request therefore runs in an
+# isolated temporary directory. The result is cached as a per-species
+# GeoPackage, then all successful ranges are consolidated for climate overlay.
 #
 # Usage:
 #   Rscript 06_species_niches/scripts/03_download_bien_ranges.R
@@ -117,6 +117,7 @@ find_written_range_file <- function(dir) {
 }
 
 download_one_range <- function(species_key, bien_query_name, cache_path, force = FALSE) {
+  # Cache files make the several-thousand-species download restartable.
   cached <- read_cached_range(cache_path)
   if (!is.null(cached) && nrow(cached) > 0 && !force) {
     cached$download_status <- "cached"
@@ -198,6 +199,8 @@ download_one_range <- function(species_key, bien_query_name, cache_path, force =
 }
 
 combine_sf_fill <- function(sf_list) {
+  # BIEN range files do not always contain identical attribute columns. Bind
+  # attributes by name with missing values filled, while preserving geometry.
   attrs <- lapply(sf_list, st_drop_geometry)
   geoms <- lapply(sf_list, st_geometry)
   attrs_dt <- rbindlist(lapply(attrs, as.data.table), fill = TRUE)
@@ -208,6 +211,7 @@ combine_sf_fill <- function(sf_list) {
 cat("BIEN Range Polygon Download\n")
 cat("===========================\n\n")
 
+# Download only names that script 02 confirmed have a BIEN range.
 availability <- as.data.table(read_parquet(availability_path))
 to_download <- availability[bien_range_available == TRUE]
 setorder(to_download, source_code_system, scientific_name, species_key)
@@ -248,6 +252,10 @@ for (i in seq_len(nrow(to_download))) {
   )
 
   if (inherits(one, "sf")) {
+    # Preserve both identities: species_key joins back to the source community,
+    # while niche_taxon_key identifies the biological taxon supplying the trait.
+    one$niche_taxon_name <- row$niche_taxon_name
+    one$niche_taxon_key <- row$niche_taxon_key
     range_objects[[length(range_objects) + 1]] <- one
   } else {
     failures[[length(failures) + 1]] <- one
@@ -260,20 +268,73 @@ if (length(range_objects) == 0) {
   stop("No range polygons were downloaded or read from cache.")
 }
 
+# Main product: all successful species ranges in one WGS84 GeoPackage.
 ranges <- combine_sf_fill(range_objects)
 ranges <- st_make_valid(ranges)
 ranges$geometry_is_empty <- st_is_empty(ranges)
 ranges$geometry_is_valid <- st_is_valid(ranges)
 
-area_crs <- config$params$area_crs %||% "EPSG:5070"
-ranges_area <- st_transform(ranges, area_crs)
-ranges$range_area_km2_qa <- as.numeric(st_area(ranges_area)) / 1e6
+# BIEN ranges may be global. A CONUS projection such as EPSG:5070 can produce
+# invalid areas for ranges extending across hemispheres or the antimeridian.
+# Use spherical geodesic area plus a global equal-area projection instead.
+sf_use_s2(TRUE)
+ranges_wgs84 <- st_transform(ranges, 4326)
+ranges$range_area_geodesic_km2_qa <- as.numeric(
+  st_area(ranges_wgs84)
+) / 1e6
+
+global_area_crs <- config$params$global_area_crs %||% "EPSG:6933"
+ranges_global_area <- st_transform(ranges_wgs84, global_area_crs)
+ranges$range_area_global_equal_km2_qa <- abs(as.numeric(
+  st_area(ranges_global_area)
+)) / 1e6
+# Geodesic area is the canonical QA value because BIEN ranges can cross the
+# antimeridian; the global equal-area value is retained as a comparison.
+ranges$range_area_km2_qa <- ranges$range_area_geodesic_km2_qa
+
+range_bboxes <- rbindlist(lapply(seq_len(nrow(ranges_wgs84)), function(i) {
+  bbox <- st_bbox(ranges_wgs84[i, ])
+  data.table(
+    range_xmin = as.numeric(bbox[["xmin"]]),
+    range_ymin = as.numeric(bbox[["ymin"]]),
+    range_xmax = as.numeric(bbox[["xmax"]]),
+    range_ymax = as.numeric(bbox[["ymax"]])
+  )
+}))
+ranges$range_xmin <- range_bboxes$range_xmin
+ranges$range_ymin <- range_bboxes$range_ymin
+ranges$range_xmax <- range_bboxes$range_xmax
+ranges$range_ymax <- range_bboxes$range_ymax
+ranges$range_longitude_span <- ranges$range_xmax - ranges$range_xmin
+ranges$range_latitude_span <- ranges$range_ymax - ranges$range_ymin
+ranges$range_extent_review <- (
+  ranges$range_longitude_span > 180 |
+    ranges$range_latitude_span > 100 |
+    ranges$range_area_km2_qa > 2e7
+)
 
 polygon_summary <- as.data.table(st_drop_geometry(ranges))[, .(
   n_polygon_parts = .N,
   n_empty = sum(geometry_is_empty, na.rm = TRUE),
   n_invalid = sum(!geometry_is_valid, na.rm = TRUE),
   range_area_km2_qa = sum(range_area_km2_qa, na.rm = TRUE),
+  range_area_geodesic_km2_qa = sum(
+    range_area_geodesic_km2_qa,
+    na.rm = TRUE
+  ),
+  range_area_global_equal_km2_qa = sum(
+    range_area_global_equal_km2_qa,
+    na.rm = TRUE
+  ),
+  range_xmin = min(range_xmin, na.rm = TRUE),
+  range_ymin = min(range_ymin, na.rm = TRUE),
+  range_xmax = max(range_xmax, na.rm = TRUE),
+  range_ymax = max(range_ymax, na.rm = TRUE),
+  range_longitude_span = max(range_xmax, na.rm = TRUE) -
+    min(range_xmin, na.rm = TRUE),
+  range_latitude_span = max(range_ymax, na.rm = TRUE) -
+    min(range_ymin, na.rm = TRUE),
+  range_extent_review = any(range_extent_review),
   download_status = paste(sort(unique(download_status)), collapse = ";")
 ), by = .(species_key, bien_query_name)]
 setorder(polygon_summary, species_key)

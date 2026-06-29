@@ -2,9 +2,12 @@
 # 02_check_bien_ranges.R
 # Check BIEN range-map availability for the species universe.
 #
-# This script queries BIEN by binomial name and records whether each species has
-# a BIEN range map available. Pseudo/aggregate taxa are excluded from the BIEN
-# request but remain documented in the species universe QA outputs.
+# This script queries BIEN by scientific name and records whether a range map is
+# available. Pseudo/aggregate taxa are excluded upstream through needs_niche but
+# remain documented in the species universe.
+#
+# Reviewed name overrides change only the name sent to BIEN. The source FIA or
+# NRCS identity and species_key are retained for downstream joins and auditing.
 #
 # Usage:
 #   Rscript 06_species_niches/scripts/02_check_bien_ranges.R
@@ -77,6 +80,13 @@ make_bien_query_name <- function(scientific_name) {
   gsub("\\s+", "_", trimws(as.character(scientific_name)))
 }
 
+make_niche_taxon_key <- function(scientific_name) {
+  normalized <- tolower(trimws(as.character(scientific_name)))
+  normalized <- gsub("[^a-z0-9]+", "_", normalized)
+  normalized <- gsub("^_|_$", "", normalized)
+  paste0("bien_taxon:", normalized)
+}
+
 read_ready_overrides <- function(path) {
   # Manual overrides are deliberately conservative. Only rows that have already
   # been reviewed and marked ready_for_pipeline are allowed to change the BIEN
@@ -127,6 +137,7 @@ read_ready_overrides <- function(path) {
 }
 
 query_bien_batch <- function(names_batch) {
+  # Return an explicit API-error row instead of losing the whole batch.
   tryCatch(
     BIEN::BIEN_ranges_species(
       species = names_batch,
@@ -143,6 +154,8 @@ query_bien_batch <- function(names_batch) {
 }
 
 normalize_bien_result <- function(result) {
+  # BIEN result column names have varied across package/API versions. Convert
+  # the response to the stable project schema used by downstream scripts.
   dt <- as.data.table(result)
   if (nrow(dt) == 0) {
     return(data.table(
@@ -194,6 +207,7 @@ normalize_bien_result <- function(result) {
 cat("BIEN Range Availability Check\n")
 cat("=============================\n\n")
 
+# Only records specific enough for a species-level niche are sent to BIEN.
 species_universe <- as.data.table(read_parquet(species_universe_path))
 to_check <- species_universe[needs_niche == TRUE & has_scientific_name == TRUE]
 to_check <- unique(to_check, by = "species_key")
@@ -207,6 +221,11 @@ to_check[, bien_query_scientific_name := fifelse(
   scientific_name
 )]
 to_check[, bien_query_name := make_bien_query_name(bien_query_scientific_name)]
+# species_key remains the stable FIA/P2VEG join key. niche_taxon_key records the
+# conceptual taxon whose BIEN range supplies the shared species trait. Source
+# records that resolve to the same reviewed name therefore share this key.
+to_check[, niche_taxon_name := bien_query_scientific_name]
+to_check[, niche_taxon_key := make_niche_taxon_key(niche_taxon_name)]
 to_check[, uses_manual_bien_override := !is.na(recommended_bien_name) & trimws(recommended_bien_name) != ""]
 to_check[, manual_bien_override_name := fifelse(uses_manual_bien_override, recommended_bien_name, NA_character_)]
 
@@ -232,6 +251,8 @@ cat(glue("Unique BIEN names: {format(length(unique_names), big.mark = ',')}"), "
 cat(glue("Manual ready overrides applied: {format(sum(to_check$uses_manual_bien_override, na.rm = TRUE), big.mark = ',')}"), "\n")
 cat(glue("Batches: {length(name_batches)}"), "\n\n")
 
+# Query unique names in batches, then join results back to species_key. More
+# than one source record may legitimately use the same reviewed BIEN name.
 results <- vector("list", length(name_batches))
 for (i in seq_along(name_batches)) {
   cat(glue("  Batch {i}/{length(name_batches)}: {length(name_batches[[i]])} names"), "\n")
@@ -259,6 +280,7 @@ for (i in seq_along(name_batches)) {
 range_lookup <- rbindlist(results, fill = TRUE)
 range_lookup <- unique(range_lookup, by = "bien_query_name")
 
+# Main product grain: one row per target species_key.
 availability <- merge(to_check, range_lookup, by = "bien_query_name", all.x = TRUE)
 availability[is.na(bien_range_available), bien_range_available := FALSE]
 availability[is.na(range_lookup_status), range_lookup_status := "missing"]
@@ -274,7 +296,8 @@ setcolorder(availability, c(
   "scientific_name", "common_name", "genus", "specific_epithet",
   "community_layers", "growth_habits",
   "original_bien_query_name", "bien_query_scientific_name",
-  "bien_query_name", "uses_manual_bien_override",
+  "bien_query_name", "niche_taxon_name", "niche_taxon_key",
+  "uses_manual_bien_override",
   "manual_bien_override_name", "override_decision",
   "override_confidence", "override_review_status",
   "bien_range_available", "range_lookup_status", "range_match_status",

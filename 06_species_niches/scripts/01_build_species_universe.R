@@ -2,9 +2,13 @@
 # 01_build_species_universe.R
 # Build the community species universe for the species niche workflow.
 #
-# This script unions species observed in FIA tree, sapling, seedling, and P2
-# understory vegetation summaries. It writes the canonical species list consumed
-# by the BIEN range-map workflow.
+# This script combines species observed in FIA tree, sapling, seedling, and P2
+# understory vegetation products. It writes one canonical row per source species
+# code for the BIEN range-map workflow.
+#
+# Important: this is a list of taxa observed by FIA, not an occurrence table.
+# Counts such as n_conditions and abundance_total describe how often each taxon
+# appears in the source products and help prioritize missing-niche review.
 #
 # Usage:
 #   Rscript 06_species_niches/scripts/01_build_species_universe.R
@@ -31,8 +35,6 @@ get_arg <- function(flag, default = NULL) {
   sub(paste0("^", flag, "="), "", hit[[1]])
 }
 
-has_flag <- function(flag) flag %in% args
-
 limit_arg <- get_arg("--limit", NA_character_)
 if (!is.na(limit_arg)) limit_arg <- as.integer(limit_arg)
 is_smoke_run <- !is.na(limit_arg)
@@ -41,6 +43,7 @@ config <- load_config()
 niche_config <- config$processed$species_niches
 fia_summary_config <- config$processed$fia$summaries
 
+# Use the first available column when older and newer source products differ.
 `%||%` <- function(x, y) {
   if (is.null(x) || length(x) == 0 || all(is.na(x))) y else x
 }
@@ -73,6 +76,7 @@ dir_create(metadata_dir)
 
 summary_dir <- here(fia_summary_config$output_dir)
 tree_species_path <- file.path(summary_dir, "plot_tree_species.parquet")
+sapling_species_path <- file.path(summary_dir, "plot_sapling_species.parquet")
 seedling_species_path <- file.path(summary_dir, "plot_seedling_species.parquet")
 understory_species_path <- file.path(summary_dir, "plot_understory_species.parquet")
 understory_veg_dir <- here(config$processed$fia$understory_veg$output_dir %||% "05_fia/data/processed/understory_veg")
@@ -126,18 +130,17 @@ is_pseudo_or_aggregate_taxon <- function(scientific_name, source_species_code = 
   out
 }
 
-standardize_tree_species <- function(path) {
+standardize_tree_species <- function(path, expected_layer) {
+  # Return tree and sapling observations in the common source-row schema used
+  # by all three standardization functions below.
   if (!file.exists(path)) return(tibble())
 
   dt <- as.data.table(read_parquet(path))
 
-  if (!"community_layer" %in% names(dt)) {
-    dt[, community_layer := fifelse(
-      grepl("sapling", size_classes_present %||% "", ignore.case = TRUE),
-      "sapling",
-      "tree"
-    )]
-  }
+  # The recovered FIA builder writes separate products for saplings and larger
+  # trees. Force the expected layer here so a stale embedded label cannot mix
+  # life stages in the species universe.
+  dt[, community_layer := expected_layer]
 
   dt[, source_code_system := "fia_spcd"]
   dt[, source_species_code := as.character(SPCD)]
@@ -147,9 +150,7 @@ standardize_tree_species <- function(path) {
   dt[, source_table := "TREE"]
   dt[, growth_habit := "tree"]
   dt[, abundance_for_universe := as.numeric(abundance_for_cwm %||% ba_per_acre %||% n_trees_tpa)]
-  dt[, community_layer := fifelse(community_layer %in% c("sapling", "tree"), community_layer, "tree")]
-
-  base <- dt[, .(
+  dt[, .(
     species_key,
     source_code_system,
     source_species_code,
@@ -166,23 +167,10 @@ standardize_tree_species <- function(path) {
     state,
     abundance_for_universe
   )]
-
-  # The tree summary can contain sapling-sized trees in size_classes_present
-  # even when the main row's downstream layer is "tree". Add a companion
-  # sapling row so the species universe records sapling participation.
-  if ("size_classes_present" %in% names(dt)) {
-    saplings <- copy(dt[grepl("sapling", size_classes_present, ignore.case = TRUE)])
-    if (nrow(saplings) > 0) {
-      saplings[, community_layer := "sapling"]
-      saplings <- saplings[, names(base), with = FALSE]
-      base <- rbindlist(list(base, saplings), fill = TRUE)
-    }
-  }
-
-  unique(base)
 }
 
 standardize_seedling_species <- function(path) {
+  # Seedlings are tree regeneration under FIA's seedling size threshold.
   if (!file.exists(path)) return(tibble())
 
   dt <- as.data.table(read_parquet(path))
@@ -216,6 +204,8 @@ standardize_seedling_species <- function(path) {
 }
 
 standardize_understory_species <- function(summary_path, raw_dir) {
+  # Prefer the compact summary. Fall back to the partitioned P2VEG extract so
+  # the species universe can still be rebuilt before summaries are refreshed.
   if (file.exists(summary_path)) {
     dt <- as.data.table(read_parquet(summary_path))
   } else if (dir_exists(raw_dir)) {
@@ -275,11 +265,19 @@ standardize_understory_species <- function(summary_path, raw_dir) {
 cat("Species Universe Build\n")
 cat("======================\n\n")
 
-tree_rows <- standardize_tree_species(tree_species_path)
+tree_rows <- standardize_tree_species(tree_species_path, "tree")
+sapling_rows <- standardize_tree_species(sapling_species_path, "sapling")
 seedling_rows <- standardize_seedling_species(seedling_species_path)
 understory_rows <- standardize_understory_species(understory_species_path, understory_veg_dir)
 
-all_rows <- bind_rows(tree_rows, seedling_rows, understory_rows)
+# Source rows still represent observations. The aggregation below turns these
+# into one row per project species_key.
+all_rows <- bind_rows(
+  tree_rows,
+  sapling_rows,
+  seedling_rows,
+  understory_rows
+)
 if (nrow(all_rows) == 0) stop("No species rows found from FIA summaries.")
 
 if (!is.na(limit_arg)) {
@@ -316,6 +314,9 @@ universe <- all_rows[, .(
   in_p2veg_tree_layers = any(community_layer == "p2veg_tree_layer", na.rm = TRUE)
 ), by = species_key]
 
+# Taxonomic flags determine whether a record is specific enough for a
+# species-level BIEN range query. The source row remains in the universe even
+# when needs_niche is FALSE.
 name_parts <- split_binomial(universe$scientific_name)
 universe[, genus := name_parts$genus]
 universe[, specific_epithet := name_parts$specific_epithet]
@@ -338,6 +339,7 @@ setcolorder(universe, c(
 ))
 setorder(universe, source_code_system, scientific_name, species_key)
 
+# Main product: one row per source species code.
 write_parquet(as_tibble(universe), species_universe_path, compression = "snappy")
 
 layer_counts <- universe[, .(

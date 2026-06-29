@@ -34,6 +34,7 @@ paths <- list(
   species_universe = file.path(processed_dir, "species_universe.parquet"),
   bien_availability = file.path(processed_dir, "bien_range_availability.parquet"),
   species_range_polygons = file.path(processed_dir, "species_range_polygons.gpkg"),
+  range_climate_global = file.path(processed_dir, "species_range_climate.parquet"),
   range_climate_us = file.path(processed_dir, "species_range_climate_us_study_area.parquet"),
   niches_global = file.path(processed_dir, "species_climate_niches.parquet"),
   niches_us = file.path(processed_dir, "species_climate_niches_us_study_area.parquet"),
@@ -398,8 +399,17 @@ checks <- add_check(
   0
 )
 
-area_crs <- config$params$area_crs %||% "EPSG:5070"
-polygon_area <- as.numeric(st_area(st_transform(polygons, area_crs))) / 1e6
+# Script 03 stores geodesic range area because BIEN polygons may cross
+# hemispheres or the antimeridian. Reuse it here instead of reprojecting every
+# polygon during each validation run.
+if ("range_area_geodesic_km2_qa" %in% names(polygons)) {
+  polygon_area <- as.numeric(polygons$range_area_geodesic_km2_qa)
+} else {
+  sf_use_s2(TRUE)
+  polygon_area <- as.numeric(
+    st_area(st_make_valid(st_transform(polygons, 4326)))
+  ) / 1e6
+}
 negative_area <- data.table(
   species_key = as.character(polygons$species_key),
   bien_query_name = as.character(polygons$bien_query_name),
@@ -437,10 +447,30 @@ fwrite(polygon_area_summary, file.path(qa_dir, "bien_polygons_area_summary.csv")
 # Optional downstream freshness and consistency checks
 # ------------------------------------------------------------------------------
 
+range_climate_global <- read_optional_parquet(paths$range_climate_global)
 range_climate <- read_optional_parquet(paths$range_climate_us)
 global_niches <- read_optional_parquet(paths$niches_global)
 niches <- read_optional_parquet(paths$niches_us)
 cwm <- read_optional_parquet(paths$cwm)
+
+if (!is.null(range_climate_global)) {
+  global_range_species <- unique(range_climate_global$species_key)
+  stale_global_range_species <- data.table(species_key = global_range_species[!global_range_species %in% polygon_keys])
+  missing_global_range_species <- data.table(species_key = polygon_keys[!polygon_keys %in% global_range_species])
+  checks <- add_check(
+    checks,
+    "global_range_climate_species_match_polygons",
+    status_from(nrow(stale_global_range_species) == 0 && nrow(missing_global_range_species) == 0),
+    "warning",
+    glue("stale={nrow(stale_global_range_species)}; missing={nrow(missing_global_range_species)}"),
+    "stale=0; missing=0",
+    "Global range-climate products should match the current BIEN polygon species set. Stale species usually mean script 04 should be rerun for --range-scope=global."
+  )
+  fwrite(stale_global_range_species, file.path(qa_dir, "global_range_climate_stale_species.csv"))
+  fwrite(missing_global_range_species, file.path(qa_dir, "global_range_climate_missing_polygon_species.csv"))
+} else {
+  checks <- add_check(checks, "global_range_climate_species_match_polygons", "warn", "warning", "file missing", "optional")
+}
 
 if (!is.null(range_climate)) {
   range_species <- unique(range_climate$species_key)
@@ -459,6 +489,25 @@ if (!is.null(range_climate)) {
   fwrite(missing_range_species, file.path(qa_dir, "range_climate_missing_polygon_species.csv"))
 } else {
   checks <- add_check(checks, "range_climate_species_match_polygons", "warn", "warning", "file missing", "optional")
+}
+
+if (!is.null(global_niches)) {
+  global_niche_species <- unique(global_niches$species_key)
+  stale_global_niche_species <- data.table(species_key = global_niche_species[!global_niche_species %in% polygon_keys])
+  missing_global_niche_species <- data.table(species_key = polygon_keys[!polygon_keys %in% global_niche_species])
+  checks <- add_check(
+    checks,
+    "global_compact_niche_species_match_polygons",
+    status_from(nrow(stale_global_niche_species) == 0 && nrow(missing_global_niche_species) == 0),
+    "warning",
+    glue("stale={nrow(stale_global_niche_species)}; missing={nrow(missing_global_niche_species)}"),
+    "stale=0; missing=0",
+    "Global compact niche products should match the current BIEN polygon species set. Stale species usually mean script 05 should be rerun for --range-scope=global after script 04."
+  )
+  fwrite(stale_global_niche_species, file.path(qa_dir, "global_compact_niche_stale_species.csv"))
+  fwrite(missing_global_niche_species, file.path(qa_dir, "global_compact_niche_missing_polygon_species.csv"))
+} else {
+  checks <- add_check(checks, "global_compact_niche_species_match_polygons", "warn", "warning", "file missing", "optional")
 }
 
 if (!is.null(niches)) {

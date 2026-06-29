@@ -1,8 +1,8 @@
 metric,value
-n_species_universe,6554
-n_species_targets,5894
-n_pseudo_or_aggregate,660
-n_bien_available,4216
-n_bien_missing,1678
-n_polygon_species,4216
-n_polygon_features,4216
+n_species_universe,6563
+n_species_targets,5901
+n_pseudo_or_aggregate,662
+n_bien_available,4219
+n_bien_missing,1682
+n_polygon_species,4219
+n_polygon_features,4219

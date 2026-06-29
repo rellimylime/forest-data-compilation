@@ -1,0 +1,12 @@
+is_infraspecific_name,tnrs_review_class,candidate_range_lookup_status,n_species,n_with_tnrs_candidate,n_candidate_bien_available
+FALSE,accepted_name_but_no_bien_range,no_tnrs_candidate,538,0,0
+FALSE,not_in_tnrs_file,no_tnrs_candidate,1,0,0
+FALSE,parent_species_candidate,available,15,15,15
+FALSE,parent_species_candidate,missing,17,17,0
+FALSE,synonym_candidate,available,104,104,104
+FALSE,synonym_candidate,missing,88,88,0
+FALSE,,no_tnrs_candidate,4,0,0
+TRUE,low_score_review,not_tested_infraspecific_name,64,0,0
+TRUE,not_in_tnrs_file,not_tested_infraspecific_name,1,0,0
+TRUE,parent_species_candidate,not_tested_infraspecific_name,494,475,0
+TRUE,synonym_candidate,not_tested_infraspecific_name,356,356,0

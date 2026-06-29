@@ -1,19 +1,15 @@
 # Species Niche Methods Notes
 
+**Navigation:** [Module README](../README.md) | [Technical Workflow](../WORKFLOW.md) | [QA Guide](../qa/README.md) | [Thermophilization](../../07_thermophilization/README.md)
+
 This document is the working methods note for the species climate niche table.
 
-## Current State
+## Current Method
 
-The module is being pivoted to a BIEN range-map workflow. The old FIA-derived climate-affinity builder has been removed, and the GBIF point-occurrence script is deferred as a later sensitivity check.
-
-Scripts `01` through `05` have been rerun from the current species universe and reviewed BIEN name overrides. The downstream thermophilization CWM consumer has also been rerun from the current compact niche table.
-
-The latest availability table includes two reviewed overrides that were added after the last consolidated polygon build:
-
-- `Chamaecyparis nootkatensis` -> `Callitropsis nootkatensis`
-- `Quercus prinus` -> `Quercus montana`
-
-Those two reviewed overrides now have usable study-area niche values.
+The production method uses BIEN range maps overlaid with TerraClimate. The
+earlier FIA-occurrence climate-affinity approach has been retired, and a
+GBIF/CHELSA point-occurrence comparison remains a possible future sensitivity
+analysis.
 
 Canonical global target:
 
@@ -107,11 +103,11 @@ FIA condition-level products should not be confused with subplot-level products.
 
 ## Taxonomic Name Review
 
-BIEN range lookup depends on scientific names, while FIA and P2VEG species codes may use older names, synonyms, infraspecific taxa, or genus-level records. The plain-language handling rules for these missing-data cases are summarized in the module README under "Missing Data And Name Review."
-
-```text
-06_species_niches/README.md
-```
+BIEN range lookup depends on scientific names, while FIA and P2VEG species
+codes may use older names, synonyms, infraspecific taxa, or genus-level
+records. Product fields and workflow handoffs are documented in
+[../WORKFLOW.md](../WORKFLOW.md); QA and missing-data interpretation are
+documented in [../qa/README.md](../qa/README.md).
 
 The short version:
 
@@ -119,7 +115,7 @@ The short version:
 - TNRS results are evidence, not automatic replacements.
 - A reviewed override is only pipeline-ready when it is listed in `06_species_niches/lookups/manual_bien_name_overrides_reviewed.csv` with   `review_status = ready_for_pipeline`.
 - Genus-level `sp.` / `spp.` observations are excluded from the main species-level CWM and tracked through coverage/gap QA.
-- Infraspecific `var.` and `ssp.` records are legitimate FIA/NRCS taxonomic ranks, not genus-level pseudo taxa. They should be queried exactly first; a parent-species fallback is acceptable only after review and should be flagged because it broadens the niche assignment.
+- Infraspecific `var.`, `ssp.`, and `subsp.` records are legitimate FIA/NRCS taxonomic ranks, not genus-level pseudo taxa. They should be queried exactly first. They should not be counted as TNRS/BIEN rescue candidates unless a parent-species fallback is explicitly reviewed and approved, because that fallback broadens the niche assignment.
 - Ambiguous high-impact names, such as old forestry names that map to multiple modern taxa, remain flagged until an ecological/taxonomic decision is made.
 
 ## QA Belongs Here, Not In The Analysis
@@ -165,16 +161,17 @@ Current QA files to inspect before modeling:
 07_thermophilization/qa/outputs/plot_recruitment_cwm_missing_species.csv
 ```
 
-Current status after the full rerun:
+Live counts and warning states are intentionally not repeated in this methods
+document because they change after reruns. Use these generated files as the
+authoritative current status:
 
-- `6,554` species-like records are in the current species universe.
-- `5,894` records are clean enough to target for BIEN species-level range lookup.
-- `4,216` targeted records have BIEN ranges available.
-- `1,678` targeted records have no BIEN range available for the queried name.
-- `660` records are not targeted for BIEN niche lookup because they are pseudo taxa, genus-only records, unknown categories, or otherwise not clean species-level niche targets.
-- The consolidated BIEN polygon file has `4,216` species.
-- The study-area TerraClimate range-climate product and compact niche product have `4,186` species.
-- The `30` BIEN-available species without study-area TerraClimate rows are documented as study-area climate gaps, with diagnostics classifying them as BIEN polygons outside the configured study-area bounding box.
-- Current validation has no failed `error` checks. It still has warning checks for sapling layer representation, BIEN missing fraction, polygon area QA, study-area climate gaps, and CWM zero-coverage rows.
+```text
+06_species_niches/qa/outputs/species_niche_validation_decision.csv
+06_species_niches/qa/outputs/species_niche_validation_summary.csv
+06_species_niches/qa/outputs/species_niche_gap_summary.csv
+06_species_niches/qa/outputs/study_area_climate_gap_summary.csv
+```
 
-High-weight downstream gaps should be reviewed before final models. Examples from the current CWM QA include pseudo taxa such as `Amelanchier spp.` and `Crataegus spp.`, and name/range gaps such as `Quercus prinus`, `Chamaecyparis nootkatensis`, and `Nyssa biflora`.
+High-weight downstream gaps should be reviewed before final models. The gap
+ledger and action queue prioritize those records using their observed
+community contribution.

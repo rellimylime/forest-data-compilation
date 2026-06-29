@@ -1,7 +1,11 @@
 community_layers,n_species,n_available,pct_available
-seedling;tree,462,380,82.3
-tree,42,19,45.2
-seedling,88,55,62.5
+sapling;seedling;tree,436,360,82.6
+sapling;tree,10,6,60
+sapling;seedling,33,23,69.7
+seedling;tree,26,20,76.9
+seedling,55,32,58.2
+tree,32,13,40.6
+sapling,7,3,42.9
 p2veg_tree_layer,280,179,63.9
 forb;shrub,287,239,83.3
 shrub,881,550,62.4

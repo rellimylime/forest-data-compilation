@@ -433,7 +433,10 @@ processed:
       description: "Plot-level aggregated metrics: BA totals, diversity indices, disturbance history, damage agents"
       files:
         plot_tree_metrics: "plot_tree_metrics.parquet"
+        plot_tree_species: "plot_tree_species.parquet"
+        plot_sapling_species: "plot_sapling_species.parquet"
         plot_seedling_metrics: "plot_seedling_metrics.parquet"
+        plot_seedling_species: "plot_seedling_species.parquet"
         plot_mortality_metrics: "plot_mortality_metrics.parquet"
         plot_cond_fortypcd: "plot_cond_fortypcd.parquet"
         plot_disturbance_history: "plot_disturbance_history.parquet"
@@ -458,6 +461,7 @@ processed:
     description: "Analysis-ready recruitment climate-affinity products built from FIA communities and species niche tables"
     files:
       plot_recruitment_cwm: "plot_recruitment_cwm.parquet"
+      analysis_cohort: "plot_recruitment_analysis_cohort.parquet"
 
   # Standardized climate outputs (long format, dataset-agnostic)
   climate:
@@ -517,6 +521,7 @@ params:
     end_year: 2024
   crs: "EPSG:4326"
   area_crs: "EPSG:5070"  # Conus Albers Equal Area for area calculations
+  global_area_crs: "EPSG:6933"  # Global equal-area CRS for BIEN range QA
   water_year:
     description: "US hydrological convention: Oct-Sep"
     note: "month >= 10: water_year = calendar_year + 1, water_year_month = month - 9"

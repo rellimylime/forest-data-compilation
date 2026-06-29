@@ -1,0 +1,7 @@
+taxon_resolution_status,n_source_codes,n_unique_source_taxa,n_unique_reporting_taxa,total_abundance,total_cwm_missing_weight
+no_bien_range_for_current_taxon,1458,1385,1385,7493924.91759693,3877604.625422
+not_species_level_or_not_targeted,662,628,0,20658668.6605686,17268402.726436
+reviewed_override_has_bien_range,2,2,2,6540601.45032086,0
+source_name_has_bien_range,4217,4014,4014,1007566085.60626,0
+tnrs_candidate_has_bien_range_unreviewed,119,117,116,322569.147574541,3973.159965
+tnrs_candidate_missing_bien_range,105,94,94,196837.493768441,129614.973286

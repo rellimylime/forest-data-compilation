@@ -1,0 +1,7 @@
+source_code_system,states_present,n_species,total_source_rows,total_plot_visits,total_conditions,total_abundance,n_with_coordinate_summary,n_with_global_niche,n_intersecting_study_area_bbox
+fia_spcd,AL,1,1,1,1,74.965282,1,1,0
+fia_spcd,HI,7,97,42,42,6379.10071637917,7,7,0
+nrcs_plants_symbol,AZ,1,1,1,1,5,0,1,0
+nrcs_plants_symbol,HI,19,735,292,307,30649.343851,0,19,0
+nrcs_plants_symbol,HI;OR,1,15,11,11,246.251844,0,1,0
+nrcs_plants_symbol,OR,1,2,2,2,13,0,1,0

@@ -8,9 +8,10 @@
 # Output grain:
 #   one row per species_key
 #
-# The goal is to keep the downstream thermophilization analysis interpretable:
-# use a small set of ecologically meaningful indicators instead of passing a
-# large monthly climate vector into community-weighted means.
+# The goal is to keep downstream community metrics interpretable: eight scalar
+# species traits are easier to model than a 12-month climate vector. These
+# values describe climate across the mapped species range, not conditions at an
+# individual FIA plot.
 #
 # Usage:
 #   Rscript 06_species_niches/scripts/05_build_species_climate_niches.R
@@ -208,12 +209,14 @@ metadata_cols <- intersect(
   c(
     "species_key", "source_code_system", "source_species_code",
     "scientific_name", "common_name", "community_layers",
-    "bien_query_name", "climate_period", "climate_source", "range_source",
+    "bien_query_name", "niche_taxon_name", "niche_taxon_key",
+    "climate_period", "climate_source", "range_source",
     "range_scope"
   ),
   names(monthly_mean)
 )
 
+# One row per species and month, with tmean/def/pr as columns.
 monthly_wide <- dcast(
   monthly_mean,
   ... ~ variable,
@@ -227,13 +230,13 @@ monthly_wide <- dcast(
 cat("[1/3] Computing compact species indicators...\n")
 
 niches <- monthly_wide[, .(
-  # Thermal center and thermal extremes.
+  # Temperature indicators are means or extremes of the 12 monthly range means.
   tmean_annual_mean = mean(tmean),
   tmean_warmest_month_mean = max(tmean),
   tmean_coldest_month_mean = min(tmean),
   temp_seasonality_mean = max(tmean) - min(tmean),
 
-  # Water stress and water supply.
+  # Annual water totals are sums of the 12 monthly range means.
   cwd_annual_sum = sum(def),
   cwd_max_month_mean = max(def),
   pr_annual_sum = sum(pr),
@@ -268,7 +271,8 @@ setcolorder(niches, c(
   intersect(
     c(
       "species_key", "source_code_system", "source_species_code",
-      "scientific_name", "common_name", "community_layers", "bien_query_name"
+      "scientific_name", "common_name", "community_layers", "bien_query_name",
+      "niche_taxon_name", "niche_taxon_key"
     ),
     names(niches)
   ),

@@ -2,8 +2,9 @@
 # 04_extract_terraclimate_from_ranges.R
 # Extract TerraClimate climatologies across BIEN species range polygons
 #
-# This script overlays each available BIEN range polygon with TerraClimate in
-# Google Earth Engine and writes monthly species-level climate summaries.
+# This script overlays each available BIEN range polygon with a 1981-2010
+# TerraClimate monthly climatology in Google Earth Engine. It summarizes the
+# climate grid cells inside each range; it does not use FIA plot climate.
 #
 # Grain of the output:
 #   one row per species_key x calendar month x TerraClimate variable x metric
@@ -16,6 +17,13 @@
 #   Rscript 06_species_niches/scripts/04_extract_terraclimate_from_ranges.R --limit 25
 #   Rscript 06_species_niches/scripts/04_extract_terraclimate_from_ranges.R --range-scope=us_study_area
 #   Rscript 06_species_niches/scripts/04_extract_terraclimate_from_ranges.R --force --batch-size 10
+#   Rscript 06_species_niches/scripts/04_extract_terraclimate_from_ranges.R --species-keys-file=06_species_niches/lookups/range_climate_target_species.csv
+#
+# Targeted refresh:
+#   --species-keys-file reads a one-column CSV or text file of species_key
+#   values, extracts only those polygons, and replaces those species in the
+#   existing full output. It never replaces the full parquet with only the
+#   targeted subset.
 #
 # Prerequisites:
 #   - local/user_config.yaml contains the Google Earth Engine project
@@ -57,6 +65,7 @@ tile_scale             <- as.integer(get_arg("--tile-scale", "4"))
 simplify_tolerance_deg <- as.numeric(get_arg("--simplify-tolerance", "0"))
 max_retries            <- as.integer(get_arg("--max-retries", "3"))
 retry_wait_seconds     <- as.integer(get_arg("--retry-wait", "30"))
+species_keys_file_arg  <- get_arg("--species-keys-file", NA_character_)
 force                  <- has_flag("--force")
 mean_only              <- has_flag("--mean-only")
 range_scope            <- get_arg("--range-scope", "global")
@@ -72,6 +81,12 @@ if (!is.na(limit_arg)) {
   limit_arg <- as.integer(limit_arg)
 }
 is_smoke_run <- !is.na(limit_arg)
+is_targeted_run <- !is.na(species_keys_file_arg) &&
+  nzchar(trimws(species_keys_file_arg))
+
+if (is_smoke_run && is_targeted_run) {
+  stop("Use either --limit or --species-keys-file, not both.")
+}
 
 allowed_range_scopes <- c("global", "us_study_area")
 if (!range_scope %in% allowed_range_scopes) {
@@ -103,6 +118,49 @@ smoke_data_dir <- here("06_species_niches/data/smoke")
 qa_dir <- if (is_smoke_run) here("06_species_niches/qa/smoke") else here("06_species_niches/qa/outputs")
 climate_period <- sprintf("%d-%d", start_year, end_year)
 
+read_species_keys_file <- function(path) {
+  if (!file_exists(path)) {
+    stop(glue("Species-key file not found: {path}"))
+  }
+
+  # Accept either a CSV with a species_key column or one key per text line.
+  keys <- tryCatch({
+    tab <- read.csv(path, stringsAsFactors = FALSE, check.names = FALSE)
+    if ("species_key" %in% names(tab)) {
+      tab$species_key
+    } else if (ncol(tab) == 1) {
+      tab[[1]]
+    } else {
+      stop("CSV must contain a species_key column.")
+    }
+  }, error = function(e) {
+    readLines(path, warn = FALSE)
+  })
+
+  keys <- trimws(as.character(keys))
+  keys <- keys[
+    !is.na(keys) & keys != "" &
+      !grepl("^#", keys) &
+      keys != "species_key"
+  ]
+  unique(keys)
+}
+
+species_keys_file <- if (is_targeted_run) {
+  path_abs(species_keys_file_arg)
+} else {
+  NA_character_
+}
+target_species_keys <- if (is_targeted_run) {
+  read_species_keys_file(species_keys_file)
+} else {
+  character()
+}
+
+if (is_targeted_run && length(target_species_keys) == 0) {
+  stop("The species-key file did not contain any species_key values.")
+}
+
 # Keep batch caches separate across test runs and extraction settings. This
 # prevents a small --limit smoke test from being mistaken for a completed full
 # extraction later.
@@ -112,6 +170,7 @@ run_tag <- paste(
     paste(variables, collapse = "-"),
     if (mean_only) "mean" else "mean-p10-p50-p90",
     if (range_scope == "global") NULL else range_scope,
+    if (is_targeted_run) "targeted" else NULL,
     if (!is.na(limit_arg)) paste0("limit-", limit_arg) else "full"
   ),
   collapse = "__"
@@ -200,6 +259,11 @@ cat(glue("Reducer: {if (mean_only) 'mean' else 'mean + p10/p50/p90'}"), "\n")
 cat(glue("Batch size: {batch_size} polygons"), "\n\n")
 cat(glue("Retries per batch: {max_retries}"), "\n")
 cat(glue("Retry wait: {retry_wait_seconds} seconds"), "\n\n")
+if (is_targeted_run) {
+  cat(glue("Target species file: {species_keys_file}"), "\n")
+  cat(glue("Target species: {length(target_species_keys)}"), "\n")
+  cat("Targeted rows will be merged into the existing full output.\n\n")
+}
 if (file.exists(out_file) && !force) {
   cat(glue("Existing final output found; rerun will reuse completed batches and refresh final QA: {out_file}"), "\n\n")
 }
@@ -355,9 +419,9 @@ extract_range_batch_adaptive <- function(image, polygons_sf, ee, reducer,
                                          max_retries,
                                          retry_wait_seconds,
                                          depth = 0) {
-  # Earth Engine occasionally fails on a whole FeatureCollection even when the
-  # individual polygons are fine. If a top-level batch fails, split it into
-  # smaller pieces and recombine the successful results.
+  # Earth Engine occasionally fails on a large FeatureCollection even when most
+  # polygons are usable. Retry first, then recursively split the batch. A
+  # species is skipped and logged only if its single-polygon request also fails.
   result <- tryCatch(
     extract_range_batch_with_retries(
       image = image,
@@ -437,6 +501,8 @@ extract_range_batch_adaptive <- function(image, polygons_sf, ee, reducer,
 }
 
 reshape_extraction <- function(df, variables, scale_factors, climate_period) {
+  # Convert GEE's wide band properties (for example tmmx_m01_mean) to the stable
+  # long output grain: species x month x variable x spatial metric.
   if (nrow(df) == 0) return(tibble())
 
   value_cols <- setdiff(names(df), "species_key")
@@ -641,9 +707,23 @@ clip_ranges_to_scope <- function(ranges, range_scope, config) {
 
 cat("[1/5] Loading BIEN range polygons...\n")
 
+# Script 03 standardizes the consolidated geometry and carries species_key into
+# Earth Engine so every returned climate record can be joined back reliably.
 ranges <- st_read(range_path, quiet = TRUE)
 ranges <- ranges |>
   mutate(species_key = as.character(species_key))
+
+if (is_targeted_run) {
+  polygon_keys <- unique(ranges$species_key)
+  missing_target_keys <- setdiff(target_species_keys, polygon_keys)
+  if (length(missing_target_keys) > 0) {
+    stop(glue(
+      "Target species key(s) are absent from the polygon file: ",
+      "{paste(missing_target_keys, collapse = ', ')}"
+    ))
+  }
+  ranges <- ranges[ranges$species_key %in% target_species_keys, ]
+}
 
 ranges <- clip_ranges_to_scope(
   ranges = ranges,
@@ -665,7 +745,8 @@ availability <- read_parquet(availability_path) |>
 metadata_cols <- intersect(
   c(
     "species_key", "source_code_system", "source_species_code",
-    "scientific_name", "common_name", "community_layers", "bien_query_name"
+    "scientific_name", "common_name", "community_layers", "bien_query_name",
+    "niche_taxon_name", "niche_taxon_key"
   ),
   names(availability)
 )
@@ -702,6 +783,8 @@ cat("[4/5] Extracting range climate summaries...\n")
 n_batches <- ceiling(nrow(ranges) / batch_size)
 batch_files <- character(n_batches)
 
+# Each completed batch is a restart checkpoint. --force recomputes checkpoints;
+# otherwise only missing batch files are sent to Earth Engine.
 for (batch_id in seq_len(n_batches)) {
   start_idx <- (batch_id - 1) * batch_size + 1
   end_idx <- min(batch_id * batch_size, nrow(ranges))
@@ -765,13 +848,40 @@ species_range_climate <- open_dataset(existing_batches, format = "parquet") |>
     species_key,
     any_of(c(
       "source_code_system", "source_species_code", "scientific_name",
-      "common_name", "community_layers", "bien_query_name"
+      "common_name", "community_layers", "bien_query_name",
+      "niche_taxon_name", "niche_taxon_key"
     )),
     month, variable, metric, value,
     climate_period, climate_source, range_source
   ) |>
   mutate(range_scope = range_scope) |>
   arrange(species_key, month, variable, metric)
+
+# A targeted production run refreshes only the requested species while
+# preserving every unaffected row in the existing full product.
+if (is_targeted_run && !is_smoke_run && file.exists(out_file)) {
+  existing_output <- read_parquet(out_file) |>
+    mutate(species_key = as.character(species_key)) |>
+    filter(!species_key %in% target_species_keys)
+
+  if (!"range_scope" %in% names(existing_output)) {
+    existing_output$range_scope <- range_scope
+  } else {
+    existing_output <- existing_output |>
+      mutate(range_scope = coalesce(range_scope, .env$range_scope))
+  }
+
+  species_range_climate <- bind_rows(
+    existing_output,
+    species_range_climate
+  ) |>
+    distinct(
+      species_key, month, variable, metric,
+      climate_period, range_scope,
+      .keep_all = TRUE
+    ) |>
+    arrange(species_key, month, variable, metric)
+}
 
 write_parquet_safely(as_tibble(species_range_climate), out_file, compression = "snappy")
 if (!is_smoke_run) {
@@ -796,6 +906,10 @@ if (length(range_climate_failures) > 0) {
   failures <- normalize_failure_table(bind_rows(range_climate_failures))
   if (file.exists(failure_file)) {
     existing_failures <- normalize_failure_table(read.csv(failure_file, stringsAsFactors = FALSE))
+    if (is_targeted_run) {
+      existing_failures <- existing_failures |>
+        filter(!species_key %in% target_species_keys)
+    }
     failures <- bind_rows(existing_failures, failures) |>
       distinct(species_key, climate_period, variables, failure_reason, .keep_all = TRUE)
   }
@@ -804,6 +918,10 @@ if (length(range_climate_failures) > 0) {
   write_csv_safely(empty_failure_table(), failure_file)
 } else {
   existing_failures <- normalize_failure_table(read.csv(failure_file, stringsAsFactors = FALSE))
+  if (is_targeted_run) {
+    existing_failures <- existing_failures |>
+      filter(!species_key %in% target_species_keys)
+  }
   write_csv_safely(existing_failures, failure_file)
 }
 
