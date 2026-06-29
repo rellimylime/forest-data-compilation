@@ -1,6 +1,6 @@
 # ==============================================================================
 # 01_build_plot_recruitment_cwm.R
-# Build plot/condition-level recruitment climate-affinity metrics.
+# Build condition-level recruitment climate-affinity metrics.
 #
 # This script joins FIA seedling species composition to the BIEN/TerraClimate
 # species niche table, then summarizes each FIA condition as community-weighted
@@ -12,6 +12,9 @@
 #
 # Default niche input:
 #   06_species_niches/data/processed/species_climate_niches_us_study_area.parquet
+#
+# Output grain:
+#   one row per stable_plot_id x PLT_CN x INVYR x CONDID
 #
 # Default output:
 #   07_thermophilization/data/processed/plot_recruitment_cwm.parquet
@@ -210,6 +213,9 @@ cat("==========================\n\n")
 cat(glue("Seedling species input: {seedling_species_path}"), "\n")
 cat(glue("Species niche input:    {niche_path}"), "\n")
 if (range_scope == "us_study_area_with_global_fallback") {
+  # Fallback is limited to species that are still BIEN-available in the current
+  # availability table. This prevents stale global niches from re-entering the
+  # analysis after a name or range decision changes.
   cat(glue("Global fallback input:  {global_niche_path}"), "\n")
 }
 cat(glue("Range scope:            {range_scope}"), "\n")
@@ -346,6 +352,7 @@ niche_keep_cols <- intersect(
     "species_key", "source_code_system", "source_species_code",
     "scientific_name", "common_name", "community_layers",
     "climate_period", "climate_source", "range_source", "range_scope",
+    "niche_taxon_name", "niche_taxon_key",
     "niche_scope_used", "niche_fallback_reason", "niche_method", indicator_cols
   ),
   names(niches)
@@ -359,8 +366,11 @@ joined[, has_niche := !is.na(tmean_annual_mean)]
 # Aggregate to plot/condition CWM
 # ------------------------------------------------------------------------------
 
-condition_cols <- setdiff(metadata_cols, character())
+condition_cols <- metadata_cols
 
+# For each condition, retain community totals and calculate eight weighted
+# means. Species without a niche contribute to coverage denominators but not to
+# a CWM numerator.
 cwm <- joined[
   ,
   .(
@@ -452,9 +462,9 @@ summary <- data.table(
     "n_unique_seedling_species_missing_niche",
     "median_frac_weight_with_niche",
     "p10_frac_weight_with_niche",
-    "n_condition_rows_below_95pct_niche_coverage"
-    ,"n_condition_rows_using_global_fallback"
-    ,"median_frac_weight_with_global_fallback_niche"
+    "n_condition_rows_below_95pct_niche_coverage",
+    "n_condition_rows_using_global_fallback",
+    "median_frac_weight_with_global_fallback_niche"
   ),
   value = c(
     nrow(cwm),

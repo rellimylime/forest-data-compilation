@@ -1,0 +1,5 @@
+step,description,n_before,n_removed,n_remaining,pct_remaining_from_start
+1,Matched condition-level disturbance classification,475355,0,475355,100
+2,Retained rows with a usable recruitment CWM,475355,4810,470545,98.99
+3,Retained forested analysis conditions,470545,1974,468571,98.57
+4,Retained natural-disturbance and control candidates,468571,58151,410420,86.34

@@ -1,6 +1,6 @@
 # Thermophilization Analysis
 
-This directory consumes FIA community products and species niche products to build analysis-ready thermophilization tables.
+This directory consumes FIA community products and species niche products to build analysis-ready thermophilization tables. Script `01` measures recruitment climate affinity. Script `02` defines which FIA conditions are eligible for disturbance-versus-control analysis.
 
 ## Current Status
 
@@ -31,6 +31,20 @@ The current CWM builder can use study-area species niches with a flagged global 
    ```text
    07_thermophilization/data/processed/plot_recruitment_cwm.parquet
    ```
+
+3. Build the condition-level analysis cohort:
+
+   ```bash
+   Rscript 07_thermophilization/scripts/02_build_analysis_cohort.R
+   ```
+
+   This writes:
+
+   ```text
+   07_thermophilization/data/processed/plot_recruitment_analysis_cohort.parquet
+   ```
+
+   The cohort keeps FIA-forested natural-disturbance and control candidates with usable CWMs. Forest status, disturbance, and treatment eligibility are evaluated at the condition level. Whole-plot exclusion flags remain attached as sensitivity warnings rather than removing a clean condition because another condition on the same plot differs. Conditions below 95% niche coverage are retained with `meets_niche_coverage_threshold = FALSE` so the threshold can be tested rather than silently imposed.
 
 ## Script 01 Inputs
 
@@ -104,12 +118,46 @@ Known species-level gaps are documented in:
 07_thermophilization/qa/outputs/plot_recruitment_cwm_missing_species.csv
 ```
 
+## Script 02 Inputs And Outputs
+
+Inputs:
+
+- `plot_recruitment_cwm.parquet`: condition-level recruitment CWMs.
+- `plot_disturbance_classification.parquet`: natural-disturbance and control definitions at the FIA condition level.
+- `plot_exclusion_flags.parquet`: nonforest, human-disturbance, and harvest exclusions at the whole plot-visit level.
+
+Output grain:
+
+```text
+stable_plot_id x PLT_CN x INVYR x CONDID
+```
+
+The production cohort contains only rows where `analysis_eligible = TRUE`. Important fields retained for later matching and sensitivity analysis include:
+
+- `disturbed_vs_control`
+- `disturbance_class` and `disturbance_class_primary`
+- `region_east_west`
+- `forest_type_group` and `FORTYPCD`
+- `is_forest_dominated_plot` for the optional 50%-forested sensitivity filter
+- `time_since_disturbance`
+- all eight recruitment CWM indicators
+- `frac_weight_with_niche`
+- `meets_niche_coverage_threshold`
+- global-fallback coverage fields
+- plot-level exclusion and harvest-agent warning fields
+
+The script writes two compact QA files:
+
+- `analysis_cohort_attrition.csv`: sequential row counts for every eligibility filter.
+- `analysis_cohort_summary.csv`: final counts by analysis group, disturbance class, region, and niche coverage.
+
 ## Smoke Tests
 
 Limited runs write to ignored smoke folders:
 
 ```bash
 Rscript 07_thermophilization/scripts/01_build_plot_recruitment_cwm.R --limit=100
+Rscript 07_thermophilization/scripts/02_build_analysis_cohort.R --limit=1000
 ```
 
 Smoke outputs go to:
@@ -129,3 +177,8 @@ Smoke outputs go to:
 - `--range-scope=us_study_area_with_global_fallback`: default. Use study-area niches first and global niches only for species without a study-area niche.
 - `--range-scope=us_study_area`: use only study-area clipped species niches.
 - `--range-scope=global`: use global BIEN range climate niches instead.
+
+Script `02` also accepts:
+
+- `--limit=N`: smoke test on the first `N` CWM condition rows.
+- `--min-niche-coverage=0.95`: threshold used to flag lower-coverage conditions. It does not remove them.
