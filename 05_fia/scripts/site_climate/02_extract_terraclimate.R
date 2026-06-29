@@ -1,5 +1,5 @@
 # ==============================================================================
-# 06_extract_site_climate.R
+# 02_extract_terraclimate.R
 # Extract TerraClimate monthly data for site locations (1958-present)
 #
 # Reads data/processed/site_climate/all_site_locations.csv (lat/lon for each
@@ -21,10 +21,9 @@
 #           variable (character), value (double)
 #
 # Usage:
-#   Rscript 05_fia/scripts/06_extract_site_climate.R
+#   Rscript 05_fia/scripts/site_climate/02_extract_terraclimate.R
 #
-# Prerequisites: GEE account configured (see local/user_config.yaml)
-#   Rscript 02_terraclimate/scripts/01_build_pixel_maps.R
+# Prerequisite: GEE account configured (see local/user_config.yaml)
 # ==============================================================================
 
 library(here)

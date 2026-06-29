@@ -9,12 +9,32 @@ build_seedling_species <- function(out_dir, proc_fia, out_cond_metadata) {
   
   cat("Step 4c: plot_seedling_species\n")
   out_seed_species <- file.path(out_dir, "plot_seedling_species.parquet")
-  
-  if (file_exists(out_seed_species)) {
+
+  seed_source_files <- list.files(
+    here(proc_fia$seedlings$output_dir),
+    pattern = "[.]parquet$",
+    recursive = TRUE,
+    full.names = TRUE
+  )
+  source_newer <- file_exists(out_seed_species) &&
+    (
+      (
+        length(seed_source_files) > 0 &&
+          max(file.info(seed_source_files)$mtime, na.rm = TRUE) >
+            file.info(out_seed_species)$mtime
+      ) ||
+        file.info(out_cond_metadata)$mtime >
+          file.info(out_seed_species)$mtime
+    )
+
+  if (file_exists(out_seed_species) && !source_newer) {
     cat(glue("  Already exists ({file_size(out_seed_species)}) - skipping\n\n"))
   } else if (!file_exists(out_cond_metadata)) {
     cat("  plot_condition_metadata.parquet not found. Run Step 4b first.\n\n")
   } else {
+    if (source_newer) {
+      cat("  Seedling extracts or condition metadata are newer - rebuilding\n")
+    }
     # Open per-state seedling extracts lazily because this product starts from species rows.
     seed_ds <- tryCatch(
       open_dataset(here(proc_fia$seedlings$output_dir), partitioning = "state"),

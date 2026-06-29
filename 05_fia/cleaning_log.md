@@ -28,7 +28,7 @@
 **Records affected:** All 6,956 sites (100% of initial extraction)
 
 **Description:**
-The initial version of `06_extract_site_climate.R` used `build_pixel_map()` with a `ref_rast`
+The initial version of `scripts/site_climate/02_extract_terraclimate.R` used `build_pixel_map()` with a `ref_rast`
 reconstructed from the IDS TerraClimate pixel_values parquets. Those parquets only cover the
 IDS damage area footprint (predominantly Alaska and Pacific Northwest). FIA sites outside that
 extent received garbage cell numbers from `terra::cellFromXY()`. By numeric coincidence, 339

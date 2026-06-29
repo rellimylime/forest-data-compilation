@@ -9,12 +9,19 @@ build_disturbance_classification <- function(out_dir, out_cond_metadata) {
   
   cat("Step 4d: plot_disturbance_classification\n")
   out_disturb_class <- file.path(out_dir, "plot_disturbance_classification.parquet")
-  
-  if (file_exists(out_disturb_class)) {
+
+  source_newer <- file_exists(out_disturb_class) &&
+    file.info(out_cond_metadata)$mtime >
+      file.info(out_disturb_class)$mtime
+
+  if (file_exists(out_disturb_class) && !source_newer) {
     cat(glue("  Already exists ({file_size(out_disturb_class)}) - skipping\n\n"))
   } else if (!file_exists(out_cond_metadata)) {
     cat("  plot_condition_metadata.parquet not found. Run Step 4b first.\n\n")
   } else {
+    if (source_newer) {
+      cat("  Condition metadata is newer than classification - rebuilding\n")
+    }
     # Load condition metadata because FIA disturbance and treatment are condition-level.
     cond_class <- as.data.table(read_parquet(out_cond_metadata))
   
@@ -173,8 +180,15 @@ build_disturbance_classification <- function(out_dir, out_cond_metadata) {
     )]
     cond_class[, region_source := fifelse(!is.na(LON), "longitude_-100", "state_fallback")]
   
+    # Keep the official condition status separate from the optional whole-plot
+    # forest-dominance threshold. The analysis response is condition-level, so
+    # a condition recorded by FIA as forest remains eligible even when other
+    # portions of the same plot visit are nonforest.
+    cond_class[, is_forest_dominated_plot :=
+      !is.na(pct_forested) & pct_forested >= 0.5]
+    cond_class[, is_forested_analysis_condition := is_forested_condition]
+
     # Define analysis/control gates explicitly so matching code does not rewrite them.
-    cond_class[, is_forested_analysis_condition := is_forested_condition & !is.na(pct_forested) & pct_forested >= 0.5]
     cond_class[, is_control_candidate := is_forested_analysis_condition &
                  !has_any_recorded_disturbance & !has_any_treatment]
     cond_class[, is_natural_disturbance_candidate := is_forested_analysis_condition &
@@ -188,7 +202,6 @@ build_disturbance_classification <- function(out_dir, out_cond_metadata) {
     # Record the main reason a row is not an untreated/unimpacted control candidate.
     cond_class[, control_eligibility_reason := fcase(
       !is_forested_condition, "condition_not_forested",
-      is.na(pct_forested) | pct_forested < 0.5, "plot_less_than_50pct_forested",
       is_human_or_harvest, "human_or_harvest",
       has_any_treatment, "treated",
       has_any_recorded_disturbance, "recorded_disturbance",
@@ -203,7 +216,8 @@ build_disturbance_classification <- function(out_dir, out_cond_metadata) {
       "stable_plot_id", "PLT_CN", "INVYR", "STATECD", "UNITCD", "COUNTYCD", "PLOT",
       "PREV_PLT_CN", "state", "region_east_west", "region_source",
       "CONDID", "COND_STATUS_CD", "CONDPROP_UNADJ", "pct_forested",
-      "is_forested_condition", "is_forested_analysis_condition",
+      "is_forested_condition", "is_forest_dominated_plot",
+      "is_forested_analysis_condition",
       "LAT", "LON", "ELEV", "FORTYPCD", "forest_type_label", "forest_type_group",
       "DSTRBCD1", "DSTRBCD2", "DSTRBCD3", "DSTRBYR1", "DSTRBYR2", "DSTRBYR3",
       "TRTCD1", "TRTCD2", "TRTCD3", "TRTYR1", "TRTYR2", "TRTYR3",

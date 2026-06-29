@@ -9,12 +9,26 @@ build_condition_metadata <- function(out_dir, cond_ds) {
   
   cat("Step 4b: plot_condition_metadata\n")
   out_cond_metadata <- file.path(out_dir, "plot_condition_metadata.parquet")
-  
-  if (file_exists(out_cond_metadata)) {
+
+  cond_source_files <- list.files(
+    here("05_fia/data/processed/cond"),
+    pattern = "[.]parquet$",
+    recursive = TRUE,
+    full.names = TRUE
+  )
+  source_newer <- file_exists(out_cond_metadata) &&
+    length(cond_source_files) > 0 &&
+    max(file.info(cond_source_files)$mtime, na.rm = TRUE) >
+      file.info(out_cond_metadata)$mtime
+
+  if (file_exists(out_cond_metadata) && !source_newer) {
     cat(glue("  Already exists ({file_size(out_cond_metadata)}) - skipping\n\n"))
   } else if (is.null(cond_ds)) {
     cat("  No cond parquets found. Run 03_extract_trees.R --force-cond first.\n\n")
   } else {
+    if (source_newer) {
+      cat("  Condition extracts are newer than metadata - rebuilding\n")
+    }
     # Define the condition metadata columns needed for stable plot IDs and disturbance flags.
     needed_cols <- c(
       "stable_plot_id", "PLT_CN", "INVYR",

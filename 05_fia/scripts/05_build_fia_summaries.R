@@ -30,6 +30,7 @@ source(file.path(summary_dir, "build_seedling_metrics.R"))
 source(file.path(summary_dir, "build_mortality_metrics.R"))
 source(file.path(summary_dir, "build_condition_forest_type.R"))
 source(file.path(summary_dir, "build_condition_metadata.R"))
+source(file.path(summary_dir, "build_tree_species.R"))
 source(file.path(summary_dir, "build_seedling_species.R"))
 source(file.path(summary_dir, "build_disturbance_classification.R"))
 source(file.path(summary_dir, "build_disturbance_history.R"))
@@ -62,6 +63,9 @@ out_seed_metrics  <- build_seedling_metrics(out_dir, proc_fia, states)
 out_mort_metrics  <- build_mortality_metrics(out_dir, proc_fia)
 out_cond_metrics  <- build_condition_forest_type(out_dir, cond_ds)
 out_cond_metadata <- build_condition_metadata(out_dir, cond_ds)
+out_tree_species  <- build_tree_species(
+  out_dir, proc_fia, states, out_cond_metadata
+)
 out_seed_species  <- build_seedling_species(out_dir, proc_fia, out_cond_metadata)
 out_disturb_class <- build_disturbance_classification(out_dir, out_cond_metadata)
 out_disturb       <- build_disturbance_history(out_dir, cond_ds)
@@ -73,7 +77,7 @@ cat("FIA summaries complete.\n\n")
 cat("Outputs:\n")
 output_files <- c(
   out_tree_metrics, out_seed_metrics, out_mort_metrics,
-  out_cond_metrics, out_cond_metadata, out_seed_species,
+  out_cond_metrics, out_cond_metadata, out_tree_species, out_seed_species,
   out_disturb_class, out_disturb, out_treat, out_damage_ag, out_excl_flags
 )
 for (f in output_files) {
@@ -82,6 +86,8 @@ for (f in output_files) {
 
 cat("\nRead with:\n")
 cat("  arrow::read_parquet('05_fia/data/processed/summaries/plot_tree_metrics.parquet')\n")
+cat("  arrow::read_parquet('05_fia/data/processed/summaries/plot_tree_species.parquet')\n")
+cat("  arrow::read_parquet('05_fia/data/processed/summaries/plot_sapling_species.parquet')\n")
 cat("  arrow::read_parquet('05_fia/data/processed/summaries/plot_seedling_species.parquet')\n")
 cat("  arrow::read_parquet('05_fia/data/processed/summaries/plot_disturbance_classification.parquet')\n")
 cat("  arrow::read_parquet('05_fia/data/processed/summaries/plot_disturbance_history.parquet')\n")

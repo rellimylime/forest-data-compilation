@@ -1,6 +1,6 @@
 # ==============================================================================
-# 06a_build_fia_site_list.R
-# Build the FIA plot site list consumed by 06_extract_site_climate.R.
+# 01_build_site_list.R
+# Build the FIA plot site list consumed by 02_extract_terraclimate.R.
 #
 # Reads the FIA cond extract, takes one row per distinct stable plot location,
 # and writes 05_fia/data/processed/site_climate/all_site_locations.csv with
@@ -11,12 +11,12 @@
 # coordinate lookup.
 #
 # Usage:
-#   Rscript 05_fia/scripts/06a_build_fia_site_list.R
+#   Rscript 05_fia/scripts/site_climate/01_build_site_list.R
 #
 # Note: This will overwrite all_site_locations.csv. The previous file is
 # recoverable from git history. After regenerating, clear stale GEE checkpoints
 # at 05_fia/data/processed/site_climate/_gee_annual/ before re-running
-# 06_extract_site_climate.R, since pixel ids depend on the input site set.
+# 02_extract_terraclimate.R, since pixel ids depend on the input site set.
 # ==============================================================================
 
 library(arrow)
