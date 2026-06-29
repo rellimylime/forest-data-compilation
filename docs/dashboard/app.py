@@ -280,8 +280,8 @@ SCRIPT_SEARCH_INDEX = [
     },
     {
         "title": "Extract FIA site climate",
-        "path": "05_fia/scripts/06_extract_site_climate.R",
-        "body": "Extract TerraClimate monthly values for FIA and ITRDB sites.",
+        "path": "05_fia/scripts/site_climate/02_extract_terraclimate.R",
+        "body": "Optionally extract TerraClimate monthly values for FIA plot locations.",
         "page": "pages/3_FIA_Forest.py",
     },
     {
@@ -666,7 +666,7 @@ if os.path.isfile(fia_clim_path):
         unsafe_allow_html=True,
     )
 else:
-    c5.markdown(metric_card("FIA Site Climate", "—", "run 06_extract_site_climate.R"), unsafe_allow_html=True)
+    c5.markdown(metric_card("FIA Site Climate", "—", "run optional site-climate workflow"), unsafe_allow_html=True)
 
 st.markdown("---")
 

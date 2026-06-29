@@ -21,7 +21,7 @@
 #   Rscript scripts/demo_03_site_climate.R
 #
 # Prerequisites:
-#   Rscript 05_fia/scripts/06_extract_site_climate.R
+#   Rscript 05_fia/scripts/site_climate/02_extract_terraclimate.R
 #
 # Output: output/demo_03_site_climate/ (figures + CSV summaries)
 #
@@ -48,7 +48,8 @@ cat("=====================\n\n")
 # ==============================================================================
 #
 # 05_fia/data/processed/site_climate/all_site_locations.csv defines the sites
-# for which climate was extracted. It is the *input* to 06_extract_site_climate.R; the output is
+# for which climate was extracted. It is the input to
+# site_climate/02_extract_terraclimate.R; the output is
 # site_climate.parquet.
 #
 # Schema: site_id, latitude, longitude, source
@@ -259,7 +260,7 @@ write.csv(co_annual_cwd, file.path(output_dir, "colorado_annual_cwd.csv"), row.n
 #
 #   2. Re-run the extraction script:
 #
-#      Rscript 05_fia/scripts/06_extract_site_climate.R
+#      Rscript 05_fia/scripts/site_climate/02_extract_terraclimate.R
 #
 #   The script maps each site to its 4km TerraClimate pixel (nearest centroid),
 #   then extracts monthly values for all variables via Google Earth Engine.

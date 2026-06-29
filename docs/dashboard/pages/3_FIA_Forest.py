@@ -973,7 +973,7 @@ with tab_climate:
     if not clim_exists:
         st.info(
             "`site_climate.parquet` not found.  \n"
-            "Generate with `Rscript 05_fia/scripts/06_extract_site_climate.R`."
+            "Generate with `Rscript 05_fia/scripts/site_climate/02_extract_terraclimate.R`."
         )
     else:
         clim_meta = parquet_meta(clim_path)

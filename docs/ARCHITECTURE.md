@@ -146,7 +146,7 @@ The same architecture also supports point-based site climate extraction for FIA:
 - Pixel values are joined back directly to site IDs.
 - No area-weighted averaging is needed because each site has one containing pixel.
 
-See [05_fia/scripts/06_extract_site_climate.R](../05_fia/scripts/06_extract_site_climate.R) and [05_fia/WORKFLOW.md](../05_fia/WORKFLOW.md) for the FIA-specific implementation.
+See [05_fia/scripts/site_climate/02_extract_terraclimate.R](../05_fia/scripts/site_climate/02_extract_terraclimate.R) and [05_fia/WORKFLOW.md](../05_fia/WORKFLOW.md#optional-site-climate-extension) for the FIA-specific implementation.
 
 ## Shared Code
 

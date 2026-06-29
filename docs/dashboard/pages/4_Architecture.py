@@ -615,31 +615,31 @@ with tab_fia:
             - write `site_pixel_map.parquet` and `site_climate.parquet`
             """
         )
-        st.code("05_fia/scripts/06_extract_site_climate.R", language="text")
+        st.code("05_fia/scripts/site_climate/02_extract_terraclimate.R", language="text")
 
     with st.expander("Site-climate branch — step-by-step detail"):
         fia_steps = [
             ("Step 1", "Compile FIA site locations",
-             "6,956 unique FIA plot locations (lat/lon + site_id) compiled from the FIA PLOT table "
-             "across all 50 states. Each row is a unique geographic plot location, not a visit.",
-             "05_fia/scripts/03_extract_trees.R"),
+             "408,040 stable FIA plot locations with valid public coordinates are compiled from "
+             "the condition extracts. Each row is a plot location, not an inventory visit.",
+             "05_fia/scripts/site_climate/01_build_site_list.R"),
             ("Step 2", "Build site pixel map",
-             "Find the TerraClimate 4km grid cell whose centroid is nearest to each plot location. "
-             "Output: `site_pixel_map.parquet` with 6,956 rows.",
-             "05_fia/scripts/06_extract_site_climate.R"),
+             "Map each FIA plot to its containing TerraClimate grid cell. The 408,040 sites "
+             "currently map to 338,219 unique climate pixels.",
+             "05_fia/scripts/site_climate/02_extract_terraclimate.R"),
             ("Step 3", "Authenticate Google Earth Engine (one-time)",
              "Browser authentication writes credentials to `~/.config/earthengine/`; subsequent runs "
              "initialize automatically.",
              "Manual step, once per machine"),
             ("Step 4", "Extract TerraClimate 1958–2024 via GEE",
              "For each year, build a stacked GEE image (6 variables × 12 months) and sample at the "
-             "unique site-pixel centroids. Annual outputs land in `_gee_annual/yr_{year}.parquet`.",
-             "05_fia/scripts/06_extract_site_climate.R"),
+             "unique site-pixel centroids. Annual outputs land in `_gee_annual/sites_{year}.parquet`.",
+             "05_fia/scripts/site_climate/02_extract_terraclimate.R"),
             ("Step 5", "Consolidate to final parquet",
              "Join annual pixel values back to the site pixel map. Point locations mean "
              "`coverage_fraction = 1.0` everywhere, so a direct pixel join is enough. "
-             "Output: `site_climate.parquet` (23.5M rows, ~62 MB).",
-             "05_fia/scripts/06_extract_site_climate.R"),
+             "The current national output has about 1.95 billion rows and is approximately 5.85 GB.",
+             "05_fia/scripts/site_climate/02_extract_terraclimate.R"),
         ]
         for step, title, description, script in fia_steps:
             st.markdown(f"**{step} · {title}**")

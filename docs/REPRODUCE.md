@@ -79,12 +79,30 @@ The FIA workstream is independent of the IDS + climate workstream, except for th
 | 3 | [03_extract_trees.R](../05_fia/scripts/03_extract_trees.R) | Extract tree, condition, damage-agent, and harvest-flag tables | `05_fia/data/processed/{trees,cond,damage_agents,harvest_flags}/state={ST}/` | [05_fia/WORKFLOW.md](../05_fia/WORKFLOW.md) |
 | 4 | [04_extract_seedlings_mortality.R](../05_fia/scripts/04_extract_seedlings_mortality.R) | Extract seedling and mortality summaries by state | `05_fia/data/processed/{seedlings,mortality}/state={ST}/` | [05_fia/WORKFLOW.md](../05_fia/WORKFLOW.md) |
 | 5 | [05_build_fia_summaries.R](../05_fia/scripts/05_build_fia_summaries.R) | Build national plot-level summary parquets | `05_fia/data/processed/summaries/*.parquet` | [05_fia/WORKFLOW.md](../05_fia/WORKFLOW.md) |
-| 6 | [06_extract_site_climate.R](../05_fia/scripts/06_extract_site_climate.R) | Optional TerraClimate extraction for FIA site locations | `05_fia/data/processed/site_climate/` | [05_fia/WORKFLOW.md](../05_fia/WORKFLOW.md) |
+| Optional 1 | [01_build_site_list.R](../05_fia/scripts/site_climate/01_build_site_list.R) | Build the FIA site list for optional climate extraction | `05_fia/data/processed/site_climate/all_site_locations.csv` | [05_fia/WORKFLOW.md](../05_fia/WORKFLOW.md#optional-site-climate-extension) |
+| Optional 2 | [02_extract_terraclimate.R](../05_fia/scripts/site_climate/02_extract_terraclimate.R) | Extract TerraClimate for FIA site locations | `05_fia/data/processed/site_climate/` | [05_fia/WORKFLOW.md](../05_fia/WORKFLOW.md#optional-site-climate-extension) |
 
 Notes:
 
-- Step 6 is optional and requires Google Earth Engine.
+- The site-climate extension is optional and requires Google Earth Engine.
 - The main FIA summary outputs, plus `all_site_locations.csv`, `site_pixel_map.parquet`, and `site_climate.parquet`, are reviewable in git.
+
+## Path 4: Species Climate Niches
+
+Run this path after the FIA species-composition products exist.
+
+| Step | Script | What it does | Main outputs | Details |
+|---|---|---|---|---|
+| 1 | [01_build_species_universe.R](../06_species_niches/scripts/01_build_species_universe.R) | Combine FIA and P2VEG source taxa | `species_universe.parquet` | [Workflow](../06_species_niches/WORKFLOW.md#01-build-species-universe) |
+| 2 | [02_check_bien_ranges.R](../06_species_niches/scripts/02_check_bien_ranges.R) | Check BIEN availability and apply reviewed name overrides | `bien_range_availability.parquet` | [Workflow](../06_species_niches/WORKFLOW.md#02-check-bien-ranges) |
+| 3 | [03_download_bien_ranges.R](../06_species_niches/scripts/03_download_bien_ranges.R) | Cache and consolidate BIEN polygons | `species_range_polygons.gpkg` | [Workflow](../06_species_niches/WORKFLOW.md#03-download-bien-ranges) |
+| QA gate | [01_validate_species_niche_workflow.R](../06_species_niches/qa/01_validate_species_niche_workflow.R) | Validate scripts 01-03 before the long extraction | Validation decision and checks | [QA Guide](../06_species_niches/qa/README.md) |
+| 4 | [04_extract_terraclimate_from_ranges.R](../06_species_niches/scripts/04_extract_terraclimate_from_ranges.R) | Extract 1981-2010 range climatologies through GEE | `species_range_climate_us_study_area.parquet` | [Workflow](../06_species_niches/WORKFLOW.md#04-extract-terraclimate-from-ranges) |
+| 5 | [05_build_species_climate_niches.R](../06_species_niches/scripts/05_build_species_climate_niches.R) | Build eight compact species indicators | `species_climate_niches_us_study_area.parquet` | [Workflow](../06_species_niches/WORKFLOW.md#05-build-species-climate-niches) |
+
+Script `04` requires Google Earth Engine. Run the validation and gap scripts
+listed in [the complete run order](../06_species_niches/WORKFLOW.md#run-order)
+before final thermophilization modeling.
 
 ## Archived Reference: ERA5
 

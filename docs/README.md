@@ -40,6 +40,14 @@ This is the main navigation page for the repository documentation. Use it to mov
 - [FIA technical workflow](../05_fia/WORKFLOW.md)
 - [FIA scripts](../05_fia/scripts/)
 
+### I want to inspect species niches and thermophilization
+
+- [Species niche overview](../06_species_niches/README.md)
+- [Species niche technical workflow](../06_species_niches/WORKFLOW.md)
+- [Species niche methods](../06_species_niches/docs/methods_species_niches.md)
+- [Species niche QA guide](../06_species_niches/qa/README.md)
+- [Thermophilization overview](../07_thermophilization/README.md)
+
 ### I want to inspect climate extraction
 
 - [Shared architecture](ARCHITECTURE.md)
@@ -74,6 +82,8 @@ This is the main navigation page for the repository documentation. Use it to mov
 | `03_prism/` | PRISM web-service extraction for CONUS IDS locations | [README](../03_prism/README.md) | [WORKFLOW](../03_prism/WORKFLOW.md) | [scripts/](../03_prism/scripts/) |
 | `04_worldclim/` | WorldClim local GeoTIFF extraction for IDS locations | [README](../04_worldclim/README.md) | [WORKFLOW](../04_worldclim/WORKFLOW.md) | [scripts/](../04_worldclim/scripts/) |
 | `05_fia/` | FIA plot summaries, disturbance, treatment, and site climate | [README](../05_fia/README.md) | [WORKFLOW](../05_fia/WORKFLOW.md) | [scripts/](../05_fia/scripts/) |
+| `06_species_niches/` | BIEN range-map and TerraClimate species niches | [README](../06_species_niches/README.md) | [WORKFLOW](../06_species_niches/WORKFLOW.md) | [scripts/](../06_species_niches/scripts/) |
+| `07_thermophilization/` | Community-weighted niche metrics and disturbance analysis | [README](../07_thermophilization/README.md) | [README](../07_thermophilization/README.md) | [scripts/](../07_thermophilization/scripts/) |
 | `archive/05_era5/` | Archived ERA5 extraction reference and directory layout | [README](../archive/05_era5/README.md) | [WORKFLOW](../archive/05_era5/WORKFLOW.md) | [scripts/](../archive/05_era5/scripts/) |
 
 ## Core Documentation
@@ -96,6 +106,8 @@ This is the main navigation page for the repository documentation. Use it to mov
 | Production | [03_prism/scripts/](../03_prism/scripts/) | PRISM production scripts |
 | Production | [04_worldclim/scripts/](../04_worldclim/scripts/) | WorldClim production scripts |
 | Production | [05_fia/scripts/](../05_fia/scripts/) | FIA production scripts |
+| Production | [06_species_niches/scripts/](../06_species_niches/scripts/) | Species climate-niche production scripts |
+| Production | [07_thermophilization/scripts/](../07_thermophilization/scripts/) | Thermophilization analysis-product scripts |
 | Shared | [scripts/](../scripts/README.md) | Setup helper, shared climate summary builder, reusable utilities, demos, and test runner |
 | Archived | [archive/05_era5/scripts/](../archive/05_era5/scripts/) | ERA5 reference implementation retained outside the active run path |
 | Dashboard | [docs/dashboard/](dashboard/) | Streamlit app and pages |
