@@ -149,6 +149,12 @@ site_climate_extract.log
 !07_thermophilization/data/smoke/
 !07_thermophilization/data/smoke/.gitkeep
 
+# Standalone point-climate extraction outputs. Keep the input CSV and scripts
+# tracked, but leave generated climate products local.
+site_climate/qa/outputs/**
+!site_climate/qa/outputs/
+!site_climate/qa/outputs/.gitkeep
+
 # Large binary file types (safety net for files outside data/ dirs)
 *.nc
 *.gpkg
