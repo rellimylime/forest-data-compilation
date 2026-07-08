@@ -154,8 +154,7 @@ The `TPA_UNADJ` field on each TREE record is the unadjusted per-acre expansion f
 
 #### Detailed Output Provenance
 
-Script `05` is an orchestrator. Each output is implemented by one focused
-builder under `05_fia/scripts/summaries/`.
+Script `05` is an orchestrator. Each output is implemented by one focused builder under `05_fia/scripts/summaries/`.
 
 | Builder | Output | Grain | Main inputs | Purpose |
 |---|---|---|---|---|
@@ -398,7 +397,9 @@ These flags describe the whole plot visit. They should not automatically remove 
 
 #### Interpretation And FIA Code References
 
-**Current control definition:** a control candidate must be an FIA-forested condition with no recorded disturbance code and no recorded treatment code. The primary condition-level analysis uses FIA's own condition classification, `COND_STATUS_CD == 1`. The separate field `is_forest_dominated_plot` records whether at least 50% of the whole plot visit is forest. That plot-level threshold is retained for sensitivity analyses but does not disqualify an FIA-forested condition merely because another mapped condition on the same plot is nonforest.
+**Current control definition:** a control candidate must be an FIA-forested condition with no recorded disturbance code and no recorded treatment code.
+The primary condition-level analysis uses FIA's own condition classification, `COND_STATUS_CD == 1`.
+The separate field `is_forest_dominated_plot` records whether at least 50% of the whole plot visit is forest. That plot-level threshold is retained for sensitivity analyses but does not disqualify an FIA-forested condition merely because another mapped condition on the same plot is nonforest.
 
 **plot_damage_agents columns:**
 
@@ -458,9 +459,7 @@ One row per **condition × treatment slot** where TRTCD ≠ 0. Mirrors `plot_dis
 
 ## Optional Site-Climate Extension
 
-The core FIA pipeline ends with `05_build_fia_summaries.R`. The following
-scripts build a separate TerraClimate-at-FIA-plots dataset. They are not inputs
-to the current BIEN-range species-niche workflow.
+The core FIA pipeline ends with `05_build_fia_summaries.R`. The following scripts build a separate TerraClimate-at-FIA-plots dataset. They are not inputs to the current BIEN-range species-niche workflow.
 
 ### [01_build_site_list.R](scripts/site_climate/01_build_site_list.R)
 
@@ -487,9 +486,7 @@ In plain language, this table contains one representative public FIA coordinate 
 3. Selects one representative public FIA coordinate per stable plot because fuzzed coordinates can vary slightly across visits.
 4. Writes `site_id = stable_plot_id` so site climate joins directly to FIA biological products.
 
-Regenerating the site list changes the set of GEE input points. Remove or
-separate stale files under `site_climate/_gee_annual/` before rerunning
-`02_extract_terraclimate.R`.
+Regenerating the site list changes the set of GEE input points. Remove or separate stale files under `site_climate/_gee_annual/` before rerunning `02_extract_terraclimate.R`.
 
 ---
 
@@ -535,6 +532,29 @@ One row maps one FIA site to the TerraClimate grid cell used for extraction. Mul
 **Note on coordinate fuzz:** FIA coordinates are fuzzed ~1 mile for privacy, which is well within TerraClimate's ~4km pixel. Multiple nearby FIA plots may map to the same pixel; this is expected and documented in `site_pixel_map.parquet`.
 
 **Note on year range:** TerraClimate begins in 1958. The GEE extraction uses 1958–`config.raw.terraclimate.end_year`. This is a ~66-year range, much larger than the IDS-driven extraction (1997–present), but since FIA site pixels are small in number (~a few thousand unique pixels), GEE processing is fast.
+
+---
+
+### [03_validate_site_climate.R](scripts/site_climate/03_validate_site_climate.R)
+
+**Inputs:**
+- `data/processed/site_climate/all_site_locations.csv`
+- `data/processed/site_climate/site_pixel_map.parquet`, when present
+- `data/processed/site_climate/site_climate.parquet`, when present
+
+**Outputs:**
+- `qa/outputs/site_climate_validation_checks.csv`
+- `qa/outputs/site_climate_site_list_summary.csv`
+- `qa/outputs/site_climate_pixel_map_summary.csv`, when `site_pixel_map.parquet` exists
+- `qa/outputs/site_climate_output_summary.csv`, when `site_climate.parquet` exists
+- `qa/outputs/site_climate_value_ranges.csv`, when `site_climate.parquet` exists
+
+**Purpose:**
+
+This read-only QA script validates the site-climate extraction products without
+modifying them. It checks that the site list has one valid coordinate row per
+`site_id`, that the pixel map covers the same site IDs, and that the final
+climate parquet has the expected site, year, month, and variable coverage.
 
 ---
 
@@ -593,7 +613,7 @@ summaries/plot_exclusion_flags.parquet  <-------+---GEE (TerraClimate)
 | Store `ba_sqft` (raw) and `ba_per_acre` separately | Raw for subplot-level aggregation and area weighting; per-acre for cross-plot comparison | 2026-02 |
 | INVYR filter: 2000-2024 | FIA annual inventory began ~2000; pre-2000 data is periodic and structurally inconsistent with modern tables | 2026-02 |
 | Join TREE_GRM_COMPONENT to TREE for INVYR | GRM table records measurement periods, not calendar years directly; TREE.INVYR is the T2 year | 2026-02 |
-| species_temp_optima_mean placeholder column | Schema designed to accept thermophilization join when boss provides species temperature optima dataset | 2026-02 |
+| species_temp_optima_mean placeholder column | Schema designed to accept an externally reviewed species temperature optima dataset if one is added later | 2026-02 |
 | STATUSCD 1 and 2 in same extraction pass | Live and standing dead trees are in the same TREE table; filtering both in one pass avoids reading the file twice | 2026-02 |
 | Added TRTCD1/2/3 to cond_cols | Needed for `exclude_harvest` flag in Step 7; requires re-run of 03_extract_trees.R to populate cond parquets | 2026-03 |
 | plot_exclusion_flags as separate parquet | Downstream analyses join this once per analysis rather than re-deriving filters from raw DSTRBCD/TRTCD; mirrors R4 staff recommendation to remove human-disturbed plots upfront | 2026-03 |

@@ -82,17 +82,15 @@ Install `rFIA` before script `01`. See [Setup](../scripts/SETUP.md) and
 
 ## Optional Site-Climate Extension
 
-The core FIA pipeline ends at script `05`. A separate optional workflow builds
-monthly TerraClimate values at FIA plot coordinates for dashboard exploration
-and legacy FIA-location climate analyses:
+The core FIA pipeline ends at script `05`. A separate optional workflow builds monthly TerraClimate values at FIA plot coordinates for dashboard exploration and legacy FIA-location climate analyses:
 
 ```bash
 Rscript 05_fia/scripts/site_climate/01_build_site_list.R
 Rscript 05_fia/scripts/site_climate/02_extract_terraclimate.R
+Rscript 05_fia/scripts/site_climate/03_validate_site_climate.R
 ```
 
-This extension is not an input to the current BIEN-range species-niche method.
-See [WORKFLOW.md: Optional Site-Climate Extension](WORKFLOW.md#optional-site-climate-extension).
+This extension is not an input to the current BIEN-range species-niche method. See [WORKFLOW.md: Optional Site-Climate Extension](WORKFLOW.md#optional-site-climate-extension).
 
 ## Where To Look
 

@@ -155,6 +155,11 @@ site_climate/qa/outputs/**
 !site_climate/qa/outputs/
 !site_climate/qa/outputs/.gitkeep
 
+# FIA QA outputs are regenerated locally by validation scripts.
+05_fia/qa/outputs/**
+!05_fia/qa/outputs/
+!05_fia/qa/outputs/.gitkeep
+
 # Large binary file types (safety net for files outside data/ dirs)
 *.nc
 *.gpkg

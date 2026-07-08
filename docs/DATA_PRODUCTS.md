@@ -85,7 +85,8 @@ This page summarizes the main data products in the repository, where they live, 
 | Disturbance and treatment products | `05_fia/data/processed/summaries/{plot_disturbance_classification,plot_disturbance_history,plot_treatment_history,plot_damage_agents,plot_exclusion_flags}.parquet` | Scripted | [05_build_fia_summaries.R](../05_fia/scripts/05_build_fia_summaries.R) | Analysis classifications, long-form histories, damage agents, and whole-plot sensitivity flags |
 | Site list input | `05_fia/data/processed/site_climate/all_site_locations.csv` | Git-tracked | [01_build_site_list.R](../05_fia/scripts/site_climate/01_build_site_list.R) | Input template for the optional TerraClimate extraction at FIA sites |
 | Annual GEE checkpoints | `05_fia/data/processed/site_climate/_gee_annual/sites_{year}.parquet` | Local/scripted | [02_extract_terraclimate.R](../05_fia/scripts/site_climate/02_extract_terraclimate.R) | Checkpoint files kept so interrupted runs can resume |
-| Site climate outputs | `05_fia/data/processed/site_climate/{site_pixel_map.parquet,site_climate.parquet}` | Git-tracked | [02_extract_terraclimate.R](../05_fia/scripts/site_climate/02_extract_terraclimate.R) | Optional FIA-site pixel map plus long-format monthly TerraClimate values |
+| Site climate outputs | `05_fia/data/processed/site_climate/{site_pixel_map.parquet,site_climate.parquet}` | Local/scripted | [02_extract_terraclimate.R](../05_fia/scripts/site_climate/02_extract_terraclimate.R) | Optional FIA-site pixel map plus long-format monthly TerraClimate values; final climate parquet is too large for Git |
+| Site climate QA | `05_fia/qa/outputs/site_climate_*.csv` | Scripted | [03_validate_site_climate.R](../05_fia/scripts/site_climate/03_validate_site_climate.R) | Read-only validation summaries for the FIA site-climate extraction |
 
 ## Species Niche Outputs
 
