@@ -6,10 +6,7 @@ This document is the working methods note for the species climate niche table.
 
 ## Current Method
 
-The production method uses BIEN range maps overlaid with TerraClimate. The
-earlier FIA-occurrence climate-affinity approach has been retired, and a
-GBIF/CHELSA point-occurrence comparison remains a possible future sensitivity
-analysis.
+The production method uses BIEN range maps overlaid with TerraClimate. The earlier FIA-occurrence climate-affinity approach has been retired, and a GBIF/CHELSA point-occurrence comparison remains a possible future sensitivity analysis.
 
 Canonical global target:
 
@@ -103,11 +100,7 @@ FIA condition-level products should not be confused with subplot-level products.
 
 ## Taxonomic Name Review
 
-BIEN range lookup depends on scientific names, while FIA and P2VEG species
-codes may use older names, synonyms, infraspecific taxa, or genus-level
-records. Product fields and workflow handoffs are documented in
-[../WORKFLOW.md](../WORKFLOW.md); QA and missing-data interpretation are
-documented in [../qa/README.md](../qa/README.md).
+BIEN range lookup depends on scientific names, while FIA and P2VEG species codes may use older names, synonyms, infraspecific taxa, or genus-level records. Product fields and workflow handoffs are documented in [../WORKFLOW.md](../WORKFLOW.md); QA and missing-data interpretation are documented in [../qa/README.md](../qa/README.md).
 
 The short version:
 
@@ -161,9 +154,7 @@ Current QA files to inspect before modeling:
 07_thermophilization/qa/outputs/plot_recruitment_cwm_missing_species.csv
 ```
 
-Live counts and warning states are intentionally not repeated in this methods
-document because they change after reruns. Use these generated files as the
-authoritative current status:
+Live counts and warning states are intentionally not repeated in this methods document because they change after reruns. Use these generated files as the authoritative current status:
 
 ```text
 06_species_niches/qa/outputs/species_niche_validation_decision.csv
@@ -172,6 +163,4 @@ authoritative current status:
 06_species_niches/qa/outputs/study_area_climate_gap_summary.csv
 ```
 
-High-weight downstream gaps should be reviewed before final models. The gap
-ledger and action queue prioritize those records using their observed
-community contribution.
+High-weight downstream gaps should be reviewed before final models. The gap ledger and action queue prioritize those records using their observed community contribution.

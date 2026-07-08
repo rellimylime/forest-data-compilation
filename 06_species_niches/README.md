@@ -4,14 +4,9 @@
 
 ## What This Workstream Does
 
-`06_species_niches/` builds one set of climate-niche traits for each resolved
-plant taxon represented in FIA or P2VEG communities. BIEN supplies range maps,
-and TerraClimate supplies the 1981-2010 monthly climate summarized across those
-ranges.
+`06_species_niches/` builds one set of climate-niche traits for each resolved plant taxon represented in FIA or P2VEG communities. BIEN supplies range maps, and TerraClimate supplies the 1981-2010 monthly climate summarized across those ranges.
 
-The resulting traits can be joined to seedling, sapling, tree, shrub, forb, and
-graminoid communities. The traits describe species, not individual FIA plots
-or inventory years.
+The resulting traits can be joined to seedling, sapling, tree, shrub, forb, and graminoid communities. The traits describe species, not individual FIA plots or inventory years.
 
 ## Workflow At A Glance
 
@@ -49,13 +44,10 @@ Rscript 06_species_niches/scripts/04_extract_terraclimate_from_ranges.R --range-
 Rscript 06_species_niches/scripts/05_build_species_climate_niches.R --range-scope=us_study_area
 ```
 
-Script `04` requires Google Earth Engine. The complete validation and gap
-documentation sequence is in [WORKFLOW.md: Run Order](WORKFLOW.md#run-order).
-For small climate refreshes, see
-[WORKFLOW.md: Extract TerraClimate From Ranges](WORKFLOW.md#04-extract-terraclimate-from-ranges).
+Script `04` requires Google Earth Engine. The complete validation and gap documentation sequence is in [WORKFLOW.md: Run Order](WORKFLOW.md#run-order).
+For small climate refreshes, see [WORKFLOW.md: Extract TerraClimate From Ranges](WORKFLOW.md#04-extract-terraclimate-from-ranges).
 
-Smoke tests use `--limit=N` and write to ignored `data/smoke/` and `qa/smoke/`
-folders.
+Smoke tests use `--limit=N` and write to ignored `data/smoke/` and `qa/smoke/` folders.
 
 ## Main Outputs
 
@@ -68,8 +60,7 @@ folders.
 | `species_range_climate*.parquet` | Monthly TerraClimate summaries across each mapped range | [Output dictionary](WORKFLOW.md#species_range_climateparquet) |
 | `species_climate_niches*.parquet` | One row per species with eight compact climate indicators | [Output dictionary](WORKFLOW.md#species_climate_nichesparquet) |
 
-For formulas and scientific interpretation, see
-[Methods: Compact Niche Indicators](docs/methods_species_niches.md#compact-niche-indicators).
+For formulas and scientific interpretation, see [Methods: Compact Niche Indicators](docs/methods_species_niches.md#compact-niche-indicators).
 
 ## Where To Look
 
@@ -86,8 +77,7 @@ For formulas and scientific interpretation, see
 
 ## Current Status
 
-Do not copy counts from prose when checking whether the workflow is current.
-The generated QA files are the authoritative status:
+Do not copy counts from prose when checking whether the workflow is current. The generated QA files are the authoritative status:
 
 - `qa/outputs/species_niche_validation_decision.csv`
 - `qa/outputs/species_niche_validation_summary.csv`
@@ -99,9 +89,7 @@ The generated QA files are the authoritative status:
 - `qa/outputs/tnrs_candidate_bien_range_summary.csv`
 - `qa/outputs/tnrs_candidate_name_pairs_available.csv`
 
-The validator currently distinguishes structural errors from scientific or
-coverage warnings. See [QA Guide: How To Read The Result](qa/README.md#how-to-read-the-result)
-before final modeling.
+The validator currently distinguishes structural errors from scientific or coverage warnings. See [QA Guide: How To Read The Result](qa/README.md#how-to-read-the-result) before final modeling.
 
 ## Directory Layout
 

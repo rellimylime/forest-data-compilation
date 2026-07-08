@@ -162,11 +162,7 @@ These files explain why each species does or does not have a usable climate nich
 
 Detailed ledgers, action queues, rankings, and species-level diagnostic files are still written in `qa/outputs/` for local review, but they are ignored by Git. This keeps the repository readable while preserving the ability to inspect individual problem species during development.
 
-The taxon crosswalk is the preferred way to count biological species rather than
-source codes. `species_key` remains the join key for FIA/P2VEG products, while
-`taxon_count_key` deduplicates multiple source codes that represent the same
-resolved taxon. Use `species_taxon_resolution_summary.csv` when reporting how
-many taxa are covered, missing, or recoverable through reviewed name work.
+The taxon crosswalk is the preferred way to count biological species rather than source codes. `species_key` remains the join key for FIA/P2VEG products, while `taxon_count_key` deduplicates multiple source codes that represent the same resolved taxon. Use `species_taxon_resolution_summary.csv` when reporting how many taxa are covered, missing, or recoverable through reviewed name work.
 
 The action queue separates:
 
@@ -177,23 +173,13 @@ The action queue separates:
 
 The study-area climate diagnostics separate species whose BIEN polygons are outside the configured study-area bounding box from species that intersect the study area but still failed to produce climate rows.
 
-The TNRS candidate range diagnostic is a review aid, not an automatic override.
-It tests whether TNRS candidate names for BIEN-missing species return BIEN
-ranges. Candidate names with ranges still need ecological and taxonomic review
-before they are added to `lookups/manual_bien_name_overrides_reviewed.csv`.
-Infraspecific source names (`var.`, `ssp.`, and `subsp.`) are listed but not
-counted as candidate rescues, because parent-species fallback broadens the
-taxon and requires a separate decision.
+The TNRS candidate range diagnostic is a review aid, not an automatic override. It tests whether TNRS candidate names for BIEN-missing species return BIEN ranges. Candidate names with ranges still need ecological and taxonomic review before they are added to `lookups/manual_bien_name_overrides_reviewed.csv`. Infraspecific source names (`var.`, `ssp.`, and `subsp.`) are listed but not counted as candidate rescues, because parent-species fallback broadens the taxon and requires a separate decision.
 
-The global-fallback location diagnostic compares the BIEN global range extent to
-the observed states and coordinate summaries from FIA seedling/tree/sapling
-products where coordinates are available. This helps separate Hawaii/non-native
-range-map issues from true study-area clipping or extraction problems.
+The global-fallback location diagnostic compares the BIEN global range extent to the observed states and coordinate summaries from FIA seedling/tree/sapling products where coordinates are available. This helps separate Hawaii/non-native range-map issues from true study-area clipping or extraction problems.
 
 ## Output Index
 
-The files below are the official CSV outputs to read or cite during review. Each
-can be regenerated from the scripts listed in [Gap Ledger](#gap-ledger).
+The files below are the official CSV outputs to read or cite during review. Each can be regenerated from the scripts listed in [Gap Ledger](#gap-ledger).
 
 | File | Row meaning | Main attributes |
 | --- | --- | --- |
@@ -216,15 +202,10 @@ can be regenerated from the scripts listed in [Gap Ledger](#gap-ledger).
 | `species_range_climate_summary*.csv` | One variable/metric/range-scope summary | TerraClimate extraction row counts and species counts |
 | `species_climate_niches_summary*.csv` | One range-scope summary | Compact niche indicator completeness |
 
-Detailed artifacts such as full ledgers, full TNRS candidate checks, polygon
-diagnostics, stale-species lists, rankings, and failure logs are generated in
-`qa/outputs/` for debugging. They are intentionally ignored by Git unless they
-are promoted into the official list above.
+Detailed artifacts such as full ledgers, full TNRS candidate checks, polygon diagnostics, stale-species lists, rankings, and failure logs are generated in
+`qa/outputs/` for debugging. They are intentionally ignored by Git unless they are promoted into the official list above.
 
-Temporary review aids, such as one-off Markdown or CSV files prepared for a
-meeting, can also live in `qa/outputs/` while they are being discussed. They are
-not part of the reproducible workflow unless a kept script regenerates them and
-they are added to the output index.
+Temporary review aids, such as one-off Markdown or CSV files prepared for a meeting, can also live in `qa/outputs/` while they are being discussed. They are not part of the reproducible workflow unless a kept script regenerates them and they are added to the output index.
 
 ## Current Rule Of Thumb
 
