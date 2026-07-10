@@ -20,6 +20,10 @@
 #   Rscript 07_thermophilization/scripts/02_build_analysis_cohort.R
 #   Rscript 07_thermophilization/scripts/02_build_analysis_cohort.R --limit=1000
 #   Rscript 07_thermophilization/scripts/02_build_analysis_cohort.R --min-niche-coverage=0.95
+#
+# Documentation:
+#   07_thermophilization/README.md#script-02-inputs-and-outputs
+#   07_thermophilization/README.md#plot_recruitment_analysis_cohortparquet
 # ==============================================================================
 
 suppressPackageStartupMessages({
