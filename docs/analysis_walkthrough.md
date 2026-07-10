@@ -5,39 +5,44 @@
 ## Overview
 
 This walkthrough explains how the current repository turns FIA community data
-and BIEN/TerraClimate species niches into analysis-ready thermophilization
-inputs. It is intended as a technical orientation for collaborators who need to
-understand what each table represents before extending the analysis.
+and BIEN/TerraClimate species niches into thermophilization inputs: community
+climate-affinity metrics, repeated-survey change rates, and plot-visit
+disturbance proportions. It is intended as a technical orientation for
+collaborators who need to understand what each table represents before
+extending the analysis.
 
-The active thermophilization implementation currently contains two production
+The active thermophilization implementation currently contains these production
 scripts:
 
 | Step | Script | Main output |
 |---|---|---|
 | 1 | [01_build_plot_recruitment_cwm.R](../07_thermophilization/scripts/01_build_plot_recruitment_cwm.R) | `plot_recruitment_cwm.parquet` |
 | 2 | [02_build_analysis_cohort.R](../07_thermophilization/scripts/02_build_analysis_cohort.R) | `plot_recruitment_analysis_cohort.parquet` |
+| 3 | [03_build_plot_disturbance_severity.R](../07_thermophilization/scripts/03_build_plot_disturbance_severity.R) | `plot_disturbance_severity.parquet` |
+| 4 | [04_build_plot_community_climate_metrics.R](../07_thermophilization/scripts/04_build_plot_community_climate_metrics.R) | `plot_community_climate_<layer>.parquet` |
+| 5 | [05_build_plot_year_community_cwm.R](../07_thermophilization/scripts/05_build_plot_year_community_cwm.R) | `plot_year_community_cwm_<layer>.parquet` |
+| 6 | [06_build_plot_year_climate_change.R](../07_thermophilization/scripts/06_build_plot_year_climate_change.R) | `plot_year_climate_change_<layer>.parquet` |
 
-Matched-control modeling and final inferential summaries are planned next steps.
-They should not be treated as completed results until scripts and QA outputs are
-committed.
+Final inferential models and figures are not implemented yet. They should not
+be treated as completed results until scripts and QA outputs are committed.
 
 ## Conceptual Flow
 
 ```text
-FIA seedling species records
+FIA species records by layer
         +
 BIEN/TerraClimate species niche indicators
         |
         v
-Condition-level recruitment community-weighted means
+Plot survey-year community-weighted means and medians
         +
-FIA disturbance and treatment classification
+FIA disturbance proportions
         |
         v
-Analysis cohort of disturbed and control candidates
+Repeated-survey changes and annualized rates
         |
         v
-Planned matched-control analysis
+Planned modeling and summaries
 ```
 
 ## Key FIA Grains
@@ -52,15 +57,17 @@ FIA data are hierarchical. The current workflow keeps this structure explicit.
 | Subplot or microplot | Within-plot sampling unit | `SUBP` |
 | Species record | A species observed within a sampling unit | `SPCD` or P2VEG symbol |
 
-The thermophilization input tables are currently built at:
+The thermophilization products use two main grains:
 
 ```text
-stable_plot_id x PLT_CN x INVYR x CONDID
+condition-level: stable_plot_id x PLT_CN x INVYR x CONDID
+plot-year:       stable_plot_id x PLT_CN x INVYR
 ```
 
-This condition-level grain is used because different conditions within the same
-plot visit can have different forest types, disturbance histories, or treatment
-histories.
+Condition-level products are used when different conditions within the same
+plot visit must remain separate. Plot-year products collapse selected
+conditions and subplots within a visit to support the requested community
+weighted mean for each year of survey.
 
 ## Step 1: Species Climate Niches
 
@@ -206,10 +213,86 @@ Disturbance-class counts:
 These counts describe the analysis cohort only. They are not estimates of a
 disturbance effect.
 
-## Step 4: Planned Matched-Control Table
+## Step 4: Plot-Visit Disturbance Proportions
 
-The next analysis step should build a matched-control table. The recommended
-grain is one row per disturbed-control pair:
+Script:
+
+```bash
+Rscript 07_thermophilization/scripts/03_build_plot_disturbance_severity.R
+```
+
+Main output:
+
+```text
+07_thermophilization/data/processed/plot_disturbance_severity.parquet
+```
+
+Each row represents one FIA plot visit:
+
+```text
+stable_plot_id x PLT_CN x INVYR
+```
+
+This table aggregates condition-level disturbance fields using `CONDPROP_UNADJ`.
+It reports proportions such as `prop_fire`, `prop_insect`, `prop_disease`, and
+`prop_crown_fire`, plus first-pass fire severity and disturbance-extent labels.
+
+## Step 5: Plot Survey-Year Community Climate Affinity
+
+Script:
+
+```bash
+Rscript 07_thermophilization/scripts/05_build_plot_year_community_cwm.R --layer=seedlings
+Rscript 07_thermophilization/scripts/05_build_plot_year_community_cwm.R --layer=saplings
+Rscript 07_thermophilization/scripts/05_build_plot_year_community_cwm.R --layer=trees
+```
+
+Main outputs:
+
+```text
+07_thermophilization/data/processed/plot_year_community_cwm_seedlings.parquet
+07_thermophilization/data/processed/plot_year_community_cwm_saplings.parquet
+07_thermophilization/data/processed/plot_year_community_cwm_trees.parquet
+```
+
+Each row represents one FIA plot visit and one community layer:
+
+```text
+community_layer x stable_plot_id x PLT_CN x INVYR
+```
+
+These are the main products for calculating a community-weighted mean for each
+year of survey. They retain both weighted means and weighted medians for the
+eight species niche indicators.
+
+## Step 6: Repeated-Survey Climate Change
+
+Script:
+
+```bash
+Rscript 07_thermophilization/scripts/06_build_plot_year_climate_change.R --layer=seedlings
+Rscript 07_thermophilization/scripts/06_build_plot_year_climate_change.R --layer=saplings
+Rscript 07_thermophilization/scripts/06_build_plot_year_climate_change.R --layer=trees
+```
+
+Main outputs:
+
+```text
+07_thermophilization/data/processed/plot_year_climate_change_seedlings.parquet
+07_thermophilization/data/processed/plot_year_climate_change_saplings.parquet
+07_thermophilization/data/processed/plot_year_climate_change_trees.parquet
+```
+
+Each row compares consecutive FIA surveys of the same stable plot. The output
+contains previous values, current values, absolute deltas, and annualized rates
+for each climate-affinity metric, plus the current-survey disturbance
+proportions.
+
+## Step 7: Planned Modeling Tables
+
+The next modeling step can use either repeated-survey change products directly
+or build matched-control tables. A matched-control table would use one row per
+disturbed-control pair:
 
 ```text
 disturbed_PLT_CN x disturbed_INVYR x disturbed_CONDID
@@ -233,7 +316,7 @@ The table should retain:
 - Forest type, region, disturbance class, and inventory year.
 - Niche coverage for both sides.
 
-## Step 5: Planned Effect Summaries
+## Step 8: Planned Effect Summaries
 
 After matching, effect summaries should aggregate pair-level deltas by:
 
@@ -273,6 +356,10 @@ Thermophilization status:
 - `07_thermophilization/qa/outputs/plot_recruitment_cwm_missing_species.csv`
 - `07_thermophilization/qa/outputs/analysis_cohort_attrition.csv`
 - `07_thermophilization/qa/outputs/analysis_cohort_summary.csv`
+- `07_thermophilization/qa/outputs/plot_disturbance_severity_summary.csv`
+- `07_thermophilization/qa/outputs/plot_year_community_cwm_summary_<layer>.csv`
+- `07_thermophilization/qa/outputs/plot_year_climate_change_summary_<layer>.csv`
+- `07_thermophilization/qa/outputs/thermophilization_validation_summary.csv`
 
 ## Interpretation Boundaries
 
@@ -282,15 +369,18 @@ The current repository supports statements about:
 - Which species niche gaps affect CWM coverage.
 - Which conditions are currently eligible as disturbed or control candidates.
 - How many rows are retained or removed by cohort filters.
+- Plot-year community climate-affinity values for seedlings, saplings, and trees.
+- Repeated-survey changes and annualized rates for those plot-year values.
+- Plot-visit disturbance proportions and first-pass severity labels.
 
 The current repository does not yet support final statements about:
 
-- Whether disturbance increases or decreases recruitment thermophilization.
+- Whether disturbance increases or decreases community thermophilization after
+  formal modeling.
 - Whether one region has a stronger effect than another.
 - Whether a specific disturbance class has a statistically reliable effect.
 
-Those claims require the planned matching/modeling scripts and associated QA
-outputs.
+Those claims require the planned modeling scripts and associated QA outputs.
 
 ## Schema Reference
 
@@ -314,6 +404,27 @@ outputs.
 - **Grain:** one row per FIA condition visit
 - **Primary key:** `PLT_CN`, `INVYR`, `CONDID`
 - **Key role:** disturbance class and control eligibility
+
+### `plot_disturbance_severity.parquet`
+
+- **Path:** `07_thermophilization/data/processed/plot_disturbance_severity.parquet`
+- **Grain:** one row per FIA plot visit
+- **Primary key:** `stable_plot_id`, `PLT_CN`, `INVYR`
+- **Key role:** plot-visit disturbance proportions and first-pass severity labels
+
+### `plot_year_community_cwm_<layer>.parquet`
+
+- **Path:** `07_thermophilization/data/processed/`
+- **Grain:** one row per community layer and FIA plot visit
+- **Primary key:** `community_layer`, `stable_plot_id`, `PLT_CN`, `INVYR`
+- **Key role:** plot survey-year community climate-affinity values
+
+### `plot_year_climate_change_<layer>.parquet`
+
+- **Path:** `07_thermophilization/data/processed/`
+- **Grain:** one row per community layer and consecutive repeated-survey interval
+- **Primary key:** `community_layer`, `stable_plot_id`, `previous_PLT_CN`, `current_PLT_CN`
+- **Key role:** absolute and annualized change in plot-year community climate affinity
 
 ### `species_climate_niches*.parquet`
 

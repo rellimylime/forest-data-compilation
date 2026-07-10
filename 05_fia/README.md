@@ -6,8 +6,8 @@
 
 `05_fia/` downloads USDA Forest Service FIA tables and turns them into
 documented state extracts and national products for forest structure, species
-composition, mortality, disturbance, treatment history, and analysis
-eligibility.
+composition, mortality, disturbance, treatment history, and eligibility flags
+used by downstream analyses.
 
 For a visual introduction to FIA plots, conditions, subplots, and microplots,
 start with the [FIA visual explainer](../docs/fia-explorer.html).
@@ -110,7 +110,7 @@ This extension is not an input to the current BIEN-range species-niche method. S
 | `data/raw/{ST}/` | State FIA CSV downloads |
 | `lookups/` | Species and forest-type reference parquets |
 | `data/processed/*/state={ST}/` | State-partitioned FIA extracts |
-| `data/processed/summaries/` | National metric and analysis-ready products |
+| `data/processed/summaries/` | National metric, species-composition, disturbance, treatment, and review products |
 | `scripts/summaries/` | Focused builders called by script `05` |
 | `scripts/qc/` | FIA product validation scripts |
 | `scripts/site_climate/` | Optional FIA-site TerraClimate extension |

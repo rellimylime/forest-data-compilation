@@ -85,7 +85,7 @@ Reviewed overrides may change the name submitted to BIEN, but they do not replac
 
 Script: [03_download_bien_ranges.R](scripts/03_download_bien_ranges.R)
 
-**Purpose:** Download BIEN ranges, cache each successful species download, and combine the ranges into one analysis-ready spatial file.
+**Purpose:** Download BIEN ranges, cache each successful species download, and combine the ranges into one consolidated spatial file used by the TerraClimate overlay step.
 
 **Main input:** `data/processed/bien_range_availability.parquet`
 

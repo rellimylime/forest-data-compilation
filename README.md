@@ -5,7 +5,7 @@
 Compiled and cleaned forest disturbance, climate, inventory, species-niche, and thermophilization datasets for analysis. The repository contains these active production paths:
 
 - `IDS + climate`: clean USDA Forest Service Insect and Disease Survey data, then extract TerraClimate, PRISM, or WorldClim climate values at IDS locations.
-- `FIA`: compile Forest Inventory and Analysis plot data into analysis-ready forest structure, disturbance, treatment, and site-climate outputs.
+- `FIA`: compile Forest Inventory and Analysis plot data into documented forest structure, species composition, disturbance, treatment, and site-climate outputs.
 - `Species niches`: build BIEN range-map climate niches for FIA/P2VEG species.
 - `Thermophilization`: join species niches to FIA recruitment composition and build community-weighted climate-affinity summaries.
 
@@ -40,9 +40,9 @@ If you want a specific workstream right away:
 | `02_terraclimate/` | Extract monthly TerraClimate values at IDS locations using Google Earth Engine | [02_terraclimate/README.md](02_terraclimate/README.md) |
 | `03_prism/` | Extract monthly PRISM climate values for CONUS IDS observations | [03_prism/README.md](03_prism/README.md) |
 | `04_worldclim/` | Extract monthly WorldClim values from locally downloaded GeoTIFFs | [04_worldclim/README.md](04_worldclim/README.md) |
-| `05_fia/` | Build FIA plot-level summaries, disturbance/treatment history, and site climate | [05_fia/README.md](05_fia/README.md) |
+| `05_fia/` | Build FIA plot/condition summaries, species composition tables, disturbance/treatment history, and optional site climate | [05_fia/README.md](05_fia/README.md) |
 | `06_species_niches/` | Build species-level climate niche indicators from BIEN range maps and TerraClimate | [06_species_niches/README.md](06_species_niches/README.md) |
-| `07_thermophilization/` | Build FIA recruitment CWM products that consume the species niche table | [07_thermophilization/README.md](07_thermophilization/README.md) |
+| `07_thermophilization/` | Join FIA communities to species niches, calculate plot-year community climate affinity, and estimate repeated-survey change rates | [07_thermophilization/README.md](07_thermophilization/README.md) |
 
 ## At a Glance
 
@@ -81,7 +81,7 @@ flowchart LR
 
 1. Build the species universe and BIEN range-map climate niches with
    [06_species_niches/README.md](06_species_niches/README.md).
-2. Build FIA recruitment community-weighted means with
+2. Build FIA community-weighted climate metrics and repeated-survey change tables with
    [07_thermophilization/README.md](07_thermophilization/README.md).
 3. Review the QA summaries in each module before modeling.
 
@@ -118,7 +118,7 @@ app lives under [docs/dashboard/](docs/dashboard/).
 | FIA plot summaries | Complete | Reviewable summary parquets are tracked in git |
 | FIA site climate | Complete | Input template, pixel map, and long-format climate parquet are tracked |
 | Species niches | Active | BIEN range-map niche workflow with QA summaries and documented missing-data handling |
-| Thermophilization | Active | FIA recruitment CWM products consume the species niche table |
+| Thermophilization | Active | Plot-year CWM and repeated-survey change products consume the species niche table |
 
 ## See also
 

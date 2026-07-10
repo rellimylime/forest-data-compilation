@@ -29,21 +29,35 @@ QA outputs.
 | Species climate niches | Complete with documented warnings | `06_species_niches/data/processed/species_climate_niches*.parquet` |
 | Seedling recruitment CWM | Complete | `07_thermophilization/data/processed/plot_recruitment_cwm.parquet` |
 | Analysis cohort | Complete | `07_thermophilization/data/processed/plot_recruitment_analysis_cohort.parquet` |
+| Plot disturbance proportions | Complete | `07_thermophilization/data/processed/plot_disturbance_severity.parquet` |
+| Plot-year community CWM | Complete for seedlings, saplings, and trees | `07_thermophilization/data/processed/plot_year_community_cwm_<layer>.parquet` |
+| Repeated-survey climate change | Complete for seedlings, saplings, and trees | `07_thermophilization/data/processed/plot_year_climate_change_<layer>.parquet` |
+| Structural thermophilization validation | Complete | `07_thermophilization/qa/outputs/thermophilization_validation_summary.csv` |
 | Matched-control analysis | Planned | Not yet implemented in `07_thermophilization/scripts/` |
 | Modeling and figures | Planned | Not yet implemented |
 
 ## Analysis Scope
 
-The current response variable is tree seedling recruitment, measured at the FIA
+The current implemented response products include both condition-level seedling
+recruitment and plot-year community climate affinity.
+
+The original seedling recruitment products are measured at the FIA
 condition-visit level:
 
 ```text
 stable_plot_id x PLT_CN x INVYR x CONDID
 ```
 
-Seedlings are used as the first recruitment layer because FIA records seedlings
-as species-level regeneration data. Sapling, tree, shrub, forb, and graminoid
-products are being prepared so later analyses can extend beyond tree seedlings.
+The plot-year products are measured at:
+
+```text
+community_layer x stable_plot_id x PLT_CN x INVYR
+```
+
+Seedlings are the direct recruitment layer. Saplings represent established
+recent regeneration, and trees represent the live-tree community. Shrub, forb,
+and graminoid products require finalized P2VEG summaries before they can be
+added to this analysis.
 
 ## Core Inputs
 
@@ -99,35 +113,39 @@ Then build thermophilization inputs:
 ```bash
 Rscript 07_thermophilization/scripts/01_build_plot_recruitment_cwm.R
 Rscript 07_thermophilization/scripts/02_build_analysis_cohort.R
+Rscript 07_thermophilization/scripts/03_build_plot_disturbance_severity.R
+Rscript 07_thermophilization/scripts/05_build_plot_year_community_cwm.R --layer=seedlings
+Rscript 07_thermophilization/scripts/05_build_plot_year_community_cwm.R --layer=saplings
+Rscript 07_thermophilization/scripts/05_build_plot_year_community_cwm.R --layer=trees
+Rscript 07_thermophilization/scripts/06_build_plot_year_climate_change.R --layer=seedlings
+Rscript 07_thermophilization/scripts/06_build_plot_year_climate_change.R --layer=saplings
+Rscript 07_thermophilization/scripts/06_build_plot_year_climate_change.R --layer=trees
+Rscript 07_thermophilization/qa/01_validate_thermophilization_products.R
 ```
 
 ## Current QA Snapshot
 
-The most recent committed cohort QA reports:
+Use generated QA files for current row counts, coverage, and warning status.
+Hardcoded counts are intentionally avoided here because they change whenever FIA
+summaries, species niches, or eligibility rules are rebuilt.
 
-| Metric | Value |
-|---|---:|
-| Condition rows entering CWM build | 475,355 |
-| Rows with usable recruitment CWM | 470,545 |
-| Final analysis cohort rows | 410,420 |
-| Control rows | 349,916 |
-| Disturbed rows | 60,504 |
-| Rows meeting 95% niche-coverage threshold | 371,693 |
-| Rows below 95% niche-coverage threshold | 38,727 |
-| Rows using global fallback niches | 11 |
+The condition-level seedling cohort is summarized in:
 
-Disturbance-class counts in the current cohort:
+```text
+07_thermophilization/qa/outputs/analysis_cohort_attrition.csv
+07_thermophilization/qa/outputs/analysis_cohort_summary.csv
+```
 
-| Disturbance class | Rows |
-|---|---:|
-| none/control | 349,916 |
-| insect | 16,452 |
-| other | 11,950 |
-| disease | 11,437 |
-| fire | 10,537 |
-| weather | 10,128 |
+The plot-year products and repeated-survey change products are summarized in:
 
-These are cohort-construction counts, not effect estimates.
+```text
+07_thermophilization/qa/outputs/plot_year_community_cwm_summary_<layer>.csv
+07_thermophilization/qa/outputs/plot_year_climate_change_summary_<layer>.csv
+07_thermophilization/qa/outputs/thermophilization_validation_summary.csv
+```
+
+These QA files report construction counts and validation status, not final
+effect estimates.
 
 ## Planned Analytical Design
 
@@ -169,8 +187,8 @@ control conditions with similar:
 - Baseline climate
 - Recruitment niche coverage
 
-The matching script should write an analysis-ready table with one row per
-disturbed-control pair and explicit match diagnostics.
+The matching script should write one row per disturbed-control pair and include
+explicit match diagnostics.
 
 ### 4. Estimate Disturbance Effects
 

@@ -2,12 +2,13 @@
 
 **Navigation:** [Repo Home](../README.md) | [Docs Hub](README.md) | [Setup](../scripts/SETUP.md) | [Reproduce](REPRODUCE.md) | [Pipeline Map](PIPELINE_MAP.md) | [Data Products](DATA_PRODUCTS.md)
 
-This page summarizes the main data products in the repository, where they live, whether they are tracked in git, and which scripts create or depend on them. It also documents the minimal server-aligned directory skeleton now kept in git with `.gitkeep` placeholders where the raw or intermediate data are too large to commit.
+This page summarizes the main data products in the repository: what each product represents, where it lives, whether it is tracked in git, and which scripts create or depend on it. Module README and WORKFLOW pages linked from the tables provide the fuller row-grain and column descriptions.
 
 ## Status Labels
 
 - `Git-tracked`: reviewable in the repository as-is.
 - `Local/scripted`: produced by running scripts in this repo; typically gitignored.
+- `Scripted`: produced by running scripts in this repo; may be local-only if too large to commit.
 - `Expected local input`: path the scripts expect to exist locally, even if the files are not tracked.
 - `Server mirror`: present in the provided server tree, but not written by the current production scripts.
 
@@ -100,6 +101,18 @@ This page summarizes the main data products in the repository, where they live, 
 | Range climate | `06_species_niches/data/processed/species_range_climate{_us_study_area}.parquet` | Local/scripted | [04_extract_terraclimate_from_ranges.R](../06_species_niches/scripts/04_extract_terraclimate_from_ranges.R) | Monthly TerraClimate summaries over global or study-area-clipped ranges; [column guide](../06_species_niches/WORKFLOW.md#species_range_climateparquet) |
 | Compact species niches | `06_species_niches/data/processed/species_climate_niches{_us_study_area}.parquet` | Local/scripted | [05_build_species_climate_niches.R](../06_species_niches/scripts/05_build_species_climate_niches.R) | Eight species-level climate indicators; [column guide](../06_species_niches/WORKFLOW.md#species_climate_nichesparquet) |
 | Validation and gap reports | `06_species_niches/qa/outputs/*.csv` | Mixed tracked/local | [Species niche QA](../06_species_niches/qa/README.md) | Structural checks, coverage summaries, missing-data categories, and review priorities |
+
+## Thermophilization Outputs
+
+| Output family | Location | Status | Produced by / used by | Notes |
+|---|---|---|---|---|
+| Seedling recruitment CWM | `07_thermophilization/data/processed/plot_recruitment_cwm.parquet` | Local/scripted | [01_build_plot_recruitment_cwm.R](../07_thermophilization/scripts/01_build_plot_recruitment_cwm.R) | One row per FIA condition; seedling community-weighted mean species niche values and niche coverage fields; [plain-language output guide](../07_thermophilization/README.md#plot_recruitment_cwmparquet) |
+| Analysis cohort | `07_thermophilization/data/processed/plot_recruitment_analysis_cohort.parquet` | Local/scripted | [02_build_analysis_cohort.R](../07_thermophilization/scripts/02_build_analysis_cohort.R) | Condition-level join of recruitment CWM, disturbance/control class, and plot exclusion flags; [plain-language output guide](../07_thermophilization/README.md#plot_recruitment_analysis_cohortparquet) |
+| Plot disturbance severity | `07_thermophilization/data/processed/plot_disturbance_severity.parquet` | Local/scripted | [03_build_plot_disturbance_severity.R](../07_thermophilization/scripts/03_build_plot_disturbance_severity.R) | One row per plot visit; condition-proportion-weighted disturbance extent for fire, crown fire, insects, disease, weather, treatment, and human/harvest flags; [plain-language output guide](../07_thermophilization/README.md#plot_disturbance_severityparquet) |
+| Layer community climate metrics | `07_thermophilization/data/processed/plot_community_climate_{seedlings,saplings,trees}.parquet` | Local/scripted | [04_build_plot_community_climate_metrics.R](../07_thermophilization/scripts/04_build_plot_community_climate_metrics.R) | One row per FIA condition and community layer; weighted mean and weighted median species niche indicators; [plain-language output guide](../07_thermophilization/README.md#plot_community_climate_layerparquet) |
+| Plot survey-year community CWM | `07_thermophilization/data/processed/plot_year_community_cwm_{seedlings,saplings,trees}.parquet` | Local/scripted | [05_build_plot_year_community_cwm.R](../07_thermophilization/scripts/05_build_plot_year_community_cwm.R) | One row per FIA plot visit and community layer; condition-proportion-weighted community climate-affinity means and medians for each survey year; [plain-language output guide](../07_thermophilization/README.md#plot_year_community_cwm_layerparquet) |
+| Plot survey-year climate change | `07_thermophilization/data/processed/plot_year_climate_change_{seedlings,saplings,trees}.parquet` | Local/scripted | [06_build_plot_year_climate_change.R](../07_thermophilization/scripts/06_build_plot_year_climate_change.R) | One row per consecutive repeated-survey interval; previous/current climate-affinity values, deltas, annualized rates, and current-survey disturbance proportions; [plain-language output guide](../07_thermophilization/README.md#plot_year_climate_change_layerparquet) |
+| Thermophilization QA summaries | `07_thermophilization/qa/outputs/*.csv` | Local/scripted | [Thermophilization QA scripts](../07_thermophilization/qa/) and per-product builders | Compact coverage, attrition, missing-species, disturbance-severity, validation, and repeated-survey summaries; [plain-language QA guide](../07_thermophilization/README.md#qa-csvs) |
 
 ## Archived ERA5 Outputs
 

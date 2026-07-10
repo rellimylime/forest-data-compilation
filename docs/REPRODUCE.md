@@ -104,6 +104,35 @@ Script `04` requires Google Earth Engine. Run the validation and gap scripts
 listed in [the complete run order](../06_species_niches/WORKFLOW.md#run-order)
 before final thermophilization modeling.
 
+## Path 5: Thermophilization Products
+
+Run this path after the FIA summaries and species climate niches are current.
+
+| Step | Script | What it does | Main outputs | Details |
+|---|---|---|---|---|
+| 1 | [01_build_plot_recruitment_cwm.R](../07_thermophilization/scripts/01_build_plot_recruitment_cwm.R) | Build condition-level seedling recruitment climate-affinity CWMs | `plot_recruitment_cwm.parquet` | [Output guide](../07_thermophilization/README.md#plot_recruitment_cwmparquet) |
+| 2 | [02_build_analysis_cohort.R](../07_thermophilization/scripts/02_build_analysis_cohort.R) | Join seedling CWMs to condition-level disturbance/control labels | `plot_recruitment_analysis_cohort.parquet` | [Output guide](../07_thermophilization/README.md#plot_recruitment_analysis_cohortparquet) |
+| 3 | [03_build_plot_disturbance_severity.R](../07_thermophilization/scripts/03_build_plot_disturbance_severity.R) | Aggregate condition-level disturbance to plot-visit proportions | `plot_disturbance_severity.parquet` | [Output guide](../07_thermophilization/README.md#plot_disturbance_severityparquet) |
+| 4 | [04_build_plot_community_climate_metrics.R](../07_thermophilization/scripts/04_build_plot_community_climate_metrics.R) | Build condition-level climate-affinity means and medians by community layer | `plot_community_climate_<layer>.parquet` | [Output guide](../07_thermophilization/README.md#plot_community_climate_layerparquet) |
+| 5 | [05_build_plot_year_community_cwm.R](../07_thermophilization/scripts/05_build_plot_year_community_cwm.R) | Build plot survey-year community climate-affinity means and medians | `plot_year_community_cwm_<layer>.parquet` | [Output guide](../07_thermophilization/README.md#plot_year_community_cwm_layerparquet) |
+| 6 | [06_build_plot_year_climate_change.R](../07_thermophilization/scripts/06_build_plot_year_climate_change.R) | Calculate repeated-survey deltas and annualized rates | `plot_year_climate_change_<layer>.parquet` | [Output guide](../07_thermophilization/README.md#plot_year_climate_change_layerparquet) |
+| QA gate | [01_validate_thermophilization_products.R](../07_thermophilization/qa/01_validate_thermophilization_products.R) | Validate row grains, required columns, proportions, coverage fields, and rate calculations | `thermophilization_validation_*.csv` | [QA guide](../07_thermophilization/README.md#qa-csvs) |
+
+Run scripts `04`, `05`, and `06` once per layer:
+
+```bash
+Rscript 07_thermophilization/scripts/04_build_plot_community_climate_metrics.R --layer=seedlings
+Rscript 07_thermophilization/scripts/04_build_plot_community_climate_metrics.R --layer=saplings
+Rscript 07_thermophilization/scripts/04_build_plot_community_climate_metrics.R --layer=trees
+Rscript 07_thermophilization/scripts/05_build_plot_year_community_cwm.R --layer=seedlings
+Rscript 07_thermophilization/scripts/05_build_plot_year_community_cwm.R --layer=saplings
+Rscript 07_thermophilization/scripts/05_build_plot_year_community_cwm.R --layer=trees
+Rscript 07_thermophilization/scripts/06_build_plot_year_climate_change.R --layer=seedlings
+Rscript 07_thermophilization/scripts/06_build_plot_year_climate_change.R --layer=saplings
+Rscript 07_thermophilization/scripts/06_build_plot_year_climate_change.R --layer=trees
+Rscript 07_thermophilization/qa/01_validate_thermophilization_products.R
+```
+
 ## Archived Reference: ERA5
 
 `archive/05_era5/` is kept as a documented reference workflow, not as part of the active production checklist above.
