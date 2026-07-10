@@ -149,6 +149,13 @@ site_climate_extract.log
 !07_thermophilization/data/smoke/
 !07_thermophilization/data/smoke/.gitkeep
 
+# Thermophilization QA outputs are regenerated locally by validation and
+# product-builder scripts. Transfer them with data products when needed, but do
+# not commit run-specific CSVs.
+07_thermophilization/qa/outputs/**
+!07_thermophilization/qa/outputs/
+!07_thermophilization/qa/outputs/.gitkeep
+
 # Standalone point-climate extraction outputs. Keep the input CSV and scripts
 # tracked, but leave generated climate products local.
 site_climate/qa/outputs/**
