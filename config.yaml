@@ -462,6 +462,16 @@ processed:
     files:
       plot_recruitment_cwm: "plot_recruitment_cwm.parquet"
       analysis_cohort: "plot_recruitment_analysis_cohort.parquet"
+      plot_disturbance_severity: "plot_disturbance_severity.parquet"
+      plot_community_climate_seedlings: "plot_community_climate_seedlings.parquet"
+      plot_community_climate_saplings: "plot_community_climate_saplings.parquet"
+      plot_community_climate_trees: "plot_community_climate_trees.parquet"
+      plot_year_community_cwm_seedlings: "plot_year_community_cwm_seedlings.parquet"
+      plot_year_community_cwm_saplings: "plot_year_community_cwm_saplings.parquet"
+      plot_year_community_cwm_trees: "plot_year_community_cwm_trees.parquet"
+      plot_year_climate_change_seedlings: "plot_year_climate_change_seedlings.parquet"
+      plot_year_climate_change_saplings: "plot_year_climate_change_saplings.parquet"
+      plot_year_climate_change_trees: "plot_year_climate_change_trees.parquet"
 
   # Standardized climate outputs (long format, dataset-agnostic)
   climate:
