@@ -25,6 +25,7 @@ The products in this directory answer three connected questions:
 | `05_build_plot_year_community_cwm.R` | Build the main plot survey-year community climate-affinity table for seedlings, saplings, or trees. This is the product used to estimate change through time. | `plot_year_community_cwm_<layer>.parquet` |
 | `06_build_plot_year_climate_change.R` | Compare consecutive FIA surveys of the same stable plot and calculate absolute and annualized change in community climate affinity. | `plot_year_climate_change_<layer>.parquet` |
 | `qa/01_validate_thermophilization_products.R` | Validate file presence, documented row grains, required columns, proportions, niche coverage fields, and rate calculations. | `thermophilization_validation_*.csv` |
+| `qa/02_disturbance_survey_coverage.R` | Count stable plots with an FIA survey before and after a disturbance, for disturbance types and before/after conditions you designate in config. Answers "how much pre/post-disturbance survey data do we have?" | `disturbance_survey_coverage_*` |
 
 For the cross-repo list of products and links to detailed output descriptions, see [Data Products](../docs/DATA_PRODUCTS.md#thermophilization-outputs).
 
@@ -305,15 +306,14 @@ The output contains plot-visit disturbance proportions:
 - `prop_human_or_harvest`
 - `dominant_disturbance_class`
 - `dominant_disturbance_prop`
-- `fire_severity_class`
-- `plot_disturbance_extent_class`
+- `is_high_severity_fire`
 
-Columns beginning with `prop_` are proportions of the mapped plot visit. Columns beginning with `forested_prop_` are proportions of the forested condition area only. Fire severity is an FIA-only proxy: crown fire is treated as the strongest available severity signal, while other fire codes are labeled as non-crown or unspecified fire.
+Columns beginning with `prop_` are proportions of the mapped plot visit. Columns beginning with `forested_prop_` are proportions of the forested condition area only. High-severity fire is graded directly from FIA crown-fire area coverage (`prop_crown_fire` or `forested_prop_crown_fire`, from `COND.DSTRBCD == 32`), not a derived label. The column used and the cutoff are both set in `config.yaml` under `processed.thermophilization.high_severity_fire`; `is_high_severity_fire` is `NA` for every row until a threshold is set there.
 
 The script writes two compact QA files:
 
 - `plot_disturbance_severity_summary.csv`: overall counts and disturbance prevalence.
-- `plot_disturbance_severity_by_class.csv`: counts by dominant disturbance class, fire severity class, extent class, and condition-proportion QA flag.
+- `plot_disturbance_severity_by_class.csv`: counts by dominant disturbance class, `is_high_severity_fire`, and condition-proportion QA flag.
 
 ## Script 04 Inputs And Outputs
 
@@ -377,13 +377,32 @@ The output contains plot survey-year community-weighted means and weighted media
 - `cwm_pr` and `median_pr`
 - `cwm_dry_month_pr` and `median_dry_month_pr`
 
-The default plot-level weight is:
+The plot-level weight is the species' per-acre abundance itself, **pooled** across
+the conditions and subplots of the plot visit — it is **not** multiplied by
+`CONDPROP_UNADJ`. FIA `TPA_UNADJ`/basal-area contributions are whole-plot per-acre
+expansions (FIADB v9.4 Ch. 1.2), so summing them over a condition already yields
+`density x CONDPROP` (the condition's plot-basis area contribution). Multiplying by
+condition proportion a second time would square the condition-area weight; that
+former double-count has been removed. Condition area is therefore applied exactly
+once, by the sampling design.
 
-```text
-species abundance weight x CONDPROP_UNADJ
-```
+The weighting basis is explicit, recorded in `weighting_basis` (and
+`condition_area_weighting = "none"`, `conditions_pooled = TRUE`), replacing the old
+ambiguous `condition_prop_weighted` flag:
 
-This keeps mixed-condition plots from giving the same influence to a small mapped condition and a large mapped condition. Use `--condition-prop-weight=FALSE` only as a sensitivity check.
+| `--layer` | default basis (`weighting_basis`) | weight column |
+| --- | --- | --- |
+| `trees` | `pooled_basal_area` (adult-tree stand dominance) | `abundance_for_cwm` (basal area per acre, TPA fallback) |
+| `saplings` | `pooled_stem_abundance` | `n_trees_tpa` |
+| `seedlings` | `pooled_stem_abundance` | `seedlings_tpa` |
+
+An adult-tree **stem-abundance sensitivity** product can be built with
+`--weighting-basis=pooled_stem_abundance` on the trees layer; it writes to a
+`__pooled_stem_abundance`-suffixed file so it never overwrites the canonical
+basal-area product. An **area-weighted condition CWM** (`area_weighted_condition_cwm`)
+is a *different* estimand — within-condition CWMs weighted by each condition's share
+of included sampled land area — and is intentionally deferred, not produced by the
+pooled path.
 
 The script writes three compact QA files per layer:
 
@@ -406,18 +425,29 @@ community_layer x stable_plot_id x previous_PLT_CN x current_PLT_CN
 
 The output represents consecutive FIA survey intervals. In plain language, each row asks: how did the plot-level community climate affinity change between the previous survey year and the current survey year?
 
+**Repeated-visit linkage.** An interval is kept only when FIA's official
+remeasurement link matches the chronologically previous CWM-bearing visit on the
+same physical plot — that is, the current record's `PREV_PLT_CN` equals the previous
+row's `PLT_CN`. Chronological adjacency alone is **not** treated as a remeasurement
+link: plots that were replaced or re-established at a reused location carry a null or
+different `PREV_PLT_CN` and are excluded, so they never become a spurious change
+interval. Each output row carries `PREV_PLT_CN` and `link_status` for provenance, and
+per-run counts (matched / null-link / mismatched / prior-visit-outside-window) are
+written to `plot_year_climate_change_linkage_<layer>.csv`.
+
 Main column groups:
 
 - Previous/current survey identity: previous and current `PLT_CN`, previous and current `INVYR`, and `years_between_surveys`.
 - Previous/current community context: species richness, abundance weight, and niche coverage.
 - Climate-affinity change: previous value, current value, absolute delta, and annualized rate for each CWM and median indicator.
 - Current-survey disturbance: fire, crown fire, insect, disease, weather, human/harvest proportions and dominant disturbance class.
-- Review flags: whether both surveys meet the niche coverage threshold and whether the recorded disturbance year falls inside the survey interval.
+- Review flags: whether both surveys meet the niche coverage threshold, and whether a recorded disturbance year falls inside the survey interval — `disturbance_within_interval` for any disturbance type, plus type-specific `fire_within_interval` and `insect_within_interval` (a plot can show `disturbance_within_interval = TRUE` from a non-fire, non-insect event, so the any-type flag alone cannot answer a fire- or insect-specific pre/post-survey question).
 
-The script writes two compact QA files per layer:
+The script writes three compact QA files per layer:
 
 - `plot_year_climate_change_summary_<layer>.csv`
 - `plot_year_climate_change_by_disturbance_<layer>.csv`
+- `plot_year_climate_change_linkage_<layer>.csv`
 
 ## Output Reference
 
@@ -484,10 +514,13 @@ Main column groups:
 - Plot visit identity: `stable_plot_id`, `PLT_CN`, `INVYR`.
 - Disturbance proportions: `prop_fire`, `prop_crown_fire`, `prop_insect`, `prop_disease`, `prop_weather`, `prop_human_or_harvest`.
 - Forested-area versions: `forested_prop_fire`, `forested_prop_insect`, `forested_prop_disease`, and related fields.
-- Summary labels: `dominant_disturbance_class`, `dominant_disturbance_prop`, `fire_severity_class`, `plot_disturbance_extent_class`.
+- Summary labels: `dominant_disturbance_class`, `dominant_disturbance_prop`, `is_high_severity_fire`.
+- Fire/insect timing: `fire_disturbance_year_latest`, `fire_disturbance_year_earliest`, `insect_disturbance_year_latest`, `insect_disturbance_year_earliest` (type-specific, separate from the any-type `disturbance_year_latest`/`disturbance_year_earliest`). **These cover *all* fire (`DSTRBCD` 30/31/32) and *all* insects (10/11/12) — they are not crown-fire-only or bark-beetle-only.** Crown fire is only `DSTRBCD` 32 (see `prop_crown_fire`); FIA's condition disturbance code cannot isolate bark beetle.
 - QA: condition-proportion quality flag.
 
-Use this table to attach plot-level disturbance amount and first-pass severity classes to plot-year climate-affinity metrics.
+Use this table to attach plot-level disturbance amount and a configurable high-severity-fire flag to plot-year climate-affinity metrics.
+
+High-severity fire is graded directly from `prop_crown_fire` (or `forested_prop_crown_fire`) via one cutoff in `config.yaml -> processed.thermophilization.high_severity_fire`; `is_high_severity_fire` is `NA` until a threshold is set. Earlier derived severity/extent *categories* were removed in favor of this — see [docs/archive_notes.md](docs/archive_notes.md) for what changed and why.
 
 <a id="plot_community_climate_layerparquet"></a>
 
@@ -575,8 +608,8 @@ Main column groups:
 - Previous/current survey identity and survey interval length.
 - Previous/current community richness, abundance weight, and niche coverage.
 - Previous/current climate-affinity values, absolute deltas, and per-year rates.
-- Current-survey disturbance proportions and first-pass severity classes.
-- Flags for niche coverage and whether a recorded disturbance year falls inside the survey interval.
+- Current-survey disturbance proportions and the config-driven `is_high_severity_fire` flag.
+- Flags for niche coverage and whether a recorded disturbance year falls inside the survey interval: `disturbance_within_interval` (any type), plus type-specific `fire_within_interval` and `insect_within_interval`.
 
 Use these tables for the first repeated-plot analysis of whether community climate affinity is changing faster after disturbance.
 
@@ -594,6 +627,7 @@ Main families:
 - `plot_community_climate_*`: condition-level layer coverage and missing species.
 - `plot_year_community_cwm_*`: plot survey-year layer coverage and missing species.
 - `plot_year_climate_change_*`: repeated-survey interval counts and disturbance summaries.
+- `disturbance_survey_coverage_*`: how many stable plots have a survey before and after a disturbance (see the next section).
 - `thermophilization_validation_*`: structural validation checks for files, row grains, required columns, proportions, coverage fields, and rate calculations.
 
 Run the validator after rebuilding scripts `01` through `06`:
@@ -601,6 +635,57 @@ Run the validator after rebuilding scripts `01` through `06`:
 ```bash
 Rscript 07_thermophilization/qa/01_validate_thermophilization_products.R
 ```
+
+<a id="pre-post-disturbance-survey-coverage"></a>
+
+### Pre/post-disturbance survey coverage: which variable answers which question
+
+A recurring question is "how many plots do we have a survey before **and** after a disturbance for?" There are two ways to answer it, and they are not interchangeable.
+
+**Any disturbance type — already in the change tables.** `plot_year_climate_change_<layer>.parquet` carries `disturbance_within_interval`, TRUE when *any* recorded disturbance year falls inside a consecutive survey interval. Its plot count is `n_rows_with_disturbance_year_within_interval` in `plot_year_climate_change_summary_<layer>.csv`. Because it is any-type, a disease or weather event can make it TRUE even when nothing burned.
+
+**Fire or insects specifically — use the type-specific fields.** For a fire- or insect-specific version, use `fire_within_interval` / `insect_within_interval` (same change tables), or the dedicated coverage QA below. The any-type field cannot answer a fire- or insect-specific question on its own.
+
+> **`fire_*` is all fire, `insect_*` is all insects.** `fire_disturbance_year_*` and `fire_within_interval` cover `DSTRBCD` 30/31/32 — not crown fire only. `insect_disturbance_year_*` and `insect_within_interval` cover `DSTRBCD` 10/11/12 — not bark beetle only. For crown fire specifically, use `prop_crown_fire` (`DSTRBCD` 32). FIA's condition disturbance code cannot isolate bark beetle at all.
+
+**The configurable coverage QA — `qa/02_disturbance_survey_coverage.R`.** This reads the condition-level classification directly and counts, per **stable plot**, how many have a survey before and after a disturbance, for any disturbance type and before/after condition you designate in `config.yaml -> processed.thermophilization.disturbance_survey_coverage`. Unlike the change-table flags, it also supports a clean-baseline subset where the studied event is the plot's **first recorded disturbance**. Later disturbances are allowed, but the selected post-event survey window must end before the next dated disturbance. To add a question, add a named query in config (no code change):
+
+- `types`: one or more names from the `disturbance_types` registry (`any`, `fire`, `crown_fire`, `insect`, ...). Their code sets are unioned.
+- `min_surveys_before` / `min_surveys_after`: how many survey years must fall on each side (default 1 each).
+- `first_disturbance_only`: require the studied event to be the first dated disturbance of any type. Plots with an undated or continuous disturbance record are excluded because the absence of an earlier event cannot be established.
+
+**Worked example — "how many plots have at least two surveys before *and* after a crown fire?"** Add this block under `disturbance_survey_coverage.queries` in `config.yaml`, then rerun the script; the answer is `n_plots_match` on the new row of `disturbance_survey_coverage_summary.csv`:
+
+```yaml
+        - name: crown_fire_2before_2after
+          types: [crown_fire]
+          min_surveys_before: 2
+          min_surveys_after: 2
+          first_disturbance_only: false
+```
+
+To target a disturbance type not in the registry (say, `disease` plus `drought` together), either reference existing registry names — `types: [disease, drought]` unions their code sets — or add a new named entry under `disturbance_types` with its `DSTRBCD` list. No code change is ever needed; the script reads whatever queries exist in config.
+
+Definitions (also in the script header):
+
+- **survey year** — one distinct `INVYR` for a stable plot.
+- **disturbance event** — a distinct (disturbance class group, disturbance year) pair for a plot, so the same event recorded on several conditions counts once.
+- **dated event** — an event with a real calendar year; `DSTRBYR` 0 (no year) and 9999 (continuous/unknown) cannot be ordered. They are excluded from ordinary before/after timing and cause exclusion from the first-disturbance cohort.
+- **before/after** — a plot qualifies if a dated event of the type has enough survey years strictly before and on/after it. The visit that records the disturbance is an "after" survey (`DSTRBYR <= INVYR`).
+
+Outputs (`qa/outputs/`):
+
+- `disturbance_survey_coverage_summary.csv` — one row per configured query with the headline `n_plots_match`.
+- `disturbance_survey_coverage_by_plot.parquet` — per-plot TRUE/FALSE for each query, plus survey-year and event counts, for building cohorts downstream.
+- `disturbance_survey_coverage_checks.csv` — internal-consistency and FIA sanity checks. These assert facts that must hold if the computation is right: matched plots have enough survey years; no continuous/zero years leak into the before/after test; **code-subset nesting** (crown_fire ≤ fire ≤ any) and **first-disturbance nesting** (first ≤ plain) hold; and, as an informational FIA data-quality signal, `DSTRBYR` is not later than the visit that recorded it.
+
+Run it after the classification product exists:
+
+```bash
+Rscript 07_thermophilization/qa/02_disturbance_survey_coverage.R
+```
+
+**Why "no code" is not "undisturbed":** FIA records a condition disturbance code only when the event killed or damaged at least 25% of the trees in that condition (and ≥ 1 acre), per the [FIADB Database Description](https://research.fs.usda.gov/sites/default/files/2024-05/wo-v9-2_apr2024_ug_fiadb_database_description_nfi.pdf). Plots below that threshold look undisturbed in these counts. Linking MTBS fire perimeters and the IDS insect survey later will catch sub-threshold and better-dated events.
 
 ## Smoke Tests
 

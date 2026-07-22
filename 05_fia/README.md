@@ -80,6 +80,39 @@ Install `rFIA` before script `01`. See [Setup](../scripts/SETUP.md) and
 | `plot_damage_agents.parquet` | Labeled live-tree damage-agent summaries | [Output dictionary](WORKFLOW.md#plot-damage-agents) |
 | `plot_exclusion_flags.parquet` | Whole-plot review and sensitivity flags | [Output dictionary](WORKFLOW.md#plot-exclusion-flags) |
 
+## Data Contracts
+
+These invariants are enforced in code (`scripts/utils/fia_year_schema.R`,
+`scripts/utils/fia_seedling.R`, `05_fia/scripts/summaries/summary_helpers.R`) and
+covered by regression tests in `05_fia/tests/testthat/`.
+
+- **Descriptive, not design-based.** Every product is a descriptive summary of
+  *sampled* FIA plots/conditions (e.g. "trees per acre on a sampled plot",
+  "average among sampled FIA plots"). None use FIA evaluations, `POP_STRATUM`,
+  expansion factors (`EXPNS`), adjustment factors, or sampling-error estimation, so
+  none are statewide/regional population estimates, totals, or forest-area estimates.
+- **Year fields are nullable integers.** `TRTYR1-3` and `DSTRBYR1-3` are cast to
+  integer before each state partition is written and forced to `int32` when the
+  partitions are unioned nationally, independent of partition/file order. A state
+  whose 2nd/3rd slot is entirely empty can no longer be inferred as Boolean and drag
+  real years to `TRUE`. Documented sentinels (e.g. `9999` = continuous/unknown) are
+  preserved and excluded from time-since arithmetic.
+- **Tree/sapling grain.** `trees/*` and `plot_tree_species` / `plot_sapling_species`
+  are at `PLT_CN x INVYR x CONDID x SUBP x SPCD` (with species identity carried
+  through). The producer keeps `CONDID`/`SUBP`; downstream builders pre-flight-check
+  for them.
+- **Seedling eligibility.** A seedling record is kept when FIA's *calculated*
+  abundance is positive (`TREECOUNT_CALC > 0`, or a valid positive `TPA_UNADJ`), not
+  when the raw field count `TREECOUNT > 0`. `TREECOUNT` is null in many states
+  (ME ~21%, OR/CA ~20%); it is retained as a descriptive column but its missingness
+  never discards a record FIA counts.
+- **Freshness / atomicity.** Builders using the shared freshness contract rebuild
+  when a declared input is newer than the output, when a declared input is missing,
+  when the output is missing a contract column, or when `--force` (or
+  `--force=<product>`) is passed. Parquet replacement uses a same-directory atomic
+  rename and fails rather than falling back to an in-place copy, so readers are not
+  shown a half-written canonical product.
+
 ## Optional Site-Climate Extension
 
 The core FIA pipeline ends at script `05`. A separate optional workflow builds monthly TerraClimate values at FIA plot coordinates for dashboard exploration and legacy FIA-location climate analyses:

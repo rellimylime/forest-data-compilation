@@ -164,6 +164,32 @@ The analysis cohort already identifies:
 Natural-disturbance classes are based on FIA condition disturbance codes. Harvest
 and human-disturbance flags are retained for exclusion or sensitivity analysis.
 
+### 1b. Repeated-Survey (Before/After) Cohort Restrictions
+
+The before/after change design adds two cohort rules. Counts come from
+`07_thermophilization/qa/outputs/disturbance_survey_coverage_summary.csv`
+(built by `qa/02_disturbance_survey_coverage.R`).
+
+**Forested at the post-disturbance survey.** The response is a tree/sapling/
+seedling community mean, so a plot with no forested condition after the
+disturbance has no community to measure. Requiring it makes the estimand explicit:
+*change in community climate affinity among plots that remained forested*. The
+trade-off is that the estimate cannot speak to disturbances severe enough to
+convert forest to nonforest — but this censors few plots (~1% of the fire
+before/after cohort), because FIA plots that stay in the panel rarely fully
+convert.
+
+**The disturbance of interest is the plot's first.** The pre-disturbance survey is
+the baseline. If an earlier disturbance preceded it, that baseline is already a
+recovering stand (different fuels, structure, seed sources, and successional
+stage), so the measured change would conflate recovery from the earlier event
+with response to the studied one. Requiring the studied disturbance to be first
+keeps the baseline a genuine pre-disturbance reference; the estimand is *change
+from an undisturbed baseline to the first post-disturbance survey*. This replaces
+the stricter "exactly one disturbance ever" rule: a plot may have later
+disturbances, as long as the post-survey used precedes them. ~90% of the fire
+before/after cohort already meets this.
+
 ### 2. Retain Niche-Coverage Diagnostics
 
 The CWM product retains rows with incomplete niche coverage and reports:

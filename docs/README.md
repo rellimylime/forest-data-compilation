@@ -6,7 +6,7 @@ This is the main navigation page for the repository documentation. Use it to mov
 
 ## Start Here
 
-| If you want to... | Go to... |
+| Goal | Go to... |
 |---|---|
 | Understand the repo at a glance | [Repo Home](../README.md) |
 | See the whole pipeline visually | [Pipeline Map](PIPELINE_MAP.md) |
@@ -17,30 +17,31 @@ This is the main navigation page for the repository documentation. Use it to mov
 | Set up the environment | [Setup](../scripts/SETUP.md) |
 | Understand root-level helper scripts | [Shared Scripts](../scripts/README.md) |
 | Understand FIA plot design visually | [FIA visual explainer](fia-explorer.html) |
+| Review the forest data explorer design | [Forest Data Explorer Design](FOREST_DATA_EXPLORER_DESIGN.md) |
 | Use the main visual guide while working locally | [Dashboard entrypoint](dashboard/app.py) |
 
 ## Reviewer Paths
 
-### I want the high-level overview
+### High-level overview
 
 - [Repo Home](../README.md)
 - [Pipeline Map](PIPELINE_MAP.md)
 - [Data Products](DATA_PRODUCTS.md)
 
-### I want the exact run order
+### Exact run order
 
 - [Reproduce](REPRODUCE.md)
 - [IDS README](../01_ids/README.md)
 - [FIA README](../05_fia/README.md)
 
-### I want to inspect the FIA pipeline
+### FIA pipeline
 
 - [FIA visual explainer](fia-explorer.html)
 - [FIA overview](../05_fia/README.md)
 - [FIA technical workflow](../05_fia/WORKFLOW.md)
 - [FIA scripts](../05_fia/scripts/)
 
-### I want to inspect species niches and thermophilization
+### Species niches and thermophilization
 
 - [Species niche overview](../06_species_niches/README.md)
 - [Species niche technical workflow](../06_species_niches/WORKFLOW.md)
@@ -48,7 +49,7 @@ This is the main navigation page for the repository documentation. Use it to mov
 - [Species niche QA guide](../06_species_niches/qa/README.md)
 - [Thermophilization overview](../07_thermophilization/README.md)
 
-### I want to inspect climate extraction
+### Climate extraction
 
 - [Shared architecture](ARCHITECTURE.md)
 - [TerraClimate overview](../02_terraclimate/README.md)
@@ -56,18 +57,18 @@ This is the main navigation page for the repository documentation. Use it to mov
 - [WorldClim overview](../04_worldclim/README.md)
 - [Shared scripts overview](../scripts/README.md)
 
-### I want to inspect the archived ERA5 reference
+### Archived ERA5 reference
 
 - [Archived ERA5 README](../archive/05_era5/README.md)
 - [Archived ERA5 workflow](../archive/05_era5/WORKFLOW.md)
 - [Archived ERA5 scripts](../archive/05_era5/scripts/)
 
-### I want outputs and file locations
+### Outputs and file locations
 
 - [Data Products](DATA_PRODUCTS.md)
 - [Dashboard](dashboard/)
 
-### I want QC / validation
+### QC and validation
 
 - [Testing and QC](TESTING.md)
 - [IDS QC README](../01_ids/scripts/qc/README.md)
@@ -84,6 +85,7 @@ This is the main navigation page for the repository documentation. Use it to mov
 | `05_fia/` | FIA plot summaries, disturbance, treatment, and site climate | [README](../05_fia/README.md) | [WORKFLOW](../05_fia/WORKFLOW.md) | [scripts/](../05_fia/scripts/) |
 | `06_species_niches/` | BIEN range-map and TerraClimate species niches | [README](../06_species_niches/README.md) | [WORKFLOW](../06_species_niches/WORKFLOW.md) | [scripts/](../06_species_niches/scripts/) |
 | `07_thermophilization/` | Plot-year community climate-affinity metrics, repeated-survey change rates, and disturbance proportions | [README](../07_thermophilization/README.md) | [Output guide](../07_thermophilization/README.md#output-reference) | [scripts/](../07_thermophilization/scripts/) |
+| `08_disturbance_linkage/` | Links FIA plots to MTBS fire severity and IDS insect agents (scaffold) | [README](../08_disturbance_linkage/README.md) | [WORKFLOW](../08_disturbance_linkage/WORKFLOW.md) | [scripts/](../08_disturbance_linkage/scripts/) |
 | `archive/05_era5/` | Archived ERA5 extraction reference and directory layout | [README](../archive/05_era5/README.md) | [WORKFLOW](../archive/05_era5/WORKFLOW.md) | [scripts/](../archive/05_era5/scripts/) |
 
 ## Core Documentation
