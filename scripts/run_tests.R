@@ -5,7 +5,8 @@ suppressPackageStartupMessages({
   library(here)
 })
 
-available_modules <- c("01_ids", "02_terraclimate", "03_prism", "04_worldclim", "05_fia")
+available_modules <- c("01_ids", "02_terraclimate", "03_prism", "04_worldclim",
+                       "05_fia", "07_thermophilization", "08_disturbance_linkage")
 
 args <- commandArgs(trailingOnly = TRUE)
 strict <- "--strict" %in% args
