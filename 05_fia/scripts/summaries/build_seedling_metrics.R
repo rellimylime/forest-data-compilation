@@ -8,10 +8,17 @@ build_seedling_metrics <- function(out_dir, proc_fia, states) {
   
   cat("Step 2: plot_seedling_metrics\n")
   out_seed_metrics <- file.path(out_dir, "plot_seedling_metrics.parquet")
-  
-  if (file_exists(out_seed_metrics)) {
-    cat(glue("  Already exists ({file_size(out_seed_metrics)}) - skipping\n\n"))
+
+  rb <- fia_should_rebuild(
+    out_seed_metrics,
+    input_paths = here(proc_fia$seedlings$output_dir),
+    required_cols = c("PLT_CN", "INVYR", "treecount_total", "n_species_seedling"),
+    label = "plot_seedling_metrics"
+  )
+  if (!rb$rebuild) {
+    cat(glue("  Up to date ({rb$reason}, {file_size(out_seed_metrics)}) - skipping\n\n"))
   } else {
+    if (file_exists(out_seed_metrics)) cat(glue("  Rebuilding ({rb$reason})\n"))
     # Open species-level seedling extracts lazily so each state can be summarized alone.
     seed_ds <- tryCatch(
       open_dataset(here(proc_fia$seedlings$output_dir), partitioning = "state"),
@@ -69,7 +76,7 @@ build_seedling_metrics <- function(out_dir, proc_fia, states) {
       all_seed <- rbindlist(Filter(Negate(is.null), results), fill = TRUE)
   
       # Write the compact plot-year seedling summary; species identity stays in the upstream extracts.
-      write_parquet(as_tibble(all_seed), out_seed_metrics, compression = "snappy")
+      write_parquet_atomic(as_tibble(all_seed), out_seed_metrics, compression = "snappy")
       cat(glue("  plot_seedling_metrics: {format(nrow(all_seed), big.mark=',')} rows -> ",
                "{file_size(out_seed_metrics)}\n\n"))
       rm(all_seed, results); gc(verbose = FALSE)

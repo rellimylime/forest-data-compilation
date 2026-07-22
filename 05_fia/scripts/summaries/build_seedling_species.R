@@ -27,7 +27,8 @@ build_seedling_species <- function(out_dir, proc_fia, out_cond_metadata) {
           file.info(out_seed_species)$mtime
     )
 
-  if (file_exists(out_seed_species) && !source_newer) {
+  if (file_exists(out_seed_species) && !source_newer &&
+      !fia_force_requested("plot_seedling_species")) {
     cat(glue("  Already exists ({file_size(out_seed_species)}) - skipping\n\n"))
   } else if (!file_exists(out_cond_metadata)) {
     cat("  plot_condition_metadata.parquet not found. Run Step 4b first.\n\n")
@@ -96,7 +97,7 @@ build_seedling_species <- function(out_dir, proc_fia, out_cond_metadata) {
         }
   
         # Write one national species-level recruitment product for thermophilization analyses.
-        write_parquet(as_tibble(seed_species), out_seed_species, compression = "snappy")
+        write_parquet_atomic(as_tibble(seed_species), out_seed_species, compression = "snappy")
         cat(glue("  plot_seedling_species: {format(nrow(seed_species), big.mark=',')} rows -> ",
                  "{file_size(out_seed_species)}\n\n"))
   

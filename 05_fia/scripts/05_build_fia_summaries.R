@@ -12,6 +12,8 @@
 # ==============================================================================
 
 source("scripts/utils/load_config.R")
+source("scripts/utils/fia_year_schema.R")
+source("scripts/utils/parquet_atomic.R")
 config <- load_config()
 
 library(here)
@@ -21,6 +23,18 @@ library(data.table)
 library(arrow)
 library(dplyr)
 library(tibble)
+
+# Force rebuilds: `--force` rebuilds every product; `--force=<product,product>`
+# rebuilds only the named ones. Builders read this via getOption("fia_force_rebuild").
+.args <- commandArgs(trailingOnly = TRUE)
+if (any(.args == "--force")) {
+  options(fia_force_rebuild = TRUE)
+} else {
+  .force_eq <- grep("^--force=", .args, value = TRUE)
+  if (length(.force_eq) > 0) {
+    options(fia_force_rebuild = trimws(unlist(strsplit(sub("^--force=", "", .force_eq), ","))))
+  }
+}
 
 # Source small builder modules after packages are loaded so each step stays focused.
 summary_dir <- here("05_fia/scripts/summaries")
@@ -45,9 +59,20 @@ out_dir    <- here(proc_fia$summaries$output_dir)
 states     <- fia_config$states
 
 # Open condition data once because multiple products need plot-condition fields.
+# open_cond_dataset() forces TRTYR*/DSTRBYR* to int32 in the national union so a
+# Boolean (all-empty) state partition cannot coerce real years to TRUE regardless
+# of partition/file order (see scripts/utils/fia_year_schema.R).
 cond_ds <- tryCatch(
-  open_dataset(here(proc_fia$cond$output_dir), partitioning = "state"),
-  error = function(e) NULL
+  {
+    ds <- open_cond_dataset(here(proc_fia$cond$output_dir), partitioning = "state")
+    assert_fia_year_schema(ds, context = "national cond dataset")
+    ds
+  },
+  error = function(e) {
+    # A hard schema-contract violation must not be silently swallowed.
+    if (grepl("schema contract violated", conditionMessage(e))) stop(e)
+    NULL
+  }
 )
 
 # Create the summary directory before any builder attempts to write parquet output.
@@ -57,21 +82,24 @@ cat("FIA Plot-Level Summaries\n")
 cat("========================\n\n")
 cat(glue("Output: {out_dir}\n\n"))
 
+# Directory of the state cond partitions, used by builders for freshness checks.
+cond_dir <- here(proc_fia$cond$output_dir)
+
 # Run products in dependency order; downstream steps receive the paths they need.
 out_tree_metrics  <- build_tree_metrics(out_dir, proc_fia, states, cond_ds)
 out_seed_metrics  <- build_seedling_metrics(out_dir, proc_fia, states)
 out_mort_metrics  <- build_mortality_metrics(out_dir, proc_fia)
-out_cond_metrics  <- build_condition_forest_type(out_dir, cond_ds)
+out_cond_metrics  <- build_condition_forest_type(out_dir, cond_ds, cond_dir)
 out_cond_metadata <- build_condition_metadata(out_dir, cond_ds)
 out_tree_species  <- build_tree_species(
   out_dir, proc_fia, states, out_cond_metadata
 )
 out_seed_species  <- build_seedling_species(out_dir, proc_fia, out_cond_metadata)
 out_disturb_class <- build_disturbance_classification(out_dir, out_cond_metadata)
-out_disturb       <- build_disturbance_history(out_dir, cond_ds)
-out_treat         <- build_treatment_history(out_dir, cond_ds)
+out_disturb       <- build_disturbance_history(out_dir, cond_ds, cond_dir)
+out_treat         <- build_treatment_history(out_dir, cond_ds, cond_dir)
 out_damage_ag     <- build_damage_agents(out_dir, proc_fia)
-out_excl_flags    <- build_exclusion_flags(out_dir, proc_fia, cond_ds)
+out_excl_flags    <- build_exclusion_flags(out_dir, proc_fia, cond_ds, cond_dir)
 
 cat("FIA summaries complete.\n\n")
 cat("Outputs:\n")

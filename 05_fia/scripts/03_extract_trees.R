@@ -32,12 +32,21 @@
 #
 # Output:
 #   05_fia/data/processed/trees/state={ST}/trees_{ST}.parquet
-#     Columns: PLT_CN, INVYR, SPCD, SFTWD_HRDWD, STATUSCD, size_class,
-#              canopy_layer, ba_sqft, ba_per_acre, n_trees_tpa, n_trees_raw
+#     Grain: PLT_CN x INVYR x CONDID x SUBP x SPCD x STATUSCD x size_class x
+#            canopy_layer (species identity fields are functionally dependent on
+#            SPCD). CONDID/SUBP are required by build_tree_species.R so composition
+#            can be summarized at the condition/subplot grain; do NOT drop them.
+#     Columns: PLT_CN, INVYR, CONDID, SUBP, SPCD, COMMON_NAME, SCIENTIFIC_NAME,
+#              GENUS, SPECIES, SFTWD_HRDWD, WOODLAND, MAJOR_SPGRPCD,
+#              JENKINS_SPGRPCD, STATUSCD, size_class, canopy_layer,
+#              ba_sqft, ba_per_acre, n_trees_tpa, n_trees_raw
 #   05_fia/data/processed/cond/state={ST}/cond_{ST}.parquet
 #     Columns: stable_plot_id, PLT_CN, INVYR, STATECD, UNITCD, COUNTYCD, PLOT,
 #              PREV_PLT_CN, CONDID, FORTYPCD, COND_STATUS_CD, CONDPROP_UNADJ,
 #              LAT, LON, ELEV, DSTRBCD1-3, DSTRBYR1-3, TRTCD1-3, TRTYR1-3
+#     Year fields (TRTYR*/DSTRBYR*) are cast to nullable integer before writing
+#     (see scripts/utils/fia_year_schema.R) so all-empty slots are never written
+#     as Boolean and the national union stays partition-order independent.
 #   05_fia/data/processed/damage_agents/state={ST}/damage_agents_{ST}.parquet
 #     Columns: PLT_CN, INVYR, CONDID, SPCD, SFTWD_HRDWD, DAMAGE_AGENT_CD,
 #              ba_per_acre, n_trees_tpa
@@ -47,6 +56,8 @@
 # ==============================================================================
 
 source("scripts/utils/load_config.R")
+source("scripts/utils/fia_year_schema.R")
+source("scripts/utils/parquet_atomic.R")
 config <- load_config()
 
 library(here)
@@ -131,9 +142,15 @@ if (!file_exists(ref_sp_path)) {
   stop("ref_species.parquet not found. Run 02_inspect_fia.R first.")
 }
 
-# Load only fields needed for grouping tree records.
+# Load species identity/classification fields needed by downstream consumers
+# (build_tree_species.R keeps species names and groups at the SPCD grain).
 ref_sp <- as.data.table(read_parquet(ref_sp_path))
-ref_sp <- ref_sp[, .(SPCD, SFTWD_HRDWD, WOODLAND)]
+ref_sp_cols <- intersect(
+  c("SPCD", "COMMON_NAME", "SCIENTIFIC_NAME", "GENUS", "SPECIES",
+    "SFTWD_HRDWD", "WOODLAND", "MAJOR_SPGRPCD", "JENKINS_SPGRPCD"),
+  names(ref_sp)
+)
+ref_sp <- ref_sp[, ..ref_sp_cols]
 
 # Key by species code because every tree join uses SPCD.
 setkey(ref_sp, SPCD)
@@ -235,6 +252,11 @@ for (i in seq_along(states)) {
       # Select only columns that actually exist so older state files can still run.
       select_cond <- intersect(cond_cols, avail_cond)
       cond_dt <- fread(cond_file, select = select_cond, showProgress = FALSE)
+
+      # Producer-side year contract: cast TRTYR*/DSTRBYR* to nullable integer so a
+      # state whose 2nd/3rd slot is entirely empty is never written as Boolean.
+      cast_fia_year_fields(cond_dt)
+
       cat(glue("{if (need_trees || need_harvest_flags) ', ' else '  Loaded: '}",
                "COND={format(nrow(cond_dt), big.mark=',')}"))
     }
@@ -289,8 +311,16 @@ for (i in seq_along(states)) {
       setkey(tree_dt, SPCD)
       tree_dt <- ref_sp[tree_dt, on = "SPCD"]
 
-      # Keep one row per plot-year-species-status-size-layer combination.
-      group_cols <- c("PLT_CN", "INVYR", "SPCD", "SFTWD_HRDWD", "WOODLAND",
+      # Keep CONDID and SUBP so composition can be summarized at the FIA
+      # condition/subplot grain downstream (build_tree_species.R). Species
+      # identity fields are functionally dependent on SPCD and are carried
+      # through the grouping so they survive to the product.
+      species_group_cols <- intersect(
+        c("SPCD", "COMMON_NAME", "SCIENTIFIC_NAME", "GENUS", "SPECIES",
+          "SFTWD_HRDWD", "WOODLAND", "MAJOR_SPGRPCD", "JENKINS_SPGRPCD"),
+        names(tree_dt)
+      )
+      group_cols <- c("PLT_CN", "INVYR", "CONDID", "SUBP", species_group_cols,
                       "STATUSCD", "size_class", "canopy_layer")
 
       # Sum raw basal area and per-acre expanded basal area at the analysis grain.
@@ -301,9 +331,19 @@ for (i in seq_along(states)) {
         n_trees_raw = .N
       ), by = group_cols]
 
-      # Write the compact tree aggregate for this state.
+      # Pre-flight grain contract: refuse to write a tree product that is missing
+      # the condition/subplot/species fields required by build_tree_species.R.
+      required_tree_out_cols <- c("PLT_CN", "INVYR", "CONDID", "SUBP", "SPCD",
+                                  "COMMON_NAME", "SCIENTIFIC_NAME")
+      missing_tree_out_cols <- setdiff(required_tree_out_cols, names(trees_agg))
+      if (length(missing_tree_out_cols) > 0) {
+        stop(glue("Tree producer contract violation for {st}: missing ",
+                  "{paste(missing_tree_out_cols, collapse=', ')} before write."))
+      }
+
+      # Write the tree aggregate (condition x subplot x species grain) atomically.
       dir_create(dirname(trees_out))
-      write_parquet(as_tibble(trees_agg), trees_out, compression = "snappy")
+      write_parquet_atomic(as_tibble(trees_agg), trees_out, compression = "snappy")
       cat(glue("  Trees:   {format(nrow(trees_agg), big.mark=',')} rows -> {file_size(trees_out)}\n"))
 
       # Keep live trees with at least one nonzero damage-agent code.
@@ -345,7 +385,7 @@ for (i in seq_along(states)) {
 
       # Write one damage-agent parquet per state for resumable downstream reads.
       dir_create(dirname(damage_ag_out))
-      write_parquet(as_tibble(da_agg), damage_ag_out, compression = "snappy")
+      write_parquet_atomic(as_tibble(da_agg), damage_ag_out, compression = "snappy")
       cat(glue("  Damage:  {format(nrow(da_agg), big.mark=',')} rows -> {file_size(damage_ag_out)}\n"))
 
     }
@@ -372,7 +412,7 @@ for (i in seq_along(states)) {
 
       # Write only positive harvest flags to keep the file small.
       dir_create(dirname(harvest_flags_out))
-      write_parquet(as_tibble(hf_dt), harvest_flags_out, compression = "snappy")
+      write_parquet_atomic(as_tibble(hf_dt), harvest_flags_out, compression = "snappy")
       cat(glue("  Harvest: {format(nrow(hf_dt), big.mark=',')} flagged plots",
                " -> {file_size(harvest_flags_out)}\n"))
     }
@@ -404,7 +444,7 @@ for (i in seq_along(states)) {
 
       # Write condition rows with plot identity fields for later metadata products.
       dir_create(dirname(cond_out))
-      write_parquet(as_tibble(cond_filt), cond_out, compression = "snappy")
+      write_parquet_atomic(as_tibble(cond_filt), cond_out, compression = "snappy")
       cat(glue("  Cond:    {format(nrow(cond_filt), big.mark=',')} rows -> {file_size(cond_out)}\n"))
     }
 

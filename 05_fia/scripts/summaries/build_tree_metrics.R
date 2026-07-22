@@ -9,10 +9,17 @@ build_tree_metrics <- function(out_dir, proc_fia, states, cond_ds) {
   
   cat("Step 1: plot_tree_metrics\n")
   out_tree_metrics <- file.path(out_dir, "plot_tree_metrics.parquet")
-  
-  if (file_exists(out_tree_metrics)) {
-    cat(glue("  Already exists ({file_size(out_tree_metrics)}) - skipping\n\n"))
+
+  rb <- fia_should_rebuild(
+    out_tree_metrics,
+    input_paths = c(here(proc_fia$trees$output_dir), here(proc_fia$cond$output_dir)),
+    required_cols = c("PLT_CN", "INVYR", "ba_live_total", "n_species_live"),
+    label = "plot_tree_metrics"
+  )
+  if (!rb$rebuild) {
+    cat(glue("  Up to date ({rb$reason}, {file_size(out_tree_metrics)}) - skipping\n\n"))
   } else {
+    if (file_exists(out_tree_metrics)) cat(glue("  Rebuilding ({rb$reason})\n"))
     # Open state-partitioned tree aggregates lazily so we can collect one state at a time.
     trees_ds <- tryCatch(
       open_dataset(here(proc_fia$trees$output_dir), partitioning = "state"),
@@ -142,7 +149,7 @@ build_tree_metrics <- function(out_dir, proc_fia, states, cond_ds) {
       all_metrics <- rbindlist(Filter(Negate(is.null), results), fill = TRUE)
   
       # Write the final tree summary as a git-trackable parquet product.
-      write_parquet(as_tibble(all_metrics), out_tree_metrics, compression = "snappy")
+      write_parquet_atomic(as_tibble(all_metrics), out_tree_metrics, compression = "snappy")
       cat(glue("  plot_tree_metrics: {format(nrow(all_metrics), big.mark=',')} rows -> ",
                "{file_size(out_tree_metrics)}\n\n"))
       rm(all_metrics, results)

@@ -13,8 +13,9 @@ build_disturbance_classification <- function(out_dir, out_cond_metadata) {
   source_newer <- file_exists(out_disturb_class) &&
     file.info(out_cond_metadata)$mtime >
       file.info(out_disturb_class)$mtime
+  forced <- fia_force_requested("plot_disturbance_classification")
 
-  if (file_exists(out_disturb_class) && !source_newer) {
+  if (file_exists(out_disturb_class) && !source_newer && !forced) {
     cat(glue("  Already exists ({file_size(out_disturb_class)}) - skipping\n\n"))
   } else if (!file_exists(out_cond_metadata)) {
     cat("  plot_condition_metadata.parquet not found. Run Step 4b first.\n\n")
@@ -149,6 +150,37 @@ build_disturbance_classification <- function(out_dir, out_cond_metadata) {
     cond_class[, disturbance_year_earliest := as.integer(earliest_dstr)]
     cond_class[, treatment_year_latest := as.integer(latest_trt)]
     cond_class[, cutting_year_latest := as.integer(latest_cut)]
+
+    # Type-specific latest/earliest years, separate from the any-type
+    # disturbance_year_latest/earliest above. These support checks for whether
+    # a survey interval brackets a specific disturbance type (e.g. fire), which
+    # the any-type field cannot answer if a different, more recent disturbance
+    # type occurred on the same condition.
+    valid_year_from_code_in_set <- function(code, year, code_set) {
+      y <- as.integer(year)
+      y[is.na(code) | !(code %in% code_set) | is.na(y) | y %in% c(0L, 9999L)] <- NA_integer_
+      y
+    }
+    fire_code_set <- c(30L, 31L, 32L)
+    insect_code_set <- c(10L, 11L, 12L)
+    valid_fire_year_cols <- paste0("fire_year_valid_", seq_along(dist_year_cols))
+    valid_insect_year_cols <- paste0("insect_year_valid_", seq_along(dist_year_cols))
+    for (j in seq_along(dist_year_cols)) {
+      cond_class[, (valid_fire_year_cols[j]) := valid_year_from_code_in_set(get(dist_code_cols[j]), get(dist_year_cols[j]), fire_code_set)]
+      cond_class[, (valid_insect_year_cols[j]) := valid_year_from_code_in_set(get(dist_code_cols[j]), get(dist_year_cols[j]), insect_code_set)]
+    }
+    latest_fire <- do.call(pmax, c(cond_class[, ..valid_fire_year_cols], na.rm = TRUE))
+    earliest_fire <- do.call(pmin, c(cond_class[, ..valid_fire_year_cols], na.rm = TRUE))
+    latest_insect <- do.call(pmax, c(cond_class[, ..valid_insect_year_cols], na.rm = TRUE))
+    earliest_insect <- do.call(pmin, c(cond_class[, ..valid_insect_year_cols], na.rm = TRUE))
+    latest_fire[!is.finite(latest_fire)] <- NA_integer_
+    earliest_fire[!is.finite(earliest_fire)] <- NA_integer_
+    latest_insect[!is.finite(latest_insect)] <- NA_integer_
+    earliest_insect[!is.finite(earliest_insect)] <- NA_integer_
+    cond_class[, fire_disturbance_year_latest := as.integer(latest_fire)]
+    cond_class[, fire_disturbance_year_earliest := as.integer(earliest_fire)]
+    cond_class[, insect_disturbance_year_latest := as.integer(latest_insect)]
+    cond_class[, insect_disturbance_year_earliest := as.integer(earliest_insect)]
     cond_class[, time_since_disturbance := INVYR - disturbance_year_latest]
     cond_class[, time_since_treatment := INVYR - treatment_year_latest]
     cond_class[, time_since_cutting := INVYR - cutting_year_latest]
@@ -209,7 +241,10 @@ build_disturbance_classification <- function(out_dir, out_cond_metadata) {
     )]
   
     # Drop temporary valid-year columns before writing the analysis product.
-    cond_class[, c(valid_dstr_year_cols, valid_trt_year_cols, valid_cut_year_cols) := NULL]
+    cond_class[, c(
+      valid_dstr_year_cols, valid_trt_year_cols, valid_cut_year_cols,
+      valid_fire_year_cols, valid_insect_year_cols
+    ) := NULL]
   
     # Keep identifiers, raw codes, and derived analysis fields together.
     preferred_cols <- c(
@@ -228,6 +263,8 @@ build_disturbance_classification <- function(out_dir, out_cond_metadata) {
       "is_natural_disturbance", "disturbance_class_primary", "disturbance_class",
       "is_high_severity_proxy", "high_severity_proxy_type",
       "disturbance_year_latest", "disturbance_year_earliest",
+      "fire_disturbance_year_latest", "fire_disturbance_year_earliest",
+      "insect_disturbance_year_latest", "insect_disturbance_year_earliest",
       "treatment_year_latest", "cutting_year_latest",
       "time_since_disturbance", "time_since_treatment", "time_since_cutting",
       "has_continuous_disturbance_year", "has_continuous_treatment_year",
@@ -238,7 +275,7 @@ build_disturbance_classification <- function(out_dir, out_cond_metadata) {
     cond_class <- cond_class[, ..out_cols]
   
     # Write the reusable disturbance backbone for matching, filters, and model inputs.
-    write_parquet(as_tibble(cond_class), out_disturb_class, compression = "snappy")
+    write_parquet_atomic(as_tibble(cond_class), out_disturb_class, compression = "snappy")
     cat(glue("  plot_disturbance_classification: {format(nrow(cond_class), big.mark=',')} rows -> ",
              "{file_size(out_disturb_class)}\n"))
   

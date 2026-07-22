@@ -2,7 +2,7 @@
 # build_exclusion_flags
 # ------------------------------------------------------------------------------
 
-build_exclusion_flags <- function(out_dir, proc_fia, cond_ds) {
+build_exclusion_flags <- function(out_dir, proc_fia, cond_ds, cond_dir = NULL) {
   # Step 7: plot_exclusion_flags
   # Per-plot flags for common analysis filters:
   #   pct_forested         - proportion of plot area in forested conditions
@@ -32,12 +32,22 @@ build_exclusion_flags <- function(out_dir, proc_fia, cond_ds) {
   
   cat("Step 7: plot_exclusion_flags\n")
   out_excl_flags <- file.path(out_dir, "plot_exclusion_flags.parquet")
-  
-  if (file_exists(out_excl_flags)) {
-    cat(glue("  Already exists ({file_size(out_excl_flags)}) - skipping\n\n"))
+
+  rb <- fia_should_rebuild(
+    out_excl_flags,
+    input_paths = c(
+      if (!is.null(cond_dir)) cond_dir else character(0),
+      here(proc_fia$harvest_flags$output_dir)
+    ),
+    required_cols = c("PLT_CN", "INVYR", "pct_forested", "exclude_any"),
+    label = "plot_exclusion_flags"
+  )
+  if (!rb$rebuild) {
+    cat(glue("  Up to date ({rb$reason}, {file_size(out_excl_flags)}) - skipping\n\n"))
   } else if (is.null(cond_ds)) {
     cat("  No cond parquets found. Run 03_extract_trees.R first.\n\n")
   } else {
+    if (file_exists(out_excl_flags)) cat(glue("  Rebuilding ({rb$reason})\n"))
   
     # Collect condition table (need STATECD, COND_STATUS_CD, CONDPROP_UNADJ, DSTRBCD*, TRTCD*)
     needed_cols <- c("PLT_CN", "INVYR", "STATECD", "CONDID",
@@ -138,7 +148,7 @@ build_exclusion_flags <- function(out_dir, proc_fia, cond_ds) {
       (!is.na(exclude_harvest)       & exclude_harvest) |
       (!is.na(exclude_harvest_agent) & exclude_harvest_agent)]
   
-    write_parquet(as_tibble(plot_flags), out_excl_flags, compression = "snappy")
+    write_parquet_atomic(as_tibble(plot_flags), out_excl_flags, compression = "snappy")
   
     n_total <- nrow(plot_flags)
     n_excl  <- sum(plot_flags$exclude_any, na.rm = TRUE)

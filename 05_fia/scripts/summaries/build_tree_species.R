@@ -38,8 +38,9 @@ build_tree_species <- function(out_dir, proc_fia, states, out_cond_metadata) {
     as.POSIXct(NA)
   }
   source_newer <- products_exist && newest_input > oldest_output
+  forced <- fia_force_requested("plot_tree_species")
 
-  if (products_exist && !source_newer) {
+  if (products_exist && !source_newer && !forced) {
     cat(glue(
       "  Already exist ({file_size(out_tree_species)}, ",
       "{file_size(out_sapling_species)}) - skipping\n\n"
@@ -234,12 +235,12 @@ build_tree_species <- function(out_dir, proc_fia, states, out_cond_metadata) {
     all.x = TRUE
   )
 
-  write_parquet(
+  write_parquet_atomic(
     as_tibble(tree_species),
     out_tree_species,
     compression = "snappy"
   )
-  write_parquet(
+  write_parquet_atomic(
     as_tibble(sapling_species),
     out_sapling_species,
     compression = "snappy"

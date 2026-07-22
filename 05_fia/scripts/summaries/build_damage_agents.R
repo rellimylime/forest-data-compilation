@@ -9,10 +9,17 @@ build_damage_agents <- function(out_dir, proc_fia) {
   
   cat("Step 6: plot_damage_agents\n")
   out_damage_ag <- file.path(out_dir, "plot_damage_agents.parquet")
-  
-  if (file_exists(out_damage_ag)) {
-    cat(glue("  Already exists ({file_size(out_damage_ag)}) - skipping\n\n"))
+
+  rb <- fia_should_rebuild(
+    out_damage_ag,
+    input_paths = here(proc_fia$damage_agents$output_dir),
+    required_cols = c("PLT_CN", "INVYR", "CONDID", "SPCD", "DAMAGE_AGENT_CD"),
+    label = "plot_damage_agents"
+  )
+  if (!rb$rebuild) {
+    cat(glue("  Up to date ({rb$reason}, {file_size(out_damage_ag)}) - skipping\n\n"))
   } else {
+    if (file_exists(out_damage_ag)) cat(glue("  Rebuilding ({rb$reason})\n"))
     da_ds <- tryCatch(
       open_dataset(here(proc_fia$damage_agents$output_dir), partitioning = "state"),
       error = function(e) NULL
@@ -120,7 +127,7 @@ build_damage_agents <- function(out_dir, proc_fia) {
       # Left join: keep all records, label known codes, leave others as NA
       all_da <- ref_damage_agent[all_da, on = "DAMAGE_AGENT_CD"]
   
-      write_parquet(as_tibble(all_da), out_damage_ag, compression = "snappy")
+      write_parquet_atomic(as_tibble(all_da), out_damage_ag, compression = "snappy")
       cat(glue("  plot_damage_agents: {format(nrow(all_da), big.mark=',')} rows -> ",
                "{file_size(out_damage_ag)}\n\n"))
       rm(all_da); gc(verbose = FALSE)

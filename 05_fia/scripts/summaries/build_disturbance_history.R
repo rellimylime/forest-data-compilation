@@ -2,19 +2,27 @@
 # build_disturbance_history
 # ------------------------------------------------------------------------------
 
-build_disturbance_history <- function(out_dir, cond_ds) {
+build_disturbance_history <- function(out_dir, cond_ds, cond_dir = NULL) {
   # Step 5: plot_disturbance_history
   # Pivot DSTRBCD1/2/3 + DSTRBYR1/2/3 to long format and label disturbance types
   # ------------------------------------------------------------------------------
-  
+
   cat("Step 5: plot_disturbance_history\n")
   out_disturb <- file.path(out_dir, "plot_disturbance_history.parquet")
-  
-  if (file_exists(out_disturb)) {
-    cat(glue("  Already exists ({file_size(out_disturb)}) - skipping\n\n"))
+
+  rb <- fia_should_rebuild(
+    out_disturb,
+    input_paths = if (!is.null(cond_dir)) cond_dir else character(0),
+    required_cols = c("PLT_CN", "INVYR", "CONDID", "DSTRBCD", "DSTRBYR",
+                      "disturbance_label"),
+    label = "plot_disturbance_history"
+  )
+  if (!rb$rebuild) {
+    cat(glue("  Up to date ({rb$reason}, {file_size(out_disturb)}) - skipping\n\n"))
   } else if (is.null(cond_ds)) {
     cat("  No cond parquets found. Run 03_extract_trees.R first.\n\n")
   } else {
+    if (file_exists(out_disturb)) cat(glue("  Rebuilding ({rb$reason})\n"))
     # Inline disturbance code lookup (FIADB v9.4 Appendix, COND.DSTRBCD)
     ref_disturbance <- data.table(
       DSTRBCD = c(10L, 11L, 12L,
@@ -72,7 +80,7 @@ build_disturbance_history <- function(out_dir, cond_ds) {
     setkey(disturb_long, DSTRBCD)
     disturb_long <- ref_disturbance[disturb_long, on = "DSTRBCD"]
   
-    write_parquet(as_tibble(disturb_long), out_disturb, compression = "snappy")
+    write_parquet_atomic(as_tibble(disturb_long), out_disturb, compression = "snappy")
     cat(glue("  plot_disturbance_history: {format(nrow(disturb_long), big.mark=',')} rows -> ",
              "{file_size(out_disturb)}\n\n"))
     rm(all_cond_d, disturb_long); gc(verbose = FALSE)

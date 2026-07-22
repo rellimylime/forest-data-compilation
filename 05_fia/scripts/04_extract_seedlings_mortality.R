@@ -32,6 +32,8 @@
 # ==============================================================================
 
 source("scripts/utils/load_config.R")
+source("scripts/utils/parquet_atomic.R")
+source("scripts/utils/fia_seedling.R")
 config <- load_config()
 
 library(here)
@@ -180,10 +182,14 @@ for (i in seq_along(states)) {
             if (!count_col %in% names(seed_dt)) seed_dt[, (count_col) := NA_real_]
           }
 
-          # Keep positive seedling records from the modern annual inventory period.
+          # Eligibility follows FIA's calculated abundance (TREECOUNT_CALC / valid
+          # TPA_UNADJ), not the raw field count TREECOUNT which is null in many
+          # states (ME ~21%, OR/CA ~20%). See scripts/utils/fia_seedling.R.
+          # TREECOUNT is retained as a descriptive column but its missingness never
+          # discards a record FIA counts.
           seed_dt <- seed_dt[
             INVYR >= invyr_min & INVYR <= invyr_max &
-              !is.na(TREECOUNT) & TREECOUNT > 0
+              seedling_eligible(TREECOUNT, TREECOUNT_CALC, TPA_UNADJ)
           ]
 
           # Build the same stable plot id used in condition metadata.
@@ -218,7 +224,7 @@ for (i in seq_along(states)) {
 
           # Write the species-level seedling product used by recruitment composition work.
           dir_create(dirname(seed_out))
-          write_parquet(as_tibble(seed_agg), seed_out, compression = "snappy")
+          write_parquet_atomic(as_tibble(seed_agg), seed_out, compression = "snappy")
           cat(glue("  Seedlings: {format(nrow(seed_agg), big.mark=',')} rows -> {file_size(seed_out)}\n"))
           rm(seed_dt, seed_agg)
         }
@@ -276,7 +282,7 @@ for (i in seq_along(states)) {
 
         # Write the mortality product after aggregation to keep national reads small.
         dir_create(dirname(mort_out))
-        write_parquet(as_tibble(mort_agg), mort_out, compression = "snappy")
+        write_parquet_atomic(as_tibble(mort_agg), mort_out, compression = "snappy")
         cat(glue("  Mortality: {format(nrow(mort_agg), big.mark=',')} rows -> {file_size(mort_out)}\n"))
         rm(grm_dt, tree_slim, mort_dt, mort_agg)
       }

@@ -20,8 +20,9 @@ build_condition_metadata <- function(out_dir, cond_ds) {
     length(cond_source_files) > 0 &&
     max(file.info(cond_source_files)$mtime, na.rm = TRUE) >
       file.info(out_cond_metadata)$mtime
+  forced <- fia_force_requested("plot_condition_metadata")
 
-  if (file_exists(out_cond_metadata) && !source_newer) {
+  if (file_exists(out_cond_metadata) && !source_newer && !forced) {
     cat(glue("  Already exists ({file_size(out_cond_metadata)}) - skipping\n\n"))
   } else if (is.null(cond_ds)) {
     cat("  No cond parquets found. Run 03_extract_trees.R --force-cond first.\n\n")
@@ -130,7 +131,7 @@ build_condition_metadata <- function(out_dir, cond_ds) {
   
       # Write one condition-level metadata table for downstream matching and modeling.
       # This table is the main join target for thermophilization analysis setup.
-      write_parquet(as_tibble(cond_meta), out_cond_metadata, compression = "snappy")
+      write_parquet_atomic(as_tibble(cond_meta), out_cond_metadata, compression = "snappy")
       cat(glue("  plot_condition_metadata: {format(nrow(cond_meta), big.mark=',')} rows -> ",
                "{file_size(out_cond_metadata)}\n\n"))
   
