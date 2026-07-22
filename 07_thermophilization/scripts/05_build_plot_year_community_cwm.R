@@ -72,18 +72,38 @@ if (!range_scope %in% allowed_range_scopes) {
   stop(glue("--range-scope must be one of: {paste(allowed_range_scopes, collapse = ', ')}"))
 }
 
-default_weight <- switch(
+# Weighting basis is explicit (replaces the old ambiguous condition_prop_weight
+# flag). Both bases POOL species contributions across the plot community WITHOUT
+# re-multiplying by CONDPROP_UNADJ: a species' summed per-acre TPA/BA already
+# carries that condition's plot-basis area contribution (TPA_UNADJ is a
+# whole-plot per-acre expansion, FIADB v9.4 Ch.1.2), so multiplying by condition
+# proportion again would square the condition-area weight.
+#   pooled_basal_area     - adult-tree stand dominance (species BA-per-acre)
+#   pooled_stem_abundance - stem density (species trees-per-acre / TPA)
+# The area_weighted_condition_cwm estimand is a DIFFERENT quantity (within-
+# condition CWMs weighted by condition land-area share); it is documented in the
+# README and intentionally deferred, not produced here.
+default_basis <- switch(
   layer,
-  seedlings = "seedlings_tpa",
-  saplings = "abundance_for_cwm",
-  trees = "abundance_for_cwm"
+  trees     = "pooled_basal_area",
+  saplings  = "pooled_stem_abundance",
+  seedlings = "pooled_stem_abundance"
 )
-weight_col <- get_arg("--weight", default_weight)
+weighting_basis <- get_arg("--weighting-basis", default_basis)
+allowed_bases <- c("pooled_basal_area", "pooled_stem_abundance")
+if (!weighting_basis %in% allowed_bases) {
+  stop(glue("--weighting-basis must be one of: {paste(allowed_bases, collapse = ', ')}"))
+}
 
-# Condition proportions keep mixed-condition plots from giving equal influence to
-# small and large mapped conditions. Use --condition-prop-weight=FALSE only as a
-# sensitivity check.
-condition_prop_weight <- tolower(get_arg("--condition-prop-weight", "TRUE")) %in% c("true", "t", "1", "yes", "y")
+# Weight column implied by the basis and layer.
+default_weight <- if (weighting_basis == "pooled_basal_area") {
+  "abundance_for_cwm"          # BA-per-acre (with TPA fallback) for adult trees
+} else if (layer == "seedlings") {
+  "seedlings_tpa"              # seedlings only carry a TPA density field
+} else {
+  "n_trees_tpa"               # stem TPA for saplings and the adult-tree sensitivity
+}
+weight_col <- get_arg("--weight", default_weight)
 
 # ------------------------------------------------------------------------------
 # Paths and configuration
@@ -138,10 +158,18 @@ out_file <- file.path(
   }
 )
 
+# Non-default weighting bases (e.g. the adult-tree stem-abundance sensitivity)
+# write to a suffixed file so they never overwrite the canonical per-layer product
+# consumed by script 06.
+basis_suffix <- if (weighting_basis == default_basis) "" else paste0("__", weighting_basis)
+if (nzchar(basis_suffix)) {
+  out_file <- sub("\\.parquet$", paste0(basis_suffix, ".parquet"), out_file)
+}
+
 qa_suffix <- if (is_smoke_run) {
-  sprintf("%s_%s_limit_%d", layer, range_scope, limit_arg)
+  sprintf("%s_%s_limit_%d%s", layer, range_scope, limit_arg, basis_suffix)
 } else {
-  layer
+  paste0(layer, basis_suffix)
 }
 
 summary_file <- file.path(qa_dir, sprintf("plot_year_community_cwm_summary_%s.csv", qa_suffix))
@@ -257,8 +285,9 @@ if (range_scope == "us_study_area_with_global_fallback") {
   cat(glue("Global fallback:        {global_niche_path}"), "\n")
 }
 cat(glue("Range scope:            {range_scope}"), "\n")
-cat(glue("Weighting:              {weight_col}"), "\n")
-cat(glue("Condition prop weight:  {condition_prop_weight}"), "\n")
+cat(glue("Weighting basis:        {weighting_basis}"), "\n")
+cat(glue("Weight column:          {weight_col}"), "\n")
+cat(glue("Condition-area weight:  none (pooled; CONDPROP not re-applied)"), "\n")
 cat(glue("Output:                 {out_file}"), "\n\n")
 
 community <- as.data.table(read_parquet(community_path))
@@ -344,16 +373,12 @@ if (weight_col == "presence") {
 }
 community[is.na(base_community_weight) | base_community_weight < 0, base_community_weight := 0]
 
-if (condition_prop_weight) {
-  community[, condition_weight_factor := fifelse(
-    !is.na(CONDPROP_UNADJ) & CONDPROP_UNADJ > 0,
-    CONDPROP_UNADJ,
-    1
-  )]
-} else {
-  community[, condition_weight_factor := 1]
-}
-community[, plot_community_weight := base_community_weight * condition_weight_factor]
+# Pooled plot-community weight = the per-acre abundance/BA itself. Do NOT multiply
+# by CONDPROP_UNADJ: summing TPA_UNADJ/BA over a condition already yields
+# density x CONDPROP (the condition's plot-basis contribution), so a further
+# CONDPROP multiply would square the condition-area weight (the corrected
+# double-count). Condition area is therefore applied exactly once, by the design.
+community[, plot_community_weight := base_community_weight]
 
 condition_presence_cols <- c(plot_identity_cols, "CONDID", "CONDPROP_UNADJ")
 condition_presence <- unique(community[, ..condition_presence_cols])
@@ -402,10 +427,10 @@ community_species <- community[
     base_community_weight = sum_or_na(base_community_weight),
     n_source_rows = .N,
     n_conditions_present = uniqueN(CONDID),
-    ba_per_acre = if ("ba_per_acre" %in% names(.SD)) sum_or_na(ba_per_acre * condition_weight_factor) else NA_real_,
-    n_trees_tpa = if ("n_trees_tpa" %in% names(.SD)) sum_or_na(n_trees_tpa * condition_weight_factor) else NA_real_,
+    ba_per_acre = if ("ba_per_acre" %in% names(.SD)) sum_or_na(ba_per_acre) else NA_real_,
+    n_trees_tpa = if ("n_trees_tpa" %in% names(.SD)) sum_or_na(n_trees_tpa) else NA_real_,
     treecount_total = if ("treecount_total" %in% names(.SD)) sum_or_na(treecount_total) else NA_real_,
-    seedlings_tpa = if ("seedlings_tpa" %in% names(.SD)) sum_or_na(seedlings_tpa * condition_weight_factor) else NA_real_
+    seedlings_tpa = if ("seedlings_tpa" %in% names(.SD)) sum_or_na(seedlings_tpa) else NA_real_
   ),
   by = c(plot_identity_cols, species_cols)
 ]
@@ -499,8 +524,16 @@ plot_metrics <- merge(plot_metrics, plot_condition_flags, by = plot_identity_col
 
 plot_metrics[, `:=`(
   community_layer = layer,
+  # Explicit estimand metadata (replaces the ambiguous condition_prop_weighted flag).
+  community_grain = "plot_visit",
+  life_stage = layer,
+  weighting_basis = weighting_basis,
   weight_column = weight_col,
-  condition_prop_weighted = condition_prop_weight,
+  source_abundance_field = weight_col,
+  conditions_pooled = TRUE,
+  condition_area_weighting = "none",
+  forest_conditions_only = FALSE,
+  partial_forest_handling = "all_conditions_with_layer_pooled",
   range_scope = range_scope,
   frac_weight_with_niche = fifelse(
     plot_community_weight_total > 0,
@@ -527,11 +560,11 @@ plot_metrics[, `:=`(
 setcolorder(
   plot_metrics,
   c(
-    "community_layer", plot_identity_cols, condition_flag_cols, "weight_column", "condition_prop_weighted",
+    "community_layer", plot_identity_cols, condition_flag_cols, "weighting_basis", "weight_column",
     "range_scope", "niche_scopes_used", "climate_period", "climate_source",
     "range_source", "niche_method",
     setdiff(names(plot_metrics), c(
-      "community_layer", plot_identity_cols, condition_flag_cols, "weight_column", "condition_prop_weighted",
+      "community_layer", plot_identity_cols, condition_flag_cols, "weighting_basis", "weight_column",
       "range_scope", "niche_scopes_used", "climate_period", "climate_source",
       "range_source", "niche_method"
     ))
@@ -573,8 +606,9 @@ summary <- data.table(
 summary[, `:=`(
   community_layer = layer,
   range_scope = range_scope,
+  weighting_basis = weighting_basis,
   weight_column = weight_col,
-  condition_prop_weighted = condition_prop_weight,
+  condition_area_weighting = "none",
   smoke_limit = if (is_smoke_run) limit_arg else NA_integer_
 )]
 

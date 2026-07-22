@@ -118,6 +118,7 @@ out_path <- file.path(
 qa_suffix <- if (is_smoke_run) sprintf("%s_limit_%d", layer, limit_arg) else layer
 summary_path <- file.path(qa_dir, sprintf("plot_year_climate_change_summary_%s.csv", qa_suffix))
 by_class_path <- file.path(qa_dir, sprintf("plot_year_climate_change_by_disturbance_%s.csv", qa_suffix))
+linkage_path <- file.path(qa_dir, sprintf("plot_year_climate_change_linkage_%s.csv", qa_suffix))
 
 dir_create(if (is_smoke_run) smoke_data_dir else thermo_dir)
 dir_create(qa_dir)
@@ -210,6 +211,14 @@ if (length(missing_metric_cols) > 0) {
 # Build consecutive survey intervals
 # ------------------------------------------------------------------------------
 
+if (!"PREV_PLT_CN" %in% names(plot_year)) {
+  stop(paste0(
+    "Plot-year CWM table lacks PREV_PLT_CN; cannot enforce the official ",
+    "FIA remeasurement link. Rebuild the plot-year CWM (script 05) so ",
+    "PREV_PLT_CN is carried through."
+  ))
+}
+
 setorder(plot_year, stable_plot_id, INVYR, PLT_CN)
 
 shift_cols <- c(
@@ -221,10 +230,50 @@ for (col in shift_cols) {
 }
 
 plot_year[, years_between_surveys := INVYR - previous_INVYR]
-changes <- plot_year[!is.na(previous_PLT_CN) & years_between_surveys > 0]
+
+# ------------------------------------------------------------------------------
+# Repeated-visit linkage contract
+# ------------------------------------------------------------------------------
+# A change interval is only valid when FIA's official remeasurement link matches
+# the chronologically previous CWM-bearing visit on the same physical plot, i.e.
+#   current PREV_PLT_CN == previous (lagged) PLT_CN
+# Chronological adjacency alone is NOT a remeasurement link: plots that were
+# replaced or re-established at a reused location carry a null or different
+# PREV_PLT_CN, and must not be turned into a spurious change interval. See the
+# FIA data-integrity investigation (~1% of intervals were chronological-only).
+plot_year[, link_status := fcase(
+  is.na(previous_PLT_CN),                     "no_prior_visit_in_layer",
+  is.na(PREV_PLT_CN),                         "null_official_link",
+  PREV_PLT_CN == previous_PLT_CN,             "official_link_match",
+  default =                                   "official_link_mismatch"
+)]
+
+# Diagnostics: count each linkage outcome before filtering.
+link_diag <- data.table(
+  layer = layer,
+  n_plot_year_rows = nrow(plot_year),
+  n_rows_with_prior_visit_in_layer = plot_year[!is.na(previous_PLT_CN), .N],
+  n_official_link_match = plot_year[link_status == "official_link_match", .N],
+  n_null_official_link = plot_year[link_status == "null_official_link", .N],
+  n_official_link_mismatch = plot_year[link_status == "official_link_mismatch", .N],
+  # Prior visit outside the analysis window: FIA records a previous plot but it is
+  # not present as a CWM-bearing row for this layer, so no interval can be built.
+  n_prior_visit_outside_layer = plot_year[
+    is.na(previous_PLT_CN) & !is.na(PREV_PLT_CN), .N]
+)
+cat("Repeated-visit linkage (", layer, "):\n", sep = "")
+cat(sprintf("  official_link_match      : %d\n", link_diag$n_official_link_match))
+cat(sprintf("  null_official_link       : %d (excluded)\n", link_diag$n_null_official_link))
+cat(sprintf("  official_link_mismatch   : %d (excluded)\n", link_diag$n_official_link_mismatch))
+cat(sprintf("  prior_visit_outside_layer: %d\n", link_diag$n_prior_visit_outside_layer))
+
+# Keep only official, forward-in-time remeasurement intervals.
+changes <- plot_year[
+  link_status == "official_link_match" & years_between_surveys > 0
+]
 
 if (nrow(changes) == 0) {
-  stop("No repeated survey intervals were found for the selected layer.")
+  stop("No official-link survey intervals were found for the selected layer.")
 }
 
 for (metric in metric_cols) {
@@ -269,12 +318,15 @@ severity_keep_cols <- intersect(
     "forested_prop_crown_fire", "forested_prop_insect",
     "forested_prop_disease", "forested_prop_weather",
     "disturbance_year_latest", "disturbance_year_earliest",
+    "fire_disturbance_year_latest", "fire_disturbance_year_earliest",
+    "insect_disturbance_year_latest", "insect_disturbance_year_earliest",
     "has_continuous_disturbance_year", "dominant_disturbance_class",
     "dominant_disturbance_prop", "any_fire", "any_crown_fire",
     "any_insect", "any_disease", "any_weather",
     "any_natural_disturbance", "any_human_or_harvest",
-    "has_mixed_natural_disturbance", "fire_severity_class",
-    "plot_disturbance_extent_class", "condition_prop_quality_flag"
+    "has_mixed_natural_disturbance", "is_high_severity_fire",
+    "high_severity_fire_column", "high_severity_fire_threshold",
+    "condition_prop_quality_flag"
   ),
   names(severity)
 )
@@ -304,13 +356,37 @@ changes[, disturbance_within_interval := fifelse(
   na = FALSE
 )]
 
+# Type-specific versions of disturbance_within_interval. The any-type flag
+# above can be TRUE because of a disease/weather/etc. event even when no fire
+# or insect event occurred, so a fire- or insect-specific pre/post-survey
+# question needs its own bracketing check against the type-specific year.
+changes[, fire_within_interval := fifelse(
+  !is.na(fire_disturbance_year_latest) &
+    !is.na(previous_INVYR) &
+    fire_disturbance_year_latest > previous_INVYR &
+    fire_disturbance_year_latest <= current_INVYR,
+  TRUE,
+  FALSE,
+  na = FALSE
+)]
+changes[, insect_within_interval := fifelse(
+  !is.na(insect_disturbance_year_latest) &
+    !is.na(previous_INVYR) &
+    insect_disturbance_year_latest > previous_INVYR &
+    insect_disturbance_year_latest <= current_INVYR,
+  TRUE,
+  FALSE,
+  na = FALSE
+)]
+
 # ------------------------------------------------------------------------------
 # Select and order final columns
 # ------------------------------------------------------------------------------
 
 identity_cols <- c(
   "community_layer", "stable_plot_id", "state", "STATECD", "UNITCD",
-  "COUNTYCD", "PLOT", "previous_PLT_CN", "current_PLT_CN",
+  "COUNTYCD", "PLOT", "previous_PLT_CN", "current_PLT_CN", "PREV_PLT_CN",
+  "link_status",
   "previous_INVYR", "current_INVYR", "years_between_surveys",
   "LAT", "LON", "ELEV", "region_east_west"
 )
@@ -330,11 +406,14 @@ delta_cols <- unlist(lapply(metric_cols, function(metric) {
 disturbance_cols <- intersect(
   c(
     "disturbance_interval_role", "disturbance_within_interval",
+    "fire_within_interval", "insect_within_interval",
     "dominant_disturbance_class", "dominant_disturbance_prop",
-    "plot_disturbance_extent_class", "fire_severity_class",
+    "is_high_severity_fire", "high_severity_fire_column", "high_severity_fire_threshold",
     "prop_any_natural_disturbance", "prop_fire", "prop_crown_fire",
     "prop_insect", "prop_disease", "prop_weather", "prop_human_or_harvest",
     "disturbance_year_latest", "disturbance_year_earliest",
+    "fire_disturbance_year_latest", "fire_disturbance_year_earliest",
+    "insect_disturbance_year_latest", "insect_disturbance_year_earliest",
     "has_continuous_disturbance_year", "condition_prop_quality_flag"
   ),
   names(changes)
@@ -362,6 +441,10 @@ summary <- data.table(
     "n_rows_meeting_niche_coverage_threshold",
     "n_rows_with_current_visit_natural_disturbance",
     "n_rows_with_disturbance_year_within_interval",
+    "n_rows_with_fire_within_interval",
+    "n_stable_plots_with_fire_within_interval",
+    "n_rows_with_insect_within_interval",
+    "n_stable_plots_with_insect_within_interval",
     "median_delta_cwm_temp",
     "median_rate_cwm_temp_per_year",
     "median_delta_cwm_cwd",
@@ -374,6 +457,10 @@ summary <- data.table(
     sum(changes$meets_niche_coverage_threshold, na.rm = TRUE),
     sum(changes$disturbance_interval_role == "current_visit_records_disturbance", na.rm = TRUE),
     sum(changes$disturbance_within_interval, na.rm = TRUE),
+    sum(changes$fire_within_interval, na.rm = TRUE),
+    uniqueN(changes[fire_within_interval == TRUE]$stable_plot_id),
+    sum(changes$insect_within_interval, na.rm = TRUE),
+    uniqueN(changes[insect_within_interval == TRUE]$stable_plot_id),
     stats::median(changes$delta_cwm_temp, na.rm = TRUE),
     stats::median(changes$rate_cwm_temp_per_year, na.rm = TRUE),
     stats::median(changes$delta_cwm_cwd, na.rm = TRUE),
@@ -388,8 +475,9 @@ summary[, `:=`(
 
 by_class <- rbindlist(list(
   count_section(changes, "dominant_disturbance_class", "dominant_disturbance_class"),
-  count_section(changes, "plot_disturbance_extent_class", "plot_disturbance_extent_class"),
-  count_section(changes, "fire_severity_class", "fire_severity_class"),
+  count_section(changes, "is_high_severity_fire", "is_high_severity_fire"),
+  count_section(changes, "fire_within_interval", "fire_within_interval"),
+  count_section(changes, "insect_within_interval", "insect_within_interval"),
   count_section(changes, "disturbance_interval_role", "disturbance_interval_role")
 ), fill = TRUE)
 by_class[, `:=`(
@@ -406,9 +494,11 @@ setcolorder(by_class, c("community_layer", "section", "category", "N", "min_nich
 write_parquet_safely(changes, out_path)
 write_csv_safely(summary, summary_path)
 write_csv_safely(by_class, by_class_path)
+write_csv_safely(link_diag, linkage_path)
 
 cat("\nDone.\n")
 cat(glue("Change parquet: {out_path}"), "\n")
 cat(glue("QA summary:     {summary_path}"), "\n")
-cat(glue("QA by class:    {by_class_path}"), "\n\n")
+cat(glue("QA by class:    {by_class_path}"), "\n")
+cat(glue("QA linkage:     {linkage_path}"), "\n\n")
 print(summary)
