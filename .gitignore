@@ -76,15 +76,11 @@ rsconnect/
 05_fia/data/raw/**/*_TREE.csv
 05_fia/data/raw/**/*_TREE_GRM_COMPONENT.csv
 
-# FIA processed outputs: keep directory skeletons, track selected review files.
+# FIA processed outputs are generated data: regenerated locally or on the
+# server by a pipeline rerun, never committed. Keep only directory skeletons.
 05_fia/data/processed/**
 !05_fia/data/processed/**/
 !05_fia/data/processed/**/.gitkeep
-!05_fia/data/processed/summaries/
-!05_fia/data/processed/summaries/*.parquet
-05_fia/data/processed/summaries/plot_tree_species.parquet
-05_fia/data/processed/summaries/plot_sapling_species.parquet
-05_fia/data/processed/summaries/plot_seedling_species.parquet
 !05_fia/data/processed/site_climate/
 !05_fia/data/processed/site_climate/all_site_locations.csv
 # site_climate.parquet and site_pixel_map.parquet are intentionally NOT un-ignored:
@@ -93,6 +89,9 @@ rsconnect/
 # Root processed outputs are legacy/local-only. Active modules keep their own
 # data directories and documented output locations.
 processed/
+
+# Scratch / session working files (agent scratchpads, ad-hoc analysis). Never commit.
+scratch_output/
 
 # Archived or local-only material. Keep locally if useful, but do not publish
 # in the polished repo.
