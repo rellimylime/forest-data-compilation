@@ -153,6 +153,13 @@ weighted_latest_year <- function(year, weight) {
   max(year)
 }
 
+weighted_earliest_year <- function(year, weight) {
+  year <- as.integer(year)
+  year <- year[!is.na(year) & !is.na(weight) & weight > 0]
+  if (length(year) == 0) return(NA_integer_)
+  min(year)
+}
+
 safe_prop <- function(num, den) {
   fifelse(!is.na(den) & den > 0, num / den, NA_real_)
 }
@@ -210,6 +217,8 @@ required_cols <- c(
   "has_any_recorded_disturbance", "has_any_treatment",
   "has_cutting_treatment", "is_human_or_harvest",
   "disturbance_year_latest", "disturbance_year_earliest",
+  "fire_disturbance_year_latest", "fire_disturbance_year_earliest",
+  "insect_disturbance_year_latest", "insect_disturbance_year_earliest",
   "time_since_disturbance", "has_continuous_disturbance_year"
 )
 
@@ -291,6 +300,10 @@ severity <- disturbance[, .(
     years <- years[!is.na(years) & !is.na(condition_weight) & condition_weight > 0]
     if (length(years) == 0) NA_integer_ else min(years)
   },
+  fire_disturbance_year_latest = weighted_latest_year(fire_disturbance_year_latest, condition_weight),
+  fire_disturbance_year_earliest = weighted_earliest_year(fire_disturbance_year_earliest, condition_weight),
+  insect_disturbance_year_latest = weighted_latest_year(insect_disturbance_year_latest, condition_weight),
+  insect_disturbance_year_earliest = weighted_earliest_year(insect_disturbance_year_earliest, condition_weight),
   has_continuous_disturbance_year = any(has_continuous_disturbance_year == TRUE, na.rm = TRUE)
 ), by = plot_keys]
 
@@ -320,19 +333,36 @@ severity[, `:=`(
   has_mixed_natural_disturbance = rowSums(.SD > 0, na.rm = TRUE) > 1
 ), .SDcols = c("prop_fire", "prop_insect", "prop_disease", "prop_weather", "prop_other_natural")]
 
-# Fire classes are FIA-only proxies: crown fire is the strongest severity signal.
-severity[, fire_severity_class := fcase(
-  prop_crown_fire > 0, "crown_fire",
-  prop_fire > 0, "non_crown_or_unspecified_fire",
-  default = "none"
-)]
+# High-severity fire threshold (config-driven; not a hardcoded label).
+# The severity grade is FIA crown-fire area coverage itself
+# (prop_crown_fire / forested_prop_crown_fire), which comes directly from
+# COND.DSTRBCD == 32. The single place to set the high-severity cutoff is
+# config.yaml: processed.thermophilization.high_severity_fire. Until a
+# threshold is set there, is_high_severity_fire is NA for every row.
+high_severity_config <- thermo_config$high_severity_fire
+high_severity_column <- high_severity_config$column
+if (is.null(high_severity_column) || !nzchar(high_severity_column)) {
+  high_severity_column <- "prop_crown_fire"
+}
+if (!high_severity_column %in% names(severity)) {
+  stop(glue(
+    "config.yaml processed.thermophilization.high_severity_fire.column ",
+    "'{high_severity_column}' is not a column produced by this script."
+  ))
+}
+high_severity_threshold <- high_severity_config$threshold
 
-severity[, plot_disturbance_extent_class := fcase(
-  prop_any_natural_disturbance >= 0.95, "nearly_complete",
-  prop_any_natural_disturbance >= 0.50, "majority",
-  prop_any_natural_disturbance > 0, "partial",
-  default = "none"
-)]
+if (is.null(high_severity_threshold)) {
+  severity[, is_high_severity_fire := NA]
+} else {
+  severity[, is_high_severity_fire := get(high_severity_column) >= high_severity_threshold]
+}
+severity[, high_severity_fire_column := high_severity_column]
+severity[, high_severity_fire_threshold := if (is.null(high_severity_threshold)) {
+  NA_real_
+} else {
+  as.numeric(high_severity_threshold)
+}]
 
 severity[, condition_prop_quality_flag := fcase(
   is.na(total_condition_prop) | total_condition_prop <= 0, "missing_or_zero_total",
@@ -375,6 +405,11 @@ summary <- data.table(
   ),
   smoke_limit = if (is_smoke_run) limit_arg else NA_integer_
 )
+summary[, `:=`(
+  high_severity_fire_column = high_severity_column,
+  high_severity_fire_threshold = if (is.null(high_severity_threshold)) NA_real_ else as.numeric(high_severity_threshold),
+  n_plot_visits_high_severity_fire = sum(severity$is_high_severity_fire, na.rm = TRUE)
+)]
 
 count_section <- function(dt, column, section_name) {
   out <- dt[, .N, by = .(category = get(column))]
@@ -385,8 +420,7 @@ count_section <- function(dt, column, section_name) {
 
 by_class <- rbindlist(list(
   count_section(severity, "dominant_disturbance_class", "dominant_disturbance_class"),
-  count_section(severity, "fire_severity_class", "fire_severity_class"),
-  count_section(severity, "plot_disturbance_extent_class", "plot_disturbance_extent_class"),
+  count_section(severity, "is_high_severity_fire", "is_high_severity_fire"),
   count_section(severity, "condition_prop_quality_flag", "condition_prop_quality_flag")
 ), fill = TRUE)
 setorder(by_class, section, -N, category)

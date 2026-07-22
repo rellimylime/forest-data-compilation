@@ -472,6 +472,139 @@ processed:
       plot_year_climate_change_seedlings: "plot_year_climate_change_seedlings.parquet"
       plot_year_climate_change_saplings: "plot_year_climate_change_saplings.parquet"
       plot_year_climate_change_trees: "plot_year_climate_change_trees.parquet"
+    # Single configurable place to grade a plot visit as "high severity fire."
+    # column: which plot_disturbance_severity.parquet column to threshold
+    #   (prop_crown_fire = share of the whole plot, forested_prop_crown_fire =
+    #   share of forested area only). Both are FIA crown-fire (DSTRBCD 32) area
+    #   coverage, not a derived label. threshold is left null until reviewed;
+    #   07_thermophilization/scripts/03_build_plot_disturbance_severity.R writes
+    #   is_high_severity_fire = NA for every row until a threshold is set here.
+    high_severity_fire:
+      column: "prop_crown_fire"
+      threshold: null
+
+    # ------------------------------------------------------------------------
+    # Pre/post-disturbance survey coverage QA.
+    # Driven by: 07_thermophilization/qa/02_disturbance_survey_coverage.R
+    #
+    # Answers, for any disturbance type you designate below: "how many stable
+    # plots have an FIA survey BEFORE and AFTER the disturbance?" -- the plots
+    # that could support a before/after comparison of that disturbance.
+    #
+    # FIA reality worth knowing before you read the counts:
+    #   * FIA records a condition disturbance code only when the event killed or
+    #     damaged >= 25% of the trees in that condition (and >= 1 acre). "No
+    #     disturbance code" therefore means "not severe enough to cross FIA's
+    #     threshold," NOT "definitely undisturbed."
+    #   * FIA's condition disturbance code CANNOT isolate bark beetle. "insect"
+    #     (10/11/12) is the finest available and lumps all insects together.
+    #   * "crown_fire" (DSTRBCD 32) is the closest FIA has to high-severity fire.
+    #   * A disturbance year of 9999 means "continuous / unknown year" and cannot
+    #     be placed before/after a survey; those events are excluded from the
+    #     before/after test and prevent a plot from qualifying for the
+    #     first-disturbance rule below because event order is unknowable.
+    disturbance_survey_coverage:
+      # Friendly type name -> FIA COND.DSTRBCD code set.
+      # An empty list ([]) means "any recorded disturbance code."
+      # To target a new type, add a name here and reference it in a query.
+      disturbance_types:
+        any: []
+        fire: [30, 31, 32]
+        crown_fire: [32]
+        insect: [10, 11, 12]      # closest available to "bark beetle" (not specific)
+        disease: [20, 21, 22]
+        wind: [52]
+        drought: [54]
+      # Each query counts stable plots meeting all of its conditions.
+      #   name:                   label used in the QA outputs.
+      #   types:                   one or more names from disturbance_types above
+      #                            (their code sets are unioned).
+      #   min_surveys_before:      survey years required strictly before the
+      #                            disturbance year (default 1).
+      #   min_surveys_after:       survey years required on/after the disturbance
+      #                            year (default 1). The visit that records the
+      #                            disturbance counts as an "after" survey.
+      #   first_disturbance_only: if true, the event of interest must be the
+      #                           plot's first dated disturbance of any type.
+      #                           Plots with unknown/continuous disturbance timing
+      #                           are excluded because "no prior disturbance"
+      #                           cannot be established. Later events are allowed,
+      #                           but qualifying post-event surveys must precede
+      #                           the next dated disturbance (default false).
+      queries:
+        - name: any_disturbance_before_after
+          types: [any]
+          min_surveys_before: 1
+          min_surveys_after: 1
+          first_disturbance_only: false
+        - name: fire_before_after
+          types: [fire]
+          min_surveys_before: 1
+          min_surveys_after: 1
+          first_disturbance_only: false
+        - name: crown_fire_before_after
+          types: [crown_fire]
+          min_surveys_before: 1
+          min_surveys_after: 1
+          first_disturbance_only: false
+        - name: insect_before_after
+          types: [insect]
+          min_surveys_before: 1
+          min_surveys_after: 1
+          first_disturbance_only: false
+        # Clean-baseline subsets: the studied event is the plot's first recorded
+        # disturbance, with a survey before it and before any later disturbance.
+        - name: first_disturbance_before_after
+          types: [any]
+          min_surveys_before: 1
+          min_surveys_after: 1
+          first_disturbance_only: true
+        - name: first_fire_before_after
+          types: [fire]
+          min_surveys_before: 1
+          min_surveys_after: 1
+          first_disturbance_only: true
+        - name: first_insect_before_after
+          types: [insect]
+          min_surveys_before: 1
+          min_surveys_after: 1
+          first_disturbance_only: true
+
+  # Links FIA plots to external dated disturbance sources (MTBS fire severity,
+  # IDS insect agents) via buffered plot footprints. Feeds a future
+  # disturbance-aware pass of 07_thermophilization. See 08_disturbance_linkage/.
+  disturbance_linkage:
+    output_dir: "08_disturbance_linkage/data/processed"
+    description: "Per-plot dated fire-severity (MTBS) and insect-agent (IDS) event tables keyed on stable_plot_id"
+    buffer_m: 800               # plot footprint radius around the FIA coordinate
+    area_crs: "EPSG:5070"       # Conus Albers equal-area; buffers/overlays done here
+    inputs:
+      # FIA plot coordinates (carries stable_plot_id, PLT_CN, INVYR, LAT, LON).
+      fia_plot_source: "05_fia/data/processed/summaries/plot_condition_metadata.parquet"
+      # Cleaned IDS aerial-detection-survey layers (already in the repo).
+      ids_layers: "01_ids/data/processed/ids_layers_cleaned.gpkg"
+      # MTBS annual burn-severity mosaics -- USER-PROVIDED, not in the repo.
+      # Download from https://www.mtbs.gov/ into this directory (one raster/year).
+      mtbs_raw_dir: "08_disturbance_linkage/data/raw/mtbs"
+    files:
+      plot_footprints: "plot_footprints.gpkg"
+      plot_mtbs_fire_events: "plot_mtbs_fire_events.parquet"
+      plot_ids_agent_events: "plot_ids_agent_events.parquet"
+      plot_disturbance_linkage_events: "plot_disturbance_linkage_events.parquet"
+    mtbs:
+      # MTBS thematic burn-severity mosaic pixel values.
+      severity_classes:
+        1: "unburned_to_low"
+        2: "low"
+        3: "moderate"
+        4: "high"
+        5: "increased_greenness"
+        6: "non_processing_mask"
+      # Which class(es) count as high-severity when summarizing per plot.
+      high_severity_classes: [4]
+      # Class 6 is a non-processing mask, not a severity observation. It is
+      # excluded from valid-pixel denominators and reported separately.
+      non_processing_classes: [6]
 
   # Standardized climate outputs (long format, dataset-agnostic)
   climate:

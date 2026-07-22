@@ -250,7 +250,7 @@ validate_disturbance_severity <- function() {
     c(
       "stable_plot_id", "PLT_CN", "INVYR", "prop_fire", "prop_crown_fire",
       "prop_insect", "prop_disease", "prop_weather",
-      "dominant_disturbance_class", "fire_severity_class"
+      "dominant_disturbance_class", "is_high_severity_fire"
     )
   )
   check_unique_grain(dt, product, c("stable_plot_id", "PLT_CN", "INVYR"))
