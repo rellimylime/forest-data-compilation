@@ -10,6 +10,7 @@ library(purrr)
 library(glue)
 
 source(here("scripts/utils/metadata_utils.R"))
+source(here("scripts/utils/ids_dedupe.R"))
 
 # ==============================================================================
 # CONFIG
@@ -55,10 +56,17 @@ survey_fields <- c(
   "AREA_TYPE"
 )
 
+# `id_fields` are the columns expected to identify one feature after the regional
+# archives are merged. They drive the de-duplication check, not the merge itself.
+# surveyed_areas has no source identifier — SURVEY_FEATURE_ID is assigned per
+# region during cleaning — so it has none and is not de-duplicated on identity.
 layer_specs <- list(
-  damage_areas = list(prefix = "DAMAGE_AREAS_FLAT", keep_fields = damage_fields),
-  damage_points = list(prefix = "DAMAGE_POINTS_FLAT", keep_fields = damage_fields),
-  surveyed_areas = list(prefix = "SURVEYED_AREAS_FLAT", keep_fields = survey_fields)
+  damage_areas = list(prefix = "DAMAGE_AREAS_FLAT", keep_fields = damage_fields,
+                      id_fields = c("OBSERVATION_ID", "DAMAGE_AREA_ID")),
+  damage_points = list(prefix = "DAMAGE_POINTS_FLAT", keep_fields = damage_fields,
+                       id_fields = c("OBSERVATION_ID")),
+  surveyed_areas = list(prefix = "SURVEYED_AREAS_FLAT", keep_fields = survey_fields,
+                        id_fields = character(0))
 )
 
 # ==============================================================================
@@ -132,7 +140,16 @@ ids_layers <- imap(layer_specs, function(spec, layer_name) {
   all_regions <- map(gdb_dirs, ~clean_region_layer(.x, spec$prefix, spec$keep_fields))
   
   ids_merged <- bind_rows(all_regions)
-  
+
+  # The regional archives overlap. Without this, one observation delivered in
+  # three archives becomes three features and its acreage is counted three times.
+  ids_merged <- dedupe_merged_layer(
+    ids_merged,
+    id_cols    = spec$id_fields,
+    layer_name = layer_name,
+    qa_dir     = here("01_ids/qa/outputs")
+  )
+
   cat(glue("Total features: {nrow(ids_merged)}\n"))
   cat(glue("Total fields: {ncol(ids_merged)}\n\n"))
   

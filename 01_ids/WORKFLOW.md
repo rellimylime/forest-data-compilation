@@ -2,8 +2,7 @@
 
 **Navigation:** [Repo Home](../README.md) | [Docs Hub](../docs/README.md) | [Setup](../scripts/SETUP.md) | [Reproduce](../docs/REPRODUCE.md) | [Pipeline Map](../docs/PIPELINE_MAP.md) | [Data Products](../docs/DATA_PRODUCTS.md) | [IDS README](README.md) | [Scripts](scripts/)
 
-For a quick-start guide and directory overview, see **README.md**.
-This document covers technical architecture, per-script details, and usage examples.
+For a quick-start guide and directory overview, see **README.md**. This document covers technical architecture, per-script details, and usage examples.
 
 ---
 

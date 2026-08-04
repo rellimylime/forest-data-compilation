@@ -36,6 +36,10 @@ All cleaned layers are stored in a single geopackage for easy access:
 | `LEGACY_NO_TREES` | Total tree count | Legacy method |
 | `LEGACY_SEVERITY_CODE` | Severity class | Legacy method; see lookup |
 
+### Point-layer scope
+
+The disturbance-linkage analysis uses the `damage_areas` polygons, not `damage_points`. The point layer represents small clusters and is outside the current large-extent analysis scope. Its regional sources contain additional point-intensity fields that are not retained by the current cleaner, so revisit the cleaner before using this layer for point-intensity analysis.
+
 ## Methodology Change (~2015)
 - **Legacy method (pre-2015):** Intensity recorded via `LEGACY_TPA`, `LEGACY_NO_TREES`, and `LEGACY_SEVERITY_CODE`.
 - **DMSM method (2015+):** Intensity recorded via `PERCENT_AFFECTED_CODE` and `PERCENT_MID`.
