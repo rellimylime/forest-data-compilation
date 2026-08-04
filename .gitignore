@@ -93,13 +93,31 @@ processed/
 # Scratch / session working files (agent scratchpads, ad-hoc analysis). Never commit.
 scratch_output/
 
+# Generated QA artifacts are local build products, regardless of file size.
+# Keep producers, tests, and optional directory placeholders; do not commit
+# run-specific tables, figures, maps, or reports.
+**/qa/outputs/**
+!**/qa/outputs/
+!**/qa/outputs/.gitkeep
+**/qa/figures/**
+!**/qa/figures/
+!**/qa/figures/.gitkeep
+
 # Archived or local-only material. Keep locally if useful, but do not publish
 # in the polished repo.
 archive/**
 output/**
 logs/**
 tree.txt
+data_tree.txt
 site_climate_extract.log
+
+# Generated repository inventories and data dictionaries. Their producer code
+# is the source of truth; regenerate these locally when needed.
+/docs/FIA_DATA_DICTIONARY.md
+/docs/fia_data_dictionary.json
+/docs/MASTER_PRODUCT_INVENTORY.md
+/forest_explorer/catalog/generated/**
 
 # Species niche smoke-test outputs: useful local history, not commit material.
 06_species_niches/qa/smoke/**
@@ -108,37 +126,6 @@ site_climate_extract.log
 06_species_niches/data/smoke/**
 !06_species_niches/data/smoke/
 !06_species_niches/data/smoke/.gitkeep
-
-# Species niche QA outputs: keep official summaries trackable, but leave
-# detailed ledgers, queues, rankings, and diagnostics as local regenerated
-# artifacts.
-06_species_niches/qa/outputs/**
-!06_species_niches/qa/outputs/
-!06_species_niches/qa/outputs/.gitkeep
-!06_species_niches/qa/outputs/species_universe_metrics.csv
-!06_species_niches/qa/outputs/species_universe_layer_counts.csv
-!06_species_niches/qa/outputs/species_universe_bad_genus_targets.csv
-!06_species_niches/qa/outputs/species_universe_pseudo_taxa.csv
-!06_species_niches/qa/outputs/bien_range_availability_summary.csv
-!06_species_niches/qa/outputs/bien_range_availability_by_layer.csv
-!06_species_niches/qa/outputs/bien_range_missing_species.csv
-!06_species_niches/qa/outputs/manual_bien_overrides_applied.csv
-!06_species_niches/qa/outputs/species_range_climate_summary.csv
-!06_species_niches/qa/outputs/species_range_climate_summary_us_study_area.csv
-!06_species_niches/qa/outputs/species_climate_niches_summary.csv
-!06_species_niches/qa/outputs/species_climate_niches_summary_us_study_area.csv
-!06_species_niches/qa/outputs/species_niche_validation_decision.csv
-!06_species_niches/qa/outputs/species_niche_validation_summary.csv
-!06_species_niches/qa/outputs/species_niche_validation_checks.csv
-!06_species_niches/qa/outputs/species_niche_gap_summary.csv
-!06_species_niches/qa/outputs/species_niche_gap_action_summary.csv
-!06_species_niches/qa/outputs/species_taxon_resolution_summary.csv
-!06_species_niches/qa/outputs/species_taxon_missing_summary.csv
-!06_species_niches/qa/outputs/species_taxon_duplicate_source_codes.csv
-!06_species_niches/qa/outputs/study_area_climate_gap_summary.csv
-!06_species_niches/qa/outputs/global_fallback_species_location_summary.csv
-!06_species_niches/qa/outputs/tnrs_candidate_bien_range_summary.csv
-!06_species_niches/qa/outputs/tnrs_candidate_name_pairs_available.csv
 
 # Thermophilization smoke-test outputs: useful local history, not commit material.
 07_thermophilization/qa/smoke/**
@@ -154,6 +141,17 @@ site_climate_extract.log
 07_thermophilization/qa/outputs/**
 !07_thermophilization/qa/outputs/
 !07_thermophilization/qa/outputs/.gitkeep
+
+# Disturbance-linkage QA and local working notes are regenerated or personal.
+08_disturbance_linkage/qa/outputs/**
+!08_disturbance_linkage/qa/outputs/
+!08_disturbance_linkage/qa/outputs/.gitkeep
+08_disturbance_linkage/qa/smoke/**
+!08_disturbance_linkage/qa/smoke/
+!08_disturbance_linkage/qa/smoke/.gitkeep
+/08_disturbance_linkage/DISTURBANCE_ANALYSIS_READINESS.md
+/docs/METHOD_DECISIONS_NEEDED.md
+/docs/THERMOPHILIZATION_DISTURBANCE_AUDIT_*.md
 
 # Standalone point-climate extraction outputs. Keep the input CSV and scripts
 # tracked, but leave generated climate products local.
