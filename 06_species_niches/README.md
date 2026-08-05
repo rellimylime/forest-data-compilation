@@ -30,8 +30,7 @@ flowchart LR
 | 4 | [04_extract_terraclimate_from_ranges.R](scripts/04_extract_terraclimate_from_ranges.R) | Monthly climate summaries across ranges |
 | 5 | [05_build_species_climate_niches.R](scripts/05_build_species_climate_niches.R) | Eight compact species climate indicators |
 
-Detailed inputs, processing choices, rerun behavior, and QA outputs are in
-[WORKFLOW.md: Script Details](WORKFLOW.md#script-details).
+Detailed inputs, processing choices, rerun behavior, and QA outputs are in [WORKFLOW.md: Script Details](WORKFLOW.md#script-details).
 
 ## Quick Start
 
@@ -44,8 +43,7 @@ Rscript 06_species_niches/scripts/04_extract_terraclimate_from_ranges.R --range-
 Rscript 06_species_niches/scripts/05_build_species_climate_niches.R --range-scope=us_study_area
 ```
 
-Script `04` requires Google Earth Engine. The complete validation and gap documentation sequence is in [WORKFLOW.md: Run Order](WORKFLOW.md#run-order).
-For small climate refreshes, see [WORKFLOW.md: Extract TerraClimate From Ranges](WORKFLOW.md#04-extract-terraclimate-from-ranges).
+Script `04` requires Google Earth Engine. The complete validation and gap documentation sequence is in [WORKFLOW.md: Run Order](WORKFLOW.md#run-order). For small climate refreshes, see [WORKFLOW.md: Extract TerraClimate From Ranges](WORKFLOW.md#04-extract-terraclimate-from-ranges).
 
 Smoke tests use `--limit=N` and write to ignored `data/smoke/` and `qa/smoke/` folders.
 

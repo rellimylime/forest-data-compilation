@@ -82,7 +82,7 @@ Warnings generally fall into a few recurring kinds:
 | BIEN missing fraction | `bien_range_missing_species.csv` and `species_niche_gap_summary.csv` | BIEN does not cover every target name; high-weight missing species matter most. |
 | Polygon geometry or area QA | `species_niche_validation_checks.csv` and `bien_polygons_*.csv` | Empty or invalid geometry checks are blocking; unusual areas or extents require review. |
 | Study-area climate gaps | `study_area_climate_gap_summary.csv` | BIEN ranges exist, but the study-area clipped range has no TerraClimate rows. |
-| CWM coverage | `plot_recruitment_cwm_missing_species.csv` and CWM `frac_weight_with_niche` fields | Some FIA seedling communities have incomplete or zero niche coverage. |
+| CWM coverage | `plot_community_climate_missing_species_seedlings.csv` and CWM `frac_weight_with_niche` fields | Some FIA seedling communities have incomplete or zero niche coverage. |
 
 ## Coverage And Variability Outputs
 
@@ -100,8 +100,7 @@ Missing BIEN ranges are not all equally important: a rare forb with no BIEN rang
 
 ## Taxonomic Name Review
 
-Name-review rules are documented in
-[Methods: Taxonomic Name Review](../docs/methods_species_niches.md#taxonomic-name-review).
+Name-review rules are documented in [Methods: Taxonomic Name Review](../docs/methods_species_niches.md#taxonomic-name-review).
 
 The review workflow starts from BIEN-missing names, uses TNRS as evidence, and then records human-reviewed decisions in:
 
@@ -202,8 +201,7 @@ The files below are the official CSV outputs to read or cite during review. Each
 | `species_range_climate_summary*.csv` | One variable/metric/range-scope summary | TerraClimate extraction row counts and species counts |
 | `species_climate_niches_summary*.csv` | One range-scope summary | Compact niche indicator completeness |
 
-Detailed artifacts such as full ledgers, full TNRS candidate checks, polygon diagnostics, stale-species lists, rankings, and failure logs are generated in
-`qa/outputs/` for debugging. They are intentionally ignored by Git unless they are promoted into the official list above.
+Detailed artifacts such as full ledgers, full TNRS candidate checks, polygon diagnostics, stale-species lists, rankings, and failure logs are generated in `qa/outputs/` for debugging. They are intentionally ignored by Git unless they are promoted into the official list above.
 
 Temporary review aids, such as one-off Markdown or CSV files prepared for a meeting, can also live in `qa/outputs/` while they are being discussed. They are not part of the reproducible workflow unless a kept script regenerates them and they are added to the output index.
 

@@ -79,10 +79,8 @@ flowchart LR
 
 ### Species Niches And Thermophilization
 
-1. Build the species universe and BIEN range-map climate niches with
-   [06_species_niches/README.md](06_species_niches/README.md).
-2. Build FIA community-weighted climate metrics and repeated-survey change tables with
-   [07_thermophilization/README.md](07_thermophilization/README.md).
+1. Build the species universe and BIEN range-map climate niches with [06_species_niches/README.md](06_species_niches/README.md).
+2. Build FIA community-weighted climate metrics and repeated-survey change tables with [07_thermophilization/README.md](07_thermophilization/README.md).
 3. Review the QA summaries in each module before modeling.
 
 ## Key Documents
@@ -102,10 +100,7 @@ flowchart LR
 
 ## Shared Code
 
-Shared helpers live under [scripts/](scripts/README.md). This includes setup,
-test running, reusable utilities, optional demos, and the shared IDS climate
-summary builder used by TerraClimate, PRISM, and WorldClim. The Streamlit review
-app lives under [docs/dashboard/](docs/dashboard/).
+Shared helpers live under [scripts/](scripts/README.md). This includes setup, test running, reusable utilities, optional demos, and the shared IDS climate summary builder used by TerraClimate, PRISM, and WorldClim. The Streamlit review app lives under [docs/dashboard/](docs/dashboard/).
 
 ## Current Output Snapshot
 

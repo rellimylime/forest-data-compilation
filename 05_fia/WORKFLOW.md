@@ -26,8 +26,8 @@ Optional site-climate extension:
 **FIADB v9.4** (August 2025) - Forest Inventory and Analysis Database
 
 - Distributor: FIA DataMart (`https://apps.fs.usda.gov/fia/datamart/CSV/`)
-- Access method: `rFIA::getFIA()` downloads state-level CSVs from DataMart
-- Reference tables (REF_SPECIES, REF_FOREST_TYPE) downloaded directly via `download.file()`
+- Access method: official state-table ZIP archives downloaded directly from DataMart
+- Reference tables downloaded directly with base R `download.file()`
 - User Guide: `wo-v9-4_Aug2025_UG_FIADB_database_description_NFI.pdf` (repo root)
 
 ## Plot Design
@@ -46,16 +46,19 @@ The `TPA_UNADJ` field on each TREE record is the unadjusted per-acre expansion f
 
 **Inputs:** `config.raw.fia.states`, `config.raw.fia.tables_required`
 
-**Outputs:** `05_fia/data/raw/{STATE}/{STATE}_{TABLE}.csv`
+**Outputs:** `05_fia/data/raw/{STATE}/{STATE}_{TABLE}.csv`, plus `05_fia/data/raw/download_manifest.csv`
 
 **Processing:**
-- Downloads national REF_SPECIES and REF_FOREST_TYPE CSVs once to `data/raw/REF/`
-- Loops over 50 states; uses `rFIA::getFIA(states=st, dir=state_dir, load=FALSE)`
-- Skip-if-exists guard: checks all expected CSVs before calling `getFIA()`
+- Downloads national reference CSVs once to `data/raw/REF/`
+- Downloads each configured state table from the official `{ST}_{TABLE}.zip` archive
+- Stages and validates a complete state before replacing any existing state files
+- Requires staged TREE and SEEDLING plot/condition keys to exist in the staged PLOT and COND tables
+- Skips complete states by default; `--refresh` intentionally reacquires every configured table for the requested states
+- Records the acquisition time, official source URL, file size, and MD5 checksum once per raw file in `download_manifest.csv`
 - `tryCatch` per state so one failure does not abort the loop
-- Accepts optional command-line state list for partial reruns
+- Accepts an optional command-line state list
 
-**New package required:** `rFIA` (not in renv.lock; install with `renv::install("rFIA")`)
+Use a full-state refresh when DataMart updates an upstream table. Merely seeing a file on disk does not establish that it is current or from the same acquisition as the other tables for that state.
 
 ---
 
@@ -108,6 +111,8 @@ The `TPA_UNADJ` field on each TREE record is the unadjusted per-acre expansion f
 
 **Memory:** Each state processes its TREE CSV in isolation. `rm()` + `gc()` after each state.
 
+Use `--force-tree-products` after intentionally refreshing a state's raw `TREE` table. This rebuilds its tree, damage-agent, and harvest-flag partitions; use `--force-cond` separately when its raw `PLOT` or `COND` tables changed.
+
 ---
 
 ### [04_extract_seedlings_mortality.R](scripts/04_extract_seedlings_mortality.R)
@@ -128,6 +133,7 @@ The `TPA_UNADJ` field on each TREE record is the unadjusted per-acre expansion f
 - Aggregated: `treecount_total = sum(TREECOUNT)` by `[stable_plot_id, PLT_CN, INVYR, CONDID, SUBP, SPCD]`
 - Retains optional FIA density fields as `treecount_calc_total` and `seedlings_tpa` when available
 - Use `--force-seedlings` when refreshing older seedling parquets to the condition/subplot grain
+- Use `--force-mortality` after intentionally refreshing `TREE` or `TREE_GRM_COMPONENT` raw tables
 
 **Important for thermophilization work:** this per-state seedling product preserves species identity through `SPCD` and keeps `CONDID`/`SUBP` so seedlings can be joined to exact condition metadata. Species identity is dropped only later when `05_build_fia_summaries.R` creates the compact plot-year summary `plot_seedling_metrics.parquet`. Use `plot_seedling_species.parquet` for recruitment composition and the plot summary only for total seedling count, richness, density, and Shannon diversity.
 
@@ -166,7 +172,7 @@ Script `05` is an orchestrator. Each output is implemented by one focused builde
 | `build_tree_species.R` | `plot_tree_species.parquet` | Condition/subplot/species | State tree partitions and condition metadata | Live-tree composition for stems at least 5 inches diameter |
 | `build_tree_species.R` | `plot_sapling_species.parquet` | Condition/subplot/species | State tree partitions and condition metadata | Live-sapling composition for stems 1.0-4.9 inches diameter |
 | `build_seedling_species.R` | `plot_seedling_species.parquet` | Condition/subplot/species | State seedling partitions and condition metadata | Tree-regeneration composition below 1 inch diameter |
-| `build_disturbance_classification.R` | `plot_disturbance_classification.parquet` | Plot visit/condition | Condition metadata | Natural-disturbance/control eligibility, timing, severity proxy, and forest-status fields |
+| `build_disturbance_classification.R` | `fia_condition_disturbance_flags.parquet` | Plot visit/condition | Condition metadata | Natural-disturbance/control eligibility, timing, severity proxy, and forest-status fields |
 | `build_disturbance_history.R` | `plot_disturbance_history.parquet` | Condition/disturbance slot | State condition partitions | Long-form disturbance codes and years |
 | `build_treatment_history.R` | `plot_treatment_history.parquet` | Condition/treatment slot | State condition partitions | Long-form treatment codes and years |
 | `build_damage_agents.R` | `plot_damage_agents.parquet` | Condition/species/agent | State damage-agent partitions | Live-tree damage-agent abundance |
@@ -178,7 +184,7 @@ The dependency order matters:
 condition partitions
   -> plot_condition_metadata
   -> tree/sapling/seedling species products
-  -> plot_disturbance_classification
+  -> fia_condition_disturbance_flags
 ```
 
 The life-stage products use one shared FIA species identity but preserve separate observed communities. Species climate niches are calculated once per taxon downstream, then joined separately to seedling, sapling, and tree composition.
@@ -264,7 +270,56 @@ component_type, tpamort_per_acre
 - `component_type`: `natural` for mortality or `harvest` for removals.
 - `tpamort_per_acre`: expanded trees per acre that died or were removed.
 
+##### Understory State Partitions
+
+Built by [`06_extract_understory.R`](scripts/06_extract_understory.R) from the raw Phase 2 vegetation tables. These products were previously orphaned — on disk with no producer — until the script was recovered on 2026-07-23; the rebuild is verified byte-identical to the earlier products (aside from newer inventory years and one upstream dictionary edit). The three source tables (`SUBP_COND`, `P2VEG_SUBP_STRUCTURE`, `P2VEG_SUBPLOT_SPP`) are now in `processed.fia.tables_required`, and the script downloads any missing inputs itself, so [`06_species_niches/scripts/01_build_species_universe.R`](../06_species_niches/scripts/01_build_species_universe.R) — which reads `understory_veg` — is reproducible from a clean checkout.
+
+Run it after `03_extract_trees.R` (it reads the cond partitions for plot identity and coordinates):
+
+```bash
+Rscript 05_fia/scripts/06_extract_understory.R          # all states
+Rscript 05_fia/scripts/06_extract_understory.R CA CO MT # specific states
+```
+
+Structure cover is recorded in every state; per-species cover (`understory_veg`) is collected mainly in the Interior West plus Alaska, Hawaii, and Oregon, so only those 13 states have a species partition.
+
+**Understory structure.** One row represents one growth habit and canopy layer on one subplot, within one condition of a plot visit:
+
+```text
+stable_plot_id, PLT_CN, INVYR, STATECD, UNITCD, COUNTYCD, PLOT, PREV_PLT_CN,
+LAT, LON, ELEV, CONDID, SUBP, subpcond_prop, GROWTH_HABIT_CD, growth_habit,
+community_layer, LAYER, layer_label, cover_pct, cover_pct_subpcond,
+n_p2veg_structure_records, state
+```
+
+- `cover_pct`: percent cover recorded for that growth habit and layer.
+- `cover_pct_subpcond`: the same cover scaled by `subpcond_prop`, the share of the subplot occupied by the condition.
+
+**Understory species cover.** One row represents one recorded plant species on one subplot, within one condition of a plot visit. It carries the same plot, condition, and subplot fields plus:
+
+```text
+VEG_FLDSPCD, UNIQUE_SP_NBR, VEG_SPCD, plant_symbol, accepted_symbol,
+scientific_name, common_name, plant_category, plant_family, plant_growth_habit,
+plant_duration, plant_us_nativity, plant_genus, plant_species,
+cover_pct, cover_pct_subpcond, n_p2veg_records
+```
+
+This is the only product in the repository holding non-tree plants. Two cautions:
+
+- Species are PLANTS symbols, not FIA `SPCD`. They do not join to `lookups/ref_species.parquet` or to the species climate niches without a crosswalk.
+- The Phase 2 vegetation protocol is collected on a subset of plots. Coverage is much sparser than the tree data, and a missing row does not mean the plant was absent.
+
 ##### National Summary Products
+
+##### Plot Visit Context
+
+Built directly from all raw state `PLOT` tables by [`07_build_plot_visit_context.R`](scripts/07_build_plot_visit_context.R):
+
+```text
+05_fia/data/processed/summaries/plot_visit_context.parquet
+```
+
+One row represents one FIADB `PLOT` record and is uniquely identified by `PLT_CN`. It retains exact measurement dates (`MEASYEAR`, `MEASMON`, `MEASDAY`), official `PREV_PLT_CN`, sampling-status and protocol fields, coordinates, and bounded date fields. Records outside the configured analysis window and nonsampled visits are intentionally retained so official predecessor links can be audited without treating missing processed condition data as a missing PLOT record. The interval consumer and full contract are documented in [`08_disturbance_linkage/INTERVAL_FOUNDATION.md`](../08_disturbance_linkage/INTERVAL_FOUNDATION.md).
 
 ##### Plot Tree Metrics
 
@@ -305,11 +360,7 @@ One row per plot visit and condition. It contains the stable plot, condition, lo
 
 - `n_conditions`, `pct_forested`: whole-plot condition context.
 - `is_forested_condition`: whether FIA classifies this condition as forest.
-- `has_fire_condition`, `has_crown_fire_condition`,
-  `has_insect_condition`, `has_disease_condition`,
-  `has_wind_condition`, `has_drought_condition`,
-  `has_human_dist_condition`, `has_cutting_treatment`: convenient
-  condition-level flags.
+- `has_fire_condition`, `has_crown_fire_condition`, `has_insect_condition`, `has_disease_condition`, `has_wind_condition`, `has_drought_condition`, `has_human_dist_condition`, `has_cutting_treatment`: convenient condition-level flags.
 
 This is the primary metadata join table for species-composition products.
 
@@ -319,8 +370,7 @@ One row per condition, subplot, and species for live trees at least 5 inches dia
 
 - `ba_per_acre`, `n_trees_tpa`, `n_trees_raw`: species abundance.
 - `n_tree_strata`, `size_classes_present`, `canopy_layers_present`: source strata represented by the row.
-- `source_table`, `source_species_code`, `species_key`,
-  `community_layer`: provenance and downstream join fields.
+- `source_table`, `source_species_code`, `species_key`, `community_layer`: provenance and downstream join fields.
 - `abundance_for_cwm`: default adult-tree community weight, primarily basal area per acre.
 
 ##### Plot Sapling Species
@@ -341,9 +391,9 @@ treecount_total, treecount_calc_total, seedlings_tpa, n_seedling_records
 
 This is the primary recruitment-composition input to thermophilization CWMs.
 
-##### Plot Disturbance Classification
+##### FIA Condition Disturbance Flags
 
-One row per plot visit and condition. It contains condition metadata plus:
+One row per condition within a plot visit (`PLT_CN` x `INVYR` x `CONDID`). It contains condition metadata plus:
 
 - Region: `region_east_west`, `region_source`.
 - Forest eligibility: `is_forested_condition`, `is_forest_dominated_plot`, `is_forested_analysis_condition`.
@@ -351,9 +401,9 @@ One row per plot visit and condition. It contains condition metadata plus:
 - Classification: `natural_disturbance_primary`, `disturbance_class_primary`, `disturbance_class`.
 - Complexity/severity: `n_natural_disturbance_classes`, `is_multiple_natural_disturbance`, `is_high_severity_proxy`,   `high_severity_proxy_type`.
 - Timing: earliest/latest disturbance, treatment, and cutting years plus time-since fields and continuous-year flags.
-- Eligibility: `is_control_candidate`, `is_natural_disturbance_candidate`, `disturbed_vs_control`, `control_eligibility_reason`.
+- Eligibility diagnostic: `control_eligibility_reason`.
 
-This is the primary disturbance/control analysis table.
+These are neutral condition-level flags, not an analysis population. "Control" vs "disturbed" is deliberately not decided here; build it downstream from the flags: control = `is_forested_analysis_condition & !has_any_recorded_disturbance & !has_any_treatment`; disturbed = `is_forested_analysis_condition & is_natural_disturbance & !is_human_or_harvest & !has_any_treatment`.
 
 ##### Plot Disturbance History
 
@@ -397,9 +447,7 @@ These flags describe the whole plot visit. They should not automatically remove 
 
 #### Interpretation And FIA Code References
 
-**Current control definition:** a control candidate must be an FIA-forested condition with no recorded disturbance code and no recorded treatment code.
-The primary condition-level analysis uses FIA's own condition classification, `COND_STATUS_CD == 1`.
-The separate field `is_forest_dominated_plot` records whether at least 50% of the whole plot visit is forest. That plot-level threshold is retained for sensitivity analyses but does not disqualify an FIA-forested condition merely because another mapped condition on the same plot is nonforest.
+**Current control definition:** a control candidate must be an FIA-forested condition with no recorded disturbance code and no recorded treatment code. The primary condition-level analysis uses FIA's own condition classification, `COND_STATUS_CD == 1`. The separate field `is_forest_dominated_plot` records whether at least 50% of the whole plot visit is forest. That plot-level threshold is retained for sensitivity analyses but does not disqualify an FIA-forested condition merely because another mapped condition on the same plot is nonforest.
 
 **plot_damage_agents columns:**
 
@@ -431,8 +479,7 @@ One row per **condition × treatment slot** where TRTCD ≠ 0. Mirrors `plot_dis
 
 - `PLT_CN`, `INVYR`, `STATECD`, `n_conditions` (number of conditions in plot)
 - `pct_forested` (sum of CONDPROP_UNADJ where COND_STATUS_CD == 1; 0–1)
-  - FIA samples **all US land**; ~59% of plot×year rows have `pct_forested == 0`.
-    Use `pct_forested >= 0.5` only as an optional whole-plot sensitivity    restriction. Condition-level analyses should use `COND_STATUS_CD == 1` for the condition being analyzed.
+  - FIA samples **all US land**; ~59% of plot×year rows have `pct_forested == 0`. Use `pct_forested >= 0.5` only as an optional whole-plot sensitivity restriction. Condition-level analyses should use `COND_STATUS_CD == 1` for the condition being analyzed.
 - `exclude_nonforest` (logical: any condition has COND_STATUS_CD == 5 — non-forest land with trees, meaning converted/deforested plots that still carry some trees)
 - `exclude_human_dist` (logical: any DSTRBCD1/2/3 == 80 "Human-induced")
 - `exclude_harvest` (logical: any TRTCD1/2/3 == 10 "Cutting", condition-level)
@@ -551,10 +598,7 @@ One row maps one FIA site to the TerraClimate grid cell used for extraction. Mul
 
 **Purpose:**
 
-This read-only QA script validates the site-climate extraction products without
-modifying them. It checks that the site list has one valid coordinate row per
-`site_id`, that the pixel map covers the same site IDs, and that the final
-climate parquet has the expected site, year, month, and variable coverage.
+This read-only QA script validates the site-climate extraction products without modifying them. It checks that the site list has one valid coordinate row per `site_id`, that the pixel map covers the same site IDs, and that the final climate parquet has the expected site, year, month, and variable coverage.
 
 ---
 
@@ -587,7 +631,7 @@ summaries/plot_tree_species.parquet              |
 summaries/plot_sapling_species.parquet           |
 summaries/plot_seedling_species.parquet         |
 summaries/plot_disturbance_history.parquet      |
-summaries/plot_disturbance_classification.parquet |
+summaries/fia_condition_disturbance_flags.parquet |
 summaries/plot_treatment_history.parquet        |
 summaries/plot_damage_agents.parquet            |
 summaries/plot_exclusion_flags.parquet  <-------+---GEE (TerraClimate)
@@ -605,7 +649,7 @@ summaries/plot_exclusion_flags.parquet  <-------+---GEE (TerraClimate)
 
 | Decision | Rationale | Date |
 |----------|-----------|------|
-| rFIA for download only; `fread()` for processing | rFIA handles DataMart URL construction; `fread()` gives full column selection control needed for CCLCD/size-class stratification | 2026-02 |
+| Direct, staged DataMart state-table downloads | A complete state is validated before promotion, and a raw-file manifest makes mixed acquisition snapshots visible | 2026-08 |
 | 5-script structure | Each script has a single responsibility; matches IDS precedent | 2026-02 |
 | State-partitioned parquet output | Natural loop unit; resume-safe; `open_dataset()` unifies nationally | 2026-02 |
 | CCLCD NA fallback: DIA >= 5.0 = overstory | Many older and woodland plots lack CCLCD; DIA threshold is a defensible proxy for canopy position | 2026-02 |
@@ -681,12 +725,16 @@ FIA samples all US land — ~59% of plot×year rows have `pct_forested == 0`. Al
 
 ```r
 classes <- read_parquet(
-  "05_fia/data/processed/summaries/plot_disturbance_classification.parquet"
+  "05_fia/data/processed/summaries/fia_condition_disturbance_flags.parquet"
 )
 
-# Primary condition-level gate.
+# Primary condition-level gate. Build control/disturbed from the flags.
 forested_clean <- classes |>
-  filter(is_forested_condition, disturbed_vs_control %in% c("control", "disturbed"))
+  filter(
+    is_forested_analysis_condition,
+    (!has_any_recorded_disturbance & !has_any_treatment) |          # control
+      (is_natural_disturbance & !is_human_or_harvest & !has_any_treatment)  # disturbed
+  )
 
 # Optional whole-plot sensitivity restriction.
 forest_dominated <- forested_clean |> filter(is_forest_dominated_plot)
@@ -716,8 +764,7 @@ metrics_insect <- metrics |> inner_join(flags |> filter(has_insect), by = c("PLT
 Rscript 05_fia/scripts/qc/validate_seedling_products.R
 ```
 
-**3. Run It**
-From repo root:
+**3. Run It** From repo root:
 
 ```powershell
 & 'C:\Program Files\R\R-4.5.1\bin\Rscript.exe' 05_fia/scripts/qc/validate_seedling_products.R
@@ -755,9 +802,10 @@ FIA plots and IDS damage areas share geographic space but use different spatial 
 
 ## Troubleshooting
 
-**`rFIA::getFIA()` fails for a state**
-- Re-run `01_download_fia.R CO` (pass state abbreviation as command-line arg)
-- Or download manually: `https://apps.fs.usda.gov/fia/datamart/CSV/{ST}_TREE.csv`
+**A DataMart state download fails**
+- Re-run `Rscript 05_fia/scripts/01_download_fia.R CO`; the previous complete state remains in place if staging fails
+- Use `--refresh CO` when the existing files are complete but need intentional replacement
+- Official archives use `https://apps.fs.usda.gov/fia/datamart/CSV/{ST}_{TABLE}.zip`
 
 **Missing CCLCD causes unexpected NA canopy_layer**
 - Verify DIA fallback is being applied: check `is.na(canopy_layer)` count

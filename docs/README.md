@@ -84,7 +84,7 @@ This is the main navigation page for the repository documentation. Use it to mov
 | `04_worldclim/` | WorldClim local GeoTIFF extraction for IDS locations | [README](../04_worldclim/README.md) | [WORKFLOW](../04_worldclim/WORKFLOW.md) | [scripts/](../04_worldclim/scripts/) |
 | `05_fia/` | FIA plot summaries, disturbance, treatment, and site climate | [README](../05_fia/README.md) | [WORKFLOW](../05_fia/WORKFLOW.md) | [scripts/](../05_fia/scripts/) |
 | `06_species_niches/` | BIEN range-map and TerraClimate species niches | [README](../06_species_niches/README.md) | [WORKFLOW](../06_species_niches/WORKFLOW.md) | [scripts/](../06_species_niches/scripts/) |
-| `07_thermophilization/` | Plot-year community climate-affinity metrics, repeated-survey change rates, and disturbance proportions | [README](../07_thermophilization/README.md) | [Output guide](../07_thermophilization/README.md#output-reference) | [scripts/](../07_thermophilization/scripts/) |
+| `07_thermophilization/` | Forest community climate affinity per plot visit, change between repeated surveys, and disturbance extent | [README](../07_thermophilization/README.md) | [Output guide](../07_thermophilization/README.md#output-reference) | [scripts/](../07_thermophilization/scripts/) |
 | `08_disturbance_linkage/` | Links FIA plots to MTBS fire severity and IDS insect agents (scaffold) | [README](../08_disturbance_linkage/README.md) | [WORKFLOW](../08_disturbance_linkage/WORKFLOW.md) | [scripts/](../08_disturbance_linkage/scripts/) |
 | `archive/05_era5/` | Archived ERA5 extraction reference and directory layout | [README](../archive/05_era5/README.md) | [WORKFLOW](../archive/05_era5/WORKFLOW.md) | [scripts/](../archive/05_era5/scripts/) |
 

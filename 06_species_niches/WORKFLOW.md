@@ -166,8 +166,7 @@ The parquet or GeoPackage schema is the exact machine-readable authority. The de
 
 ### species_universe.parquet
 
-**Grain:** One row per source code, such as one FIA `SPCD` or one P2VEG plant
-code.
+**Grain:** One row per source code, such as one FIA `SPCD` or one P2VEG plant code.
 
 **Plain-language description:** The master inventory of taxa observed in the project's FIA and P2VEG community products. It records names, source codes, community layers, geographic representation, summarized abundance, and whether the record is specific enough for a species-level niche.
 

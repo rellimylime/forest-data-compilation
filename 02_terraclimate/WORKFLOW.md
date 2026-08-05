@@ -16,10 +16,7 @@ This document covers the technical architecture, per-script details, usage examp
 
 ## Architecture: Pixel Decomposition
 
-Climate-IDS integration uses a **pixel decomposition** pattern shared identically
-across TerraClimate, PRISM, and WorldClim. Instead of clipping rasters per
-observation, each observation is mapped to the raster pixels it overlaps, and
-climate values are extracted once per unique pixel.
+Climate-IDS integration uses a **pixel decomposition** pattern shared identically across TerraClimate, PRISM, and WorldClim. Instead of clipping rasters per observation, each observation is mapped to the raster pixels it overlaps, and climate values are extracted once per unique pixel.
 
 ```
 IDS Observations    Pixel Maps                     Pixel Values (long)
@@ -31,8 +28,7 @@ IDS Observations    Pixel Maps                     Pixel Values (long)
                    +--------------------------+   +--------------------------------------+
 ```
 
-**coverage_fraction** = area(observation intersect pixel) / area(pixel). NOT normalized.
-Used as weight when computing area-weighted means per observation.
+**coverage_fraction** = area(observation intersect pixel) / area(pixel). NOT normalized. Used as weight when computing area-weighted means per observation.
 
 **Why this design:**
 - Preserves within-polygon variation (important for large damage areas)
@@ -81,8 +77,7 @@ Water year conversion helper.
 ---
 
 ### [00_explore_terraclimate.R](scripts/explore/00_explore_terraclimate.R)
-Exploratory analysis of TerraClimate data structure and values before
-committing to the full extraction workflow. Console output only, no files written.
+Exploratory analysis of TerraClimate data structure and values before committing to the full extraction workflow. Console output only, no files written.
 
 - Initializes GEE and prints TerraClimate config
 - Loads 100 sample IDS features (2020, Region 5)
@@ -106,12 +101,9 @@ Creates the mapping from IDS observations to TerraClimate raster pixels.
 **Process:**
 1. Download TerraClimate reference raster from GEE (cached after first run)
 2. For each IDS layer:
-   - Polygons (damage_areas, surveyed_areas): `exactextractr::exact_extract()` finds
-     all overlapping pixels and computes coverage_fraction
-   - Points (damage_points): `terra::cellFromXY()` finds containing pixel;
-     coverage_fraction set to 1.0
-3. For damage_areas: build map on unique DAMAGE_AREA_ID geometries first
-   (handles pancake features), then join back to OBSERVATION_IDs
+   - Polygons (damage_areas, surveyed_areas): `exactextractr::exact_extract()` finds all overlapping pixels and computes coverage_fraction
+   - Points (damage_points): `terra::cellFromXY()` finds containing pixel; coverage_fraction set to 1.0
+3. For damage_areas: build map on unique DAMAGE_AREA_ID geometries first (handles pancake features), then join back to OBSERVATION_IDs
 4. Save as parquet
 
 **Pixel map schema (damage_areas):**
@@ -141,18 +133,13 @@ Extracts monthly climate values for all unique pixels via GEE.
 1. Load pixel maps from all three IDS layers
 2. Extract unique pixel coordinates (deduplicated across layers)
 3. For each year (1997-2024):
-   - Stack all 12 monthly images into a single 168-band image
-     (14 variables x 12 months, bands named `{variable}_{month:02d}`)
+   - Stack all 12 monthly images into a single 168-band image (14 variables x 12 months, bands named `{variable}_{month:02d}`)
    - Extract stacked image at pixel coordinates in batches of 2,500
    - Unstack result back to per-month rows
    - Apply scale factors from config.yaml
 4. Save as yearly parquet files (wide format)
 
-**Performance:** Stacking all months into one image reduces GEE round-trips
-by ~12x (one `sampleRegions()` call per batch instead of 12). The
-FeatureCollection is built from a GeoJSON dict in a single Python call
-rather than per-point `ee.Feature()` construction. If GEE timeouts occur,
-reduce `batch_size` (default 2,500).
+**Performance:** Stacking all months into one image reduces GEE round-trips by ~12x (one `sampleRegions()` call per batch instead of 12). The FeatureCollection is built from a GeoJSON dict in a single Python call rather than per-point `ee.Feature()` construction. If GEE timeouts occur, reduce `batch_size` (default 2,500).
 
 **Pixel values schema (wide, per-year files):**
 
@@ -168,8 +155,7 @@ reduce `batch_size` (default 2,500).
 ---
 
 ### [scripts/build_climate_summaries.R](../scripts/build_climate_summaries.R) (shared)
-Computes observation-level area-weighted climate summaries.
-Run as: `Rscript scripts/build_climate_summaries.R terraclimate`
+Computes observation-level area-weighted climate summaries. Run as: `Rscript scripts/build_climate_summaries.R terraclimate`
 
 **Input:**
 - `data/processed/pixel_maps/damage_areas_pixel_map.parquet`
@@ -374,14 +360,10 @@ Water year runs Oct–Sep. If `month >= 10`: `water_year = cal_year + 1`, `water
 ## Troubleshooting
 
 ### GEE timeout errors
-**Cause:** Too many pixels in single request.
-**Solution:** Reduce `batch_size` parameter (default 2500 for monthly stacking).
-With 168 bands per image, batch sizes above 3000 may exceed GEE limits.
+**Cause:** Too many pixels in single request. **Solution:** Reduce `batch_size` parameter (default 2500 for monthly stacking). With 168 bands per image, batch sizes above 3000 may exceed GEE limits.
 
 ### Missing pixel values
-**Cause:** Pixel in NoData area (ocean, data edge).
-**Solution:** Check coastal/edge observations; accept as missing.
-See cleaning_log.md Issue #010 for affected regions.
+**Cause:** Pixel in NoData area (ocean, data edge). **Solution:** Check coastal/edge observations; accept as missing. See cleaning_log.md Issue #010 for affected regions.
 
 ### Python/reticulate issues
 **Solution:** Set correct Python path in `.Renviron`:
@@ -390,8 +372,7 @@ RETICULATE_PYTHON=/path/to/python
 ```
 
 ### Large parquet files
-**Note:** Monthly pixel-level data generates significant volume.
-Typical size: ~50-100 MB per year depending on unique pixel count.
+**Note:** Monthly pixel-level data generates significant volume. Typical size: ~50-100 MB per year depending on unique pixel count.
 
 ---
 

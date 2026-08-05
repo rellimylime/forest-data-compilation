@@ -84,7 +84,7 @@ The word "grain" means the unit represented by one row.
 | `species_range_polygons.gpkg` | species polygon features | Spatial BIEN range geometries, with project species keys attached. |
 | `species_range_climate_us_study_area.parquet` | species x month x variable x metric | Monthly TerraClimate summaries over the range. |
 | `species_climate_niches_us_study_area.parquet` | one row per species | Compact species-level niche traits used by CWM scripts. |
-| `plot_recruitment_cwm.parquet` | FIA stable plot x plot visit x condition | FIA seedling community-weighted climate affinities, built downstream in `07_thermophilization`. |
+| `plot_community_climate_seedlings.parquet` | FIA stable plot x plot visit x condition | FIA seedling community-weighted climate affinities, built downstream in `07_thermophilization`. |
 
 FIA condition-level products should not be confused with subplot-level products. `CONDID` identifies a mapped forest condition within a FIA plot visit. `SUBP` identifies a subplot or microplot location. The thermophilization CWM currently aggregates seedling species from subplots up to the `PLT_CN x INVYR x CONDID` condition grain before calculating community-weighted means.
 
@@ -151,7 +151,7 @@ Current QA files to inspect before modeling:
 06_species_niches/qa/outputs/species_niche_top_cwm_gaps.csv
 06_species_niches/qa/outputs/species_range_climate_failures_us_study_area.csv
 06_species_niches/qa/outputs/species_climate_niches_missing_us_study_area.csv
-07_thermophilization/qa/outputs/plot_recruitment_cwm_missing_species.csv
+07_thermophilization/qa/outputs/plot_community_climate_missing_species_seedlings.csv
 ```
 
 Live counts and warning states are intentionally not repeated in this methods document because they change after reruns. Use these generated files as the authoritative current status:

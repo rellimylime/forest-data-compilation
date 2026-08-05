@@ -50,14 +50,14 @@ Shared test helpers live in `tests/testthat/helpers.R`. They check common condit
 | Species niches | `06_species_niches/qa/outputs/species_niche_gap_summary.csv` | Plain-language counts of species with usable niches and missing-data reasons |
 | Species niches | `06_species_niches/qa/outputs/species_taxon_resolution_summary.csv` | Deduplicated biological-taxon counts, not just source-code counts |
 | Thermophilization | `07_thermophilization/qa/outputs/thermophilization_validation_summary.csv` | One-line structural validation summary for the current thermophilization products |
-| Thermophilization | `07_thermophilization/qa/outputs/plot_year_community_cwm_summary_<layer>.csv` | Plot-year CWM row counts, niche coverage, missing species, and fallback usage |
-| Thermophilization | `07_thermophilization/qa/outputs/plot_year_climate_change_summary_<layer>.csv` | Repeated-survey interval counts, coverage threshold counts, and disturbance interval counts |
+| Thermophilization | `07_thermophilization/qa/outputs/forest_plot_visit_cwm_summary_<layer>.csv` | Condition rows in, aggregated as forest, excluded as nonforest, and absent from the FIA condition foundation |
+| Thermophilization | `07_thermophilization/qa/outputs/forest_visit_interval_change_summary_<layer>.csv` | Consecutive-survey interval counts, coverage threshold counts, and disturbance interval counts |
 
 ## Known QA Gaps
 
 These checks are useful future additions:
 
-- Recompute a random sample of plot-year CWMs directly from source species rows and species niches, then compare against `plot_year_community_cwm_<layer>.parquet`.
+- Recompute a random sample of plot-visit CWMs directly from source species rows and species niches, then compare against `forest_plot_visit_cwm_<layer>.parquet`.
 - Spot-check disturbance-proportion aggregation directly from condition rows and compare against `plot_disturbance_severity.parquet`.
 - Add dedicated PRISM and WorldClim validation scripts comparable to the IDS and species-niche validators.
 - Add automated checks for cross-dataset consistency among TerraClimate, PRISM, and WorldClim summaries.
