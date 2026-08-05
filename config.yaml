@@ -217,8 +217,8 @@ raw:
     description: "USDA Forest Service Forest Inventory and Analysis (FIADB)"
     source: "https://apps.fs.usda.gov/fia/datamart/CSV/"
     citation: "Forest Inventory and Analysis National Program, USDA Forest Service"
-    format: "CSV (downloaded via rFIA package)"
-    access_method: "rFIA::getFIA() by state"
+    format: "CSV (downloaded from state-table ZIP archives)"
+    access_method: "direct FIA DataMart download by state and table"
     temporal_resolution: "annual survey cycle (INVYR)"
     coverage: "All 50 US states"
     local_dir: "05_fia/data/raw"
@@ -282,6 +282,9 @@ raw:
       - TREE
       - SEEDLING
       - TREE_GRM_COMPONENT
+      - SUBP_COND               # subplot-condition proportions for P2VEG cover scaling
+      - P2VEG_SUBP_STRUCTURE    # Phase 2 vegetation structure (growth habit x layer cover)
+      - P2VEG_SUBPLOT_SPP       # Phase 2 vegetation species cover
 
     # TREE filter parameters
     tree_filters:
@@ -424,6 +427,14 @@ processed:
       output_dir: "05_fia/data/processed/damage_agents"
       description: "Live-tree damage agent codes (DAMAGE_AGENT_CD1/2/3) aggregated to plot x INVYR x CONDID x species, hive-partitioned by state"
       columns: "PLT_CN, INVYR, CONDID, SPCD, SFTWD_HRDWD, DAMAGE_AGENT_CD, ba_per_acre, n_trees_tpa"
+    understory_structure:
+      output_dir: "05_fia/data/processed/understory_structure"
+      description: "Phase 2 vegetation growth-habit x layer cover per subplot condition, hive-partitioned by state"
+      columns: "PLT_CN, INVYR, CONDID, SUBP, GROWTH_HABIT_CD, growth_habit, community_layer, LAYER, layer_label, cover_pct, cover_pct_subpcond, n_p2veg_structure_records"
+    understory_veg:
+      output_dir: "05_fia/data/processed/understory_veg"
+      description: "Phase 2 vegetation species (NRCS PLANTS) cover per subplot condition, hive-partitioned by state"
+      columns: "PLT_CN, INVYR, CONDID, SUBP, VEG_FLDSPCD, UNIQUE_SP_NBR, VEG_SPCD, plant symbols/names/traits, community_layer, LAYER, cover_pct, cover_pct_subpcond, n_p2veg_records"
     harvest_flags:
       output_dir: "05_fia/data/processed/harvest_flags"
       description: "Per-plot flags for incidental harvest based on AGENTCD 80-89 (cause-of-death codes on dead trees), hive-partitioned by state"
@@ -441,6 +452,8 @@ processed:
         plot_cond_fortypcd: "plot_cond_fortypcd.parquet"
         plot_disturbance_history: "plot_disturbance_history.parquet"
         plot_damage_agents: "plot_damage_agents.parquet"
+        plot_visit_context: "plot_visit_context.parquet"
+        forested_condition_foundation: "forested_condition_foundation.parquet"
 
   species_niches:
     local_dir: "06_species_niches/data/processed"
@@ -458,20 +471,30 @@ processed:
   thermophilization:
     local_dir: "07_thermophilization/data/processed"
     output_dir: "07_thermophilization/data/processed"
-    description: "Analysis-ready recruitment climate-affinity products built from FIA communities and species niche tables"
+    description: "Forest community climate-affinity products built from FIA communities and species niche tables"
     files:
-      plot_recruitment_cwm: "plot_recruitment_cwm.parquet"
-      analysis_cohort: "plot_recruitment_analysis_cohort.parquet"
-      plot_disturbance_severity: "plot_disturbance_severity.parquet"
+      # Condition level: one row per mapped FIA condition in a plot visit.
+      #   Producer: scripts/01_build_condition_community_climate.R
       plot_community_climate_seedlings: "plot_community_climate_seedlings.parquet"
       plot_community_climate_saplings: "plot_community_climate_saplings.parquet"
       plot_community_climate_trees: "plot_community_climate_trees.parquet"
-      plot_year_community_cwm_seedlings: "plot_year_community_cwm_seedlings.parquet"
-      plot_year_community_cwm_saplings: "plot_year_community_cwm_saplings.parquet"
-      plot_year_community_cwm_trees: "plot_year_community_cwm_trees.parquet"
-      plot_year_climate_change_seedlings: "plot_year_climate_change_seedlings.parquet"
-      plot_year_climate_change_saplings: "plot_year_climate_change_saplings.parquet"
-      plot_year_climate_change_trees: "plot_year_climate_change_trees.parquet"
+      # Plot-visit level: forested conditions only, area-weighted within the visit.
+      #   Producer: scripts/02_build_forest_plot_visit_cwm.R
+      forest_plot_visit_cwm_seedlings: "forest_plot_visit_cwm_seedlings.parquet"
+      forest_plot_visit_cwm_saplings: "forest_plot_visit_cwm_saplings.parquet"
+      forest_plot_visit_cwm_trees: "forest_plot_visit_cwm_trees.parquet"
+      # Disturbance extent per plot visit.
+      #   Producer: scripts/03_build_plot_disturbance_severity.R
+      plot_disturbance_severity: "plot_disturbance_severity.parquet"
+      # Change designs. Both are built; choosing between them is an open
+      # analysis decision (see docs/METHOD_DECISIONS_NEEDED.md).
+      #   Consecutive surveys -- producer: scripts/04_build_visit_interval_change.R
+      forest_visit_interval_change_seedlings: "forest_visit_interval_change_seedlings.parquet"
+      forest_visit_interval_change_saplings: "forest_visit_interval_change_saplings.parquet"
+      forest_visit_interval_change_trees: "forest_visit_interval_change_trees.parquet"
+      #   Earliest vs latest -- producer: scripts/05_build_first_last_change.R
+      forest_first_last_change: "forest_first_last_change.parquet"
+      forest_first_last_change_by_stage: "forest_first_last_change_by_stage.parquet"
     # Single configurable place to grade a plot visit as "high severity fire."
     # column: which plot_disturbance_severity.parquet column to threshold
     #   (prop_crown_fire = share of the whole plot, forested_prop_crown_fire =
@@ -575,23 +598,57 @@ processed:
   # disturbance-aware pass of 07_thermophilization. See 08_disturbance_linkage/.
   disturbance_linkage:
     output_dir: "08_disturbance_linkage/data/processed"
-    description: "Per-plot dated fire-severity (MTBS) and insect-agent (IDS) event tables keyed on stable_plot_id"
+    qa_dir: "08_disturbance_linkage/qa/outputs"
+    description: "Neutral FIA and external disturbance evidence; analysis summaries are deferred"
     buffer_m: 800               # plot footprint radius around the FIA coordinate
     area_crs: "EPSG:5070"       # Conus Albers equal-area; buffers/overlays done here
     inputs:
+      # Canonical raw-PLOT visit context, including exact measurement dates and
+      # official predecessor links. Built by 05_fia/scripts/07_build_plot_visit_context.R.
+      fia_plot_visit_context: "05_fia/data/processed/summaries/plot_visit_context.parquet"
       # FIA plot coordinates (carries stable_plot_id, PLT_CN, INVYR, LAT, LON).
       fia_plot_source: "05_fia/data/processed/summaries/plot_condition_metadata.parquet"
       # Cleaned IDS aerial-detection-survey layers (already in the repo).
       ids_layers: "01_ids/data/processed/ids_layers_cleaned.gpkg"
+      # USER-PROVIDED MTBS perimeter event layer. The event-history workflow
+      # uses this vector source for dates; severity rasters are out of scope.
+      mtbs_fire_perimeters: "08_disturbance_linkage/data/raw/mtbs/mtbs_fire_perimeters.gpkg"
+      mtbs_fire_perimeters_archive: "08_disturbance_linkage/data/raw/mtbs/S_USA.MTBS_BURN_AREA_BOUNDARY.zip"
+      mtbs_fire_perimeters_shapefile: "08_disturbance_linkage/data/raw/mtbs/S_USA.MTBS_BURN_AREA_BOUNDARY_20260621/S_USA.MTBS_BURN_AREA_BOUNDARY.shp"
       # MTBS annual burn-severity mosaics -- USER-PROVIDED, not in the repo.
       # Download from https://www.mtbs.gov/ into this directory (one raster/year).
       mtbs_raw_dir: "08_disturbance_linkage/data/raw/mtbs"
     files:
+      fia_visit_pairing_audit: "fia_visit_pairing_audit.parquet"
+      fia_survey_intervals: "fia_survey_intervals.parquet"
+      survey_interval_pairing_counts: "survey_interval_pairing_counts.csv"
+      fia_survey_interval_validation_checks: "fia_survey_interval_validation_checks.csv"
+      fia_visit_spatial_linkage_status: "fia_visit_spatial_linkage_status.parquet"
       plot_footprints: "plot_footprints.gpkg"
       plot_mtbs_fire_events: "plot_mtbs_fire_events.parquet"
       plot_ids_agent_events: "plot_ids_agent_events.parquet"
       plot_disturbance_linkage_events: "plot_disturbance_linkage_events.parquet"
+      fia_forest_disturbance_measures: "fia_forest_disturbance_measures.parquet"
+      fia_fire_disturbance_slot_evidence: "fia_fire_disturbance_slot_evidence.parquet"
+      fia_tree_damage_agent_evidence: "fia_tree_damage_agent_evidence"
+      fia_condition_damage_denominators: "fia_condition_damage_denominators"
+      fia_condition_damage_agent_candidates: "fia_condition_damage_agent_candidates"
+      fia_insect_severity_candidates: "fia_insect_severity_candidates"
+      mtbs_fire_event_evidence: "mtbs_fire_event_evidence.parquet"
+      ids_annual_agent_evidence: "ids_annual_agent_evidence"
+      ids_annual_survey_coverage: "ids_annual_survey_coverage"
+      disturbance_analysis_readiness: "disturbance_analysis_readiness.csv"
+      disturbance_source_manifest: "disturbance_source_manifest.csv"
     mtbs:
+      source:
+        title: "S_USA.MTBS_Burn_Area_Boundary"
+        agencies: "U.S. Geological Survey; USDA Forest Service"
+        publication_date: "2026-06-21"
+        doi: "https://doi.org/10.5066/P9IED7RZ"
+        project_url: "https://www.mtbs.gov/"
+        archive_sha256: "12CE6D20D5AF0F5AABD650765C0080118CC2DF2621D2E5A238377788701D3011"
+        citation: "U.S. Geological Survey and USDA Forest Service. 2026. S_USA.MTBS_Burn_Area_Boundary. Monitoring Trends in Burn Severity. https://doi.org/10.5066/P9IED7RZ."
+        use_note: "Burned-area boundaries derived from satellite imagery; they may differ from operational incident perimeters. Current source snapshot contains mapped events from 1984 through 2026."
       # MTBS thematic burn-severity mosaic pixel values.
       severity_classes:
         1: "unburned_to_low"
