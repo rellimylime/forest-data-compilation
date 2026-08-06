@@ -9,6 +9,7 @@
 This record distinguishes four kinds of statements:
 
 - **Repository finding** — established by inspecting code, documentation, configuration, locally available products, schemas, or read-only checks in this repository.
+- **Project deployment fact** — supplied by the project owner about the intended UCSB environment and treated as an implementation constraint that the environment spike must verify where practical.
 - **Official FIA support** — supported by a cited USDA Forest Service FIA guide or tool specification.
 - **Platform support** — supported by official documentation for Streamlit or the selected hosting environment.
 - **Domain review** — an interpretation or methodological choice that still requires the researcher or an FIA subject-matter expert.
@@ -22,6 +23,10 @@ Build a researcher-facing **Explore and extract FIA conditions** workflow inside
 Use PyArrow to project columns and apply source-compatible filters before converting a bounded result to Pandas. Use Pandas only for small joins, reviewed derivations, preview, and export. Do not introduce DuckDB, PostgreSQL, a web API, a frontend build system, or a deployment service unless later measurements demonstrate a need.
 
 Run the shared application backend in the environment that can read the products—preferably the UCSB server or a UCSB-managed host with the project storage mounted. Git carries application code, registries, tests, and documentation; it does not need to carry large raw or processed products. The browser receives previews and requested exports from the Streamlit backend. Streamlit Community Cloud is not the target because the ignored server products are not present in its GitHub-derived runtime.
+
+The UCSB server is a **serving environment**, not the authoritative raw-data build environment. The project owner reports that it does not contain raw FIA tables. The application therefore reads only a versioned, validated **explorer release** published from a controlled build environment that has the archived raw snapshot. Raw FIA is neither required nor permitted as a silent runtime fallback. The release contains the narrow condition-grain Parquet product, required lookups, QA result, checksums, schema/grain contract, upstream acquisition receipt, and build provenance. A missing release makes the workflow unavailable; it does not trigger a live API query or download.
+
+The raw snapshot used for an official explorer release must exist in durable project-controlled storage outside an individual workstation, even though it need not be mounted on the application server. Until that archive location and retention owner are identified, a locally built release can support development but should not be described as fully reproducible or operationally durable.
 
 Keep the extraction engine independent of Streamlit and drive it with the same portable JSON request used by the interface. This provides a fallback request-builder mode when interactive hosting is unavailable: a disconnected interface may produce a validated request and command, but only an executor beside the data may claim current availability or create the export.
 
@@ -43,6 +48,7 @@ The September release succeeds when the researcher can:
 8. Be prevented from requesting unsupported joins, aggregations, or population estimates.
 9. See whether the required server products are available, partial, stale, incompatible, or missing before submitting an extraction.
 10. Use the same portable request through the interface or a documented command-line executor without embedding machine-specific paths.
+11. See the explorer release date, FIA source-snapshot date, geographic/year coverage, and validation status without needing access to raw FIA files.
 
 ## Repository findings
 
@@ -54,16 +60,17 @@ The September release succeeds when the researcher can:
 - **Repository finding:** several canonical climate and linkage outputs are absent or incomplete locally. They cannot be committed September workflows merely because their paths are documented.
 - **Repository finding:** the dashboard currently resolves `REPO_ROOT` from the application location, checks a hard-coded `PIPELINE` list with file-existence calls, and reads Parquet row counts and schemas from metadata. This demonstrates basic runtime discovery but does not distinguish semantic registration from physical availability, completeness, schema compatibility, QA status, or freshness.
 - **Repository finding:** repository documentation intentionally classifies many large products as local/scripted or server-mirror artifacts rather than Git-tracked files. GitHub therefore cannot be treated as the data distribution layer.
+- **Project deployment fact:** the intended UCSB server does not contain the raw FIA tables used by the repository's producer scripts. Runtime extraction must therefore depend on explicitly published products rather than raw-table presence.
 - **Platform support:** Streamlit Community Cloud creates a runtime from the GitHub repository and states that files needed locally by the app must be made available to that runtime. Files generated during a Community Cloud session are not guaranteed to persist. These constraints do not apply when Streamlit is run directly on a UCSB host with mounted project storage.
 
 ### Important locally observed FIA products
 
-Sizes and row counts below are observations from the local workspace during this investigation, not stable API promises.
+**This table is superseded.** Row counts, sizes, and grain verification for every product now live in [Master Product Inventory](MASTER_PRODUCT_INVENTORY.md), which is regenerated from the data by `python forest_explorer/catalog/build_inventory.py`. Consult that rather than the figures below, which were hand-recorded and have already drifted — the FIA rebuild of 2026-07-21 changed several of them (`plot_seedling_species` went from 2,772,452 to 2,859,609 rows, `plot_tree_metrics` from 491,182 to 492,318, `plot_seedling_metrics` from 415,019 to 428,391). The design dispositions in the last column remain the record of intent.
 
-| Product | Approximate local shape | Logical grain | Design disposition |
+| Product | Local shape when this was written | Logical grain | Design disposition |
 |---|---:|---|---|
 | `plot_condition_metadata.parquet` | 1,472,276 rows; 60 MB | `PLT_CN × INVYR × CONDID` | Base candidate for the first slice, after its contract and protocol context are reconciled |
-| `plot_disturbance_classification.parquet` | 62 MB | condition within plot visit | Selected presence fields only; treatment timing blocked |
+| `fia_condition_disturbance_flags.parquet` | 62 MB | condition within plot visit | Selected presence fields only; treatment timing blocked |
 | `plot_tree_metrics.parquet` | 491,182 rows; 44 MB | plot visit | Future workflow |
 | `plot_seedling_metrics.parquet` | 415,019 rows; 6 MB | plot visit | Future workflow |
 | `plot_tree_species.parquet` | 3,789,663 rows; 118 MB | documented as plot-condition-subplot-species | Conditional on producer/product and aggregation review |
@@ -71,6 +78,8 @@ Sizes and row counts below are observations from the local workspace during this
 | `plot_seedling_species.parquet` | 2,772,452 rows; 60 MB | plot-condition-subplot-species | Conditional on protocol and aggregation review |
 | `plot_disturbance_severity.parquet` | 1,217,271 plot visits | plot visit | Future; derived semantics need review |
 | IDS cleaned GeoPackage | about 5.4 GB | damage area, damage point, or surveyed area | Not an interactive first-slice source |
+
+**Repository finding (2026-07-22):** the declared grain of every product has now been checked against the data rather than assumed. All FIA products above are unique on their declared keys. Two IDS layers are not; see [Confirmed data or pipeline defect](#confirmed-data-or-pipeline-defect).
 
 **Repository finding:** a projected and filtered PyArrow scan of the largest species product returned a recent California subset in under 0.2 seconds during a read-only feasibility check; the smaller products were faster. This supports direct Parquet access, but it does not justify loading national products into Pandas.
 
@@ -126,7 +135,7 @@ This is the proposed review set, not a claim that every row is already certified
 | Calculated forest type | `FORTYPCD` plus lookup | `certified_with_constraints` | Label as calculated forest type and retain the raw code |
 | Condition disturbance observations | `DSTRBCD1-3`, optionally `DSTRBYR1-3` | `certified_with_constraints` | Condition-level observation with documented area, prevalence, and lookback rules; years require manual-specific review |
 | Condition treatment presence | `TRTCD1-3` | `certified_with_constraints` | Prescribed silvicultural treatment, normally at least one acre; retain raw slots and reviewed labels |
-| Treatment timing | `TRTYR1-3` and derived timing fields | `blocked_by_repository_defect` | Exclude until the `TRTYR3` defect is repaired and all slots are rebuilt and tested |
+| Treatment timing | `TRTYR1-3` and derived timing fields | `certified_with_constraints` | Defect repaired 2026-07-21; `treatment_year_status` must accompany any year so missing, continuous, and post-inventory values are not read as calendar years |
 | Forested share of a plot visit | repository `pct_forested` | `certified_with_constraints` | Derivation must equal the sum of `CONDPROP_UNADJ` where `COND_STATUS_CD = 1`; record formula |
 
 ### Related FIA concepts that must remain distinct
@@ -172,7 +181,7 @@ This workflow would return species abundance for a condition after combining sub
 ## Unsupported or unsafe workflows for September
 
 - Population totals, rates, or sampling errors from local plot summaries.
-- Treatment timing affected by `TRTYR3` corruption.
+- Any IDS acreage total, until the duplicated damage records are rebuilt out.
 - Joining conditions across visits on `CONDID`.
 - Pairing visits solely by composite `stable_plot_id` and chronological lag.
 - Combining condition disturbance, `AGENTCD`, tree damage agents, IDS, or MTBS as equivalent observations.
@@ -196,6 +205,8 @@ Before filters, show:
 
 Also show source products, coverage, certification status, and the observation-versus-population-estimate boundary.
 
+In connected mode, also show the promoted explorer release ID, publication date, raw FIA snapshot/acquisition date, state/year coverage, and validation status. Do not show private server or archive paths.
+
 ### 3. Filters
 
 Use reviewed plain-language controls grouped as location, time/protocol, forest context, condition disturbance, and treatment presence. Keep an expandable “Official FIA details” panel for raw fields, definitions, thresholds, guide citations, and code lists.
@@ -218,7 +229,7 @@ Selecting a constrained variable displays the restriction inline. The applicatio
 
 ### 5. Review and preview
 
-Show the normalized request, exact output grain, estimated/actual row count, applied defaults, enforced constraints, selected and automatic columns, warnings, and a bounded preview. Empty results should explain which filters produced the empty intersection and allow the user to return to selections.
+Show the normalized request, exact output grain, pinned release ID, source-snapshot date, estimated/actual row count, applied defaults, enforced constraints, selected and automatic columns, warnings, and a bounded preview. Empty results should explain which filters produced the empty intersection and allow the user to return to selections.
 
 ### 6. Download
 
@@ -249,6 +260,21 @@ The extraction engine must be a normal Python module callable by both Streamlit 
 ### Deployment topology
 
 ```text
+Offline build and publication
+
+Durably archived raw FIA snapshot in the controlled build environment
+        |
+        v
+Pinned repository producers + semantic checks + product QA
+        |
+        v
+Immutable explorer release in staging
+  condition Parquet + lookups + manifest + QA + checksums + _SUCCESS
+        |
+        v
+Verified transfer to UCSB staging ----> atomic promotion of release pointer
+
+
 Connected mode
 
 Researcher's browser
@@ -278,7 +304,7 @@ Disconnected UI/docs ----> portable request.json + exact executor command
                          export + execution manifest
 ```
 
-Connected mode is the target experience for the boss. Request-builder mode is operational resilience, not a second scientific workflow. A disconnected interface may show the last published availability snapshot with its generation time and environment label, but it must not describe that snapshot as live.
+Connected mode is the target experience for the boss. The server reads the promoted explorer release and never needs the release's raw FIA files. Request-builder mode is operational resilience, not a second scientific workflow. A disconnected interface may show the last published availability snapshot with its generation time and environment label, but it must not describe that snapshot as live.
 
 ### Data flow
 
@@ -315,6 +341,77 @@ Code and data locations must be configurable without changing registry entries:
 
 The first server spike must choose between a populated Git working tree, a separate versioned code checkout plus data root, or a mounted product tree. The second arrangement is operationally safer because code updates and data lifecycle are separate, but the design supports the first to minimize September setup.
 
+### Build, release, and promotion contract
+
+The application product is not an arbitrary copy of whichever local Parquet happens to exist. It is an immutable release created and admitted through a controlled publication boundary.
+
+#### Environment responsibilities
+
+| Environment | Required inputs and permissions | Responsibilities | Prohibited responsibilities |
+|---|---|---|---|
+| Build environment | Read access to one dated raw FIA snapshot; pinned code and dependencies; write access to build staging | Build the reviewed condition-grain product, run semantic/structural QA, create provenance and checksums, and package a release | Serving unvalidated working files as production products |
+| Durable raw archive | Project-controlled storage with documented retention and restricted access | Preserve the exact raw snapshot or source archives and acquisition receipt needed to investigate or reproduce a release | Interactive extraction and public download |
+| Transfer/promotion process | Read access to completed build release; write access to UCSB staging and promotion metadata | Copy, verify, and atomically promote a complete release; retain or identify a rollback release | Modifying Parquet contents during transfer or promoting partial releases |
+| Streamlit serving environment | Read-only access to promoted releases and registry; limited write access to export/cache roots | Inventory and validate the promoted release, execute bounded requests, and create request-scoped exports | Downloading raw FIA, rebuilding products, repairing data, or changing the promoted release |
+
+The build environment may initially be the populated local repository, but the raw snapshot must not remain solely on one laptop. Before a release is considered operationally reproducible, the project must identify a durable UCSB-managed archive, project storage allocation, or other approved preservation location. The serving host may remain raw-free.
+
+#### Explorer release contents
+
+Use a release directory or equivalent immutable prefix such as:
+
+```text
+fia-condition-explorer/
+  releases/
+    2026-08-15.1/
+      data/conditions/                 # Parquet file or state-partitioned dataset
+      lookups/                         # only required reviewed code/label tables
+      product_manifest.json
+      validation_report.json
+      checksums.sha256
+      _SUCCESS
+  current                              # administrator-controlled pointer or release ID
+```
+
+The physical path and naming convention are implementation decisions, but the contract is not. Each release must include:
+
+- a unique immutable release ID; creation time; release status; and compatible registry/workflow versions;
+- the condition-grain dataset and only the small lookups required by that workflow;
+- the declared output key, row meaning, Arrow schema, partition coverage, row count, and byte size;
+- producer Git commit, producer/configuration versions, dependency versions, and exact build command or normalized build parameters;
+- one upstream receipt per raw state/table or source archive: DataMart URL or distributor identifier, retrieval time, filename, byte size, and cryptographic hash;
+- the FIADB documentation/database version known at acquisition, plus observed `PLOT.MANUAL` coverage; these are different version concepts and must not be collapsed;
+- semantic, schema, grain, identifier, coverage, default-filter, raw-code, and defect-exclusion QA results;
+- content checksums for every published file and a terminal success marker written only after all validation passes.
+
+The raw source files themselves are not copied into the explorer release and are not downloadable through the app. The upstream receipt links the release to the separately preserved raw snapshot.
+
+#### Publication and rollback
+
+1. Acquire or select an immutable raw FIA snapshot in the build environment. Do not mix state/table downloads from undocumented refresh dates in one release.
+2. Run pinned producers into a new staging directory; never build in the currently served release.
+3. Run all release-blocking QA and create the release manifest and checksums.
+4. Mark the staged release complete only after every required check passes.
+5. Transfer the complete release to a new UCSB staging location using a resumable approved mechanism.
+6. Recompute or verify checksums on the destination and validate schema, coverage, manifest compatibility, and `_SUCCESS` without reading from an old release.
+7. Promote atomically by changing a small administrator-controlled release pointer. Never replace files underneath a running release.
+8. Refresh the runtime inventory. Existing requests either finish against the old release or start against the new one; one execution may not mix releases.
+9. Retain at least the immediately previous compatible release, subject to storage policy, so promotion can be rolled back by changing the pointer rather than rebuilding.
+
+An application request records the promoted release ID and product fingerprints. Repeating a request against a later release is a new execution and may yield different rows; the interface must make that distinction visible.
+
+#### Server without raw FIA
+
+Absence of raw FIA on the UCSB server is acceptable and preferable for least-privilege runtime operation when all of the following are true:
+
+- the promoted explorer release is present, complete, compatible, and read-only;
+- the release manifest identifies and hashes the raw snapshot used to build it;
+- that exact raw snapshot or its original archives are preserved in durable project-controlled storage;
+- the server can verify the published product without contacting DataMart;
+- maintainers have a documented refresh path that starts in the build environment.
+
+If the server has processed repository files but no conforming release manifest, checksums, QA report, and success marker, those files are **unmanaged candidates**, not production explorer inputs. They may be inspected during the environment spike but must be rebuilt or explicitly packaged and validated before promotion. If neither a valid release nor a durable source snapshot exists, the September workflow is blocked rather than silently reconstructed from the live FIADB API.
+
 ### Data-access rules
 
 1. Resolve paths only through the product registry and configured data roots; the user never enters a path.
@@ -327,10 +424,13 @@ The first server spike must choose between a populated Git working tree, a separ
 8. Keep raster processing, GeoPackage-wide spatial processing, climate extraction, and expensive scientific transformations offline.
 9. Open registered scientific products read-only; the interactive process must not rebuild, repair, or mutate them.
 10. Treat a missing or incompatible product as an availability failure with a maintainer-oriented producer command, not permission for an automatic download or rebuild.
+11. Pin one release ID for the entire request so an inventory refresh or promotion cannot mix files from two releases.
+12. Accept only products admitted by the release contract; nearby unmanifested Parquet files are not implicitly available.
 
 ### FIA DataMart and FIADB-API boundary
 
 - The repository's deliberate bulk-ingestion workflow remains the source of raw FIA snapshots. `rFIA::getFIA()` and FIA DataMart downloads run offline from the interactive application, after which producers and QA create reviewed products.
+- Because the serving server has no raw FIA, refreshes begin in the controlled build environment and reach the server only through verified release publication. The application does not need DataMart network access.
 - The application records the product fingerprint and source/rebuild provenance. It does not silently refresh FIA between preview and export or between nominally identical requests.
 - FIADB-API `/fullreport` is reserved for a future workflow that explicitly implements official population-estimation semantics, evaluation selection, groupings, sampling errors, and API-response provenance.
 - A live FIADB-API result may never be substituted for a missing condition-row product because it has a different purpose and cannot reproduce repository transformations, certification, or non-FIA joins.
@@ -364,6 +464,7 @@ Each product entry needs:
 
 - stable product identifier and reviewed display name;
 - logical data-root ID, relative path pattern, format, partitioning, and completeness rule;
+- required release-artifact role and compatible release-contract versions;
 - producer, upstream dependencies, and source fingerprint method;
 - observed schema and logical grain;
 - identifying and spatial/temporal fields;
@@ -380,15 +481,17 @@ The semantic registry describes what the application knows how to use; the runti
 For each registered product, the inventory records:
 
 - environment label and inventory generation time;
+- promoted release ID, release-manifest fingerprint, and promotion time;
 - resolved logical root and product ID, without publishing a private absolute path;
-- status: `available`, `partial`, `stale`, `incompatible`, `missing`, or `blocked`;
+- status: `available`, `partial`, `stale`, `incompatible`, `missing`, `unmanaged`, or `blocked`;
 - discovered files or partitions, including state/year coverage where declared;
 - Arrow schema and schema-contract result;
 - row count, byte size, modification time, and reproducible content or metadata fingerprint;
 - producer/QA marker and the freshness rule evaluated;
+- release completeness, checksum, registry-compatibility, and success-marker results;
 - a concise reason and maintainer action when the product is not available.
 
-`available` means the required files, partitions, schema, QA marker, and applicable freshness rule satisfy the product contract. `partial` can support extraction only when the workflow explicitly permits partial coverage, displays that coverage before selection, constrains the request to it, and records it in provenance. `stale`, `incompatible`, `missing`, and `blocked` products cannot execute a September workflow.
+`available` means the promoted release, required files, partitions, schema, checksums, QA marker, success marker, registry compatibility, and applicable freshness rule satisfy the product contract. The lack of raw FIA on the serving server does not make a valid published product unavailable. `partial` can support extraction only when the workflow explicitly permits partial coverage, displays that coverage before selection, constrains the request to it, and records it in provenance. `stale`, `incompatible`, `missing`, `unmanaged`, and `blocked` products cannot execute a September workflow.
 
 Connected mode generates or refreshes this inventory from the live data roots at startup and after an administrator-directed refresh. Expensive content hashing is not performed on every Streamlit rerun; inventory results are cached against stable file metadata and registry version. The executor revalidates every referenced product immediately before extraction so a cached UI status cannot authorize a vanished or changed input.
 
@@ -419,7 +522,7 @@ Each workflow declares its row meaning, output key, allowed concepts and filters
 
 The versioned portable `request` contains workflow ID/version, output grain, filters including defaults, selected concepts, export options, and enforced constraint selections. It contains no machine-specific paths, credentials, arbitrary SQL, executable code, or user-controlled filesystem locations.
 
-The `execution` manifest contains timestamp, non-sensitive execution-environment label, execution mode, application/registry versions, availability-inventory version, resolved product IDs and fingerprints, source schemas and partition coverage, documentation versions, normalized filter expressions, automatic columns, enforced constraints, derivations, warnings, output schema/grain, row count, and request hash. It must not disclose credentials or private absolute paths. This split permits later preset loading without pretending an old product fingerprint or availability snapshot is portable.
+The `execution` manifest contains timestamp, non-sensitive execution-environment label, execution mode, application/registry versions, availability-inventory version, promoted release ID and release-manifest fingerprint, resolved product IDs and fingerprints, source schemas and partition coverage, raw-snapshot acquisition receipt identifiers/hashes inherited from the release, documentation versions, normalized filter expressions, automatic columns, enforced constraints, derivations, warnings, output schema/grain, row count, and request hash. It must not disclose credentials, private absolute paths, or private archive locations. This split permits later preset loading without pretending an old product fingerprint or availability snapshot is portable.
 
 The command-line executor accepts only a request file and administrator-configured environment settings. It returns the same normalized request, data, warnings, and manifest as connected mode. Given the same request and the same product fingerprints, the two modes must pass byte-equivalent Parquet or schema/value-equivalent CSV tests, allowing only declared nondeterministic manifest fields such as execution time.
 
@@ -455,11 +558,18 @@ Structural compatibility does not by itself justify aggregation or causal interp
 
 ### Confirmed data or pipeline defect
 
-**`TRTYR3` Boolean corruption.**
+**`TRTYR3` Boolean corruption — repaired 2026-07-21.**
 
 - **Repository finding:** state partition schema inference produced integer partitions where values exist and Boolean all-null partitions elsewhere. National collection used a Boolean schema and coerced 5,403 real third-slot treatment years to `TRUE`/`1`.
 - **Official FIA support:** FIADB defines `TRTYR1-3` as four-digit numeric treatment-year attributes.
-- **Disposition:** `TRTYR3`, combined treatment timing, cutting timing, time-since-treatment, and inherited products are `blocked_by_repository_defect`. Treatment-presence concepts based only on reviewed `TRTCD1-3` remain candidates.
+- **Repository finding (2026-07-22):** the defect is no longer present. `TRTYR3` is `int32` in all fifty state condition partitions and in `plot_condition_metadata.parquet`, and holds 5,403 four-digit years spanning 1986–2025 with no value of `0` or `1` — the same 5,403 records previously reported as coerced. `plot_treatment_history.parquet` gained `TRTYR_raw`, `TRTYR_calendar`, and `treatment_year_status`, the last separating `calendar_year` (81,436), `missing` (9,025), `after_inventory_year` (1,360), and `continuous_or_unknown` (1). The rebuild is recorded in `scratch_output/fia_fix_temp/rebuild_manifest.json`.
+- **Disposition:** the block is lifted for the values themselves. Treatment timing may be reconsidered for exposure, provided `treatment_year_status` is carried alongside any year so that missing, continuous, and post-inventory values cannot be read as calendar years. The rebuild has not itself been through release QA, so this is a finding about the current local build, not a promotion decision.
+
+**IDS identifiers are not unique in the built GeoPackage.**
+
+- **Repository finding (2026-07-22):** `damage_areas` holds 3,500 rows that repeat another row across 3,498 identifier groups, so `OBSERVATION_ID × DAMAGE_AREA_ID` is not unique. Geometry is identical within every group; attributes agree in all but 6; 3,295 groups have each copy from a different regional archive. `damage_points` has one such pair. The cause is `bind_rows()` over overlapping regional geodatabases in `03_clean_ids.R` with no de-duplication step.
+- **Why it matters more than the row count suggests:** the repeats are 0.08% of rows but the duplicated polygons average 12,869 acres against an overall mean of 131, so reported acreage is inflated by 7.66% (45,017,025 of 587,582,463 acres).
+- **Disposition:** fixed in `scripts/utils/ids_dedupe.R`, called from `03_clean_ids.R`, with unit tests in `01_ids/tests/testthat/test_ids_dedupe.R`. The GeoPackage in the current data root predates the fix and still contains the duplicates; rerunning the producer should yield 4,472,333 rows and 542,565,563 acres and leave the 6 genuine conflicts in a QA file for review. Any IDS workflow that sums acreage is blocked until the layer is rebuilt.
 
 ### Producer/product contract drift requiring technical investigation
 
@@ -497,6 +607,11 @@ These are not described as repository defects. Until reviewed, the affected conc
 ### Other delivery risks
 
 - The current condition summary lacks required protocol fields.
+- The server has no raw FIA, so a server-only rebuild is impossible by design. Loss of the build-environment raw snapshot would prevent exact investigation or reconstruction of an older release even if the served Parquet remained usable.
+- Keeping the only raw snapshot on an individual workstation is a single point of failure. A durable project-controlled archive and named retention owner are prerequisites for calling a release operationally reproducible.
+- Copying loose processed files to the server can create mixed-version or partial products. Immutable release staging, destination checksum verification, a terminal success marker, and atomic pointer promotion are required.
+- FIA DataMart may change after a release. A URL and download date alone are insufficient provenance; source-file hashes and retained source archives are needed for exact reconstruction.
+- Server storage may not support symlinks or atomic rename semantics across filesystems. The promotion spike must select a pointer or manifest mechanism whose atomicity is supported on the actual UCSB storage.
 - Registry curation can become duplicative unless generated and curated metadata have explicit ownership.
 - Large exports can exceed desktop memory even when scans are fast.
 - The UCSB host may not permit a long-running Streamlit process or may require a managed reverse proxy, service account, scheduler allocation, or approved storage mount.
@@ -531,8 +646,11 @@ No database should be added merely for anticipated scale. Reconsider DuckDB only
 - A workflow cannot reference an unavailable, unreviewed, domain-review, or defect-blocked concept.
 - Constrained concepts declare executable restrictions and provenance text.
 - Logical paths resolve only inside configured roots and registry/request files cannot inject absolute paths or traversal.
-- Runtime statuses distinguish complete, partial, stale, incompatible, missing, and blocked products with deterministic reasons.
+- Runtime statuses distinguish complete, partial, stale, incompatible, missing, unmanaged, and blocked products with deterministic reasons.
 - Partial products execute only for workflows and coverage explicitly declared safe.
+- Release manifests require an immutable release ID, compatible registry version, declared grain/schema/coverage, upstream acquisition receipts, QA result, checksums, and terminal success marker.
+- Unmanifested processed files and releases with missing, extra, changed, or checksum-failing artifacts are `unmanaged` or `blocked`, never `available`.
+- Source receipts identify every required raw state/table or source archive without exposing the private archive path to browser users.
 
 ### Semantic tests
 
@@ -557,7 +675,10 @@ No database should be added merely for anticipated scale. Reconsider DuckDB only
 ### Deployment and availability tests
 
 - Start from a code-only checkout and show registered products as missing without crashing or silently substituting live API data.
+- Start the serving environment with a valid promoted explorer release and no raw FIA files; prove the full September extraction succeeds without DataMart or FIADB-API network access.
 - Start against a populated test root and verify schema, partition coverage, fingerprints, QA markers, and environment label.
+- Stage a release with a missing partition, failed QA result, absent `_SUCCESS`, incompatible registry version, and one corrupted file in turn; prove each is rejected before extraction.
+- Promote between two test releases while an extraction is active; prove each request uses exactly one pinned release and rollback changes only the promotion pointer.
 - Verify the application source tree and scientific product roots are read-only to the runtime identity; only the export/cache roots are writable.
 - Verify browser-visible diagnostics and manifests omit credentials and private absolute paths.
 - Generate a disconnected availability snapshot, display its timestamp and `live: false` status, then require authoritative server validation before execution.
@@ -565,7 +686,8 @@ No database should be added merely for anticipated scale. Reconsider DuckDB only
 
 ### Defect and exclusion tests
 
-- Treatment timing fields remain unavailable while `TRTYR3` is blocked.
+- Treatment timing fields cannot be exposed without `treatment_year_status`, and a year whose status is not `calendar_year` is never presented as one.
+- IDS layers whose declared identifiers are not unique cannot back an acreage total.
 - Repeated-visit workflows cannot use chronological lag without validated `PREV_PLT_CN` behavior.
 - Species workflows remain unavailable until producer/product and aggregation gates pass.
 - External linkage cannot be described as exact plot exposure.
@@ -584,6 +706,8 @@ A researcher should be able to complete the condition workflow from a clean conn
 - Preserve portable request JSON so future preset support does not require redesigning extraction semantics.
 - Maintain a server runbook covering environment creation, data-root configuration, launch/restart, approved access path, log location, inventory refresh, export cleanup, resource limits, and rollback.
 - Maintain a data-refresh runbook that keeps DataMart download, product rebuild, QA, and atomic product promotion outside the interactive process.
+- Maintain a release-publication runbook covering raw-snapshot selection, durable archival, acquisition receipts, build staging, QA gates, checksum creation, transfer verification, atomic promotion, inventory refresh, retention, and rollback.
+- Assign ownership separately for raw-snapshot preservation, scientific product approval, server promotion, and application operation; do not assume one maintainer implicitly owns all four.
 - Pin the application environment and record the Git commit, registry version, Python and PyArrow versions, and non-sensitive environment label in launch diagnostics.
 - Assign operational ownership for restarting the app, reviewing failures, managing export storage, and approving new products; scientific registry ownership alone is insufficient.
 
@@ -599,18 +723,20 @@ A researcher should be able to complete the condition workflow from a clean conn
 - Arrow-first extraction, bounded preview, CSV/Parquet export, and JSON manifest.
 - One extraction engine shared by connected Streamlit and a portable-request command-line executor.
 - Configurable logical data root plus live registry-aware availability and compatibility reporting.
+- One immutable, validated condition-explorer release published to the UCSB server, with a durable off-server raw snapshot, upstream acquisition receipt, checksums, QA report, and rollback identifier.
 - A validated UCSB launch/access/export pattern, or request-builder fallback if shared hosting is not approved in time.
 - Tests and a short user/maintainer handoff guide.
 
 ### Implementation sequence
 
-0. **UCSB environment and deployment spike:** inspect the intended host read-only; establish the approved access method, code/data layout, logical data root, runtime identity and permissions, Python environment, export/cache roots, quotas, cleanup mechanism, and whether a long-running Streamlit process is permitted. Generate a runtime inventory and benchmark only a bounded condition scan. Do not rebuild products during this spike.
-1. **Certification and contracts:** confirm the first-slice variable matrix, source documentation, constraints, condition-grain product contract, availability states, and completeness rules; decide registry location through the import/test spike.
-2. **Shared extraction engine:** make the reviewed condition input with required protocol context available; implement registry validation, live inventory, request normalization, Arrow scans, limits, exports, and manifests behind a UI-independent API.
-3. **Two entry points:** add the command-line request executor first, then implement workflow selection, grain explanation, filters, variable groups, review, preview, and downloads within Streamlit using that same engine.
-4. **Connected deployment validation:** configure the UCSB data root and protected access path; validate read-only product permissions, request-scoped export staging, cleanup, concurrency limits, diagnostics, and connected/CLI equivalence.
-5. **Validation and handoff:** add semantic/contract/extraction/deployment tests, researcher usability review, server performance checks, and maintainer plus data-refresh runbooks.
-6. **Conditional extension:** consider plot-condition-species only if all technical and domain gates close without jeopardizing the complete condition slice.
+0. **UCSB environment and data-inventory spike:** inspect the intended host read-only; confirm that raw FIA is absent; inventory candidate processed products; establish the approved access method, code/data/release layout, logical roots, runtime identity and permissions, Python environment, export/cache roots, quotas, cleanup mechanism, and whether a long-running Streamlit process is permitted. Do not treat unmanifested candidates as production inputs and do not rebuild during this spike.
+1. **Certification, product, and release contracts:** confirm the first-slice variable matrix, source documentation, constraints, condition-grain product contract, release contents, availability states, completeness rules, source-receipt fields, and QA gates; decide registry location through the import/test spike.
+2. **Raw preservation and first release publication:** identify the exact local raw snapshot and whether its state/table acquisitions are internally consistent; copy or archive it in durable project-controlled storage; build the protocol-complete condition product in new staging; validate it; create the release manifest/checksums; transfer it to UCSB staging; verify it; and atomically promote it. If the current raw snapshot cannot be documented and preserved, reacquire a coherent DataMart snapshot before publishing.
+3. **Shared extraction engine:** implement registry validation, promoted-release resolution, live inventory, request normalization, Arrow scans, limits, exports, and manifests behind a UI-independent API. Prove operation against the promoted release with no raw FIA or outbound FIA service dependency.
+4. **Two entry points:** add the command-line request executor first, then implement workflow selection, grain explanation, filters, variable groups, release/coverage display, review, preview, and downloads within Streamlit using that same engine.
+5. **Connected deployment validation:** configure the UCSB release/data roots and protected access path; validate read-only release permissions, request-scoped export staging, cleanup, concurrency limits, diagnostics, promotion/rollback behavior, and connected/CLI equivalence.
+6. **Validation and handoff:** add semantic/contract/extraction/deployment tests, researcher usability review, server performance checks, and maintainer, raw-preservation, data-refresh, release-publication, and rollback runbooks.
+7. **Conditional extension:** consider plot-condition-species only if all technical and domain gates close without jeopardizing the complete condition slice.
 
 ### Explicit non-goals
 
@@ -619,6 +745,7 @@ A researcher should be able to complete the condition workflow from a clean conn
 - Database migration, separate application API, separate frontend, public Community Cloud data deployment, or migration of large products into Git/Git LFS.
 - High-availability operations, public internet hosting, custom identity management, or an institutional production-service commitment beyond the approved UCSB launch/access pattern.
 - Automatic DataMart downloads or product rebuilds initiated by researcher interaction.
+- Requiring raw FIA tables to be mounted on the Streamlit serving host, or migrating the full raw archive there merely to make the app run.
 - Population estimation.
 - Preset loading or generated analysis code.
 - Mortality/removal, repeated change, spatial disturbance linkage, or arbitrary cross-product query building.
@@ -647,6 +774,8 @@ Before connected deployment is committed, determine:
 5. Whether multiple simultaneous users are expected and what CPU, memory, elapsed-time, and I/O limits are appropriate.
 6. Which products constitute the server's authoritative September snapshot and how successful QA and atomic promotion are signaled.
 7. Whether application logs and request metadata have institutional retention or privacy requirements.
+8. Where the exact raw FIA snapshot will be durably archived, who owns retention, and whether the existing local snapshot is coherent and sufficiently documented or must be reacquired.
+9. Which approved transfer mechanism and server filesystem operation provide destination checksum verification, atomic promotion, and rollback without exposing private paths in the app.
 
 ## Official FIA references
 
@@ -666,6 +795,8 @@ Before connected deployment is committed, determine:
 
 ## Exact next implementation step
 
-After this revision is approved, work on the UCSB server long enough to perform the read-only environment spike before building the broader interface. Record the approved host/access pattern, code and data roots, runtime permissions, Python environment, product coverage/schema/fingerprints, export/cache location and quota, and whether a supervised Streamlit process is permitted. Use a bounded PyArrow scan only; do not rebuild or mutate products.
+After this revision is approved, perform two bounded discovery tasks before building the broader interface. First, inspect the UCSB server read-only: record the approved host/access pattern, code/data/release roots, runtime permissions, Python environment, candidate processed-product coverage/schema/fingerprints, export/cache location and quota, and whether a supervised Streamlit process is permitted. Confirm that raw FIA is absent and classify existing processed files as unmanaged candidates until release evidence is verified. Do not rebuild or mutate server products.
 
-Then return to the implementation environment that is easiest to test—local, server, or remote development against the server—while keeping all machine-specific settings outside the registry. In the first code spike: (1) choose the registry location using the stated import/test criteria; (2) implement logical-root resolution and the runtime inventory contract; (3) construct a read-only, schema-validated condition-grain fixture carrying `PLOT.MANUAL` and required protocol context; and (4) prove one constrained request through the shared command-line engine with an export and manifest. Connect Streamlit to that engine only after the condition contract, certification matrix, availability checks, and safe-failure tests pass.
+Second, inspect the local raw snapshot and build lineage read-only: inventory state/table files, acquisition dates where available, hashes, schema/manual coverage, and the producer commit/configuration that created the current condition products. Decide whether this snapshot can be preserved and used or whether one coherent DataMart reacquisition is required. Identify the durable raw-archive owner and location before calling the first release reproducible.
+
+Then, in the first code spike: (1) choose the registry location using the stated import/test criteria; (2) define and test the release-manifest and logical-root contracts; (3) construct a schema-validated condition-grain fixture carrying `PLOT.MANUAL` and required protocol context; and (4) prove one constrained request through the shared command-line engine with an export and manifest against a miniature promoted release while raw FIA is absent from the serving fixture. Build and publish the national condition release only after the condition contract, certification matrix, source-snapshot decision, release QA gates, availability checks, and safe-failure tests pass. Connect Streamlit after the shared engine and publication boundary are proven.
