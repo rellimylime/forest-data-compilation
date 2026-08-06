@@ -2,5 +2,7 @@ streamlit>=1.30
 pandas>=2.0
 plotly>=5.17
 pyarrow>=14.0
+# Official FIA PDF table extraction (09_build_damage_agent_lookup.py).
+PyMuPDF>=1.24
 # pyvis is only needed for 05_fia/docs/dashboard/fiadb_dashboard.py
 # It has its own requirements.txt in that directory for separate deployment
