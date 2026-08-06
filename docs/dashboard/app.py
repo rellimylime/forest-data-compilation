@@ -40,173 +40,75 @@ render_top_nav()
 # Pipeline inventory — all expected outputs with metadata
 # ------------------------------------------------------------------------------
 
-PIPELINE = [
-    # (section, label, rel_path, description)
-    ("IDS", "IDS cleaned geopackage",
-     "01_ids/data/processed/ids_layers_cleaned.gpkg",
-     "4.4M damage areas, 1.2M damage points, 74.5K surveyed areas (3 layers)"),
+PIPELINE_INVENTORY = repo_path("forest_explorer/catalog/generated/inventory.json")
 
-    ("TerraClimate", "IDS pixel map",
-     "02_terraclimate/data/processed/pixel_maps/damage_areas_pixel_map.parquet",
-     "Links each IDS damage area to TerraClimate 4km pixels (coverage-weighted)"),
-    ("TerraClimate", "Summaries — aet",
-     "processed/climate/terraclimate/damage_areas_summaries/aet.parquet",
-     "Monthly actual evapotranspiration per damage area (area-weighted, 1997-2024)"),
-    ("TerraClimate", "Summaries — def",
-     "processed/climate/terraclimate/damage_areas_summaries/def.parquet",
-     "Monthly climate water deficit per damage area (area-weighted, 1997-2024)"),
-    ("TerraClimate", "Summaries — pdsi",
-     "processed/climate/terraclimate/damage_areas_summaries/pdsi.parquet",
-     "Monthly Palmer Drought Severity Index per damage area (area-weighted, 1997-2024)"),
-    ("TerraClimate", "Summaries — pet",
-     "processed/climate/terraclimate/damage_areas_summaries/pet.parquet",
-     "Monthly reference evapotranspiration per damage area (area-weighted, 1997-2024)"),
-    ("TerraClimate", "Summaries — pr",
-     "processed/climate/terraclimate/damage_areas_summaries/pr.parquet",
-     "Monthly precipitation per damage area (area-weighted, 1997-2024)"),
-    ("TerraClimate", "Summaries — ro",
-     "processed/climate/terraclimate/damage_areas_summaries/ro.parquet",
-     "Monthly runoff per damage area (area-weighted, 1997-2024)"),
-    ("TerraClimate", "Summaries — soil",
-     "processed/climate/terraclimate/damage_areas_summaries/soil.parquet",
-     "Monthly soil moisture per damage area (area-weighted, 1997-2024)"),
-    ("TerraClimate", "Summaries — srad",
-     "processed/climate/terraclimate/damage_areas_summaries/srad.parquet",
-     "Monthly downward shortwave radiation per damage area (area-weighted, 1997-2024)"),
-    ("TerraClimate", "Summaries — swe",
-     "processed/climate/terraclimate/damage_areas_summaries/swe.parquet",
-     "Monthly snow water equivalent per damage area (area-weighted, 1997-2024)"),
-    ("TerraClimate", "Summaries — tmmn",
-     "processed/climate/terraclimate/damage_areas_summaries/tmmn.parquet",
-     "Monthly min temperature per damage area (area-weighted, 1997-2024)"),
-    ("TerraClimate", "Summaries — tmmx",
-     "processed/climate/terraclimate/damage_areas_summaries/tmmx.parquet",
-     "Monthly max temperature per damage area (area-weighted, 1997-2024)"),
-    ("TerraClimate", "Summaries — vap",
-     "processed/climate/terraclimate/damage_areas_summaries/vap.parquet",
-     "Monthly vapor pressure per damage area (area-weighted, 1997-2024)"),
-    ("TerraClimate", "Summaries — vpd",
-     "processed/climate/terraclimate/damage_areas_summaries/vpd.parquet",
-     "Monthly vapor pressure deficit per damage area (area-weighted, 1997-2024)"),
-    ("TerraClimate", "Summaries — vs",
-     "processed/climate/terraclimate/damage_areas_summaries/vs.parquet",
-     "Monthly wind speed per damage area (area-weighted, 1997-2024)"),
-
-    ("PRISM", "IDS pixel map",
-     "03_prism/data/processed/pixel_maps/damage_areas_pixel_map.parquet",
-     "Links each IDS damage area to PRISM 800m pixels (coverage-weighted, CONUS only)"),
-    ("PRISM", "Summaries — ppt",
-     "processed/climate/prism/damage_areas_summaries/ppt.parquet",
-     "Monthly precipitation per damage area (area-weighted, 1997-2024)"),
-    ("PRISM", "Summaries — tdmean",
-     "processed/climate/prism/damage_areas_summaries/tdmean.parquet",
-     "Monthly mean dew point temperature per damage area (area-weighted, 1997-2024)"),
-    ("PRISM", "Summaries — tmax",
-     "processed/climate/prism/damage_areas_summaries/tmax.parquet",
-     "Monthly max temperature per damage area (area-weighted, 1997-2024)"),
-    ("PRISM", "Summaries — tmean",
-     "processed/climate/prism/damage_areas_summaries/tmean.parquet",
-     "Monthly mean temperature per damage area (area-weighted, 1997-2024)"),
-    ("PRISM", "Summaries — tmin",
-     "processed/climate/prism/damage_areas_summaries/tmin.parquet",
-     "Monthly min temperature per damage area (area-weighted, 1997-2024)"),
-    ("PRISM", "Summaries — vpdmax",
-     "processed/climate/prism/damage_areas_summaries/vpdmax.parquet",
-     "Monthly max vapor pressure deficit per damage area (area-weighted, 1997-2024)"),
-    ("PRISM", "Summaries — vpdmin",
-     "processed/climate/prism/damage_areas_summaries/vpdmin.parquet",
-     "Monthly min vapor pressure deficit per damage area (area-weighted, 1997-2024)"),
-
-    ("WorldClim", "IDS pixel map",
-     "04_worldclim/data/processed/pixel_maps/damage_areas_pixel_map.parquet",
-     "Links each IDS damage area to WorldClim 4.5km pixels (coverage-weighted)"),
-    ("WorldClim", "Summaries — prec",
-     "processed/climate/worldclim/damage_areas_summaries/prec.parquet",
-     "Monthly precipitation per damage area (area-weighted, 1997-2024)"),
-    ("WorldClim", "Summaries — tmax",
-     "processed/climate/worldclim/damage_areas_summaries/tmax.parquet",
-     "Monthly max temperature per damage area (area-weighted, 1997-2024)"),
-    ("WorldClim", "Summaries — tmin",
-     "processed/climate/worldclim/damage_areas_summaries/tmin.parquet",
-     "Monthly min temperature per damage area (area-weighted, 1997-2024)"),
-
-    ("FIA", "Tree metrics",
-     "05_fia/data/processed/summaries/plot_tree_metrics.parquet",
-     "BA, diversity, size class, canopy layer per plot × year"),
-    ("FIA", "Plot exclusion flags",
-     "05_fia/data/processed/summaries/plot_exclusion_flags.parquet",
-     "Pre-built nonforest / harvest / human-disturbance filter flags"),
-    ("FIA", "Disturbance history",
-     "05_fia/data/processed/summaries/plot_disturbance_history.parquet",
-     "Long-format fire, insect, disease, and other disturbance events"),
-    ("FIA", "Damage agents",
-     "05_fia/data/processed/summaries/plot_damage_agents.parquet",
-     "Tree-level insect and disease agent codes"),
-    ("FIA", "Mortality metrics",
-     "05_fia/data/processed/summaries/plot_mortality_metrics.parquet",
-     "Between-measurement mortality by agent (natural + harvest)"),
-    ("FIA", "Seedling metrics",
-     "05_fia/data/processed/summaries/plot_seedling_metrics.parquet",
-     "Seedling regeneration by functional group and diversity"),
-    ("FIA", "Treatment history",
-     "05_fia/data/processed/summaries/plot_treatment_history.parquet",
-     "Silvicultural treatments: cutting, site prep, regen (all 5 TRTCD codes)"),
-    ("FIA", "Condition / forest type",
-     "05_fia/data/processed/summaries/plot_cond_fortypcd.parquet",
-     "Condition-level forest type and disturbance codes pass-through"),
-    ("FIA", "Condition metadata",
-     "05_fia/data/processed/summaries/plot_condition_metadata.parquet",
-     "Condition-level stable plot IDs, coordinates, forest type groups, and forested area fields"),
-    ("FIA", "Seedling species",
-     "05_fia/data/processed/summaries/plot_seedling_species.parquet",
-     "Species-level seedling counts per plot condition, preserving SPCD for recruitment analyses"),
-    ("FIA", "Disturbance classification",
-     "05_fia/data/processed/summaries/plot_disturbance_classification.parquet",
-     "Control/disturbed eligibility, natural disturbance classes, timing, and matching strata"),
-    ("FIA", "Site pixel map",
-     "05_fia/data/processed/site_climate/site_pixel_map.parquet",
-     "TerraClimate 4km pixel assignments for 6,956 FIA plot locations"),
-    ("FIA", "Site climate",
-     "05_fia/data/processed/site_climate/site_climate.parquet",
-     "Monthly TerraClimate at FIA sites: 6 variables, 1958–2024 (23.5M rows)"),
-
-    ("Species niches", "Species climate niches",
-     "06_species_niches/data/processed/species_climate_niches.parquet",
-     "External occurrence-based climate envelopes for FIA tree species"),
-    ("Thermophilization", "Recruitment CWM",
-     "07_thermophilization/data/processed/plot_recruitment_cwm.parquet",
-     "Seedling community-weighted climate affinity per FIA condition visit"),
-    ("Thermophilization", "Matched disturbed-control pairs",
-     "07_thermophilization/data/processed/plot_matches.parquet",
-     "Five climate-matched controls per disturbed FIA condition with pairwise CWM deltas"),
-    ("Thermophilization", "Class x region summary",
-     "07_thermophilization/data/processed/thermophilization_by_class_region.parquet",
-     "Bootstrap mean deltas by disturbance class and East/West region"),
-    ("Thermophilization", "High-severity fire summary",
-     "07_thermophilization/data/processed/thermophilization_high_severity.parquet",
-     "Crown-fire high-severity proxy summary by East/West region"),
-    ("Thermophilization", "Time x region summary",
-     "07_thermophilization/data/processed/thermophilization_by_time_region.parquet",
-     "Time-since-disturbance summary pooled across natural disturbance classes"),
-    ("Thermophilization", "Class x time x region summary",
-     "07_thermophilization/data/processed/thermophilization_by_class_time_region.parquet",
-     "Time-since-disturbance summary stratified by disturbance class and region"),
-    ("Thermophilization", "Disturbance year coverage",
-     "07_thermophilization/data/processed/disturbance_year_coverage.parquet",
-     "Diagnostic for how often FIA has usable disturbance years"),
-]
-
-
-PAGE_ROUTES = {
-    "IDS": "pages/1_IDS_Survey.py",
-    "TerraClimate": "pages/2_Climate.py",
-    "PRISM": "pages/2_Climate.py",
-    "WorldClim": "pages/2_Climate.py",
-    "FIA": "pages/3_FIA_Forest.py",
-    "Thermophilization": "pages/6_Thermophilization.py",
-    "Architecture": "pages/4_Architecture.py",
-    "Data Catalog": "pages/5_Data_Catalog.py",
+# Availability comes from the generated inventory, which distinguishes "present"
+# from "present but not the grain we claim". A plain file-existence check cannot.
+PIPELINE_STATE_ICON = {
+    "available": "✅", "partial": "⚠️", "missing": "❌", "error": "🛑",
 }
+PIPELINE_STATE_LABEL = {
+    "available": "ready",
+    "partial": "present, grain unconfirmed",
+    "missing": "not built here",
+    "error": "unreadable",
+}
+
+# Which workflow page covers each registry family.
+FAMILY_ROUTES = {
+    "fia_partitions": "pages/3_FIA_Forest.py",
+    "fia_summaries": "pages/3_FIA_Forest.py",
+    "fia_lookups": "pages/3_FIA_Forest.py",
+    "site_climate": "pages/2_Climate.py",
+    "climate_grids": "pages/2_Climate.py",
+    "species_niches": "pages/6_Thermophilization.py",
+    "thermophilization": "pages/6_Thermophilization.py",
+    "ids": "pages/1_IDS_Survey.py",
+    "disturbance_linkage": "pages/1_IDS_Survey.py",
+}
+
+
+@st.cache_data(show_spinner=False)
+def _load_pipeline(path: str, mtime: float) -> list[dict]:
+    """Pipeline status, read from the generated product inventory.
+
+    This used to be a literal list maintained by hand. Nothing checked it against
+    the data, so it drifted: 35 of its 49 entries pointed at paths that no longer
+    existed. It now comes from forest_explorer, where presence is measured.
+    Add products to forest_explorer/registry/products.yaml, not here.
+    """
+    with open(path, encoding="utf-8") as f:
+        inv = json.load(f)
+    fams = inv["families"]
+    out = []
+    for prod in inv["products"]:
+        obs = prod.get("observed") or {}
+        bits = [prod["one_row_is"]]
+        if obs.get("n_rows"):
+            bits.append(f"{obs['n_rows']:,} rows")
+        out.append({
+            "id":           prod["id"],
+            "section":      fams[prod["family"]]["title"],
+            "family":       prod["family"],
+            "label":        prod["title"],
+            "path":         prod["path"],
+            "description":  " · ".join(bits),
+            "availability": prod["availability"],
+            "n_rows":       obs.get("n_rows"),
+            "bytes":        obs.get("bytes"),
+        })
+    return out
+
+
+if PIPELINE_INVENTORY.is_file():
+    PIPELINE = _load_pipeline(str(PIPELINE_INVENTORY),
+                              PIPELINE_INVENTORY.stat().st_mtime)
+else:
+    PIPELINE = []
+
+
+
+# Routing for registry products lives in FAMILY_ROUTES above.
 
 PAGE_SEARCH_INDEX = [
     {
@@ -285,27 +187,33 @@ SCRIPT_SEARCH_INDEX = [
         "page": "pages/3_FIA_Forest.py",
     },
     {
-        "title": "Build recruitment CWM",
-        "path": "07_thermophilization/scripts/01_build_plot_recruitment_cwm.R",
-        "body": "Compute seedling community-weighted climate affinity per FIA condition visit.",
+        "title": "Build condition community climate",
+        "path": "07_thermophilization/scripts/01_build_condition_community_climate.R",
+        "body": "Compute community-weighted climate affinity per FIA condition, for one life stage.",
         "page": "pages/6_Thermophilization.py",
     },
     {
-        "title": "Match disturbed controls",
-        "path": "07_thermophilization/scripts/02_match_disturbed_to_controls.R",
-        "body": "Match disturbed FIA conditions to clean controls by forest type, region, inventory year, and baseline climate.",
+        "title": "Build forest plot-visit CWM",
+        "path": "07_thermophilization/scripts/02_build_forest_plot_visit_cwm.R",
+        "body": "Collapse forested conditions into one climate-affinity score per plot visit, weighted by forested-area share.",
         "page": "pages/6_Thermophilization.py",
     },
     {
-        "title": "Stratified thermophilization",
-        "path": "07_thermophilization/scripts/03_stratified_thermophilization.R",
-        "body": "Summarize recruitment thermophilization deltas by disturbance class, region, time, and high-severity proxy.",
+        "title": "Build plot disturbance extent",
+        "path": "07_thermophilization/scripts/03_build_plot_disturbance_severity.R",
+        "body": "Aggregate FIA condition disturbance codes to the share of each plot visit affected by each type.",
         "page": "pages/6_Thermophilization.py",
     },
     {
-        "title": "Thermophilization by class and time",
-        "path": "07_thermophilization/scripts/04_thermophilization_by_class_time.R",
-        "body": "Summarize deltas by disturbance class, region, and time since disturbance; writes disturbance-year coverage diagnostics.",
+        "title": "Build consecutive-survey change",
+        "path": "07_thermophilization/scripts/04_build_visit_interval_change.R",
+        "body": "Compare each survey with the one before it, using FIA's official remeasurement link.",
+        "page": "pages/6_Thermophilization.py",
+    },
+    {
+        "title": "Build first-to-last change",
+        "path": "07_thermophilization/scripts/05_build_first_last_change.R",
+        "body": "Compare a plot's earliest survey with its latest, with all three life stages on the same interval.",
         "page": "pages/6_Thermophilization.py",
     },
 ]
@@ -357,16 +265,18 @@ def search_workflow(query: str) -> tuple[list[dict], list[dict]]:
                 }
             )
 
-    for section, label, rel_path, description in PIPELINE:
-        if _matches(query, section, label, rel_path, description):
-            exists = os.path.isfile(REPO_ROOT / rel_path)
+    for prod in PIPELINE:
+        if _matches(query, prod["section"], prod["label"], prod["path"],
+                    prod["description"]):
+            state = PIPELINE_STATE_LABEL.get(prod["availability"], prod["availability"])
             workflow_results.append(
                 {
                     "kind": "Workflow output",
-                    "title": label,
-                    "body": description,
-                    "meta": f"{section} · {'ready' if exists else 'not found'} · {rel_path}",
-                    "page": PAGE_ROUTES.get(section, "pages/5_Data_Catalog.py"),
+                    "title": prod["label"],
+                    "body": prod["description"],
+                    "meta": f"{prod['section']} · {state} · {prod['path']}",
+                    "page": FAMILY_ROUTES.get(prod["family"],
+                                              "pages/5_Data_Catalog.py"),
                 }
             )
 
@@ -544,41 +454,28 @@ st.markdown("---")
 # ── Data inventory ────────────────────────────────────────────────────────────
 st.markdown('<div class="fd-section-label">Pipeline status</div>', unsafe_allow_html=True)
 st.caption(
-    "File existence check across all expected outputs. "
-    "For parquets, row counts are read from file metadata (instant, no data loaded)."
+    "Every registered product and whether it is present, measured by "
+    "`python forest_explorer/catalog/build_inventory.py`. A warning sign means "
+    "the product is there but does not have the row grain declared for it."
 )
 
 rows = []
-for section, label, rel_path, description in PIPELINE:
-    full_path = str(REPO_ROOT / rel_path)
-    exists = os.path.isfile(full_path)
-    status = "✅" if exists else "❌"
-
-    if exists and rel_path.endswith(".parquet"):
-        meta = parquet_meta(full_path)
-        rows_val = f"{meta['rows']:,}" if meta.get("rows") else "—"
-        size_val = f"{meta['size_mb']:.0f} MB" if meta.get("size_mb") else "—"
-    elif exists:
-        size_val = f"{os.path.getsize(full_path) / 1e6:.0f} MB"
-        rows_val = "—"
-    else:
-        rows_val = "—"
-        size_val = "—"
-
+for prod in PIPELINE:
+    n_bytes = prod.get("bytes")
     rows.append({
-        "Section":     section,
-        "Output":      label,
-        "Status":      status,
-        "Size":        size_val,
-        "Rows":        rows_val,
-        "Description": description,
+        "Section":     prod["section"],
+        "Output":      prod["label"],
+        "Status":      PIPELINE_STATE_ICON.get(prod["availability"], "❔"),
+        "Size":        f"{n_bytes / 1e6:.0f} MB" if n_bytes else "—",
+        "Rows":        f"{prod['n_rows']:,}" if prod.get("n_rows") else "—",
+        "Description": prod["description"],
     })
 
 inv_df = pd.DataFrame(rows)
 
 # Summary counts by section
 st.markdown("#### By section")
-section_order = ["IDS", "TerraClimate", "PRISM", "WorldClim", "FIA", "Thermophilization"]
+section_order = list(dict.fromkeys(p["section"] for p in PIPELINE))
 for sec in section_order:
     sec_df = inv_df[inv_df["Section"] == sec]
     n_ok = (sec_df["Status"] == "✅").sum()
@@ -646,27 +543,25 @@ c3.markdown(
     unsafe_allow_html=True,
 )
 
-fia_tree_path = str(repo_path("05_fia", "data", "processed", "summaries", "plot_tree_metrics.parquet"))
-if os.path.isfile(fia_tree_path):
-    m = parquet_meta(fia_tree_path)
-    c4.markdown(
-        metric_card("FIA Plot Visits", f"{m['rows']:,}" if m.get("rows") else "—",
-                    "PLT_CN × INVYR rows"),
-        unsafe_allow_html=True,
-    )
-else:
-    c4.markdown(metric_card("FIA Plot Visits", "—", "run pipeline first"), unsafe_allow_html=True)
+def _product_rows(product_id: str) -> str:
+    """Row count from the inventory, so a moved product cannot silently read 0."""
+    for prod in PIPELINE:
+        if prod["id"] == product_id and prod.get("n_rows"):
+            return f"{prod['n_rows']:,}"
+    return "—"
 
-fia_clim_path = str(repo_path("05_fia", "data", "processed", "site_climate", "site_climate.parquet"))
-if os.path.isfile(fia_clim_path):
-    m2 = parquet_meta(fia_clim_path)
-    c5.markdown(
-        metric_card("FIA Site Climate Rows", f"{m2['rows']:,}" if m2.get("rows") else "—",
-                    "6,956 sites · 1958–2024"),
-        unsafe_allow_html=True,
-    )
-else:
-    c5.markdown(metric_card("FIA Site Climate", "—", "run optional site-climate workflow"), unsafe_allow_html=True)
+
+c4.markdown(
+    metric_card("FIA Plot Visits", _product_rows("plot_tree_metrics"),
+                "PLT_CN × INVYR rows"),
+    unsafe_allow_html=True,
+)
+c5.markdown(
+    # Not all FIA: 4,886 of the 6,956 sites are ITRDB tree-ring locations.
+    metric_card("Site Climate Rows", _product_rows("site_climate"),
+                "6,956 sites · FIA + ITRDB · 1958–2024"),
+    unsafe_allow_html=True,
+)
 
 st.markdown("---")
 

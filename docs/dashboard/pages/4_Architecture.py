@@ -595,7 +595,7 @@ with tab_fia:
                     "05_fia/data/processed/summaries/plot_seedling_species.parquet",
                     "05_fia/data/processed/summaries/plot_mortality_metrics.parquet",
                     "05_fia/data/processed/summaries/plot_disturbance_history.parquet",
-                    "05_fia/data/processed/summaries/plot_disturbance_classification.parquet",
+                    "05_fia/data/processed/summaries/fia_condition_disturbance_flags.parquet",
                     "05_fia/data/processed/summaries/plot_condition_metadata.parquet",
                     "05_fia/data/processed/summaries/plot_treatment_history.parquet",
                     "05_fia/data/processed/summaries/plot_exclusion_flags.parquet",
@@ -672,24 +672,24 @@ with tab_thermo:
                 },
                 {
                     "step": "3",
-                    "title": "Seedling CWM",
-                    "body": "Species-level seedling counts weight those traits into one recruitment climate score per condition.",
+                    "title": "Condition CWM",
+                    "body": "Species abundance weights those niche values into one climate-affinity score per FIA condition.",
                     "tone": "green",
-                    "pill": "plot_recruitment_cwm.parquet",
+                    "pill": "plot_community_climate_<layer>.parquet",
                 },
                 {
                     "step": "4",
-                    "title": "Matched controls",
-                    "body": "Disturbed conditions are compared to clean controls in the same forest type, region, and climate neighborhood.",
-                    "tone": "gold",
-                    "pill": "plot_matches.parquet",
+                    "title": "Forest plot visit",
+                    "body": "Forested conditions combine into one score per plot visit, weighted by each one's share of the visit's forested area.",
+                    "tone": "green",
+                    "pill": "forest_plot_visit_cwm_<layer>.parquet",
                 },
                 {
                     "step": "5",
-                    "title": "Deltas",
-                    "body": "Summaries report positive or negative CWM shifts by disturbance class, region, and time since disturbance.",
-                    "tone": "gray",
-                    "pill": "07_thermophilization/scripts/03-04",
+                    "title": "Change between surveys",
+                    "body": "Repeated surveys of the same plot are compared, either consecutively or first-to-last. Modeling happens outside this repository.",
+                    "tone": "gold",
+                    "pill": "07_thermophilization/scripts/04-05",
                 },
             ]
         ),
@@ -700,11 +700,12 @@ with tab_thermo:
     st.markdown(
         "| Product | Why it matters |\n"
         "|---|---|\n"
-        "| `plot_disturbance_classification.parquet` | defines control and disturbed candidate pools |\n"
+        "| `fia_condition_disturbance_flags.parquet` | defines control and disturbed candidate pools |\n"
         "| `species_climate_niches.parquet` | gives each species a realized climate fingerprint |\n"
-        "| `plot_recruitment_cwm.parquet` | converts seedlings into plot-level climate-affinity scores |\n"
-        "| `plot_matches.parquet` | stores disturbed-control pairs and CWM deltas |\n"
-        "| `thermophilization_by_class_region.parquet` | headline disturbance-class x region summary |\n"
+        "| `plot_community_climate_<layer>.parquet` | one climate-affinity score per FIA condition |\n"
+        "| `forest_plot_visit_cwm_<layer>.parquet` | the analysis response: forested conditions only, area-weighted |\n"
+        "| `forest_visit_interval_change_<layer>.parquet` | change between consecutive surveys, with annualized rates |\n"
+        "| `forest_first_last_change.parquet` | change from a plot's earliest survey to its latest |\n"
     )
 
 

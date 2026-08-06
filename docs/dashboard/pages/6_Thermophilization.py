@@ -1,9 +1,8 @@
 # ==============================================================================
 # pages/6_Thermophilization.py
-# FIA recruitment thermophilization workflow
+# Forest community climate affinity and how it changes between FIA surveys
 # ==============================================================================
 
-import os
 import sys
 import html
 from pathlib import Path
@@ -13,9 +12,9 @@ import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from utils import (
-    apply_dark_css, color_status, load_parquet, metric_card, page_header,
-    load_static_json, parquet_meta, plot_source_link, render_top_nav, repo_path, route_grid,
-    workflow_grid, PLOTLY_AVAILABLE,
+    apply_dark_css, load_parquet, load_static_json, metric_card, page_header,
+    parquet_meta, plot_source_link, render_top_nav, repo_path, route_grid,
+    workflow_grid,
 )
 
 
@@ -23,14 +22,13 @@ st.set_page_config(page_title="Thermophilization", layout="wide")
 apply_dark_css()
 render_top_nav()
 
-if PLOTLY_AVAILABLE:
-    import plotly.express as px
 
-
+# Fallback used when the static metadata file is unavailable. Keep in sync with
+# docs/dashboard/static/metadata/thermophilization_outputs.json.
 OUTPUTS = [
     {
         "section": "FIA foundation",
-        "label": "plot_condition_metadata.parquet",
+        "label": "Condition metadata",
         "path": "05_fia/data/processed/summaries/plot_condition_metadata.parquet",
         "producer": "05_fia/scripts/summaries/build_condition_metadata.R",
         "grain": "PLT_CN x INVYR x CONDID",
@@ -38,83 +36,75 @@ OUTPUTS = [
     },
     {
         "section": "FIA foundation",
-        "label": "plot_seedling_species.parquet",
-        "path": "05_fia/data/processed/summaries/plot_seedling_species.parquet",
-        "producer": "05_fia/scripts/summaries/build_seedling_species.R",
-        "grain": "PLT_CN x INVYR x CONDID x SUBP x SPCD",
-        "role": "Species-level seedling counts used to build recruitment community metrics.",
+        "label": "Forested-condition foundation",
+        "path": "05_fia/data/processed/summaries/forested_condition_foundation.parquet",
+        "producer": "05_fia/scripts/08_build_forested_condition_foundation.R",
+        "grain": "PLT_CN x INVYR x CONDID",
+        "role": "Which conditions are forest, and each one's share of the visit's forested area.",
     },
     {
         "section": "FIA foundation",
-        "label": "plot_disturbance_classification.parquet",
-        "path": "05_fia/data/processed/summaries/plot_disturbance_classification.parquet",
+        "label": "Disturbance classification",
+        "path": "05_fia/data/processed/summaries/fia_condition_disturbance_flags.parquet",
         "producer": "05_fia/scripts/summaries/build_disturbance_classification.R",
         "grain": "PLT_CN x INVYR x CONDID",
-        "role": "Control/disturbed eligibility, natural disturbance class, timing, and forest type strata.",
+        "role": "Control/disturbed eligibility, natural disturbance class, timing, and strata.",
     },
     {
         "section": "Species niches",
-        "label": "species_climate_niches.parquet",
-        "path": "06_species_niches/data/processed/species_climate_niches.parquet",
+        "label": "Species climate niches",
+        "path": "06_species_niches/data/processed/species_climate_niches_us_study_area.parquet",
         "producer": "06_species_niches/WORKFLOW.md",
-        "grain": "SPCD",
-        "role": "External occurrence-based climate envelopes for FIA tree species.",
+        "grain": "species_key",
+        "role": "The climate found across each species' mapped range. Eight indicators.",
     },
     {
-        "section": "Climate traits",
-        "label": "plot_recruitment_cwm.parquet",
-        "path": "07_thermophilization/data/processed/plot_recruitment_cwm.parquet",
-        "producer": "07_thermophilization/scripts/01_build_plot_recruitment_cwm.R",
-        "grain": "PLT_CN x INVYR x CONDID",
-        "role": "Seedling community-weighted climate affinity: temp, precipitation, and CWD.",
+        "section": "Community climate",
+        "label": "Condition community climate",
+        "path": "07_thermophilization/data/processed/plot_community_climate_trees.parquet",
+        "producer": "07_thermophilization/scripts/01_build_condition_community_climate.R",
+        "grain": "community_layer x PLT_CN x INVYR x CONDID",
+        "role": "Weighted mean and median climate affinity per condition, all condition classes.",
     },
     {
-        "section": "Matching",
-        "label": "plot_matches.parquet",
-        "path": "07_thermophilization/data/processed/plot_matches.parquet",
-        "producer": "07_thermophilization/scripts/02_match_disturbed_to_controls.R",
-        "grain": "disturbed condition x matched control x rank",
-        "role": "Five nearest undisturbed controls per disturbed condition, with pairwise CWM deltas.",
+        "section": "Community climate",
+        "label": "Forest plot-visit CWM",
+        "path": "07_thermophilization/data/processed/forest_plot_visit_cwm_trees.parquet",
+        "producer": "07_thermophilization/scripts/02_build_forest_plot_visit_cwm.R",
+        "grain": "community_layer x PLT_CN x INVYR",
+        "role": "The analysis response. Forested conditions only, weighted by forested-area share.",
     },
     {
-        "section": "Headline results",
-        "label": "thermophilization_by_class_region.parquet",
-        "path": "07_thermophilization/data/processed/thermophilization_by_class_region.parquet",
-        "producer": "07_thermophilization/scripts/03_stratified_thermophilization.R",
-        "grain": "disturbance_class x East/West",
-        "role": "Mean delta and bootstrap 95% CI for temperature, precipitation, and CWD.",
+        "section": "Disturbance",
+        "label": "Plot disturbance extent",
+        "path": "07_thermophilization/data/processed/plot_disturbance_severity.parquet",
+        "producer": "07_thermophilization/scripts/03_build_plot_disturbance_severity.R",
+        "grain": "stable_plot_id x PLT_CN x INVYR",
+        "role": "How much of the plot visit carried each disturbance type.",
     },
     {
-        "section": "Headline results",
-        "label": "thermophilization_high_severity.parquet",
-        "path": "07_thermophilization/data/processed/thermophilization_high_severity.parquet",
-        "producer": "07_thermophilization/scripts/03_stratified_thermophilization.R",
-        "grain": "East/West",
-        "role": "High-severity proxy summary, currently crown fire.",
+        "section": "Change",
+        "label": "Consecutive-survey change",
+        "path": "07_thermophilization/data/processed/forest_visit_interval_change_trees.parquet",
+        "producer": "07_thermophilization/scripts/04_build_visit_interval_change.R",
+        "grain": "community_layer x stable_plot_id x previous_PLT_CN x current_PLT_CN",
+        "role": "Change between each survey and the one before it, with annualized rates.",
     },
     {
-        "section": "Headline results",
-        "label": "thermophilization_by_time_region.parquet",
-        "path": "07_thermophilization/data/processed/thermophilization_by_time_region.parquet",
-        "producer": "07_thermophilization/scripts/03_stratified_thermophilization.R",
-        "grain": "time bin x East/West",
-        "role": "Time since disturbance summary pooled across disturbance classes.",
-    },
-    {
-        "section": "Headline results",
-        "label": "thermophilization_by_class_time_region.parquet",
-        "path": "07_thermophilization/data/processed/thermophilization_by_class_time_region.parquet",
-        "producer": "07_thermophilization/scripts/04_thermophilization_by_class_time.R",
-        "grain": "disturbance_class x East/West x time bin",
-        "role": "Time since disturbance summary that keeps fire, insect, disease, and weather separate.",
+        "section": "Change",
+        "label": "First-to-last change",
+        "path": "07_thermophilization/data/processed/forest_first_last_change.parquet",
+        "producer": "07_thermophilization/scripts/05_build_first_last_change.R",
+        "grain": "stable_plot_id",
+        "role": "Change from a plot's earliest to latest survey, all three life stages.",
     },
     {
         "section": "Diagnostics",
-        "label": "disturbance_year_coverage.parquet",
-        "path": "07_thermophilization/data/processed/disturbance_year_coverage.parquet",
-        "producer": "07_thermophilization/scripts/04_thermophilization_by_class_time.R",
-        "grain": "disturbance_class x East/West",
-        "role": "How often FIA provides a usable disturbance year instead of an unknown/continuous code.",
+        "label": "Before/after survey coverage",
+        "path": "07_thermophilization/qa/outputs/disturbance_survey_coverage_by_plot.parquet",
+        "producer": "07_thermophilization/qa/02_disturbance_survey_coverage.R",
+        "grain": "stable_plot_id",
+        "role": "Which plots have a survey before and after a disturbance, per query.",
     },
 ]
 
@@ -189,140 +179,131 @@ def render_status_grid(section: str) -> None:
     st.markdown('<div class="fd-grid">' + "".join(cards) + '</div>', unsafe_allow_html=True)
 
 
-def plot_delta_table(path: str, title: str) -> None:
-    full_path = repo_path(path)
-    if not full_path.is_file():
-        st.info(f"Run the producer script to create `{path}`.")
-        return
-    df, err = load_parquet(str(full_path))
-    if err or df is None:
-        st.warning(err or f"Could not load `{path}`.")
-        return
-    st.dataframe(df, use_container_width=True, hide_index=True)
-    if not PLOTLY_AVAILABLE:
-        return
-    if {"delta_temp_mean", "delta_temp_lo", "delta_temp_hi"}.issubset(df.columns):
-        label_cols = [c for c in ["disturbance_class", "region_east_west", "time_bin"] if c in df.columns]
-        plot_df = df.copy()
-        plot_df["group"] = plot_df[label_cols].astype(str).agg(" / ".join, axis=1) if label_cols else title
-        fig = px.bar(
-            plot_df,
-            x="group",
-            y="delta_temp_mean",
-            error_y=plot_df["delta_temp_hi"] - plot_df["delta_temp_mean"],
-            error_y_minus=plot_df["delta_temp_mean"] - plot_df["delta_temp_lo"],
-            color="region_east_west" if "region_east_west" in plot_df.columns else None,
-            color_discrete_sequence=["#7bbf92", "#90b8d0", "#d4aa64"],
-            labels={"delta_temp_mean": "Delta CWM temperature", "group": ""},
-            title=title,
-        )
-        fig.update_layout(
-            paper_bgcolor="#0d1a12",
-            plot_bgcolor="#0d1a12",
-            font_color="#d4e8da",
-            margin=dict(l=20, r=20, t=45, b=110),
-            xaxis_tickangle=-35,
-        )
-        st.plotly_chart(fig, use_container_width=True)
-
-
 st.markdown(
     page_header(
-        "FIA recruitment analysis",
+        "FIA community analysis",
         "Thermophilization Workflow",
-        "A guided view of how FIA plot summaries, site climate, species climate affinity, and matched controls combine to test whether post-disturbance seedlings favor warmer or drier climates.",
+        "How FIA species records and BIEN/TerraClimate species niches combine into forest "
+        "community climate affinity, and how that affinity changes between repeated surveys "
+        "of the same plot. These are analysis inputs; no models are fitted here.",
     ),
     unsafe_allow_html=True,
 )
 
-c1, c2, c3, c4 = st.columns(4)
 inv = output_inventory()
-c1.markdown(metric_card("Workflow stages", "7", "traits, CWM, matching, summaries"), unsafe_allow_html=True)
-c2.markdown(metric_card("Core key", "condition visit", "PLT_CN + INVYR + CONDID"), unsafe_allow_html=True)
-c3.markdown(metric_card("Matching", "5 controls", "same forest type + region"), unsafe_allow_html=True)
-c4.markdown(metric_card("Sign", "delta > 0", "warmer / wetter / drier affinity"), unsafe_allow_html=True)
+ready = int((inv["Status"] == "OK").sum())
+
+c1, c2, c3, c4 = st.columns(4)
+c1.markdown(metric_card("Pipeline stages", "5", "condition, visit, disturbance, 2 change designs"), unsafe_allow_html=True)
+c2.markdown(metric_card("Response grain", "plot visit", "forested conditions only"), unsafe_allow_html=True)
+c3.markdown(metric_card("Life stages", "3", "seedlings, saplings, trees"), unsafe_allow_html=True)
+c4.markdown(metric_card("Products present", f"{ready}/{len(inv)}", "on this machine"), unsafe_allow_html=True)
 
 st.markdown(
     route_grid(
         [
             {
                 "title": "What the page answers",
-                "body": "Which outputs exist, what each one contains, and which script produces it.",
-                "pills": ["outputs", "schemas", "scripts"],
+                "body": "Which products exist, what each one contains, and which script produces it.",
+                "pills": ["outputs", "grains", "scripts"],
             },
             {
                 "title": "How the pieces connect",
-                "body": "FIA seedlings get species climate traits, then disturbed conditions are matched to comparable controls.",
-                "pills": ["SPCD", "CWM", "matches"],
+                "body": "Species get climate niches, conditions get community means, forested "
+                        "conditions combine into a plot-visit value, then surveys are compared.",
+                "pills": ["niche", "condition", "visit", "change"],
             },
             {
                 "title": "How to read the signal",
-                "body": "Positive delta_temp means disturbed seedlings favor warmer-climate species than their matched controls.",
-                "pills": ["delta_temp", "delta_cwd"],
+                "body": "Positive change in mean_temp means the community shifted toward species "
+                        "associated with warmer parts of their ranges. It is not the plot's own climate.",
+                "pills": ["mean_temp", "mean_cwd"],
             },
         ]
     ),
     unsafe_allow_html=True,
 )
 
-tab_guide, tab_outputs, tab_results, tab_use = st.tabs(
-    ["Guide", "Outputs", "Results", "How to Use"]
-)
+tab_guide, tab_outputs, tab_use = st.tabs(["Guide", "Outputs", "How to Use"])
 
 with tab_guide:
-    st.markdown('<div class="fd-section-label">Workflow map</div>', unsafe_allow_html=True)
+    st.markdown('<div class="fd-section-label">Pipeline</div>', unsafe_allow_html=True)
     st.markdown(
         workflow_grid(
             [
                 {
                     "label": "1",
-                    "title": "Site climate baseline",
-                    "body": "FIA stable plot IDs are joined to monthly TerraClimate and collapsed to 1981-2010 baseline climate.",
+                    "title": "Species niches",
+                    "body": "The species-niche module summarizes TerraClimate across each species' "
+                            "BIEN range map, giving eight climate indicators per species.",
                 },
                 {
                     "label": "2",
-                    "title": "Species niches",
-                    "body": "The upstream species-niche module supplies temperature, precipitation, and moisture affinity for each FIA species code.",
+                    "title": "Condition community climate",
+                    "body": "Within each FIA condition, species niche values are averaged weighted "
+                            "by abundance. Because that is a ratio, condition size does not enter yet.",
                 },
                 {
                     "label": "3",
-                    "title": "Seedling CWM",
-                    "body": "Seedling counts weight those species traits to produce one recruitment climate score per condition visit.",
+                    "title": "Forest plot-visit CWM",
+                    "body": "Conditions combine into one value per visit. Only forested conditions "
+                            "count, weighted by each one's share of the visit's forested area.",
                 },
                 {
                     "label": "4",
-                    "title": "Disturbance classification",
-                    "body": "FIA disturbance and treatment codes label clean controls, natural disturbances, and excluded human/harvest cases.",
+                    "title": "Disturbance extent",
+                    "body": "FIA condition disturbance codes aggregate to the plot visit, giving the "
+                            "share of the plot carrying fire, insects, disease, weather, or harvest.",
                 },
                 {
                     "label": "5",
-                    "title": "Matched controls",
-                    "body": "Each disturbed condition gets up to five clean controls in the same forest type, region, and inventory window.",
-                },
-                {
-                    "label": "6",
-                    "title": "Delta summaries",
-                    "body": "Deltas are averaged by disturbance class, region, time since disturbance, and high-severity proxy.",
-                },
-                {
-                    "label": "7",
-                    "title": "Niche QA",
-                    "body": "Species-name, occurrence, and climate-niche checks live upstream in the species-niche module before this analysis is rerun.",
+                    "title": "Change between surveys",
+                    "body": "Two designs are built: each survey against the one before it, and the "
+                            "earliest survey against the latest. Choosing between them stays open.",
                 },
             ]
         ),
         unsafe_allow_html=True,
     )
 
-    st.markdown('<div class="fd-section-label">Signal convention</div>', unsafe_allow_html=True)
+    st.markdown('<div class="fd-section-label">Reading the numbers</div>', unsafe_allow_html=True)
     st.markdown(
         """
         | Field | Reading |
         |---|---|
-        | `delta_cwm_temp > 0` | disturbed seedlings favor species associated with warmer baseline climates |
-        | `delta_cwm_precip > 0` | disturbed seedlings favor species associated with wetter climates |
-        | `delta_cwm_cwd > 0` | disturbed seedlings favor species associated with higher water deficit, a dry-affinity signal |
-        | Beech-exclusion and fire species-shift outputs | guardrails against mistaking one dominant species response for broad community turnover |
+        | `mean_temp` | The species present are associated, on average, with this annual mean temperature. **Not the plot's own temperature.** |
+        | `delta_mean_temp > 0` | The community shifted toward species associated with warmer parts of their ranges. |
+        | `delta_mean_cwd > 0` | A shift toward species associated with higher climate water deficit, a dry-affinity signal. |
+        | `forested_plot_proportion` | How much of the plot was forest. A low value means the number describes a small patch. |
+        | `frac_weight_with_niche` | How much of the community had a niche value. A mean built from a third of the stems is not the same measurement as one built from nearly all. |
+        """
+    )
+
+    st.markdown('<div class="fd-section-label">Two change designs</div>', unsafe_allow_html=True)
+    st.markdown(
+        """
+        A plot surveyed in 2002, 2012, and 2022 can be summarized two ways, and both are built:
+
+        - **Consecutive intervals** — 2002 to 2012, then 2012 to 2022. Two rows. More
+          observations, and a change can be lined up against a disturbance dated to a particular
+          interval. Repeat rows from one plot are correlated, which a model has to account for.
+        - **First to last** — 2002 to 2022. One row. One clean long-run change per plot, but it
+          cannot say when during the twenty years the change happened.
+
+        Neither is designated primary. See `docs/METHOD_DECISIONS_NEEDED.md`.
+        """
+    )
+
+    st.markdown('<div class="fd-section-label">Limits worth knowing</div>', unsafe_allow_html=True)
+    st.markdown(
+        """
+        - FIA records a condition disturbance code only when an event killed or damaged at least
+          25% of the trees in that condition, over at least 1 acre. **"No disturbance code" means
+          "below FIA's threshold", not "undisturbed."**
+        - `insect_*` fields cover all insects; FIA cannot isolate bark beetle. `fire_*` fields cover
+          all fire; crown fire alone is `prop_crown_fire`.
+        - `is_high_severity_fire` stays empty until a cutoff is set in `config.yaml`.
+        - Species niches are *realized* niches: where a species grows now, not where it could grow.
         """
     )
 
@@ -339,83 +320,83 @@ with tab_outputs:
         hide_index=True,
     )
 
-with tab_results:
-    st.markdown('<div class="fd-section-label">Headline tables</div>', unsafe_allow_html=True)
-    result_items = [
-        item for item in OUTPUTS
-        if item["section"] in {"Headline results", "Diagnostics"}
-    ]
-    result_labels = [
-        f"{output_label(item)} ({output_file(item)})"
-        for item in result_items
-    ]
-    result_choice = st.selectbox(
-        "Choose result table",
-        result_labels,
-    )
-    selected_result = result_items[result_labels.index(result_choice)]
-    plot_delta_table(selected_result["path"], output_label(selected_result))
-    plot_source_link(
-        selected_result["producer"],
-        label="Producer script",
-    )
-
-    st.markdown('<div class="fd-section-label">Interpretation guardrail</div>', unsafe_allow_html=True)
-    st.markdown(
-        """
-        A statistically clean CWM shift is not automatically a climate-driven community shift.
-        The first-pass species drilldowns were retired from the active run order until the external
-        species niche table is built. Rebuild those checks after the GBIF/BIEN/CHELSA niche source
-        is in place.
-        """
-    )
+    st.markdown('<div class="fd-section-label">Preview a product</div>', unsafe_allow_html=True)
+    present = [item for item in OUTPUTS if repo_path(item["path"]).is_file()]
+    if not present:
+        st.info("No thermophilization products found locally. Run the pipeline first.")
+    else:
+        labels = [f"{output_label(item)} ({output_file(item)})" for item in present]
+        choice = st.selectbox("Choose a product", labels)
+        selected = present[labels.index(choice)]
+        df, err = load_parquet(str(repo_path(selected["path"])))
+        if err or df is None:
+            st.warning(err or f"Could not load `{selected['path']}`.")
+        else:
+            st.caption(f"Grain: {selected['grain']}")
+            st.dataframe(df.head(200), use_container_width=True, hide_index=True)
+        plot_source_link(selected["producer"], label="Producer script")
 
 with tab_use:
+    st.markdown('<div class="fd-section-label">Run order</div>', unsafe_allow_html=True)
+    st.code(
+        "Rscript 05_fia/scripts/07_build_plot_visit_context.R\n"
+        "Rscript 05_fia/scripts/08_build_forested_condition_foundation.R\n"
+        "Rscript 07_thermophilization/scripts/01_build_condition_community_climate.R --layer=trees\n"
+        "Rscript 07_thermophilization/scripts/02_build_forest_plot_visit_cwm.R\n"
+        "Rscript 07_thermophilization/scripts/03_build_plot_disturbance_severity.R\n"
+        "Rscript 07_thermophilization/scripts/04_build_visit_interval_change.R --layer=trees\n"
+        "Rscript 07_thermophilization/scripts/05_build_first_last_change.R\n"
+        "Rscript 07_thermophilization/qa/01_validate_thermophilization_products.R",
+        language="bash",
+    )
+    st.caption(
+        "Scripts 01 and 04 take --layer=seedlings|saplings|trees. "
+        "Script 02 builds all three layers by default."
+    )
+
     st.markdown('<div class="fd-section-label">R workflow</div>', unsafe_allow_html=True)
     st.code(
         'library(arrow)\n'
         'library(dplyr)\n\n'
-        'matches <- read_parquet("07_thermophilization/data/processed/plot_matches.parquet")\n\n'
-        '# Collapse five matched controls to one disturbed-plot delta.\n'
-        'plot_delta <- matches |>\n'
-        '  group_by(disturbed_id, disturbance_class, region_east_west) |>\n'
+        'change <- read_parquet(\n'
+        '  "07_thermophilization/data/processed/forest_visit_interval_change_trees.parquet"\n'
+        ')\n\n'
+        '# Intervals containing a dated fire, on plots with good niche coverage.\n'
+        'burned <- change |>\n'
+        '  filter(fire_within_interval, meets_niche_coverage_threshold) |>\n'
+        '  select(stable_plot_id, previous_INVYR, current_INVYR,\n'
+        '         delta_mean_temp, rate_mean_temp_per_year, prop_fire)\n\n'
+        '# Positive delta_mean_temp = shift toward warmer-affinity species.\n'
+        'burned |>\n'
         '  summarise(\n'
-        '    delta_temp = mean(delta_cwm_temp, na.rm = TRUE),\n'
-        '    delta_cwd  = mean(delta_cwm_cwd, na.rm = TRUE),\n'
-        '    n_controls = n(),\n'
-        '    .groups = "drop"\n'
-        '  )\n\n'
-        '# Positive delta_temp = warmer-affinity recruitment after disturbance.\n'
-        'plot_delta |>\n'
-        '  group_by(disturbance_class, region_east_west) |>\n'
-        '  summarise(mean_delta_temp = mean(delta_temp, na.rm = TRUE), .groups = "drop")',
+        '    n_intervals = n(),\n'
+        '    n_plots = n_distinct(stable_plot_id),\n'
+        '    median_delta_temp = median(delta_mean_temp, na.rm = TRUE)\n'
+        '  )',
         language="r",
     )
 
     st.markdown('<div class="fd-section-label">Python workflow</div>', unsafe_allow_html=True)
     st.code(
         'import pandas as pd\n\n'
-        'matches = pd.read_parquet("07_thermophilization/data/processed/plot_matches.parquet")\n'
-        'plot_delta = (\n'
-        '    matches.groupby(["disturbed_id", "disturbance_class", "region_east_west"])\n'
-        '    .agg(delta_temp=("delta_cwm_temp", "mean"),\n'
-        '         delta_cwd=("delta_cwm_cwd", "mean"),\n'
-        '         n_controls=("control_id", "size"))\n'
-        '    .reset_index()\n'
-        ')\n'
-        'summary = (\n'
-        '    plot_delta.groupby(["disturbance_class", "region_east_west"])\n'
-        '    .agg(mean_delta_temp=("delta_temp", "mean"))\n'
-        '    .reset_index()\n'
+        'change = pd.read_parquet(\n'
+        '    "07_thermophilization/data/processed/forest_visit_interval_change_trees.parquet"\n'
+        ')\n\n'
+        'burned = change[\n'
+        '    change["fire_within_interval"] & change["meets_niche_coverage_threshold"]\n'
+        ']\n\n'
+        'print(\n'
+        '    burned["stable_plot_id"].nunique(),\n'
+        '    burned["delta_mean_temp"].median(),\n'
         ')',
         language="python",
     )
 
-    st.markdown('<div class="fd-section-label">Run order</div>', unsafe_allow_html=True)
-    st.code(
-        "Rscript 07_thermophilization/scripts/01_build_plot_recruitment_cwm.R\n"
-        "Rscript 07_thermophilization/scripts/02_match_disturbed_to_controls.R\n"
-        "Rscript 07_thermophilization/scripts/03_stratified_thermophilization.R\n"
-        "Rscript 07_thermophilization/scripts/04_thermophilization_by_class_time.R",
-        language="bash",
+    st.markdown('<div class="fd-section-label">Before comparing plots</div>', unsafe_allow_html=True)
+    st.markdown(
+        """
+        Filter on `frac_weight_with_niche` (or use `meets_niche_coverage_threshold`), and check
+        `forested_plot_proportion` if small forest patches would distort the comparison. Both are
+        carried on every row precisely so they can be applied here, rather than being decided upstream.
+        """
     )

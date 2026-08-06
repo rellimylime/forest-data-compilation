@@ -259,7 +259,7 @@ with match_tab:
             'library(arrow)\n'
             'library(dplyr)\n\n'
             'clim <- open_dataset("05_fia/data/processed/site_climate/site_climate.parquet")\n'
-            'dist <- read_parquet("05_fia/data/processed/summaries/plot_disturbance_classification.parquet")\n\n'
+            'dist <- read_parquet("05_fia/data/processed/summaries/fia_condition_disturbance_flags.parquet")\n\n'
             'baseline <- clim |>\n'
             '  filter(year >= 1981, year <= 2010, variable %in% c("tmmx", "tmmn", "pr", "def")) |>\n'
             '  collect() |>\n'

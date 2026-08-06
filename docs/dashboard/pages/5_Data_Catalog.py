@@ -1,9 +1,18 @@
 # ==============================================================================
 # pages/5_Data_Catalog.py
-# Data Catalog — all repo outputs with schemas and load code
+# Data Catalog — every registered product, read from the product registry
 # ==============================================================================
+#
+# This page holds no product list of its own. It renders the master inventory
+# built by forest_explorer/catalog/build_inventory.py from the curated registry
+# at forest_explorer/registry/products.yaml.
+#
+# The previous version kept its own hand-edited CATALOG dict. Nothing checked it
+# against the data, so it drifted: 35 of its 49 entries pointed at paths that no
+# longer existed, and 39 real products were missing entirely. Do not reintroduce
+# a literal product list here — add to the registry and rerun the generator.
 
-import os
+import json
 import sys
 from pathlib import Path
 
@@ -11,594 +20,294 @@ import pandas as pd
 import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from utils import apply_dark_css, parquet_meta, repo_path, color_status, render_top_nav
+from utils import apply_dark_css, color_status, render_top_nav, repo_path
 
 st.set_page_config(page_title="Data Catalog", page_icon="📋", layout="wide")
 apply_dark_css()
 render_top_nav()
 
+INVENTORY_PATH = repo_path("forest_explorer/catalog/generated/inventory.json")
+BUILD_CMD = "python forest_explorer/catalog/build_inventory.py"
+
+ACCESS_LABELS = {
+    "catalog_only": "Catalog only",
+    "prepared_download": "Prepared download",
+    "filtered_extract": "Filtered extract",
+    "guided_combined": "Guided combination",
+}
+REVIEW_LABELS = {
+    "certified": "Reviewed",
+    "constrained": "Reviewed with limits",
+    "domain_review_required": "Needs scientific review",
+    "blocked_by_defect": "Blocked by a defect",
+    "not_reviewed": "Not reviewed",
+}
+AVAILABILITY_ICON = {
+    "available": "✅",
+    "partial": "⚠️",
+    "missing": "❌",
+    "error": "🛑",
+}
+
+
+@st.cache_data(show_spinner=False)
+def load_inventory(path: str, mtime: float) -> dict:
+    """mtime is in the signature so the cache drops when the file is rebuilt."""
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def human_bytes(n) -> str:
+    if not n:
+        return "—"
+    n = float(n)
+    for unit in ("B", "KB", "MB", "GB", "TB"):
+        if n < 1024 or unit == "TB":
+            return f"{n:.0f} {unit}" if unit == "B" else f"{n:.1f} {unit}"
+        n /= 1024.0
+    return "—"
+
+
+def load_code(product: dict) -> tuple[str, str]:
+    """Build read snippets from the product's format, rather than storing them."""
+    path, fmt = product["path"], product["format"]
+    layer = product.get("gpkg_layer")
+
+    if fmt in ("parquet_file", "parquet_dataset"):
+        r = (f'library(arrow)\n'
+             f'ds <- open_dataset("{path}")\n'
+             f'# Filter before collecting — these products can be large\n'
+             f'df <- ds |> dplyr::collect()')
+        py = (f'import pyarrow.dataset as ds\n'
+              f'dataset = ds.dataset("{path}")\n'
+              f'# Project columns and push filters before to_pandas()\n'
+              f'df = dataset.to_table().to_pandas()')
+    elif fmt == "gpkg_layer":
+        r = (f'library(sf)\n'
+             f'# Filter at read time — do not load the whole layer\n'
+             f'x <- st_read("{path}", layer = "{layer}",\n'
+             f'  query = "SELECT * FROM {layer} LIMIT 1000")')
+        py = (f'import geopandas as gpd\n'
+              f'gdf = gpd.read_file("{path}",\n'
+              f'    layer="{layer}", rows=1000)  # filter at read time')
+    elif fmt == "csv":
+        r = f'df <- read.csv("{path}")'
+        py = f'df = pd.read_csv("{path}")'
+    else:
+        r = f'# Collection of files under {path}'
+        py = f'# Collection of files under {path}'
+    return r, py
+
+
+# ------------------------------------------------------------------------------
+# Load
+# ------------------------------------------------------------------------------
+
 st.title("📋 Data Catalog")
+
+if not INVENTORY_PATH.is_file():
+    st.error(
+        "No product inventory found. This page renders "
+        "`forest_explorer/catalog/generated/inventory.json`, which is built from "
+        "the product registry."
+    )
+    st.code(BUILD_CMD, language="bash")
+    st.stop()
+
+inv = load_inventory(str(INVENTORY_PATH), INVENTORY_PATH.stat().st_mtime)
+products = inv["products"]
+families = inv["families"]
+
 st.markdown(
-    "All processed outputs in the repository — paths, sizes, row counts, schemas, "
-    "and load code snippets."
+    "Every registered data product: what one row means, what identifies it, what "
+    "the explorer may do with it, and whether it is actually present."
+)
+st.caption(
+    f"Inventory generated {inv['generated_at'][:19].replace('T', ' ')} UTC · "
+    f"data root `{inv['environment_label']}` · registry v{inv['registry_version']} · "
+    f"rebuild with `{BUILD_CMD}`"
 )
 
 # ------------------------------------------------------------------------------
-# Full catalog definition
+# Summary
 # ------------------------------------------------------------------------------
 
-CATALOG = {
-    "IDS": [
-        {
-            "label":   "IDS cleaned geopackage",
-            "path":    "01_ids/data/processed/ids_layers_cleaned.gpkg",
-            "format":  "GeoPackage",
-            "desc":    "Merged and cleaned IDS data from 10 USFS regions. "
-                       "Three layers: damage_areas (4.4M rows), damage_points (1.2M rows), "
-                       "surveyed_areas (74.5K rows). Key columns: DAMAGE_AREA_ID, SURVEY_YEAR, "
-                       "DCA_CODE, HOST_CODE, ACRES, geometry.",
-            "r_code":  (
-                'library(sf)\n'
-                'gpkg <- "01_ids/data/processed/ids_layers_cleaned.gpkg"\n'
-                '# Filter to MPB only at read time — avoids loading 4.4M rows\n'
-                'damage_areas <- st_read(gpkg, layer = "damage_areas",\n'
-                '  query = "SELECT * FROM damage_areas WHERE DCA_CODE = 11006")\n'
-                'surveyed_areas <- st_read(gpkg, layer = "surveyed_areas")'
-            ),
-            "py_code": (
-                'import geopandas as gpd\n'
-                'damage_areas = gpd.read_file(\n'
-                '    "01_ids/data/processed/ids_layers_cleaned.gpkg",\n'
-                '    layer="damage_areas",\n'
-                '    where="DCA_CODE = 11006")  # SQL filter at read time'
-            ),
-        },
-    ],
-    "TerraClimate": [
-        {
-            "label":   "IDS damage area pixel map",
-            "path":    "02_terraclimate/data/processed/pixel_maps/damage_areas_pixel_map.parquet",
-            "format":  "Parquet",
-            "desc":    "Links each IDS damage area to its overlapping TerraClimate 4km pixels "
-                       "with coverage_fraction weights (0–1). "
-                       "Columns: DAMAGE_AREA_ID, pixel_id, x (lon), y (lat), coverage_fraction.",
-            "r_code":  'pm <- arrow::read_parquet(\n  "02_terraclimate/data/processed/pixel_maps/damage_areas_pixel_map.parquet")',
-            "py_code": 'pm = pd.read_parquet("02_terraclimate/data/processed/pixel_maps/damage_areas_pixel_map.parquet")',
-        },
-        {
-            "label":   "Summaries — tmmx (monthly max temp)",
-            "path":    "processed/climate/terraclimate/damage_areas_summaries/tmmx.parquet",
-            "format":  "Parquet (~10–13 GB)",
-            "desc":    "Monthly area-weighted maximum temperature (°C) per IDS damage area. "
-                       "Columns: DAMAGE_AREA_ID, calendar_year, calendar_month, water_year, "
-                       "water_year_month, variable, weighted_mean, value_min, value_max.",
-            "r_code":  (
-                'library(arrow); library(dplyr)\n'
-                '# Lazy — no data loaded until collect()\n'
-                'ds <- open_dataset("processed/climate/terraclimate/damage_areas_summaries/tmmx.parquet")\n'
-                'df <- ds |> filter(calendar_year == 2020) |> collect()'
-            ),
-            "py_code": (
-                'import pyarrow.dataset as ds, pyarrow.compute as pc\n'
-                '# Filter before loading (avoids reading full ~10 GB)\n'
-                'dataset = ds.dataset("processed/climate/terraclimate/damage_areas_summaries/tmmx.parquet")\n'
-                'df = dataset.to_table(filter=pc.equal(pc.field("calendar_year"), 2020)).to_pandas()'
-            ),
-        },
-        {
-            "label":   "Summaries — tmmn (monthly min temp)",
-            "path":    "processed/climate/terraclimate/damage_areas_summaries/tmmn.parquet",
-            "format":  "Parquet (~10–13 GB)",
-            "desc":    "Monthly area-weighted minimum temperature (°C) per IDS damage area. Same schema as tmmx.",
-            "r_code":  'ds <- arrow::open_dataset("processed/climate/terraclimate/damage_areas_summaries/tmmn.parquet")',
-            "py_code": 'import pyarrow.dataset as ds\ndataset = ds.dataset("processed/climate/terraclimate/damage_areas_summaries/tmmn.parquet")',
-        },
-        {
-            "label":   "Summaries — pr (monthly precipitation)",
-            "path":    "processed/climate/terraclimate/damage_areas_summaries/pr.parquet",
-            "format":  "Parquet (~10–13 GB)",
-            "desc":    "Monthly area-weighted precipitation (mm) per IDS damage area. Same schema as tmmx.",
-            "r_code":  'ds <- arrow::open_dataset("processed/climate/terraclimate/damage_areas_summaries/pr.parquet")',
-            "py_code": 'import pyarrow.dataset as ds\ndataset = ds.dataset("processed/climate/terraclimate/damage_areas_summaries/pr.parquet")',
-        },
-        {
-            "label":   "Summaries — def (climate water deficit)",
-            "path":    "processed/climate/terraclimate/damage_areas_summaries/def.parquet",
-            "format":  "Parquet (~10–13 GB)",
-            "desc":    "Monthly area-weighted climate water deficit / CWD (mm) per IDS damage area. "
-                       "CWD = PET − AET; key drought stress predictor. Same schema as tmmx.",
-            "r_code":  'ds <- arrow::open_dataset("processed/climate/terraclimate/damage_areas_summaries/def.parquet")',
-            "py_code": 'import pyarrow.dataset as ds\ndataset = ds.dataset("processed/climate/terraclimate/damage_areas_summaries/def.parquet")',
-        },
-        {
-            "label":   "Summaries — pet (reference ET)",
-            "path":    "processed/climate/terraclimate/damage_areas_summaries/pet.parquet",
-            "format":  "Parquet (~10–13 GB)",
-            "desc":    "Monthly area-weighted reference evapotranspiration (mm). Same schema as tmmx.",
-            "r_code":  'ds <- arrow::open_dataset("processed/climate/terraclimate/damage_areas_summaries/pet.parquet")',
-            "py_code": 'import pyarrow.dataset as ds\ndataset = ds.dataset("processed/climate/terraclimate/damage_areas_summaries/pet.parquet")',
-        },
-        {
-            "label":   "Summaries — aet (actual ET)",
-            "path":    "processed/climate/terraclimate/damage_areas_summaries/aet.parquet",
-            "format":  "Parquet (~10–13 GB)",
-            "desc":    "Monthly area-weighted actual evapotranspiration (mm). Same schema as tmmx.",
-            "r_code":  'ds <- arrow::open_dataset("processed/climate/terraclimate/damage_areas_summaries/aet.parquet")',
-            "py_code": 'import pyarrow.dataset as ds\ndataset = ds.dataset("processed/climate/terraclimate/damage_areas_summaries/aet.parquet")',
-        },
-        {
-            "label":   "Summaries — pdsi (Palmer Drought)",
-            "path":    "processed/climate/terraclimate/damage_areas_summaries/pdsi.parquet",
-            "format":  "Parquet (~10–13 GB)",
-            "desc":    "Monthly area-weighted Palmer Drought Severity Index (unitless). Same schema as tmmx.",
-            "r_code":  'ds <- arrow::open_dataset("processed/climate/terraclimate/damage_areas_summaries/pdsi.parquet")',
-            "py_code": 'import pyarrow.dataset as ds\ndataset = ds.dataset("processed/climate/terraclimate/damage_areas_summaries/pdsi.parquet")',
-        },
-        {
-            "label":   "Summaries — soil (soil moisture)",
-            "path":    "processed/climate/terraclimate/damage_areas_summaries/soil.parquet",
-            "format":  "Parquet (~10–13 GB)",
-            "desc":    "Monthly area-weighted soil moisture (mm). Same schema as tmmx.",
-            "r_code":  'ds <- arrow::open_dataset("processed/climate/terraclimate/damage_areas_summaries/soil.parquet")',
-            "py_code": 'import pyarrow.dataset as ds\ndataset = ds.dataset("processed/climate/terraclimate/damage_areas_summaries/soil.parquet")',
-        },
-        {
-            "label":   "Summaries — swe (snow water equiv)",
-            "path":    "processed/climate/terraclimate/damage_areas_summaries/swe.parquet",
-            "format":  "Parquet (~10–13 GB)",
-            "desc":    "Monthly area-weighted snow water equivalent (mm). Same schema as tmmx.",
-            "r_code":  'ds <- arrow::open_dataset("processed/climate/terraclimate/damage_areas_summaries/swe.parquet")',
-            "py_code": 'import pyarrow.dataset as ds\ndataset = ds.dataset("processed/climate/terraclimate/damage_areas_summaries/swe.parquet")',
-        },
-        {
-            "label":   "Summaries — ro (runoff)",
-            "path":    "processed/climate/terraclimate/damage_areas_summaries/ro.parquet",
-            "format":  "Parquet (~10–13 GB)",
-            "desc":    "Monthly area-weighted runoff (mm). Same schema as tmmx.",
-            "r_code":  'ds <- arrow::open_dataset("processed/climate/terraclimate/damage_areas_summaries/ro.parquet")',
-            "py_code": 'import pyarrow.dataset as ds\ndataset = ds.dataset("processed/climate/terraclimate/damage_areas_summaries/ro.parquet")',
-        },
-        {
-            "label":   "Summaries — srad (shortwave radiation)",
-            "path":    "processed/climate/terraclimate/damage_areas_summaries/srad.parquet",
-            "format":  "Parquet (~10–13 GB)",
-            "desc":    "Monthly area-weighted downward shortwave radiation (W/m²). Same schema as tmmx.",
-            "r_code":  'ds <- arrow::open_dataset("processed/climate/terraclimate/damage_areas_summaries/srad.parquet")',
-            "py_code": 'import pyarrow.dataset as ds\ndataset = ds.dataset("processed/climate/terraclimate/damage_areas_summaries/srad.parquet")',
-        },
-        {
-            "label":   "Summaries — vap (vapor pressure)",
-            "path":    "processed/climate/terraclimate/damage_areas_summaries/vap.parquet",
-            "format":  "Parquet (~10–13 GB)",
-            "desc":    "Monthly area-weighted vapor pressure (kPa). Same schema as tmmx.",
-            "r_code":  'ds <- arrow::open_dataset("processed/climate/terraclimate/damage_areas_summaries/vap.parquet")',
-            "py_code": 'import pyarrow.dataset as ds\ndataset = ds.dataset("processed/climate/terraclimate/damage_areas_summaries/vap.parquet")',
-        },
-        {
-            "label":   "Summaries — vpd (vapor pressure deficit)",
-            "path":    "processed/climate/terraclimate/damage_areas_summaries/vpd.parquet",
-            "format":  "Parquet (~10–13 GB)",
-            "desc":    "Monthly area-weighted vapor pressure deficit (kPa). Same schema as tmmx.",
-            "r_code":  'ds <- arrow::open_dataset("processed/climate/terraclimate/damage_areas_summaries/vpd.parquet")',
-            "py_code": 'import pyarrow.dataset as ds\ndataset = ds.dataset("processed/climate/terraclimate/damage_areas_summaries/vpd.parquet")',
-        },
-        {
-            "label":   "Summaries — vs (wind speed)",
-            "path":    "processed/climate/terraclimate/damage_areas_summaries/vs.parquet",
-            "format":  "Parquet (~10–13 GB)",
-            "desc":    "Monthly area-weighted wind speed (m/s). Same schema as tmmx.",
-            "r_code":  'ds <- arrow::open_dataset("processed/climate/terraclimate/damage_areas_summaries/vs.parquet")',
-            "py_code": 'import pyarrow.dataset as ds\ndataset = ds.dataset("processed/climate/terraclimate/damage_areas_summaries/vs.parquet")',
-        },
-    ],
-    "PRISM": [
-        {
-            "label":   "IDS damage area pixel map",
-            "path":    "03_prism/data/processed/pixel_maps/damage_areas_pixel_map.parquet",
-            "format":  "Parquet",
-            "desc":    "Links each IDS damage area to PRISM 800m pixels (CONUS only). "
-                       "Columns: DAMAGE_AREA_ID, pixel_id, x (lon), y (lat), coverage_fraction.",
-            "r_code":  'pm <- arrow::read_parquet("03_prism/data/processed/pixel_maps/damage_areas_pixel_map.parquet")',
-            "py_code": 'pm = pd.read_parquet("03_prism/data/processed/pixel_maps/damage_areas_pixel_map.parquet")',
-        },
-        {
-            "label":   "Summaries — ppt (monthly precipitation)",
-            "path":    "processed/climate/prism/damage_areas_summaries/ppt.parquet",
-            "format":  "Parquet (~19–23 GB)",
-            "desc":    "Monthly area-weighted precipitation (mm) per IDS damage area. "
-                       "CONUS only — AK/HI damage areas have NaN values. "
-                       "Columns: DAMAGE_AREA_ID, calendar_year, calendar_month, water_year, "
-                       "water_year_month, variable, weighted_mean, value_min, value_max.",
-            "r_code":  'ds <- arrow::open_dataset("processed/climate/prism/damage_areas_summaries/ppt.parquet")',
-            "py_code": 'import pyarrow.dataset as ds\ndataset = ds.dataset("processed/climate/prism/damage_areas_summaries/ppt.parquet")',
-        },
-        {
-            "label":   "Summaries — tmax (monthly max temp)",
-            "path":    "processed/climate/prism/damage_areas_summaries/tmax.parquet",
-            "format":  "Parquet (~19–23 GB)",
-            "desc":    "Monthly area-weighted maximum temperature (°C). CONUS only. Same schema as ppt.",
-            "r_code":  'ds <- arrow::open_dataset("processed/climate/prism/damage_areas_summaries/tmax.parquet")',
-            "py_code": 'import pyarrow.dataset as ds\ndataset = ds.dataset("processed/climate/prism/damage_areas_summaries/tmax.parquet")',
-        },
-        {
-            "label":   "Summaries — tmin (monthly min temp)",
-            "path":    "processed/climate/prism/damage_areas_summaries/tmin.parquet",
-            "format":  "Parquet (~19–23 GB)",
-            "desc":    "Monthly area-weighted minimum temperature (°C). CONUS only. Same schema as ppt.",
-            "r_code":  'ds <- arrow::open_dataset("processed/climate/prism/damage_areas_summaries/tmin.parquet")',
-            "py_code": 'import pyarrow.dataset as ds\ndataset = ds.dataset("processed/climate/prism/damage_areas_summaries/tmin.parquet")',
-        },
-        {
-            "label":   "Summaries — tmean (monthly mean temp)",
-            "path":    "processed/climate/prism/damage_areas_summaries/tmean.parquet",
-            "format":  "Parquet (~19–23 GB)",
-            "desc":    "Monthly area-weighted mean temperature (°C). CONUS only. Same schema as ppt.",
-            "r_code":  'ds <- arrow::open_dataset("processed/climate/prism/damage_areas_summaries/tmean.parquet")',
-            "py_code": 'import pyarrow.dataset as ds\ndataset = ds.dataset("processed/climate/prism/damage_areas_summaries/tmean.parquet")',
-        },
-        {
-            "label":   "Summaries — tdmean (mean dew point)",
-            "path":    "processed/climate/prism/damage_areas_summaries/tdmean.parquet",
-            "format":  "Parquet (~19–23 GB)",
-            "desc":    "Monthly area-weighted mean dew point temperature (°C). CONUS only. Same schema as ppt.",
-            "r_code":  'ds <- arrow::open_dataset("processed/climate/prism/damage_areas_summaries/tdmean.parquet")',
-            "py_code": 'import pyarrow.dataset as ds\ndataset = ds.dataset("processed/climate/prism/damage_areas_summaries/tdmean.parquet")',
-        },
-        {
-            "label":   "Summaries — vpdmax (max vapor pressure deficit)",
-            "path":    "processed/climate/prism/damage_areas_summaries/vpdmax.parquet",
-            "format":  "Parquet (~19–23 GB)",
-            "desc":    "Monthly area-weighted maximum VPD (hPa). CONUS only. Same schema as ppt.",
-            "r_code":  'ds <- arrow::open_dataset("processed/climate/prism/damage_areas_summaries/vpdmax.parquet")',
-            "py_code": 'import pyarrow.dataset as ds\ndataset = ds.dataset("processed/climate/prism/damage_areas_summaries/vpdmax.parquet")',
-        },
-        {
-            "label":   "Summaries — vpdmin (min vapor pressure deficit)",
-            "path":    "processed/climate/prism/damage_areas_summaries/vpdmin.parquet",
-            "format":  "Parquet (~19–23 GB)",
-            "desc":    "Monthly area-weighted minimum VPD (hPa). CONUS only. Same schema as ppt.",
-            "r_code":  'ds <- arrow::open_dataset("processed/climate/prism/damage_areas_summaries/vpdmin.parquet")',
-            "py_code": 'import pyarrow.dataset as ds\ndataset = ds.dataset("processed/climate/prism/damage_areas_summaries/vpdmin.parquet")',
-        },
-    ],
-    "WorldClim": [
-        {
-            "label":   "IDS damage area pixel map",
-            "path":    "04_worldclim/data/processed/pixel_maps/damage_areas_pixel_map.parquet",
-            "format":  "Parquet",
-            "desc":    "Links each IDS damage area to WorldClim 4.5km pixels (global). "
-                       "Columns: DAMAGE_AREA_ID, pixel_id, x (lon), y (lat), coverage_fraction.",
-            "r_code":  'pm <- arrow::read_parquet("04_worldclim/data/processed/pixel_maps/damage_areas_pixel_map.parquet")',
-            "py_code": 'pm = pd.read_parquet("04_worldclim/data/processed/pixel_maps/damage_areas_pixel_map.parquet")',
-        },
-        {
-            "label":   "Summaries — prec (monthly precipitation)",
-            "path":    "processed/climate/worldclim/damage_areas_summaries/prec.parquet",
-            "format":  "Parquet (~9–13 GB)",
-            "desc":    "Monthly area-weighted precipitation (mm) per IDS damage area. "
-                       "Global coverage 1950–2024. "
-                       "Columns: DAMAGE_AREA_ID, calendar_year, calendar_month, water_year, "
-                       "water_year_month, variable, weighted_mean, value_min, value_max.",
-            "r_code":  'ds <- arrow::open_dataset("processed/climate/worldclim/damage_areas_summaries/prec.parquet")',
-            "py_code": 'import pyarrow.dataset as ds\ndataset = ds.dataset("processed/climate/worldclim/damage_areas_summaries/prec.parquet")',
-        },
-        {
-            "label":   "Summaries — tmax (monthly max temp)",
-            "path":    "processed/climate/worldclim/damage_areas_summaries/tmax.parquet",
-            "format":  "Parquet (~9–13 GB)",
-            "desc":    "Monthly area-weighted maximum temperature (°C). Global. Same schema as prec.",
-            "r_code":  'ds <- arrow::open_dataset("processed/climate/worldclim/damage_areas_summaries/tmax.parquet")',
-            "py_code": 'import pyarrow.dataset as ds\ndataset = ds.dataset("processed/climate/worldclim/damage_areas_summaries/tmax.parquet")',
-        },
-        {
-            "label":   "Summaries — tmin (monthly min temp)",
-            "path":    "processed/climate/worldclim/damage_areas_summaries/tmin.parquet",
-            "format":  "Parquet (~9–13 GB)",
-            "desc":    "Monthly area-weighted minimum temperature (°C). Global. Same schema as prec.",
-            "r_code":  'ds <- arrow::open_dataset("processed/climate/worldclim/damage_areas_summaries/tmin.parquet")',
-            "py_code": 'import pyarrow.dataset as ds\ndataset = ds.dataset("processed/climate/worldclim/damage_areas_summaries/tmin.parquet")',
-        },
-    ],
-    "FIA": [
-        {
-            "label":   "plot_tree_metrics.parquet",
-            "path":    "05_fia/data/processed/summaries/plot_tree_metrics.parquet",
-            "format":  "Parquet",
-            "desc":    "BA, diversity (Shannon H), size class, and canopy layer per plot × year. "
-                       "One row per PLT_CN × INVYR.",
-            "r_code":  'library(arrow)\ntrees <- read_parquet("05_fia/data/processed/summaries/plot_tree_metrics.parquet")',
-            "py_code": 'trees = pd.read_parquet("05_fia/data/processed/summaries/plot_tree_metrics.parquet")',
-        },
-        {
-            "label":   "plot_exclusion_flags.parquet",
-            "path":    "05_fia/data/processed/summaries/plot_exclusion_flags.parquet",
-            "format":  "Parquet",
-            "desc":    "Per-plot exclusion flags: exclude_nonforest, exclude_human_dist, "
-                       "exclude_harvest, exclude_harvest_agent, exclude_any, has_fire, has_insect. "
-                       "Also pct_forested (primary gate). Join on PLT_CN + INVYR.",
-            "r_code":  (
-                'library(arrow); library(dplyr)\n'
-                'flags <- read_parquet("05_fia/data/processed/summaries/plot_exclusion_flags.parquet")\n'
-                'clean_plots <- flags |> filter(pct_forested >= 0.5, !exclude_any)'
-            ),
-            "py_code": (
-                'flags = pd.read_parquet("05_fia/data/processed/summaries/plot_exclusion_flags.parquet")\n'
-                'clean = flags[(flags["pct_forested"] >= 0.5) & ~flags["exclude_any"]]'
-            ),
-        },
-        {
-            "label":   "plot_disturbance_history.parquet",
-            "path":    "05_fia/data/processed/summaries/plot_disturbance_history.parquet",
-            "format":  "Parquet",
-            "desc":    "Long-format disturbance events from COND.DSTRBCD1/2/3. "
-                       "One row per condition × disturbance slot. "
-                       "Columns: PLT_CN, INVYR, CONDID, DSTRBCD, DSTRBYR, disturbance_label, disturbance_category.",
-            "r_code":  'disturb <- arrow::read_parquet("05_fia/data/processed/summaries/plot_disturbance_history.parquet")',
-            "py_code": 'disturb = pd.read_parquet("05_fia/data/processed/summaries/plot_disturbance_history.parquet")',
-        },
-        {
-            "label":   "plot_damage_agents.parquet",
-            "path":    "05_fia/data/processed/summaries/plot_damage_agents.parquet",
-            "format":  "Parquet",
-            "desc":    "Tree-level damage agent codes (FHAAST/PTIPS). "
-                       "Long format: one row per PLT_CN × SPCD × DAMAGE_AGENT_CD. "
-                       "Includes ba_per_acre, n_trees_tpa, agent_label, agent_category.",
-            "r_code":  'agents <- arrow::read_parquet("05_fia/data/processed/summaries/plot_damage_agents.parquet")',
-            "py_code": 'agents = pd.read_parquet("05_fia/data/processed/summaries/plot_damage_agents.parquet")',
-        },
-        {
-            "label":   "plot_mortality_metrics.parquet",
-            "path":    "05_fia/data/processed/summaries/plot_mortality_metrics.parquet",
-            "format":  "Parquet",
-            "desc":    "Between-measurement mortality from TREE_GRM_COMPONENT. "
-                       "Columns: PLT_CN, INVYR, AGENTCD, component_type (natural/harvest), tpamort_per_acre.",
-            "r_code":  'mort <- arrow::read_parquet("05_fia/data/processed/summaries/plot_mortality_metrics.parquet")',
-            "py_code": 'mort = pd.read_parquet("05_fia/data/processed/summaries/plot_mortality_metrics.parquet")',
-        },
-        {
-            "label":   "plot_seedling_metrics.parquet",
-            "path":    "05_fia/data/processed/summaries/plot_seedling_metrics.parquet",
-            "format":  "Parquet",
-            "desc":    "Seedling regeneration counts per plot × year. "
-                       "Columns: PLT_CN, INVYR, treecount_total, count_softwood, count_hardwood, "
-                       "n_species_seedling, shannon_h_count.",
-            "r_code":  'seed <- arrow::read_parquet("05_fia/data/processed/summaries/plot_seedling_metrics.parquet")',
-            "py_code": 'seed = pd.read_parquet("05_fia/data/processed/summaries/plot_seedling_metrics.parquet")',
-        },
-        {
-            "label":   "plot_treatment_history.parquet",
-            "path":    "05_fia/data/processed/summaries/plot_treatment_history.parquet",
-            "format":  "Parquet",
-            "desc":    "All silvicultural treatments (TRTCD 10/20/30/40/50) with TRTYR. "
-                       "Long format: one row per condition × treatment slot. "
-                       "Columns: PLT_CN, INVYR, CONDID, TRTCD, TRTYR, treatment_label, treatment_category.",
-            "r_code":  'treat <- arrow::read_parquet("05_fia/data/processed/summaries/plot_treatment_history.parquet")',
-            "py_code": 'treat = pd.read_parquet("05_fia/data/processed/summaries/plot_treatment_history.parquet")',
-        },
-        {
-            "label":   "plot_cond_fortypcd.parquet",
-            "path":    "05_fia/data/processed/summaries/plot_cond_fortypcd.parquet",
-            "format":  "Parquet",
-            "desc":    "Condition-level forest type (FORTYPCD) and disturbance codes pass-through. "
-                       "One row per PLT_CN × INVYR × CONDID.",
-            "r_code":  'cond <- arrow::read_parquet("05_fia/data/processed/summaries/plot_cond_fortypcd.parquet")',
-            "py_code": 'cond = pd.read_parquet("05_fia/data/processed/summaries/plot_cond_fortypcd.parquet")',
-        },
-        {
-            "label":   "plot_condition_metadata.parquet",
-            "path":    "05_fia/data/processed/summaries/plot_condition_metadata.parquet",
-            "format":  "Parquet",
-            "desc":    "Condition-level stable plot IDs, coordinates, elevation, forest type labels, "
-                       "forest type groups, and forested area fields. One row per PLT_CN x INVYR x CONDID.",
-            "r_code":  'meta <- arrow::read_parquet("05_fia/data/processed/summaries/plot_condition_metadata.parquet")',
-            "py_code": 'meta = pd.read_parquet("05_fia/data/processed/summaries/plot_condition_metadata.parquet")',
-        },
-        {
-            "label":   "plot_seedling_species.parquet",
-            "path":    "05_fia/data/processed/summaries/plot_seedling_species.parquet",
-            "format":  "Parquet",
-            "desc":    "Species-level seedling counts by condition and subplot. Preserves SPCD and species names "
-                       "for recruitment CWM and species-shift analyses.",
-            "r_code":  'seed_spp <- arrow::read_parquet("05_fia/data/processed/summaries/plot_seedling_species.parquet")',
-            "py_code": 'seed_spp = pd.read_parquet("05_fia/data/processed/summaries/plot_seedling_species.parquet")',
-        },
-        {
-            "label":   "plot_disturbance_classification.parquet",
-            "path":    "05_fia/data/processed/summaries/plot_disturbance_classification.parquet",
-            "format":  "Parquet",
-            "desc":    "Analysis-facing disturbance classification: control/disturbed eligibility, natural "
-                       "disturbance class, timing fields, high-severity proxy, forest type group, and East/West region.",
-            "r_code":  'dist_class <- arrow::read_parquet("05_fia/data/processed/summaries/plot_disturbance_classification.parquet")',
-            "py_code": 'dist_class = pd.read_parquet("05_fia/data/processed/summaries/plot_disturbance_classification.parquet")',
-        },
-        {
-            "label":   "site_pixel_map.parquet",
-            "path":    "05_fia/data/processed/site_climate/site_pixel_map.parquet",
-            "format":  "Parquet",
-            "desc":    "Maps each FIA plot location (site_id) to its TerraClimate 4km pixel. "
-                       "Columns: site_id, pixel_id, x (lon), y (lat).",
-            "r_code":  'pm <- arrow::read_parquet("05_fia/data/processed/site_climate/site_pixel_map.parquet")',
-            "py_code": 'pm = pd.read_parquet("05_fia/data/processed/site_climate/site_pixel_map.parquet")',
-        },
-        {
-            "label":   "site_climate.parquet",
-            "path":    "05_fia/data/processed/site_climate/site_climate.parquet",
-            "format":  "Parquet",
-            "desc":    "Monthly TerraClimate at 6,956 FIA plot locations. 23.5M rows. "
-                       "Columns: site_id, year, month, water_year, water_year_month, variable, value. "
-                       "Variables: tmmx (°C), tmmn (°C), pr (mm), def (mm), pet (mm), aet (mm). "
-                       "Period: 1958–2024.",
-            "r_code":  (
-                'library(arrow); library(dplyr)\n'
-                'clim <- read_parquet("05_fia/data/processed/site_climate/site_climate.parquet")\n'
-                '# Annual water-year precip\n'
-                'clim |> filter(variable == "pr") |>\n'
-                '  group_by(site_id, water_year) |>\n'
-                '  summarise(precip_mm = sum(value, na.rm = TRUE))'
-            ),
-            "py_code": (
-                'clim = pd.read_parquet("05_fia/data/processed/site_climate/site_climate.parquet")\n'
-                '# Annual water-year precip\n'
-                'precip = (clim[clim["variable"] == "pr"]\n'
-                '          .groupby(["site_id", "water_year"])["value"].sum())'
-            ),
-        },
-    ],
-    "Species niches": [
-        {
-            "label": "species_climate_niches.parquet",
-            "path": "06_species_niches/data/processed/species_climate_niches.parquet",
-            "format": "Parquet",
-            "desc": "One row per FIA species code with realized climate affinity: annual temperature, precipitation, and moisture or climate water deficit summaries.",
-            "r_code": 'traits <- arrow::read_parquet("06_species_niches/data/processed/species_climate_niches.parquet")',
-            "py_code": 'traits = pd.read_parquet("06_species_niches/data/processed/species_climate_niches.parquet")',
-        },
-    ],
-    "Thermophilization": [
-        {
-            "label": "plot_recruitment_cwm.parquet",
-            "path": "07_thermophilization/data/processed/plot_recruitment_cwm.parquet",
-            "format": "Parquet",
-            "desc": "Community-weighted mean climate affinity for the seedling community in each FIA condition visit.",
-            "r_code": 'cwm <- arrow::read_parquet("07_thermophilization/data/processed/plot_recruitment_cwm.parquet")',
-            "py_code": 'cwm = pd.read_parquet("07_thermophilization/data/processed/plot_recruitment_cwm.parquet")',
-        },
-        {
-            "label": "plot_matches.parquet",
-            "path": "07_thermophilization/data/processed/plot_matches.parquet",
-            "format": "Parquet",
-            "desc": "Matched disturbed-control pairs. Carries disturbed and control CWM fields plus delta_cwm_temp, delta_cwm_precip, and delta_cwm_cwd.",
-            "r_code": 'matches <- arrow::read_parquet("07_thermophilization/data/processed/plot_matches.parquet")',
-            "py_code": 'matches = pd.read_parquet("07_thermophilization/data/processed/plot_matches.parquet")',
-        },
-        {
-            "label": "thermophilization_by_class_region.parquet",
-            "path": "07_thermophilization/data/processed/thermophilization_by_class_region.parquet",
-            "format": "Parquet",
-            "desc": "Bootstrap mean deltas by disturbance class and East/West region.",
-            "r_code": 'class_region <- arrow::read_parquet("07_thermophilization/data/processed/thermophilization_by_class_region.parquet")',
-            "py_code": 'class_region = pd.read_parquet("07_thermophilization/data/processed/thermophilization_by_class_region.parquet")',
-        },
-        {
-            "label": "thermophilization_high_severity.parquet",
-            "path": "07_thermophilization/data/processed/thermophilization_high_severity.parquet",
-            "format": "Parquet",
-            "desc": "High-severity proxy summary, currently crown fire, by East/West region.",
-            "r_code": 'high_sev <- arrow::read_parquet("07_thermophilization/data/processed/thermophilization_high_severity.parquet")',
-            "py_code": 'high_sev = pd.read_parquet("07_thermophilization/data/processed/thermophilization_high_severity.parquet")',
-        },
-        {
-            "label": "thermophilization_by_time_region.parquet",
-            "path": "07_thermophilization/data/processed/thermophilization_by_time_region.parquet",
-            "format": "Parquet",
-            "desc": "Time-since-disturbance summary pooled across disturbance classes.",
-            "r_code": 'time_region <- arrow::read_parquet("07_thermophilization/data/processed/thermophilization_by_time_region.parquet")',
-            "py_code": 'time_region = pd.read_parquet("07_thermophilization/data/processed/thermophilization_by_time_region.parquet")',
-        },
-        {
-            "label": "thermophilization_by_class_time_region.parquet",
-            "path": "07_thermophilization/data/processed/thermophilization_by_class_time_region.parquet",
-            "format": "Parquet",
-            "desc": "Time-since-disturbance summary stratified by disturbance class and East/West region.",
-            "r_code": 'class_time <- arrow::read_parquet("07_thermophilization/data/processed/thermophilization_by_class_time_region.parquet")',
-            "py_code": 'class_time = pd.read_parquet("07_thermophilization/data/processed/thermophilization_by_class_time_region.parquet")',
-        },
-        {
-            "label": "disturbance_year_coverage.parquet",
-            "path": "07_thermophilization/data/processed/disturbance_year_coverage.parquet",
-            "format": "Parquet",
-            "desc": "Diagnostic table showing how often FIA has a usable disturbance year for each disturbance class and region.",
-            "r_code": 'coverage <- arrow::read_parquet("07_thermophilization/data/processed/disturbance_year_coverage.parquet")',
-            "py_code": 'coverage = pd.read_parquet("07_thermophilization/data/processed/disturbance_year_coverage.parquet")',
-        },
-    ],
-}
+counts = {k: sum(1 for p in products if p["availability"] == k)
+          for k in AVAILABILITY_ICON}
+c1, c2, c3, c4 = st.columns(4)
+c1.metric("Registered", len(products))
+c2.metric("Present", counts["available"])
+c3.metric("Grain unconfirmed", counts["partial"])
+c4.metric("Not built here", counts["missing"] + counts["error"])
 
 # ------------------------------------------------------------------------------
-# Column search input
+# Filters
 # ------------------------------------------------------------------------------
 
-col_search = st.text_input("🔍 Search across all catalog entries (label, path, description)", key="catalog_search")
+search = st.text_input(
+    "🔍 Search products — name, path, row meaning, caveats", key="catalog_search"
+)
+
+f1, f2, f3 = st.columns(3)
+with f1:
+    fam_filter = st.multiselect(
+        "Family", options=list(families),
+        format_func=lambda k: families[k]["title"],
+    )
+with f2:
+    access_filter = st.multiselect(
+        "Access mode", options=list(ACCESS_LABELS),
+        format_func=lambda k: ACCESS_LABELS[k],
+    )
+with f3:
+    show_missing = st.checkbox("Include products not built here", value=True)
+
+
+def matches(p: dict) -> bool:
+    if fam_filter and p["family"] not in fam_filter:
+        return False
+    if access_filter and p["access_mode"] not in access_filter:
+        return False
+    if not show_missing and p["availability"] in ("missing", "error"):
+        return False
+    if search:
+        blob = " ".join([
+            p["title"], p["id"], p["path"], p["one_row_is"],
+            " ".join(p.get("caveats") or []), p.get("notes") or "",
+            " ".join(p.get("keys") or []),
+        ]).lower()
+        if search.lower() not in blob:
+            return False
+    return True
+
+
+visible = [p for p in products if matches(p)]
+st.caption(f"Showing {len(visible)} of {len(products)} products")
 
 # ------------------------------------------------------------------------------
-# Section navigation
+# Product cards, grouped by family
 # ------------------------------------------------------------------------------
 
-section_tabs = st.tabs(list(CATALOG.keys()))
+for fam_id, fam in families.items():
+    fam_products = [p for p in visible if p["family"] == fam_id]
+    if not fam_products:
+        continue
 
-for tab, (section, entries) in zip(section_tabs, CATALOG.items()):
-    with tab:
-        for entry in entries:
-            # Apply search filter
-            if col_search:
-                searchable = f"{entry['label']} {entry['path']} {entry['desc']}".lower()
-                if col_search.lower() not in searchable:
-                    continue
+    st.markdown(f"### {fam['title']}")
+    st.caption(fam["blurb"])
 
-            full_path = str(repo_path(entry["path"]))
-            exists = os.path.isfile(full_path) or os.path.isdir(full_path)
-            status = "✅" if exists else "❌"
+    for p in fam_products:
+        obs = p.get("observed") or {}
+        icon = AVAILABILITY_ICON[p["availability"]]
+        rows = f"{obs['n_rows']:,} rows" if obs.get("n_rows") else "—"
+        header = (
+            f"{icon} **{p['title']}** · `{p['path']}` · "
+            f"{rows} · {human_bytes(obs.get('bytes'))}"
+        )
 
-            # Get metadata for parquets
-            if exists and entry["path"].endswith(".parquet"):
-                m = parquet_meta(full_path)
-                size_str  = f"{m['size_mb']:.1f} MB" if m.get("size_mb") else "—"
-                rows_str  = f"{m['rows']:,} rows" if m.get("rows") else "—"
-                cols_list = m.get("columns", [])
-                dtypes    = m.get("dtypes", [])
-            else:
-                size_str, rows_str, cols_list, dtypes = "—", "—", [], []
+        with st.expander(header):
+            st.markdown(f"**One row is** {p['one_row_is']}.")
 
-            with st.expander(f"{status} **{entry['label']}**  ·  `{entry['path']}`  ·  {size_str}  ·  {entry['format']}"):
-                st.markdown(entry["desc"])
+            m1, m2, m3 = st.columns(3)
+            access = ACCESS_LABELS[p["access_mode"]]
+            if p.get("intended_access_mode"):
+                access += (f"  \n_held back pending review; intended as "
+                           f"{ACCESS_LABELS[p['intended_access_mode']]}_")
+            m1.markdown(f"**Access**  \n{access}")
+            m2.markdown(f"**Review**  \n{REVIEW_LABELS[p['review_status']]}")
+            key_check = p.get("key_check", {})
+            verdict = {
+                "unique": "✅ key is unique",
+                "not_unique": "⚠️ key is NOT unique",
+                "failed": "⚠️ key column missing",
+                "not_checked": "— not checked",
+                "not_applicable": "— no key declared",
+            }.get(key_check.get("status"), "—")
+            m3.markdown(f"**Grain check**  \n{verdict}")
 
-                if rows_str != "—":
-                    st.caption(f"{rows_str}  ·  {len(cols_list)} columns")
+            if p.get("keys"):
+                st.markdown(
+                    "**Identified by:** " + ", ".join(f"`{k}`" for k in p["keys"])
+                )
+            if key_check.get("status") in ("not_unique", "failed", "not_checked"):
+                note = key_check.get("note")
+                if note:
+                    st.caption(note)
 
-                if cols_list:
-                    st.markdown("**Schema:**")
-                    schema_df = pd.DataFrame({
-                        "Column": cols_list,
-                        "Type":   dtypes if dtypes else ["—"] * len(cols_list),
-                    })
-                    st.dataframe(schema_df, use_container_width=True, hide_index=True,
-                                 height=min(400, 35 * len(cols_list) + 40))
+            detail = [f"**Product id:** `{p['id']}`", f"**Format:** {p['format']}"]
+            if p.get("producer"):
+                detail.append(f"**Built by:** `{p['producer']}`")
+            if p.get("parent_grain"):
+                detail.append(f"**Nests inside:** `{p['parent_grain']}`")
+            if obs.get("partitions"):
+                detail.append(f"**Partitions:** {len(obs['partitions'])} states")
+            if obs.get("n_files"):
+                detail.append(f"**Files:** {obs['n_files']}")
+            st.markdown(" · ".join(detail))
 
+            if p["availability"] in ("missing", "error"):
+                if p.get("lifecycle") == "planned":
+                    st.info(
+                        "Planned — the pipeline exists but has not produced an "
+                        "output in this data root. Listed so it is discoverable, "
+                        "not because it can be extracted."
+                    )
+                else:
+                    st.warning(
+                        f"Expected here but not present — "
+                        f"{p.get('reason', 'unknown')}. This product is marked "
+                        f"`{p.get('lifecycle')}`, so its absence is a problem."
+                    )
+
+            if p.get("caveats"):
+                st.markdown("**Before you use it**")
+                for c in p["caveats"]:
+                    st.markdown(f"- {c}")
+
+            if p.get("facets"):
+                st.markdown(
+                    "**Filterable on:** " + ", ".join(f"`{c}`" for c in p["facets"])
+                )
+
+            if obs.get("columns"):
+                st.markdown(f"**Schema** — {len(obs['columns'])} columns")
+                st.dataframe(
+                    pd.DataFrame(obs["columns"], columns=["Column", "Type"]),
+                    use_container_width=True, hide_index=True,
+                    height=min(400, 35 * len(obs["columns"]) + 40),
+                )
+
+            if p["availability"] not in ("missing", "error"):
+                r_code, py_code = load_code(p)
                 st.markdown("**Load code — R:**")
-                st.code(entry["r_code"], language="r")
+                st.code(r_code, language="r")
                 st.markdown("**Load code — Python:**")
-                st.code(entry["py_code"], language="python")
+                st.code(py_code, language="python")
+
+            if p.get("notes"):
+                st.info(f"**Maintainer note.** {p['notes']}")
 
 # ------------------------------------------------------------------------------
-# Summary inventory table
+# Inventory table
 # ------------------------------------------------------------------------------
 
 st.markdown("---")
 st.subheader("Full Inventory Table")
-all_rows = []
-for section, entries in CATALOG.items():
-    for entry in entries:
-        full_path = str(repo_path(entry["path"]))
-        exists = os.path.isfile(full_path) or os.path.isdir(full_path)
-        if exists and entry["path"].endswith(".parquet"):
-            m = parquet_meta(full_path)
-            size_str = f"{m['size_mb']:.1f} MB" if m.get("size_mb") else "—"
-            rows_str = f"{m['rows']:,}" if m.get("rows") else "—"
-        else:
-            size_str, rows_str = "—", "—"
-        all_rows.append({
-            "Section": section,
-            "Label": entry["label"],
-            "Status": "✅" if exists else "❌",
-            "Format": entry["format"],
-            "Size": size_str,
-            "Rows": rows_str,
-            "Path": entry["path"],
-        })
 
-inv_df = pd.DataFrame(all_rows)
+table = pd.DataFrame([{
+    "Family": families[p["family"]]["title"],
+    "Product": p["title"],
+    "Status": AVAILABILITY_ICON[p["availability"]],
+    "One row is": p["one_row_is"],
+    "Rows": f"{(p.get('observed') or {}).get('n_rows'):,}"
+            if (p.get("observed") or {}).get("n_rows") else "—",
+    "Size": human_bytes((p.get("observed") or {}).get("bytes")),
+    "Access": ACCESS_LABELS[p["access_mode"]],
+    "Review": REVIEW_LABELS[p["review_status"]],
+    "Path": p["path"],
+} for p in visible])
+
 st.dataframe(
-    inv_df.style.map(color_status, subset=["Status"]),
-    use_container_width=True,
-    hide_index=True,
+    table.style.map(color_status, subset=["Status"]),
+    use_container_width=True, hide_index=True,
 )

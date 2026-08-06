@@ -305,7 +305,7 @@ with tab_overview:
         ("plot_cond_fortypcd.parquet",        None,       "Condition / forest type (not pre-loaded)"),
         ("plot_condition_metadata.parquet",   None,       "Stable plot IDs, coordinates, forest type groups, condition area"),
         ("plot_seedling_species.parquet",     None,       "Species-level seedling counts for recruitment and CWM workflows"),
-        ("plot_disturbance_classification.parquet", None, "Control/disturbed eligibility and natural disturbance classes"),
+        ("fia_condition_disturbance_flags.parquet", None, "Control/disturbed eligibility and natural disturbance classes"),
         ("site_climate.parquet",          None,    "Point climate — FIA plots + ITRDB sites (TerraClimate 1958–2024)"),
     ]
     rows = []
@@ -354,7 +354,7 @@ with tab_overview:
         "|---------|-------|----------|\n"
         "| `plot_condition_metadata` | 1 row per condition visit | `PLT_CN, INVYR, CONDID`; `stable_plot_id` joins to site climate |\n"
         "| `plot_seedling_species` | 1+ rows per condition, subplot, and species | `PLT_CN, INVYR, CONDID, SPCD` |\n"
-        "| `plot_disturbance_classification` | 1 row per condition visit | `PLT_CN, INVYR, CONDID` |\n"
+        "| `fia_condition_disturbance_flags` | 1 row per condition visit | `PLT_CN, INVYR, CONDID` |\n"
     )
 
 # ==============================================================================

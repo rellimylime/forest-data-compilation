@@ -93,6 +93,7 @@ def configure_theme() -> None:
 
 
 def read_summary(file_name: str, columns: list[str] | None = None) -> pd.DataFrame | None:
+    # Missing local products skip only their dependent figure or aggregate.
     path = SUMM_DIR / file_name
     if not path.is_file():
         print(f"skip missing: {path}")
@@ -101,6 +102,7 @@ def read_summary(file_name: str, columns: list[str] | None = None) -> pd.DataFra
 
 
 def save(fig: plt.Figure, file_name: str, title: str, description: str) -> None:
+    # Save each figure and register enough metadata for the hosted dashboard.
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     fig.savefig(
         OUT_DIR / file_name,
@@ -123,6 +125,7 @@ def save(fig: plt.Figure, file_name: str, title: str, description: str) -> None:
 
 
 def save_json(name: str, payload: dict | list, description: str) -> None:
+    # Compact JSON lets hosted pages work without access to local Parquet files.
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     path = DATA_DIR / f"{name}.json"
     path.write_text(json.dumps(payload, indent=2, allow_nan=False), encoding="utf-8")
@@ -156,12 +159,14 @@ def save_csv(name: str, df: pd.DataFrame, description: str) -> None:
 
 
 def sample_frame(df: pd.DataFrame, n: int = 60000) -> pd.DataFrame:
+    # Use a fixed seed so maps reproduce the same display sample.
     if len(df) <= n:
         return df
     return df.sample(n, random_state=42)
 
 
 def conus(df: pd.DataFrame) -> pd.DataFrame:
+    # Static map panels use a simple contiguous-US bounding box.
     return df[
         df["LON"].between(-125, -66)
         & df["LAT"].between(24, 50)
@@ -194,6 +199,7 @@ def annotate_bars(ax: plt.Axes, values: pd.Series, suffix: str = "") -> None:
 
 
 def histogram_payload(values: pd.Series, bins: int) -> dict:
+    # Store bin edges with counts so the dashboard can redraw the histogram.
     counts, edges = np.histogram(values.to_numpy(), bins=bins)
     return {
         "bin_edges": edges.tolist(),
@@ -596,6 +602,7 @@ def plot_damage_agent_locations() -> None:
 
 
 def build_mortality_aggregates() -> None:
+    # Translate broad FIA mortality-agent codes before grouping dashboard totals.
     df = read_summary("plot_mortality_metrics.parquet",
                       columns=["AGENTCD", "component_type", "tpamort_per_acre", "state"])
     if df is None:
@@ -658,6 +665,7 @@ def build_treatment_aggregates() -> None:
         save_csv("state_treatments", state_treat,
                  "Treatment record counts per state and category.")
 
+    # Exclude sentinel and future treatment years from the timeline aggregate.
     if "TRTYR" in df.columns:
         year_raw = pd.to_numeric(df["TRTYR"], errors="coerce")
         valid = year_raw.notna() & (year_raw >= 1900) & (year_raw < 9999)
@@ -673,6 +681,7 @@ def build_treatment_aggregates() -> None:
 
 
 def write_manifest() -> None:
+    # Publish one inventory of every static figure and compact data file built.
     MANIFEST_PATH.parent.mkdir(parents=True, exist_ok=True)
     MANIFEST_PATH.write_text(
         json.dumps(
