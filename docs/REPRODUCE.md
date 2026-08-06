@@ -100,38 +100,56 @@ Run this path after the FIA species-composition products exist.
 | 4 | [04_extract_terraclimate_from_ranges.R](../06_species_niches/scripts/04_extract_terraclimate_from_ranges.R) | Extract 1981-2010 range climatologies through GEE | `species_range_climate_us_study_area.parquet` | [Workflow](../06_species_niches/WORKFLOW.md#04-extract-terraclimate-from-ranges) |
 | 5 | [05_build_species_climate_niches.R](../06_species_niches/scripts/05_build_species_climate_niches.R) | Build eight compact species indicators | `species_climate_niches_us_study_area.parquet` | [Workflow](../06_species_niches/WORKFLOW.md#05-build-species-climate-niches) |
 
-Script `04` requires Google Earth Engine. Run the validation and gap scripts
-listed in [the complete run order](../06_species_niches/WORKFLOW.md#run-order)
-before final thermophilization modeling.
+Script `04` requires Google Earth Engine. Run the validation and gap scripts listed in [the complete run order](../06_species_niches/WORKFLOW.md#run-order) before final thermophilization modeling.
 
 ## Path 5: Thermophilization Products
 
-Run this path after the FIA summaries and species climate niches are current.
+Requires the FIA plot-visit context and forested-condition foundation from Path 2.
 
 | Step | Script | What it does | Main outputs | Details |
 |---|---|---|---|---|
-| 1 | [01_build_plot_recruitment_cwm.R](../07_thermophilization/scripts/01_build_plot_recruitment_cwm.R) | Build condition-level seedling recruitment climate-affinity CWMs | `plot_recruitment_cwm.parquet` | [Output guide](../07_thermophilization/README.md#plot_recruitment_cwmparquet) |
-| 2 | [02_build_analysis_cohort.R](../07_thermophilization/scripts/02_build_analysis_cohort.R) | Join seedling CWMs to condition-level disturbance/control labels | `plot_recruitment_analysis_cohort.parquet` | [Output guide](../07_thermophilization/README.md#plot_recruitment_analysis_cohortparquet) |
+| 1 | [01_build_condition_community_climate.R](../07_thermophilization/scripts/01_build_condition_community_climate.R) | Weighted mean and median climate affinity per FIA condition, by community layer | `plot_community_climate_<layer>.parquet` | [Output guide](../07_thermophilization/README.md#plot_community_climate_layerparquet) |
+| 2 | [02_build_forest_plot_visit_cwm.R](../07_thermophilization/scripts/02_build_forest_plot_visit_cwm.R) | Collapse to one row per plot visit using forested conditions only, weighted by forested-area share | `forest_plot_visit_cwm_<layer>.parquet` | [Output guide](../07_thermophilization/README.md#forest_plot_visit_cwm_layerparquet) |
 | 3 | [03_build_plot_disturbance_severity.R](../07_thermophilization/scripts/03_build_plot_disturbance_severity.R) | Aggregate condition-level disturbance to plot-visit proportions | `plot_disturbance_severity.parquet` | [Output guide](../07_thermophilization/README.md#plot_disturbance_severityparquet) |
-| 4 | [04_build_plot_community_climate_metrics.R](../07_thermophilization/scripts/04_build_plot_community_climate_metrics.R) | Build condition-level climate-affinity means and medians by community layer | `plot_community_climate_<layer>.parquet` | [Output guide](../07_thermophilization/README.md#plot_community_climate_layerparquet) |
-| 5 | [05_build_plot_year_community_cwm.R](../07_thermophilization/scripts/05_build_plot_year_community_cwm.R) | Build plot survey-year community climate-affinity means and medians | `plot_year_community_cwm_<layer>.parquet` | [Output guide](../07_thermophilization/README.md#plot_year_community_cwm_layerparquet) |
-| 6 | [06_build_plot_year_climate_change.R](../07_thermophilization/scripts/06_build_plot_year_climate_change.R) | Calculate repeated-survey deltas and annualized rates | `plot_year_climate_change_<layer>.parquet` | [Output guide](../07_thermophilization/README.md#plot_year_climate_change_layerparquet) |
-| QA gate | [01_validate_thermophilization_products.R](../07_thermophilization/qa/01_validate_thermophilization_products.R) | Validate row grains, required columns, proportions, coverage fields, and rate calculations | `thermophilization_validation_*.csv` | [QA guide](../07_thermophilization/README.md#qa-csvs) |
+| 4 | [04_build_visit_interval_change.R](../07_thermophilization/scripts/04_build_visit_interval_change.R) | Change between each survey and the one before it, with annualized rates | `forest_visit_interval_change_<layer>.parquet` | [Output guide](../07_thermophilization/README.md#forest_visit_interval_change_layerparquet) |
+| 5 | [05_build_first_last_change.R](../07_thermophilization/scripts/05_build_first_last_change.R) | Change between a plot's earliest and latest survey | `forest_first_last_change.parquet` | [Output guide](../07_thermophilization/README.md#forest_first_last_changeparquet) |
+| QA gate | [01_validate_thermophilization_products.R](../07_thermophilization/qa/01_validate_thermophilization_products.R) | Validate row grains, required columns, proportions, coverage fields, link status, and rate arithmetic | `thermophilization_validation_*.csv` | [QA guide](../07_thermophilization/README.md#qa-csvs) |
 
-Run scripts `04`, `05`, and `06` once per layer:
+Steps 4 and 5 build the two change designs. Both are kept because choosing between them is an open decision; see [METHOD_DECISIONS_NEEDED.md](METHOD_DECISIONS_NEEDED.md).
+
+Run scripts `01` and `04` once per layer:
 
 ```bash
-Rscript 07_thermophilization/scripts/04_build_plot_community_climate_metrics.R --layer=seedlings
-Rscript 07_thermophilization/scripts/04_build_plot_community_climate_metrics.R --layer=saplings
-Rscript 07_thermophilization/scripts/04_build_plot_community_climate_metrics.R --layer=trees
-Rscript 07_thermophilization/scripts/05_build_plot_year_community_cwm.R --layer=seedlings
-Rscript 07_thermophilization/scripts/05_build_plot_year_community_cwm.R --layer=saplings
-Rscript 07_thermophilization/scripts/05_build_plot_year_community_cwm.R --layer=trees
-Rscript 07_thermophilization/scripts/06_build_plot_year_climate_change.R --layer=seedlings
-Rscript 07_thermophilization/scripts/06_build_plot_year_climate_change.R --layer=saplings
-Rscript 07_thermophilization/scripts/06_build_plot_year_climate_change.R --layer=trees
+Rscript 07_thermophilization/scripts/01_build_condition_community_climate.R --layer=seedlings
+Rscript 07_thermophilization/scripts/01_build_condition_community_climate.R --layer=saplings
+Rscript 07_thermophilization/scripts/01_build_condition_community_climate.R --layer=trees
+Rscript 07_thermophilization/scripts/02_build_forest_plot_visit_cwm.R
+Rscript 07_thermophilization/scripts/03_build_plot_disturbance_severity.R
+Rscript 07_thermophilization/scripts/04_build_visit_interval_change.R --layer=seedlings
+Rscript 07_thermophilization/scripts/04_build_visit_interval_change.R --layer=saplings
+Rscript 07_thermophilization/scripts/04_build_visit_interval_change.R --layer=trees
+Rscript 07_thermophilization/scripts/05_build_first_last_change.R
 Rscript 07_thermophilization/qa/01_validate_thermophilization_products.R
+Rscript 07_thermophilization/qa/02_disturbance_survey_coverage.R
 ```
+
+## Path 6: Forest Disturbance Data Preparation
+
+Run this after the FIA condition foundation and plot-visit context exist.
+
+```bash
+python 05_fia/scripts/09_build_damage_agent_lookup.py
+python 05_fia/scripts/10_audit_tree_cn.py
+Rscript 08_disturbance_linkage/scripts/02_build_fia_forest_disturbance_measures.R
+Rscript 08_disturbance_linkage/scripts/03_prepare_fia_damage_agent_evidence.R
+Rscript 08_disturbance_linkage/qa/03_validate_damage_agent_preparation.R
+Rscript scripts/run_tests.R 05_fia 08_disturbance_linkage
+python forest_explorer/catalog/build_inventory.py
+```
+
+This writes corrected same-slot FIA fire timing and neutral tree/condition damage-agent evidence. It does not choose a primary insect-severity measure, plot-level community weighting, first/last visits, or a modeling cohort.
+
+See [the disturbance preparation workflow](../08_disturbance_linkage/WORKFLOW.md) for product grains and the resolved multiple-coordinate exclusion rule.
 
 ## Archived Reference: ERA5
 
