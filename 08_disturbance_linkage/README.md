@@ -1,73 +1,78 @@
 # 08 Disturbance Linkage
 
-Links FIA plots to external, dated observations and writes per-plot association
-tables keyed on `stable_plot_id`:
+This module prepares disturbance evidence without choosing an analysis model. FIA condition disturbance, FIA tree damage agents, MTBS fire events, and IDS aerial detections remain separate because they measure different things.
 
-- **MTBS** — annual thematic burn-severity mosaics derived from satellite imagery.
-- **IDS** — aerial insect/disease survey polygons with retained damage-causal-agent (`DCA_CODE`) observations.
+## Current preparation products
 
-These can feed a future disturbance-aware pass of
-[07_thermophilization](../07_thermophilization/). Spatial overlap is an
-association with an approximate public FIA coordinate, not proof that the mapped
-event affected the measured plot.
-
-## Why this module exists
-
-FIA condition disturbance, MTBS spectral-change classes, and IDS aerial
-detections are different observations. This module retains those distinctions
-while allowing researchers to ask whether an MTBS pixel class or IDS `DCA_CODE`
-polygon occurs within the configured public-coordinate buffer and year.
-
-## Pipeline
-
-| Script | Does | Output |
+| Product | Grain | Purpose |
 | --- | --- | --- |
-| [`scripts/01_build_plot_footprints.R`](scripts/01_build_plot_footprints.R) | Buffer each unambiguous FIA public coordinate by `buffer_m` in `EPSG:5070`; exclude `stable_plot_id` groups containing multiple coordinate pairs. | `plot_footprints.gpkg` |
-| [`scripts/02_extract_mtbs_severity.R`](scripts/02_extract_mtbs_severity.R) | Calculate class proportions from MTBS annual severity mosaics; exclude and report non-processing masks. | `plot_mtbs_fire_events.parquet` |
-| [`scripts/03_extract_ids_agents.R`](scripts/03_extract_ids_agents.R) | Clip IDS polygons to footprints, union overlaps by plot/year/`DCA_CODE`, and measure actual overlap. | `plot_ids_agent_events.parquet` |
-| [`scripts/04_build_plot_disturbance_linkage.R`](scripts/04_build_plot_disturbance_linkage.R) | Stack MTBS and IDS events while retaining source-specific codes and measurements. | `plot_disturbance_linkage_events.parquet` |
-| [`qa/01_validate_disturbance_linkage.R`](qa/01_validate_disturbance_linkage.R) | Validate grains, keys, source-code preservation, masks, and overlap ranges. | `disturbance_linkage_validation_checks.csv` |
+| `fia_forest_disturbance_measures.parquet` | forested plot visit | FIA fire, insect, and disease condition extent |
+| `fia_fire_disturbance_slot_evidence.parquet` | forest condition x fire slot | Auditable fire code-year pairs |
+| `fia_tree_damage_agent_evidence/` | tree record x exact FIA agent | Finest retained tree-agent evidence |
+| `fia_condition_damage_denominators/` | FIA condition | Record, TPA, and basal-area denominators |
+| `fia_condition_damage_agent_candidates/` | FIA condition x exact FIA agent | All-agent candidate fractions |
+| `fia_insect_severity_candidates/` | FIA condition x exact insect agent | Officially insect-filtered candidate fractions |
+| `fia_visit_pairing_audit.parquet` | current FIA visit | Neutral predecessor-link audit |
+| `fia_survey_intervals.parquet` | proposed visit relationship | Labeled interval evidence |
+| `fia_visit_spatial_linkage_status.parquet` | stable plot x FIA visit | Coordinate provenance and stable-plot linkage eligibility |
+| `ids_annual_agent_evidence/` | stable plot x IDS year x exact DCA code | Detected IDS agents; partitioned by year |
+| `ids_annual_survey_coverage/` | stable plot x IDS year | Full, partial, absent, or unknown surveyed-area overlap; partitioned by year |
+| `disturbance_analysis_readiness.csv` | readiness metric | Availability and overlap counts, not an analysis cohort |
+| `disturbance_source_manifest.csv` | source snapshot | Paths, sizes, modification dates, and feasible checksums |
 
-The final product has one row per
-`stable_plot_id × source × year × source_event_code`. Raw source codes and labels
-remain separate, and source-specific measures are not collapsed into a
-misleading generic magnitude.
+The damage-agent products include all FIA condition classes. Forest-specific work must filter `COND_STATUS_CD == 1`. No record-, TPA-, or basal-area fraction is primary, and no condition-area or plot-level weighting is applied.
 
-For IDS, `overlap_acres` is the clipped and de-duplicated area inside the FIA
-buffer. `source_polygon_acres_sum` preserves the sum of the source polygons'
-reported whole-polygon acreage for auditing; it is not plot overlap acreage.
-`DCA_CODE` is retained in both the source-specific product and the integrated
-event contract.
+The exact-code lookup supplies definitions from the current FIADB v9.4 Appendix H only. It does not assert that meanings were identical across earlier manuals, years, or regional implementations. Evidence rows retain `MANUAL`, the Appendix H `region` field, `definition_applicability_status`, and `region_applicability_status` so those cases are not mislabeled as resolved. The intended analysis does not require FIA to supply species-level identity: reviewed broad FIA groups supply tree-level impact ingredients, while exact agent identity and dates come from IDS. The official [FIA v9.4 field guide](https://research.fs.usda.gov/sites/default/files/2025-04/pnw-2025_v9-4_palau_fia_field_manual.pdf) states that specific regional damage-agent codes can be collapsed into national general categories. Inferring a bark-beetle species from tree host may be considered later, but is not part of preparation.
 
-## Coordinate handling plan
+The canonical fire product pairs `DSTRBCD1` only with `DSTRBYR1`, and likewise for slots 2 and 3. Nonfire slots are excluded from fire evidence. Unknown or continuous years remain explicit rather than being treated as literal dates.
 
-The current stable-plot-grain product excludes groups with multiple public
-coordinate pairs instead of silently selecting the first pair. Before
-visit-specific or repeated-interval spatial products are exposed, the next
-implementation should validate official `PREV_PLT_CN` linkages, retain previous-
-and current-visit footprints separately, and report whether an external
-observation intersects both visits or only one. One-visit matches are sensitivity
-cases, not equivalent evidence.
+During correction of the development output, QA found:
 
-## Config
+- identical 494,775 visit keys and identical fire-extent values;
+- 660 visits where a nonfire year was removed from fire timing;
+- 506 visits where a same-slot fire year was restored because `MEASYEAR`, rather than the less precise `INVYR`, established that it was not post-measurement.
 
-Paths, the 800 m buffer, the CRS, and the MTBS class map live under
-`processed.disturbance_linkage` in `config.yaml`.
+Those 506 visits contain 570 fire-coded condition-slot records. All 570 disturbance years are on or before `MEASYEAR`; none is future relative to the measurement year. Review the row-level comparison in `qa/outputs/fia_fire_years_restored_by_measurement_timing.csv`.
 
-## Inputs
+National condition-class QA is in `qa/outputs/fia_damage_agent_condition_status_counts.csv`. The denominator product contains all 1,476,881 conditions in the current foundation: 593,380 forest, 766,268 nonforest, 10,205 noncensus water, 47,252 census water, and 59,776 nonsampled/possible-forest conditions.
 
-- FIA public plot coordinates: `05_fia/.../plot_condition_metadata.parquet`.
-- IDS: `01_ids/data/processed/ids_layers_cleaned.gpkg`, layer `damage_areas`;
-  labels come from `01_ids/lookups/dca_code_lookup.csv`.
-- MTBS: user-provided annual mosaics under `data/raw/mtbs/`. They are not stored
-  in this repository.
+An August 2026 audit found that the local Florida, Kentucky, and Texas TREE files were newer than their PLOT and COND files. This created 6,640 agent-evidence rows from 921 conditions without local condition metadata. All 921 keys existed in the live DataMart. All eight configured tables for each affected state were then refreshed together, recorded in `05_fia/data/raw/download_manifest.csv`, and the dependent FIA products were rebuilt. Current QA reports zero unmatched tree-agent pairs. The mix arose because smaller PLOT, COND, and SEEDLING CSVs had been committed to Git in February, while git-ignored TREE and TREE_GRM files were downloaded later from the live DataMart. The downloader then equated an existing file with a current file and recorded no acquisition manifest. It now stages a complete state and supports explicit `--refresh`.
 
-## Run
+Known-wrong, unused development outputs are removed rather than retained beside their corrections. Canonical preparation filenames are stable and unversioned; Git records code history. Versioned filenames remain only for deliberately experimental analysis products that may need to coexist for method comparison.
+
+For exact eligibility rules, raw FIA column provenance, TPA meaning, the basal-area formula, and forest condition weights, see the [FIA disturbance data dictionary](FIA_DISTURBANCE_DATA_DICTIONARY.md).
+
+## Coordinate decision
+
+The foundational FIA records retain every reported public coordinate. For the main spatial analysis, the agreed rule is to exclude the entire `stable_plot_id`, including all visits, when it has more than one distinct public coordinate pair. No coordinate is selected randomly and the latest coordinate does not silently replace earlier coordinates.
+
+`fia_visit_spatial_linkage_status.parquet` repeats the stable-plot decision on every foundational FIA visit while retaining the visit's reported `LAT` and `LON`. The physical FIA coordinates are stored at six decimal places, so distinct pairs are defined by exact inequality after formatting both values to six decimals. The 800 m distance is only the external-source search buffer; it is not a coordinate-equality tolerance.
+
+`plot_footprints.gpkg` contains exactly the 405,510 eligible single-coordinate stable plots. It was rebuilt after the FIA refresh because one Florida plot's corrected public coordinate moved its buffer center by 30.3 km; the other 41,406 eligible plots in the three refreshed states matched their existing centers within 1 cm. Public coordinates are privacy-adjusted; an 800 m buffer is a search area, not the plot's true boundary.
+
+## External evidence status
+
+- IDS detections and survey coverage are separate products. A missing DCA code is never used as a nondetection row. Coverage comes from the actual `surveyed_areas` source layer, and partial buffer overlap remains labeled partial.
+- IDS output is resumable by survey year. Existing complete years are retained;
+  if a year has coverage but no agent file after an interruption, only its agent
+  calculation is resumed. `--overwrite` intentionally rebuilds both partitions.
+- MTBS event evidence uses the cited June 21, 2026 national burned-area boundary release. The source archive, checksum, prepared GeoPackage, and plot-event evidence are present.
+- MTBS evidence has one `fire_ignition_date`; the source has exact days for every event. `search_buffer_overlap_fraction` refers only to the 800 m search circle, never to an FIA condition.
+- Older MTBS severity-raster and integrated modeling summaries are not part of the current preparation scope.
+
+## Run the preparation and readiness round
 
 ```bash
-Rscript 08_disturbance_linkage/scripts/01_build_plot_footprints.R
-Rscript 08_disturbance_linkage/scripts/02_extract_mtbs_severity.R   # needs MTBS rasters
-Rscript 08_disturbance_linkage/scripts/03_extract_ids_agents.R
-Rscript 08_disturbance_linkage/scripts/04_build_plot_disturbance_linkage.R
-Rscript 08_disturbance_linkage/qa/01_validate_disturbance_linkage.R
+Rscript 08_disturbance_linkage/scripts/01_build_fia_visit_spatial_linkage_status.R
+Rscript 08_disturbance_linkage/scripts/00_prepare_mtbs_fire_perimeters.R
+Rscript 08_disturbance_linkage/scripts/02_extract_mtbs_fire_history.R
+Rscript 08_disturbance_linkage/scripts/03_extract_ids_annual_agent_history.R
+Rscript 08_disturbance_linkage/scripts/04_build_disturbance_readiness.R
+Rscript scripts/run_tests.R 08_disturbance_linkage
 ```
+
+For one IDS year, use `--year=2020`. Add `--overwrite` only when intentionally rebuilding an existing partition.
+
+The MTBS preparation step validates the downloaded archive checksum and source schema before replacing the canonical GeoPackage.
+
+See [WORKFLOW.md](WORKFLOW.md) for exact product contracts and [INTERVAL_FOUNDATION.md](INTERVAL_FOUNDATION.md) for visit-link QA.
