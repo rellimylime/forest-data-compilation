@@ -13,6 +13,7 @@ suppressPackageStartupMessages({
 source(here("scripts/utils/load_config.R"))
 source(here("scripts/utils/parquet_atomic.R"))
 source(here("scripts/utils/forest_analysis.R"))
+source(here("scripts/utils/build_freshness.R"))
 
 config <- load_config()
 fia_cfg <- config$processed$fia
@@ -42,6 +43,9 @@ if (length(layer_args) > 0L) {
 if (length(layers) == 0L) {
   stop("No valid layer selected; use seedlings, saplings, or trees.")
 }
+
+# --force / --force=<product> overrides the freshness check for this run.
+options(build_force_rebuild = build_force_from_args(args))
 
 metric_cols <- c(
   paste0("mean_", c(
@@ -75,6 +79,18 @@ for (layer in layers) {
       "--layer=", layer
     )
   }
+
+  # Rebuilding the foundation must invalidate every layer that was built from it.
+  rebuild <- build_should_rebuild(
+    output_path,
+    input_paths = c(foundation_path, input_path),
+    required_cols = c(
+      "community_layer", "life_stage", "stable_plot_id", "PLT_CN", "INVYR"
+    ),
+    label = output_key
+  )
+  build_log_decision(output_name, rebuild)
+  if (!rebuild$rebuild) next
 
   cat(glue("\n{layer}: {input_path}\n"))
   # Keep only metric columns present in this life-stage product.

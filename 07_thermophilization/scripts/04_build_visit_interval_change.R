@@ -40,6 +40,7 @@ suppressPackageStartupMessages({
 
 source(here("scripts/utils/load_config.R"))
 source(here("scripts/utils/parquet_atomic.R"))
+source(here("scripts/utils/build_freshness.R"))
 
 # ------------------------------------------------------------------------------
 # Command line options
@@ -76,6 +77,9 @@ min_niche_coverage <- as.numeric(get_arg("--min-niche-coverage", "0.95"))
 if (is.na(min_niche_coverage) || min_niche_coverage < 0 || min_niche_coverage > 1) {
   stop("--min-niche-coverage must be between 0 and 1.")
 }
+
+# --force / --force=<product> overrides the freshness check for this run.
+options(build_force_rebuild = build_force_from_args(args))
 
 # ------------------------------------------------------------------------------
 # Paths and configuration
@@ -133,6 +137,24 @@ if (length(missing_files) > 0) {
     "Required input file(s) not found: {paste(missing_files, collapse = ', ')}\n",
     "Run: Rscript 07_thermophilization/scripts/02_build_forest_plot_visit_cwm.R"
   ))
+}
+
+# Smoke runs are small and exploratory, so they always rebuild.
+rebuild <- build_should_rebuild(
+  out_path,
+  input_paths = required_files,
+  required_cols = c(
+    "community_layer", "stable_plot_id",
+    "previous_PLT_CN", "current_PLT_CN", "link_status"
+  ),
+  label = change_key,
+  force = if (is_smoke_run) TRUE else NULL
+)
+build_log_decision(basename(out_path), rebuild)
+if (!rebuild$rebuild) {
+  cat("Nothing to do. Pass --force to rebuild anyway.\n")
+  # Only exit under Rscript, so sourcing this file interactively is harmless.
+  if (!interactive()) quit(save = "no", status = 0)
 }
 
 # ------------------------------------------------------------------------------

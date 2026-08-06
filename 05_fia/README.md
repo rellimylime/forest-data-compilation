@@ -92,7 +92,7 @@ The neutral tree-record damage-agent preparation and the official current-v9.4 a
 
 ## Data Contracts
 
-These invariants are enforced in code (`scripts/utils/fia_year_schema.R`, `scripts/utils/fia_seedling.R`, `05_fia/scripts/summaries/summary_helpers.R`) and covered by regression tests in `05_fia/tests/testthat/`.
+These invariants are enforced in code (`scripts/utils/fia_year_schema.R`, `scripts/utils/fia_seedling.R`, `scripts/utils/build_freshness.R`, `05_fia/scripts/summaries/summary_helpers.R`) and covered by regression tests in `05_fia/tests/testthat/`.
 
 - **Descriptive, not design-based.** Every product is a descriptive summary of *sampled* FIA plots/conditions (e.g. "trees per acre on a sampled plot", "average among sampled FIA plots"). None use FIA evaluations, `POP_STRATUM`, expansion factors (`EXPNS`), adjustment factors, or sampling-error estimation, so none are statewide/regional population estimates, totals, or forest-area estimates.
 - **Year fields are nullable integers.** `TRTYR1-3` and `DSTRBYR1-3` are cast to integer before each state partition is written and forced to `int32` when the partitions are unioned nationally, independent of partition/file order. A state whose 2nd/3rd slot is entirely empty can no longer be inferred as Boolean and drag real years to `TRUE`. Documented sentinels (e.g. `9999` = continuous/unknown) are preserved and excluded from time-since arithmetic.

@@ -39,6 +39,7 @@ suppressPackageStartupMessages({
 })
 
 source(here("scripts/utils/load_config.R"))
+source(here("scripts/utils/build_freshness.R"))
 
 # ------------------------------------------------------------------------------
 # Command line options
@@ -84,6 +85,9 @@ default_weight <- switch(
   trees = "abundance_for_cwm"
 )
 weight_col <- get_arg("--weight", default_weight)
+
+# --force / --force=<product> overrides the freshness check for this run.
+options(build_force_rebuild = build_force_from_args(args))
 
 # ------------------------------------------------------------------------------
 # Paths and configuration
@@ -160,6 +164,23 @@ if (range_scope == "us_study_area_with_global_fallback") {
 missing_files <- required_files[!file.exists(required_files)]
 if (length(missing_files) > 0) {
   stop(glue("Required input file(s) not found: {paste(missing_files, collapse = ', ')}"))
+}
+
+# Smoke runs are small and exploratory, so they always rebuild.
+rebuild <- build_should_rebuild(
+  out_file,
+  input_paths = required_files,
+  required_cols = c(
+    "community_layer", "stable_plot_id", "PLT_CN", "INVYR", "CONDID"
+  ),
+  label = paste0("plot_community_climate_", layer),
+  force = if (is_smoke_run) TRUE else NULL
+)
+build_log_decision(basename(out_file), rebuild)
+if (!rebuild$rebuild) {
+  cat("Nothing to do. Pass --force to rebuild anyway.\n")
+  # Only exit under Rscript, so sourcing this file interactively is harmless.
+  if (!interactive()) quit(save = "no", status = 0)
 }
 
 # ------------------------------------------------------------------------------

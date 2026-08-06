@@ -31,6 +31,7 @@ suppressPackageStartupMessages({
 })
 
 source(here("scripts/utils/load_config.R"))
+source(here("scripts/utils/build_freshness.R"))
 
 # ------------------------------------------------------------------------------
 # Command line options
@@ -56,6 +57,9 @@ get_arg <- function(flag, default = NULL) {
 limit_arg <- get_arg("--limit", NA_character_)
 if (!is.na(limit_arg)) limit_arg <- as.integer(limit_arg)
 is_smoke_run <- !is.na(limit_arg)
+
+# --force / --force=<product> overrides the freshness check for this run.
+options(build_force_rebuild = build_force_from_args(args))
 
 # ------------------------------------------------------------------------------
 # Paths and configuration
@@ -106,6 +110,23 @@ dir_create(qa_dir)
 
 if (!file.exists(disturbance_path)) {
   stop(glue("Required input file not found: {disturbance_path}"))
+}
+
+# Smoke runs are small and exploratory, so they always rebuild.
+rebuild <- build_should_rebuild(
+  out_path,
+  input_paths = disturbance_path,
+  required_cols = c(
+    "stable_plot_id", "PLT_CN", "INVYR", "prop_any_recorded_disturbance"
+  ),
+  label = "plot_disturbance_severity",
+  force = if (is_smoke_run) TRUE else NULL
+)
+build_log_decision(basename(out_path), rebuild)
+if (!rebuild$rebuild) {
+  cat("Nothing to do. Pass --force to rebuild anyway.\n")
+  # Only exit under Rscript, so sourcing this file interactively is harmless.
+  if (!interactive()) quit(save = "no", status = 0)
 }
 
 # ------------------------------------------------------------------------------

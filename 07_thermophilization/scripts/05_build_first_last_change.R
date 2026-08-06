@@ -13,6 +13,7 @@ suppressPackageStartupMessages({
 
 source(here("scripts/utils/load_config.R"))
 source(here("scripts/utils/parquet_atomic.R"))
+source(here("scripts/utils/build_freshness.R"))
 
 config <- load_config()
 fia_cfg <- config$processed$fia
@@ -33,6 +34,55 @@ audit_path <- file.path(
 )
 for (path in c(context_path, audit_path)) {
   if (!file.exists(path)) stop("Required visit product is missing: ", path)
+}
+
+layers <- c("seedlings", "saplings", "trees")
+cwm_paths <- vapply(layers, function(layer) {
+  file.path(therm_dir, therm_cfg$files[[paste0("forest_plot_visit_cwm_", layer)]])
+}, character(1))
+missing_cwm <- cwm_paths[!file.exists(cwm_paths)]
+if (length(missing_cwm) > 0) {
+  stop(
+    "Forest plot-visit CWM is missing: ", paste(missing_cwm, collapse = ", "), "\n",
+    "Run: Rscript 07_thermophilization/scripts/02_build_forest_plot_visit_cwm.R"
+  )
+}
+
+primary_path <- file.path(therm_dir, therm_cfg$files$forest_first_last_change)
+stage_path <- file.path(
+  therm_dir,
+  therm_cfg$files$forest_first_last_change_by_stage
+)
+
+# --force / --force=<product> overrides the freshness check for this run.
+options(build_force_rebuild = build_force_from_args())
+
+# Both products come out of one pass, so either being stale rebuilds the pair.
+freshness_inputs <- c(context_path, audit_path, unname(cwm_paths))
+decisions <- list(
+  build_should_rebuild(
+    primary_path,
+    input_paths = freshness_inputs,
+    required_cols = c(
+      "stable_plot_id", "first_PLT_CN", "last_PLT_CN", "n_visits_observed"
+    ),
+    label = "forest_first_last_change"
+  ),
+  build_should_rebuild(
+    stage_path,
+    input_paths = freshness_inputs,
+    required_cols = c(
+      "stable_plot_id", "life_stage", "PLT_CN_first", "PLT_CN_last"
+    ),
+    label = "forest_first_last_change_by_stage"
+  )
+)
+build_log_decision(basename(primary_path), decisions[[1]])
+build_log_decision(basename(stage_path), decisions[[2]])
+if (!any(vapply(decisions, function(d) isTRUE(d$rebuild), logical(1)))) {
+  cat("Nothing to do. Pass --force to rebuild anyway.\n")
+  # Only exit under Rscript, so sourcing this file interactively is harmless.
+  if (!interactive()) quit(save = "no", status = 0)
 }
 
 metric_cols <- c(
@@ -57,18 +107,9 @@ context <- context[, .(
 )]
 if (anyDuplicated(context$PLT_CN)) stop("Visit context must be unique by PLT_CN.")
 
-layers <- c("seedlings", "saplings", "trees")
 # Stack life stages temporarily so endpoint selection follows one rule.
 communities <- rbindlist(lapply(layers, function(layer) {
-  key <- paste0("forest_plot_visit_cwm_", layer)
-  path <- file.path(therm_dir, therm_cfg$files[[key]])
-  if (!file.exists(path)) {
-    stop(
-      "Forest plot-visit CWM is missing: ", path, "\n",
-      "Run: Rscript 07_thermophilization/scripts/02_build_forest_plot_visit_cwm.R"
-    )
-  }
-  x <- as.data.table(read_parquet(path))
+  x <- as.data.table(read_parquet(cwm_paths[[layer]]))
   x[, life_stage := layer]
   x
 }), fill = TRUE, use.names = TRUE)
@@ -271,14 +312,6 @@ setorder(primary, stable_plot_id)
 
 dir_create(therm_dir)
 dir_create(qa_dir)
-primary_path <- file.path(
-  therm_dir,
-  therm_cfg$files$forest_first_last_change
-)
-stage_path <- file.path(
-  therm_dir,
-  therm_cfg$files$forest_first_last_change_by_stage
-)
 # Keep common-visit and stage-specific candidates as separate products.
 write_parquet_atomic(primary, primary_path, compression = "snappy")
 write_parquet_atomic(stage_output, stage_path, compression = "snappy")

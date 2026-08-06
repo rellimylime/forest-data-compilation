@@ -86,6 +86,43 @@ Rscript 07_thermophilization/qa/02_disturbance_survey_coverage.R
 
 Script `02` builds all three layers by default; pass `--layer=trees` to restrict it.
 
+### Rebuilding And Skipping
+
+Every stage above checks whether its output is already current before doing any
+work, so the block can be rerun end to end and only the stale products are
+rebuilt. A product is rebuilt when:
+
+- a rebuild was forced with `--force`,
+- the output file is missing,
+- any declared input is newer than the output, or
+- the existing output is missing a column the product is supposed to have.
+
+Otherwise the stage prints `skip (up to date)` and exits. A full rerun with
+nothing stale takes seconds instead of roughly 45 minutes.
+
+The important half of this is the third rule. Rebuilding
+`forested_condition_foundation.parquet` makes every CWM and change product
+downstream of it stale, and the check notices that on the next run. Skipping
+merely because the output file exists would leave the old numbers silently in
+place, which is how the August 2026 refresh produced products that disagreed
+with their own inputs.
+
+To rebuild anyway:
+
+```bash
+# Force one product.
+Rscript 07_thermophilization/scripts/04_build_visit_interval_change.R --layer=trees --force
+
+# Force a named product from a stage that builds several.
+Rscript 07_thermophilization/scripts/02_build_forest_plot_visit_cwm.R --force=forest_plot_visit_cwm_trees
+```
+
+Modification time is not a content hash: cloning the repo, copying the data
+directory, or restoring it from cloud sync all rewrite timestamps and can make
+a stale product look current. The required-column check catches products built
+before a schema change; `--force` covers everything else. Smoke runs
+(`--limit=N`) always rebuild.
+
 ## How A Plot Visit Becomes One Number
 
 Script `01` computes, for each FIA condition:
@@ -269,6 +306,11 @@ Rscript 07_thermophilization/scripts/04_build_visit_interval_change.R --layer=se
 ```
 
 ## Optional Arguments
+
+Every script:
+
+- `--force` — rebuild regardless of the freshness check.
+- `--force=<product>[,<product>]` — force only the named products, for stages that build more than one.
 
 Script `01`:
 
