@@ -117,7 +117,7 @@ cat("  arrow::read_parquet('05_fia/data/processed/summaries/plot_tree_metrics.pa
 cat("  arrow::read_parquet('05_fia/data/processed/summaries/plot_tree_species.parquet')\n")
 cat("  arrow::read_parquet('05_fia/data/processed/summaries/plot_sapling_species.parquet')\n")
 cat("  arrow::read_parquet('05_fia/data/processed/summaries/plot_seedling_species.parquet')\n")
-cat("  arrow::read_parquet('05_fia/data/processed/summaries/plot_disturbance_classification.parquet')\n")
+cat("  arrow::read_parquet('05_fia/data/processed/summaries/fia_condition_disturbance_flags.parquet')\n")
 cat("  arrow::read_parquet('05_fia/data/processed/summaries/plot_disturbance_history.parquet')\n")
 cat("  arrow::read_parquet('05_fia/data/processed/summaries/plot_treatment_history.parquet')\n")
 cat("  arrow::read_parquet('05_fia/data/processed/summaries/plot_damage_agents.parquet')\n")

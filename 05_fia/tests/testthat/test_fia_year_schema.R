@@ -106,7 +106,7 @@ test_that("every state cond partition uses nullable integer year fields", {
 
 test_that("national products keep TRTYR3 as real years, not Boolean coercion", {
   for (rel in c("05_fia/data/processed/summaries/plot_condition_metadata.parquet",
-                "05_fia/data/processed/summaries/plot_disturbance_classification.parquet")) {
+                "05_fia/data/processed/summaries/fia_condition_disturbance_flags.parquet")) {
     p <- qa_path(rel)
     qa_require_file(p)
     sch <- arrow::open_dataset(p)$schema
@@ -124,7 +124,7 @@ test_that("national products keep TRTYR3 as real years, not Boolean coercion", {
 })
 
 test_that("derived treatment/cutting timing has no Boolean-coercion artifacts", {
-  p <- qa_path("05_fia/data/processed/summaries/plot_disturbance_classification.parquet")
+  p <- qa_path("05_fia/data/processed/summaries/fia_condition_disturbance_flags.parquet")
   qa_require_file(p)
   d <- open_dataset(p) |>
     select(any_of(c("cutting_year_latest", "treatment_year_latest",

@@ -1,19 +1,39 @@
 # ------------------------------------------------------------------------------
-# build_disturbance_classification
+# build_disturbance_classification  ->  fia_condition_disturbance_flags.parquet
+# ------------------------------------------------------------------------------
+# Grain: one row per FIA CONDITION visit (PLT_CN x INVYR x CONDID). This is a
+# condition-level product, not plot-level.
+#
+# It carries neutral, per-condition disturbance and treatment FLAGS plus the raw
+# FIA codes, so any downstream analysis can filter to whatever population it
+# needs. It deliberately does NOT decide "control" vs "disturbed" — that is an
+# analysis choice, not a data fact. The ingredient flags are:
+#   is_forested_analysis_condition  - condition is FIA-forested (COND_STATUS_CD 1)
+#   has_any_recorded_disturbance    - any nonzero DSTRBCD1-3
+#   has_any_treatment               - any nonzero TRTCD1-3
+#   is_human_or_harvest             - human disturbance or cutting treatment
+#   is_natural_disturbance          - any natural disturbance class present
+#   has_<type>_condition / any per-type flags, plus disturbance/treatment years
+#
+# To rebuild the old "control" / "disturbed" grouping downstream:
+#   control   = is_forested_analysis_condition &
+#               !has_any_recorded_disturbance & !has_any_treatment
+#   disturbed = is_forested_analysis_condition & is_natural_disturbance &
+#               !is_human_or_harvest & !has_any_treatment
 # ------------------------------------------------------------------------------
 
 build_disturbance_classification <- function(out_dir, out_cond_metadata) {
-  # Step 4d: plot_disturbance_classification
-  # Condition-level disturbance classes and control eligibility for analysis.
+  # Step 4d: fia_condition_disturbance_flags
+  # Condition-level disturbance/treatment flags and raw codes for analysis.
   # ------------------------------------------------------------------------------
-  
-  cat("Step 4d: plot_disturbance_classification\n")
-  out_disturb_class <- file.path(out_dir, "plot_disturbance_classification.parquet")
+
+  cat("Step 4d: fia_condition_disturbance_flags\n")
+  out_disturb_class <- file.path(out_dir, "fia_condition_disturbance_flags.parquet")
 
   source_newer <- file_exists(out_disturb_class) &&
     file.info(out_cond_metadata)$mtime >
       file.info(out_disturb_class)$mtime
-  forced <- fia_force_requested("plot_disturbance_classification")
+  forced <- fia_force_requested("fia_condition_disturbance_flags")
 
   if (file_exists(out_disturb_class) && !source_newer && !forced) {
     cat(glue("  Already exists ({file_size(out_disturb_class)}) - skipping\n\n"))
@@ -220,17 +240,15 @@ build_disturbance_classification <- function(out_dir, out_cond_metadata) {
       !is.na(pct_forested) & pct_forested >= 0.5]
     cond_class[, is_forested_analysis_condition := is_forested_condition]
 
-    # Define analysis/control gates explicitly so matching code does not rewrite them.
-    cond_class[, is_control_candidate := is_forested_analysis_condition &
-                 !has_any_recorded_disturbance & !has_any_treatment]
-    cond_class[, is_natural_disturbance_candidate := is_forested_analysis_condition &
-                 is_natural_disturbance & !is_human_or_harvest & !has_any_treatment]
-    cond_class[, disturbed_vs_control := fcase(
-      is_control_candidate, "control",
-      is_natural_disturbance_candidate, "disturbed",
-      default = "exclude_or_other"
-    )]
-  
+    # NOTE: "control" vs "disturbed" is an analysis decision, not a data fact, so
+    # it is intentionally NOT written here. Rebuild it downstream from the flags:
+    #   control   = is_forested_analysis_condition &
+    #               !has_any_recorded_disturbance & !has_any_treatment
+    #   disturbed = is_forested_analysis_condition & is_natural_disturbance &
+    #               !is_human_or_harvest & !has_any_treatment
+    # (See the header of this file and the fia_condition_disturbance_flags entry
+    # in docs/DATA_PRODUCTS.md / the registry.)
+
     # Record the main reason a row is not an untreated/unimpacted control candidate.
     cond_class[, control_eligibility_reason := fcase(
       !is_forested_condition, "condition_not_forested",
@@ -268,15 +286,14 @@ build_disturbance_classification <- function(out_dir, out_cond_metadata) {
       "treatment_year_latest", "cutting_year_latest",
       "time_since_disturbance", "time_since_treatment", "time_since_cutting",
       "has_continuous_disturbance_year", "has_continuous_treatment_year",
-      "is_control_candidate", "is_natural_disturbance_candidate",
-      "disturbed_vs_control", "control_eligibility_reason"
+      "control_eligibility_reason"
     )
     out_cols <- intersect(preferred_cols, names(cond_class))
     cond_class <- cond_class[, ..out_cols]
   
     # Write the reusable disturbance backbone for matching, filters, and model inputs.
     write_parquet_atomic(as_tibble(cond_class), out_disturb_class, compression = "snappy")
-    cat(glue("  plot_disturbance_classification: {format(nrow(cond_class), big.mark=',')} rows -> ",
+    cat(glue("  fia_condition_disturbance_flags: {format(nrow(cond_class), big.mark=',')} rows -> ",
              "{file_size(out_disturb_class)}\n"))
   
     # Print compact class counts so logs expose obvious classification problems.

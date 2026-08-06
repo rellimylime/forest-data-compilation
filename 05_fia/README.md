@@ -4,13 +4,9 @@
 
 ## What This Workstream Does
 
-`05_fia/` downloads USDA Forest Service FIA tables and turns them into
-documented state extracts and national products for forest structure, species
-composition, mortality, disturbance, treatment history, and eligibility flags
-used by downstream analyses.
+`05_fia/` downloads USDA Forest Service FIA tables and turns them into documented state extracts and national products for forest structure, species composition, mortality, disturbance, treatment history, and eligibility flags used by downstream analyses.
 
-For a visual introduction to FIA plots, conditions, subplots, and microplots,
-start with the [FIA visual explainer](../docs/fia-explorer.html).
+For a visual introduction to FIA plots, conditions, subplots, and microplots, start with the [FIA visual explainer](../docs/fia-explorer.html).
 
 ## Workflow At A Glance
 
@@ -33,8 +29,7 @@ flowchart LR
 | 4 | [04_extract_seedlings_mortality.R](scripts/04_extract_seedlings_mortality.R) | State seedling and mortality partitions |
 | 5 | [05_build_fia_summaries.R](scripts/05_build_fia_summaries.R) | National metric, species-composition, disturbance, and review products |
 
-Detailed processing rules and dependencies are in
-[WORKFLOW.md: Script Details](WORKFLOW.md#script-details).
+Detailed processing rules and dependencies are in [WORKFLOW.md: Script Details](WORKFLOW.md#script-details).
 
 ## Quick Start
 
@@ -46,8 +41,19 @@ Rscript 05_fia/scripts/04_extract_seedlings_mortality.R
 Rscript 05_fia/scripts/05_build_fia_summaries.R
 ```
 
-Install `rFIA` before script `01`. See [Setup](../scripts/SETUP.md) and
-[Reproduce](../docs/REPRODUCE.md) for environment and server instructions.
+Script `01` uses base R to download official state-table ZIP archives directly from FIA DataMart; `rFIA` is not required. Existing complete states are skipped. Use `--refresh` when intentionally replacing a state's full raw snapshot, for
+example `Rscript 05_fia/scripts/01_download_fia.R --refresh FL KY TX`. See [Setup](../scripts/SETUP.md) and [Reproduce](../docs/REPRODUCE.md) for environment and server instructions.
+
+After a full-state refresh, propagate every configured raw table with:
+
+```bash
+Rscript 05_fia/scripts/03_extract_trees.R FL KY TX --force-cond --force-tree-products
+Rscript 05_fia/scripts/04_extract_seedlings_mortality.R FL KY TX --force-seedlings --force-mortality
+Rscript 05_fia/scripts/06_extract_understory.R FL KY TX --force --no-download
+Rscript 05_fia/scripts/05_build_fia_summaries.R
+```
+
+The state list in these commands must match the states passed to `--refresh`. Later source-specific workflows only need rerunning when they consume one of these changed FIA products or public coordinates.
 
 ## Main Outputs
 
@@ -74,44 +80,25 @@ Install `rFIA` before script `01`. See [Setup](../scripts/SETUP.md) and
 | `plot_tree_species.parquet` | Live tree composition, stems at least 5 inches diameter | [Output dictionary](WORKFLOW.md#plot-tree-species) |
 | `plot_sapling_species.parquet` | Live sapling composition, stems 1.0-4.9 inches diameter | [Output dictionary](WORKFLOW.md#plot-sapling-species) |
 | `plot_seedling_species.parquet` | Tree regeneration composition below 1 inch diameter | [Output dictionary](WORKFLOW.md#plot-seedling-species) |
-| `plot_disturbance_classification.parquet` | Natural-disturbance and control eligibility | [Output dictionary](WORKFLOW.md#plot-disturbance-classification) |
+| `fia_condition_disturbance_flags.parquet` | Natural-disturbance and control eligibility | [Output dictionary](WORKFLOW.md#plot-disturbance-classification) |
 | `plot_disturbance_history.parquet` | Long-form recorded disturbance events | [Output dictionary](WORKFLOW.md#plot-disturbance-history) |
 | `plot_treatment_history.parquet` | Long-form silvicultural treatments | [Output dictionary](WORKFLOW.md#plot-treatment-history) |
 | `plot_damage_agents.parquet` | Labeled live-tree damage-agent summaries | [Output dictionary](WORKFLOW.md#plot-damage-agents) |
 | `plot_exclusion_flags.parquet` | Whole-plot review and sensitivity flags | [Output dictionary](WORKFLOW.md#plot-exclusion-flags) |
 
+These condition-aware biological products are general-purpose: they retain observations from all FIA condition classes. For a forest-specific dataset, join `plot_condition_metadata.parquet` on `PLT_CN`, `INVYR`, and `CONDID`, then filter `COND_STATUS_CD == 1` before aggregating. Do not match conditions across visits using `CONDID`.
+
+The neutral tree-record damage-agent preparation and the official current-v9.4 agent lookup are documented in [`08_disturbance_linkage`](../08_disturbance_linkage/README.md). The older `plot_damage_agents.parquet` is species-aggregated and uses a partial inline label mapping, so it should not replace the tree-record evidence when deduplication or reviewed exact-agent labels matter. The v9.4 lookup is not a historical crosswalk: observation products carry `MANUAL` plus explicit definition- and region-applicability review fields.
+
 ## Data Contracts
 
-These invariants are enforced in code (`scripts/utils/fia_year_schema.R`,
-`scripts/utils/fia_seedling.R`, `05_fia/scripts/summaries/summary_helpers.R`) and
-covered by regression tests in `05_fia/tests/testthat/`.
+These invariants are enforced in code (`scripts/utils/fia_year_schema.R`, `scripts/utils/fia_seedling.R`, `05_fia/scripts/summaries/summary_helpers.R`) and covered by regression tests in `05_fia/tests/testthat/`.
 
-- **Descriptive, not design-based.** Every product is a descriptive summary of
-  *sampled* FIA plots/conditions (e.g. "trees per acre on a sampled plot",
-  "average among sampled FIA plots"). None use FIA evaluations, `POP_STRATUM`,
-  expansion factors (`EXPNS`), adjustment factors, or sampling-error estimation, so
-  none are statewide/regional population estimates, totals, or forest-area estimates.
-- **Year fields are nullable integers.** `TRTYR1-3` and `DSTRBYR1-3` are cast to
-  integer before each state partition is written and forced to `int32` when the
-  partitions are unioned nationally, independent of partition/file order. A state
-  whose 2nd/3rd slot is entirely empty can no longer be inferred as Boolean and drag
-  real years to `TRUE`. Documented sentinels (e.g. `9999` = continuous/unknown) are
-  preserved and excluded from time-since arithmetic.
-- **Tree/sapling grain.** `trees/*` and `plot_tree_species` / `plot_sapling_species`
-  are at `PLT_CN x INVYR x CONDID x SUBP x SPCD` (with species identity carried
-  through). The producer keeps `CONDID`/`SUBP`; downstream builders pre-flight-check
-  for them.
-- **Seedling eligibility.** A seedling record is kept when FIA's *calculated*
-  abundance is positive (`TREECOUNT_CALC > 0`, or a valid positive `TPA_UNADJ`), not
-  when the raw field count `TREECOUNT > 0`. `TREECOUNT` is null in many states
-  (ME ~21%, OR/CA ~20%); it is retained as a descriptive column but its missingness
-  never discards a record FIA counts.
-- **Freshness / atomicity.** Builders using the shared freshness contract rebuild
-  when a declared input is newer than the output, when a declared input is missing,
-  when the output is missing a contract column, or when `--force` (or
-  `--force=<product>`) is passed. Parquet replacement uses a same-directory atomic
-  rename and fails rather than falling back to an in-place copy, so readers are not
-  shown a half-written canonical product.
+- **Descriptive, not design-based.** Every product is a descriptive summary of *sampled* FIA plots/conditions (e.g. "trees per acre on a sampled plot", "average among sampled FIA plots"). None use FIA evaluations, `POP_STRATUM`, expansion factors (`EXPNS`), adjustment factors, or sampling-error estimation, so none are statewide/regional population estimates, totals, or forest-area estimates.
+- **Year fields are nullable integers.** `TRTYR1-3` and `DSTRBYR1-3` are cast to integer before each state partition is written and forced to `int32` when the partitions are unioned nationally, independent of partition/file order. A state whose 2nd/3rd slot is entirely empty can no longer be inferred as Boolean and drag real years to `TRUE`. Documented sentinels (e.g. `9999` = continuous/unknown) are preserved and excluded from time-since arithmetic.
+- **Tree/sapling grain.** `trees/*` and `plot_tree_species` / `plot_sapling_species` are at `PLT_CN x INVYR x CONDID x SUBP x SPCD` (with species identity carried through). The producer keeps `CONDID`/`SUBP`; downstream builders pre-flight-check for them.
+- **Seedling eligibility.** A seedling record is kept when FIA's *calculated* abundance is positive (`TREECOUNT_CALC > 0`, or a valid positive `TPA_UNADJ`), not when the raw field count `TREECOUNT > 0`. `TREECOUNT` is null in many states (ME ~21%, OR/CA ~20%); it is retained as a descriptive column but its missingness never discards a record FIA counts.
+- **Freshness / atomicity.** Builders using the shared freshness contract rebuild when a declared input is newer than the output, when a declared input is missing, when the output is missing a contract column, or when `--force` (or `--force=<product>`) is passed. Parquet replacement uses a same-directory atomic rename and fails rather than falling back to an in-place copy, so readers are not shown a half-written canonical product.
 
 ## Optional Site-Climate Extension
 
