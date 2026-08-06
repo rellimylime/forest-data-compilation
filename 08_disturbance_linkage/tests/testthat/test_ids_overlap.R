@@ -15,6 +15,8 @@ test_that("IDS overlap uses clipped union area and retains DCA grain", {
   damage <- st_sf(
     survey_year = c(2020L, 2020L, 2020L),
     dca_code = c(11006L, 11006L, 12000L),
+    source_feature_id = c("a", "b", "c"),
+    source_observation_id = c("oa", "ob", "oc"),
     source_polygon_acres = c(100, 200, 300),
     geometry = st_sfc(
       st_polygon(list(rbind(
@@ -37,7 +39,9 @@ test_that("IDS overlap uses clipped union area and retains DCA grain", {
   expect_equal(nrow(result), 2L)
   expect_equal(result[dca_code == 11006L, overlap_area_m2], 10000)
   expect_equal(result[dca_code == 11006L, footprint_overlap_fraction], 1)
-  expect_equal(result[dca_code == 11006L, n_source_polygons], 2L)
+  expect_equal(result[dca_code == 11006L, n_source_features], 2L)
+  expect_equal(result[dca_code == 11006L, source_feature_ids], "a;b")
+  expect_equal(result[dca_code == 11006L, source_observation_ids], "oa;ob")
   expect_equal(result[dca_code == 11006L, source_polygon_acres_sum], 300)
   expect_equal(result[dca_code == 12000L, overlap_area_m2], 5000)
 })
@@ -47,6 +51,8 @@ test_that("IDS overlap rejects duplicate footprint-area keys", {
     stable_plot_id = "p1",
     survey_year = 2020L,
     dca_code = 11006L,
+    source_feature_id = "a",
+    source_observation_id = "oa",
     source_polygon_acres = 10,
     geometry = st_sfc(st_point(c(0, 0)), crs = 5070)
   )

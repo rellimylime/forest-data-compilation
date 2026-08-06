@@ -69,8 +69,31 @@ pts <- st_transform(pts, area_crs)
 footprints <- st_buffer(pts, dist = buffer_m)
 
 dir_create(dirname(out_path))
-if (file.exists(out_path)) file_delete(out_path)
-st_write(footprints, out_path, quiet = TRUE)
+stage_path <- tempfile(
+  pattern = "plot_footprints_staging_",
+  tmpdir = dirname(out_path),
+  fileext = ".gpkg"
+)
+stage_ok <- FALSE
+on.exit({
+  if (!stage_ok && file.exists(stage_path)) unlink(stage_path, force = TRUE)
+}, add = TRUE)
+st_write(footprints, stage_path, layer = "plot_footprints", quiet = TRUE)
+
+# Validate the staged layer before replacing the canonical GeoPackage. This
+# keeps the previous footprint file intact if geometry creation or writing fails.
+staged_info <- st_layers(stage_path)
+if (
+  nrow(staged_info) != 1L ||
+  staged_info$name[[1L]] != "plot_footprints" ||
+  staged_info$features[[1L]] != nrow(footprints)
+) {
+  stop("Staged plot footprints failed layer or row-count validation.")
+}
+if (!isTRUE(file.rename(stage_path, out_path))) {
+  stop("Could not atomically replace the canonical plot-footprint GeoPackage.")
+}
+stage_ok <- TRUE
 
 cat("\nDone.\n")
 cat(glue("Footprints: {out_path} ({nrow(footprints)} polygons)"), "\n")
