@@ -37,7 +37,7 @@ paths <- list(
   study_area_niches = file.path(niche_dir, "species_climate_niches_us_study_area.parquet"),
   study_area_range_failures = file.path(qa_dir, "species_range_climate_failures_us_study_area.csv"),
   study_area_niche_missing = file.path(qa_dir, "species_climate_niches_missing_us_study_area.csv"),
-  cwm_missing_species = file.path(thermo_qa_dir, "plot_recruitment_cwm_missing_species.csv")
+  cwm_missing_species = file.path(thermo_qa_dir, "plot_community_climate_missing_species_seedlings.csv")
 )
 
 validation_checks_path <- file.path(qa_dir, "species_niche_validation_checks.csv")
@@ -115,9 +115,7 @@ if (nrow(cwm_missing) > 0) {
     .(
       species_key,
       cwm_missing_n_condition_rows = n_condition_rows,
-      cwm_missing_treecount_total = treecount_total,
-      cwm_missing_seedlings_tpa = seedlings_tpa,
-      cwm_missing_weight_total = cwm_weight_total
+      cwm_missing_weight_total = community_weight_total
     )
   ]
   ledger <- merge(ledger, cwm_keep, by = "species_key", all.x = TRUE)
@@ -219,8 +217,7 @@ summary <- ledger[
   .(
     n_species = .N,
     n_seedling_cwm_missing_species = sum(in_cwm_missing_species == TRUE, na.rm = TRUE),
-    total_cwm_missing_weight = sum(cwm_missing_weight_total, na.rm = TRUE),
-    total_cwm_missing_seedlings_tpa = sum(cwm_missing_seedlings_tpa, na.rm = TRUE)
+    total_cwm_missing_weight = sum(cwm_missing_weight_total, na.rm = TRUE)
   ),
   by = gap_stage
 ][order(gap_stage)]

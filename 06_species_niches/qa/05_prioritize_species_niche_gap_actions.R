@@ -31,7 +31,7 @@ ledger <- fread(ledger_path)
 required_cols <- c(
   "species_key", "source_code_system", "source_species_code",
   "scientific_name", "common_name", "community_layers", "gap_stage",
-  "cwm_missing_weight_total", "cwm_missing_seedlings_tpa"
+  "cwm_missing_weight_total"
 )
 missing_cols <- setdiff(required_cols, names(ledger))
 if (length(missing_cols) > 0) {
@@ -43,12 +43,6 @@ ledger[, cwm_missing_weight_total := fifelse(
   0,
   as.numeric(cwm_missing_weight_total)
 )]
-ledger[, cwm_missing_seedlings_tpa := fifelse(
-  is.na(cwm_missing_seedlings_tpa),
-  0,
-  as.numeric(cwm_missing_seedlings_tpa)
-)]
-
 ledger[, scientific_name_lower := tolower(scientific_name)]
 ledger[, is_sp_spp_name := grepl("\\b(sp|spp)\\.?\\b", scientific_name_lower)]
 ledger[, is_genus_or_pseudo := gap_stage == "not_targeted_for_niche"]
@@ -109,7 +103,6 @@ action_queue <- ledger[
     gap_stage,
     is_sp_spp_name,
     cwm_missing_weight_total,
-    cwm_missing_seedlings_tpa,
     range_lookup_status,
     range_match_status,
     range_review_reason,

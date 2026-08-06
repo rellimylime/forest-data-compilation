@@ -39,7 +39,7 @@ paths <- list(
   global_niches = file.path(niche_dir, "species_climate_niches.parquet"),
   study_area_niches = file.path(niche_dir, "species_climate_niches_us_study_area.parquet"),
   tnrs_candidate_check = file.path(qa_dir, "tnrs_candidate_bien_range_check.csv"),
-  cwm_missing = here("07_thermophilization/qa/outputs/plot_recruitment_cwm_missing_species.csv")
+  cwm_missing = here("07_thermophilization/qa/outputs/plot_community_climate_missing_species_seedlings.csv")
 )
 
 required <- c("species_universe", "bien_availability")
@@ -184,7 +184,7 @@ if (nrow(cwm_missing) > 0) {
     .(
       species_key,
       cwm_missing_condition_rows = n_condition_rows,
-      cwm_missing_weight = cwm_weight_total
+      cwm_missing_weight = community_weight_total
     )
   ]
   crosswalk <- merge(crosswalk, cwm_keep, by = "species_key", all.x = TRUE)

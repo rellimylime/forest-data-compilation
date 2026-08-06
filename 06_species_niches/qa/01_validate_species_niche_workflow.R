@@ -38,7 +38,7 @@ paths <- list(
   range_climate_us = file.path(processed_dir, "species_range_climate_us_study_area.parquet"),
   niches_global = file.path(processed_dir, "species_climate_niches.parquet"),
   niches_us = file.path(processed_dir, "species_climate_niches_us_study_area.parquet"),
-  cwm = here("07_thermophilization/data/processed/plot_recruitment_cwm.parquet")
+  cwm = here("07_thermophilization/data/processed/plot_community_climate_seedlings.parquet")
 )
 
 add_check <- function(checks, check_name, status, severity, observed, expected,
@@ -546,8 +546,8 @@ if (!is.null(niches)) {
 }
 
 if (!is.null(cwm) && !is.null(niches)) {
-  cwm_with_niche <- cwm[cwm_weight_with_niche > 0]
-  cwm_zero_coverage <- cwm[cwm_weight_total > 0 & cwm_weight_with_niche == 0]
+  cwm_with_niche <- cwm[community_weight_with_niche > 0]
+  cwm_zero_coverage <- cwm[community_weight_total > 0 & community_weight_with_niche == 0]
 
   cwm_scopes <- unique(cwm_with_niche$range_scope)
   niche_scopes <- unique(niches$range_scope)
