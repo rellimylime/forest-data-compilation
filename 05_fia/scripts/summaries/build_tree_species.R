@@ -1,15 +1,4 @@
-# ------------------------------------------------------------------------------
-# build_tree_species
 # Build separate live-tree and sapling species-composition products.
-#
-# FIA stores both saplings and larger trees in TREE:
-#   sapling: 1.0-4.9 inches diameter
-#   tree:    5.0 inches diameter and larger
-#
-# The per-state extraction already assigns size_class from TREE.DIA. This
-# builder preserves the common source species key while separating the two
-# life-stage communities into different output files.
-# ------------------------------------------------------------------------------
 
 build_tree_species <- function(out_dir, proc_fia, states, out_cond_metadata) {
   cat("Step 4c: plot_tree_species + plot_sapling_species\n")
@@ -23,6 +12,7 @@ build_tree_species <- function(out_dir, proc_fia, states, out_cond_metadata) {
     recursive = TRUE,
     full.names = TRUE
   )
+  # Rebuild both life stages together when either product or an input is stale.
   products_exist <- file_exists(out_tree_species) &&
     file_exists(out_sapling_species)
   newest_input <- max(
@@ -91,6 +81,7 @@ build_tree_species <- function(out_dir, proc_fia, states, out_cond_metadata) {
     ))
   }
 
+  # Condition metadata supplies forest status but does not filter records here.
   cond_meta <- as.data.table(read_parquet(out_cond_metadata))
   meta_cols <- intersect(
     c(
@@ -120,6 +111,7 @@ build_tree_species <- function(out_dir, proc_fia, states, out_cond_metadata) {
   )
 
   summarize_layer <- function(dt, layer_name, keep_size_classes) {
+    # FIA stores saplings and larger trees together, so separate them by size class.
     layer_dt <- dt[
       STATUSCD == 1L &
         size_class %in% keep_size_classes &
@@ -142,6 +134,7 @@ build_tree_species <- function(out_dir, proc_fia, states, out_cond_metadata) {
       species_cols, "state"
     )
 
+    # Preserve condition, subplot, and species while combining tree strata.
     result <- layer_dt[, .(
       ba_per_acre = sum(ba_per_acre, na.rm = TRUE),
       n_trees_tpa = sum(n_trees_tpa, na.rm = TRUE),
@@ -162,8 +155,7 @@ build_tree_species <- function(out_dir, proc_fia, states, out_cond_metadata) {
       source_species_code = as.character(SPCD),
       species_key = paste0("fia_spcd:", SPCD),
       community_layer = layer_name,
-      # Stem density is comparable across sapling species. Basal area remains
-      # available for adult-tree dominance analyses.
+      # Use stem density for saplings and basal area when available for trees.
       abundance_for_cwm = if (layer_name == "sapling") {
         n_trees_tpa
       } else {
@@ -178,6 +170,7 @@ build_tree_species <- function(out_dir, proc_fia, states, out_cond_metadata) {
   sapling_results <- vector("list", length(states))
   started <- Sys.time()
 
+  # Read one state partition at a time to keep memory use bounded.
   for (i in seq_along(states)) {
     state_code <- states[[i]]
     state_trees <- tryCatch(
@@ -222,6 +215,7 @@ build_tree_species <- function(out_dir, proc_fia, states, out_cond_metadata) {
     stop("Tree or sapling summary is empty; refusing to overwrite products.")
   }
 
+  # Attach condition context without removing any biological condition class.
   tree_species <- merge(
     tree_species,
     cond_meta,
