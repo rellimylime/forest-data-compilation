@@ -1,0 +1,2117 @@
+# Master product registry — curated
+#
+# This file is the authoritative list of what data products exist, what one row
+# of each means, and what the Forest Data Explorer is allowed to do with them.
+# Humans write this file. Nothing in it is inferred from the files themselves.
+#
+# The companion generator (forest_explorer/catalog/build_inventory.py) reads
+# this registry, looks at the actual data root, and records what is physically
+# there: row counts, sizes, column lists, and whether the declared key really is
+# unique. Generated facts never overwrite curated meaning, and curated meaning is
+# never guessed from a schema.
+#
+# ---------------------------------------------------------------------------
+# Field reference
+# ---------------------------------------------------------------------------
+# id            Stable identifier. Never reuse or rename silently.
+# title         Short human name shown in the interface.
+# family        Grouping used for browsing (fia, species_niches, ...).
+# kind          raw | intermediate | final | analysis | qa | lookup
+# lifecycle     Whether the product is expected to exist at all:
+#                 active       — built and maintained
+#                 planned      — a producer exists or is intended; no output yet
+#                 experimental — built, but not committed to
+#                 deprecated   — still built, do not build new work on it
+#                 retired      — no longer built; kept for provenance
+#               This is not the same as availability, which the generator
+#               measures, nor review_status, which is about scientific use.
+#               A `planned` product being absent is expected; an `active` one
+#               being absent is a problem.
+# path          Logical path relative to the data root. POSIX, no drive letters.
+# format        parquet_file | parquet_dataset | gpkg_layer | csv | csv_glob
+# gpkg_layer    Layer name, for format: gpkg_layer.
+# one_row_is    Plain-language statement of the output grain.
+# keys          Columns that should uniquely identify a row. The generator
+#               checks this; a failed check is a finding, not a crash.
+# grain_id      Which grain in the `grains:` block a row sits at. The observation
+#               hierarchy lives there, declared once.
+# derived_from  id of the product this one was built from. Production lineage,
+#               not grain: two products can share a grain without either being
+#               built from the other.
+# producer      Script that writes it.
+# intended_access_mode
+#               What this product should offer once review completes. Set it when
+#               access_mode has been held back to catalog_only pending review, so
+#               the intent is not lost.
+# access_mode   What the interface may offer for this product today:
+#                 catalog_only     — describe it; no extract can be generated
+#                 prepared_download— download or filter a finished output
+#                 filtered_extract — pick rows and columns from this one product
+#                 guided_combined  — may serve as a base for an approved join
+# review_status Whether the meaning has been signed off:
+#                 certified            — definition and safe use established
+#                 constrained          — usable only with the stated restriction
+#                 domain_review_required — meaning or method still unresolved
+#                 blocked_by_defect    — known data/pipeline defect
+#                 not_reviewed         — not yet evaluated
+# facets        Columns the interface may expose as filters.
+# caveats       Plain-language limits a researcher must see before using it.
+# notes         Anything else a maintainer needs.
+# ---------------------------------------------------------------------------
+
+registry_version: "0.1.0"
+generated_by_contract: "forest_explorer/catalog/build_inventory.py"
+
+families:
+  fia_partitions:
+    title: FIA state extracts
+    blurb: >-
+      State-partitioned processed FIA extracts, one Parquet file per state. Several
+      are already aggregated rather than raw copies — the tree extract, for
+      instance, is grouped by species, subplot, status, size class, and crown
+      position. These are the working intermediates the national summaries are
+      built from.
+  fia_summaries:
+    title: FIA national summaries
+    blurb: >-
+      National tables assembled from the state extracts. This is where most
+      researcher-facing FIA work should start.
+  fia_lookups:
+    title: FIA reference tables
+    blurb: Code-to-label tables published by FIA.
+  site_climate:
+    title: Site climate
+    blurb: >-
+      Monthly TerraClimate values pulled at FIA plot locations.
+  species_niches:
+    title: Species climate niches
+    blurb: >-
+      For each tree species, the climate found across its mapped range. Used to
+      ask whether a forest community is made of warm- or cool-associated species.
+  thermophilization:
+    title: Forest community change
+    blurb: >-
+      Finished analysis products measuring whether the climate affinity of a
+      plot's community is shifting between surveys.
+  ids:
+    title: Insect and Disease Survey
+    blurb: >-
+      Aerial survey polygons mapping insect, disease, and other damage.
+  disturbance_linkage:
+    title: FIA-to-external disturbance linkage
+    blurb: >-
+      Planned association between FIA plots and external dated events (MTBS
+      fire severity, IDS damage polygons).
+  climate_grids:
+    title: Gridded climate workflows
+    blurb: >-
+      TerraClimate, PRISM, and WorldClim extraction pipelines for IDS geometry.
+
+# ---------------------------------------------------------------------------
+# Grains — what one row of a product counts.
+#
+# Declared once here so that products sharing a grain say so, instead of each
+# restating it. `parent_grain_id` is the observation hierarchy: a condition sits
+# inside a plot visit, so a plot-visit value attached to condition rows repeats
+# and must never be summed across them.
+#
+# This is separate from `derived_from` on a product, which records which product
+# was used to build which. Two products can share a grain without either being
+# built from the other, and a product can be built from another at the same grain.
+# ---------------------------------------------------------------------------
+
+grains:
+  fia_plot_visit:
+    one_row_is: one FIA plot measurement visit
+    keys: [PLT_CN, INVYR]
+
+  fia_condition_visit:
+    one_row_is: one mapped condition within one FIA plot visit
+    keys: [PLT_CN, INVYR, CONDID]
+    parent_grain_id: fia_plot_visit
+
+  fia_condition_subplot_species:
+    one_row_is: one species on one subplot within one condition of one plot visit
+    keys: [PLT_CN, INVYR, CONDID, SUBP, SPCD]
+    parent_grain_id: fia_condition_visit
+
+  fia_tree_stratum:
+    one_row_is: one species on one subplot, split by live/dead status, diameter class, and crown position
+    keys: [PLT_CN, INVYR, CONDID, SUBP, SPCD, STATUSCD, size_class, canopy_layer]
+    parent_grain_id: fia_condition_subplot_species
+
+  fia_plot_visit_species_cause:
+    one_row_is: one species and cause code within one plot visit
+    keys: [PLT_CN, INVYR, SPCD, AGENTCD, component_type]
+    parent_grain_id: fia_plot_visit
+
+  fia_condition_species_damage_agent:
+    one_row_is: one species and damage-agent code within one condition of one plot visit
+    keys: [PLT_CN, INVYR, CONDID, SPCD, DAMAGE_AGENT_CD]
+    parent_grain_id: fia_condition_visit
+
+  fia_condition_disturbance_slot:
+    one_row_is: one recorded disturbance slot on one condition in one plot visit
+    keys: [PLT_CN, INVYR, CONDID, disturbance_slot]
+    parent_grain_id: fia_condition_visit
+
+  fia_condition_treatment_slot:
+    one_row_is: one recorded treatment slot on one condition in one plot visit
+    keys: [PLT_CN, INVYR, CONDID, treatment_slot]
+    parent_grain_id: fia_condition_visit
+
+  fia_condition_subplot_growth_habit:
+    one_row_is: one growth habit and canopy layer on one subplot within one condition
+    keys: [PLT_CN, INVYR, CONDID, SUBP, GROWTH_HABIT_CD, LAYER]
+    parent_grain_id: fia_condition_visit
+
+  fia_condition_subplot_plant:
+    one_row_is: one recorded plant species on one subplot within one condition
+    keys: [PLT_CN, INVYR, CONDID, SUBP, VEG_FLDSPCD, UNIQUE_SP_NBR, LAYER]
+    parent_grain_id: fia_condition_visit
+
+  fia_plot_visit_stable:
+    one_row_is: one FIA plot visit, carrying the identifier that follows the plot through time
+    keys: [stable_plot_id, PLT_CN, INVYR]
+    parent_grain_id: fia_plot_visit
+
+  fia_condition_visit_stable:
+    one_row_is: one condition within one plot visit, carrying the identifier that follows the plot through time
+    keys: [stable_plot_id, PLT_CN, INVYR, CONDID]
+    parent_grain_id: fia_condition_visit
+
+  fia_condition_visit_layer:
+    one_row_is: one condition within one plot visit, for one community layer
+    keys: [community_layer, stable_plot_id, PLT_CN, INVYR, CONDID]
+    parent_grain_id: fia_condition_visit_stable
+
+  fia_plot_visit_layer:
+    one_row_is: one plot visit, for one community layer
+    keys: [community_layer, stable_plot_id, PLT_CN, INVYR]
+    parent_grain_id: fia_plot_visit_stable
+
+  fia_plot_survey_interval_layer:
+    one_row_is: one gap between two consecutive surveys of one plot, for one community layer
+    keys: [community_layer, stable_plot_id, previous_PLT_CN, current_PLT_CN]
+    parent_grain_id: fia_stable_plot
+
+  fia_stable_plot:
+    one_row_is: one FIA plot location followed through time
+    keys: [stable_plot_id]
+
+  fia_stable_plot_life_stage:
+    one_row_is: one stable FIA plot and community life stage
+    keys: [stable_plot_id, life_stage]
+    parent_grain_id: fia_stable_plot
+
+  fia_visit_interval_layer:
+    one_row_is: one consecutive-survey interval on a stable plot, for one community layer
+    keys: [community_layer, stable_plot_id, previous_PLT_CN, current_PLT_CN]
+    parent_grain_id: fia_stable_plot
+
+  fia_visit_pairing_audit:
+    one_row_is: one current FIA plot record with its audited predecessor relationship
+    keys: [current_PLT_CN]
+
+  fia_survey_interval:
+    one_row_is: one resolved previous/current FIA survey relationship
+    keys: [interval_id]
+    parent_grain_id: fia_stable_plot
+
+  fia_condition_damage_agent:
+    one_row_is: one FIA condition and exact FIA tree damage-agent code
+    keys: [stable_plot_id, PLT_CN, INVYR, CONDID, DAMAGE_AGENT_CD]
+    parent_grain_id: fia_condition_visit_stable
+
+  fia_tree_damage_agent:
+    one_row_is: one FIA tree record and exact damage-agent code
+    keys: [PLT_CN, INVYR, CONDID, TREE_CN, DAMAGE_AGENT_CD]
+    parent_grain_id: fia_condition_visit
+
+  fia_condition_fire_slot:
+    one_row_is: one FIA fire disturbance slot on one forest condition
+    keys: [stable_plot_id, PLT_CN, INVYR, CONDID, disturbance_slot]
+    parent_grain_id: fia_condition_visit_stable
+
+  fia_damage_agent_code:
+    one_row_is: one official FIA damage-agent code
+    keys: [DAMAGE_AGENT_CD]
+
+  fia_stable_plot_year_severity:
+    one_row_is: one plot, year, and burn-severity class
+    keys: [stable_plot_id, year, severity_class]
+    parent_grain_id: fia_stable_plot
+
+  fia_stable_plot_year_agent:
+    one_row_is: one plot, year, and damage-causal agent
+    keys: [stable_plot_id, year, DCA_CODE]
+    parent_grain_id: fia_stable_plot
+
+  fia_stable_plot_external_event:
+    one_row_is: one plot, external source, year, and that source's event code
+    keys: [stable_plot_id, source, year, source_event_code]
+    parent_grain_id: fia_stable_plot
+
+  fia_stable_plot_mtbs_event:
+    one_row_is: one stable plot and MTBS fire event
+    keys: [stable_plot_id, mtbs_event_id]
+    parent_grain_id: fia_stable_plot
+
+  fia_stable_plot_year_exact_agent:
+    one_row_is: one stable plot, IDS survey year, and exact DCA code or nondetection state
+    keys: [stable_plot_id, survey_year, dca_code]
+    parent_grain_id: fia_stable_plot
+
+  species:
+    one_row_is: one source species code
+    keys: [species_key]
+
+  species_month_variable_metric:
+    one_row_is: one species, month, climate variable, and summary statistic
+    keys: [species_key, month, variable, metric]
+    parent_grain_id: species
+
+  fia_species_code:
+    one_row_is: one FIA species code
+    keys: [SPCD]
+
+  fia_forest_type_code:
+    one_row_is: one FIA forest type code
+    keys: [VALUE]
+
+  climate_site:
+    one_row_is: one point location used for climate extraction
+    keys: [site_id]
+
+  climate_site_month_variable:
+    one_row_is: one site, year, month, and climate variable
+    keys: [site_id, year, month, variable]
+    parent_grain_id: climate_site
+
+  ids_damage_area:
+    one_row_is: one mapped damage polygon in one survey year
+    keys: [OBSERVATION_ID, DAMAGE_AREA_ID]
+
+  ids_observation:
+    one_row_is: one aerial survey observation in one survey year
+    keys: [OBSERVATION_ID]
+
+  ids_surveyed_area:
+    one_row_is: one area flown in one survey year
+    keys: [SURVEY_FEATURE_ID]
+
+  ids_damage_area_variable_month:
+    one_row_is: one damage polygon, climate variable, and calendar month
+    keys: [DAMAGE_AREA_ID, variable, calendar_year, calendar_month]
+    parent_grain_id: ids_damage_area
+
+  climate_pixel:
+    one_row_is: one climate grid cell
+    keys: [pixel_id]
+products:
+
+  # =========================================================================
+  # FIA — state extracts
+  # =========================================================================
+  - id: fia_cond_partitions
+    title: FIA conditions (state extracts)
+    family: fia_partitions
+    kind: intermediate
+    lifecycle: active
+    path: 05_fia/data/processed/cond
+    format: parquet_dataset
+    one_row_is: one mapped condition within one plot visit
+    keys: [PLT_CN, INVYR, CONDID]
+    grain_id: fia_condition_visit
+    producer: 05_fia/scripts/03_extract_trees.R
+    access_mode: catalog_only
+    review_status: constrained
+    facets: [state, INVYR, COND_STATUS_CD, FORTYPCD]
+    caveats:
+      - Raw FIA codes only; no labels and no derived flags.
+      - Use plot_condition_metadata for researcher-facing work.
+    notes: Source for plot_condition_metadata and the disturbance classification.
+
+  - id: fia_tree_partitions
+    title: FIA tree records (state extracts)
+    family: fia_partitions
+    kind: intermediate
+    lifecycle: active
+    path: 05_fia/data/processed/trees
+    format: parquet_dataset
+    one_row_is: >-
+      one species on one subplot in one condition of one plot visit, split by
+      live/dead status, diameter class, and crown position
+    keys: [PLT_CN, INVYR, CONDID, SUBP, SPCD, STATUSCD, size_class, canopy_layer]
+    grain_id: fia_tree_stratum
+    derived_from: fia_cond_partitions
+    producer: 05_fia/scripts/03_extract_trees.R
+    access_mode: catalog_only
+    review_status: domain_review_required
+    facets: [state, INVYR, SPCD, STATUSCD, size_class, canopy_layer]
+    caveats:
+      - >-
+        ba_per_acre and n_trees_tpa are unadjusted sample-design expansions.
+        They are not population estimates.
+      - Subplot aggregation rules are not settled; see the tree-grain question.
+
+  - id: fia_seedling_partitions
+    title: FIA seedling records (state extracts)
+    family: fia_partitions
+    kind: intermediate
+    lifecycle: active
+    path: 05_fia/data/processed/seedlings
+    format: parquet_dataset
+    one_row_is: >-
+      one species counted on one subplot microplot in one condition of one plot
+      visit
+    keys: [PLT_CN, INVYR, CONDID, SUBP, SPCD]
+    grain_id: fia_condition_subplot_species
+    derived_from: fia_cond_partitions
+    producer: 05_fia/scripts/04_extract_seedlings_mortality.R
+    access_mode: catalog_only
+    review_status: domain_review_required
+    facets: [state, INVYR, SPCD]
+    caveats:
+      - >-
+        Older field manuals recorded or calculated "six or more seedlings"
+        differently. Counts are not automatically comparable across decades.
+
+  - id: fia_mortality_partitions
+    title: FIA mortality and removals (state extracts)
+    family: fia_partitions
+    kind: intermediate
+    lifecycle: active
+    path: 05_fia/data/processed/mortality
+    format: parquet_dataset
+    one_row_is: >-
+      one species and cause-of-death code within one plot visit, separated into
+      natural mortality and harvest removal
+    keys: [PLT_CN, INVYR, SPCD, AGENTCD, component_type]
+    grain_id: fia_plot_visit_species_cause
+    producer: 05_fia/scripts/04_extract_seedlings_mortality.R
+    access_mode: catalog_only
+    review_status: domain_review_required
+    facets: [state, INVYR, SPCD, AGENTCD, component_type]
+    caveats:
+      - >-
+        Built from FIA's growth/removal/mortality tables, which carry their own
+        time-period meaning. Do not read these as simple per-visit counts.
+      - AGENTCD is a cause-of-death code and differs before the national protocol.
+
+  - id: fia_damage_agent_partitions
+    title: FIA live-tree damage agents (state extracts)
+    family: fia_partitions
+    kind: intermediate
+    lifecycle: active
+    path: 05_fia/data/processed/damage_agents
+    format: parquet_dataset
+    one_row_is: >-
+      one species and damage-agent code within one condition of one plot visit
+    keys: [PLT_CN, INVYR, CONDID, SPCD, DAMAGE_AGENT_CD]
+    grain_id: fia_condition_species_damage_agent
+    derived_from: fia_cond_partitions
+    producer: 05_fia/scripts/03_extract_trees.R
+    access_mode: catalog_only
+    review_status: constrained
+    facets: [state, INVYR, SPCD, DAMAGE_AGENT_CD]
+    caveats:
+      - >-
+        Damage on a living tree. This is a different observation from condition
+        disturbance and from cause of death; do not merge the three.
+
+  - id: fia_harvest_flag_partitions
+    title: FIA incidental harvest flags (state extracts)
+    family: fia_partitions
+    kind: intermediate
+    lifecycle: active
+    path: 05_fia/data/processed/harvest_flags
+    format: parquet_dataset
+    one_row_is: one plot visit where at least one tree carried a harvest/removal code
+    keys: [PLT_CN, INVYR]
+    grain_id: fia_plot_visit
+    producer: 05_fia/scripts/03_extract_trees.R
+    access_mode: catalog_only
+    review_status: certified
+    facets: [state, INVYR]
+    caveats:
+      - >-
+        Only positive flags are stored. A plot visit missing from this table had
+        no such code in the processed tree records.
+
+  - id: fia_understory_structure_partitions
+    title: FIA understory structure (state extracts)
+    family: fia_partitions
+    kind: intermediate
+    lifecycle: active
+    path: 05_fia/data/processed/understory_structure
+    format: parquet_dataset
+    one_row_is: >-
+      one growth habit and canopy layer on one subplot in one condition of one
+      plot visit
+    keys: [PLT_CN, INVYR, CONDID, SUBP, GROWTH_HABIT_CD, LAYER]
+    grain_id: fia_condition_subplot_growth_habit
+    derived_from: fia_cond_partitions
+    producer: 05_fia/scripts/06_extract_understory.R
+    access_mode: catalog_only
+    review_status: not_reviewed
+    facets: [state, INVYR, growth_habit, layer_label]
+    caveats:
+      - >-
+        From FIA's Phase 2 vegetation protocol, which is collected on a subset of
+        plots. Coverage is much sparser than the tree data, and a missing row does
+        not mean the plant was absent.
+      - >-
+        cover_pct_subpcond is cover scaled by the share of the subplot the
+        condition occupies. cover_pct is not.
+      - >-
+        A row means a growth habit was present (cover > 0). The raw table is
+        zero-padded; those zero rows are dropped.
+    notes: >-
+      Producer recovered 2026-07-23: 05_fia/scripts/06_extract_understory.R
+      rebuilds this from the raw P2VEG_SUBP_STRUCTURE + SUBP_COND tables (added to
+      config.yaml tables_required). Verified byte-identical to the previously
+      orphaned product on CA/CO/MT. The script downloads its own inputs, so the
+      product is now reproducible from a clean checkout.
+
+  - id: fia_understory_veg_partitions
+    title: FIA understory species cover (state extracts)
+    family: fia_partitions
+    kind: intermediate
+    lifecycle: active
+    path: 05_fia/data/processed/understory_veg
+    format: parquet_dataset
+    one_row_is: >-
+      one recorded plant species on one subplot in one condition of one plot visit
+    keys: [PLT_CN, INVYR, CONDID, SUBP, VEG_FLDSPCD, UNIQUE_SP_NBR, LAYER]
+    grain_id: fia_condition_subplot_plant
+    derived_from: fia_cond_partitions
+    producer: 05_fia/scripts/06_extract_understory.R
+    access_mode: catalog_only
+    review_status: not_reviewed
+    facets: [state, INVYR, growth_habit, plant_family, plant_us_nativity]
+    caveats:
+      - Phase 2 vegetation protocol; collected on a subset of plots only.
+      - >-
+        Species codes here are PLANTS symbols, not FIA SPCD. They do not join to
+        ref_species or to the species niche tables without a crosswalk.
+      - >-
+        scientific_name and accepted_symbol resolve superseded PLANTS codes to
+        their current name via the dictionary's NEW_SYMBOL/NEW_SCIENTIFIC_NAME;
+        other trait fields stay with the recorded symbol.
+    notes: >-
+      Producer recovered 2026-07-23: 05_fia/scripts/06_extract_understory.R
+      rebuilds this from raw P2VEG_SUBPLOT_SPP + SUBP_COND, with plant attributes
+      from REF_PLANT_DICTIONARY. Verified byte-identical to the previously
+      orphaned product on CA/CO/MT, except 13 rows of one symbol (SPLU5) where the
+      current PLANTS dictionary added a trailing space — expected input drift, not
+      a build error. This is the only product carrying non-tree plants, and
+      06_species_niches/scripts/01_build_species_universe.R depends on it, so the
+      species-niche workflow is now reproducible from a clean checkout.
+
+  # =========================================================================
+  # FIA — national summaries
+  # =========================================================================
+  - id: plot_condition_metadata
+    title: FIA condition metadata
+    family: fia_summaries
+    kind: final
+    lifecycle: active
+    path: 05_fia/data/processed/summaries/plot_condition_metadata.parquet
+    format: parquet_file
+    one_row_is: one mapped condition within one plot visit
+    keys: [PLT_CN, INVYR, CONDID]
+    grain_id: fia_condition_visit
+    producer: 05_fia/scripts/05_build_fia_summaries.R
+    access_mode: guided_combined
+    review_status: constrained
+    facets: [state, STATECD, INVYR, COND_STATUS_CD, FORTYPCD, forest_type_group]
+    caveats:
+      - >-
+        CONDID identifies a condition inside one visit only. It is not stable
+        across visits, so conditions cannot be matched over time by CONDID.
+      - >-
+        CONDPROP_UNADJ is the share of the plot in this condition. It is not an
+        area expansion factor and must not be used as one.
+      - Coordinates are the public fuzzed FIA coordinates, not true locations.
+      - >-
+        Does not yet carry the FIA protocol fields (MANUAL, MEASYEAR, DESIGNCD,
+        REMPER) needed to explain protocol-dependent definitions.
+    notes: >-
+      Base product for the first guided workflow and the primary join table for
+      the species-composition products.
+
+  - id: plot_cond_fortypcd
+    title: FIA condition forest type (compact)
+    family: fia_summaries
+    kind: final
+    lifecycle: active
+    path: 05_fia/data/processed/summaries/plot_cond_fortypcd.parquet
+    format: parquet_file
+    one_row_is: one mapped condition within one plot visit
+    keys: [PLT_CN, INVYR, CONDID]
+    grain_id: fia_condition_visit
+    producer: 05_fia/scripts/05_build_fia_summaries.R
+    access_mode: filtered_extract
+    review_status: constrained
+    facets: [state, STATECD, INVYR, COND_STATUS_CD, FORTYPCD]
+    caveats:
+      - Raw codes without labels. For joins use plot_condition_metadata instead.
+
+  - id: fia_condition_disturbance_flags
+    title: FIA condition disturbance and treatment flags
+    family: fia_summaries
+    kind: final
+    lifecycle: active
+    path: 05_fia/data/processed/summaries/fia_condition_disturbance_flags.parquet
+    format: parquet_file
+    one_row_is: one mapped condition within one plot visit
+    keys: [PLT_CN, INVYR, CONDID]
+    grain_id: fia_condition_visit
+    derived_from: plot_condition_metadata
+    producer: 05_fia/scripts/05_build_fia_summaries.R
+    access_mode: guided_combined
+    review_status: constrained
+    facets: [state, STATECD, INVYR, disturbance_class, region_east_west]
+    caveats:
+      - >-
+        Neutral per-condition flags, not an analysis population. "Control" vs
+        "disturbed" is deliberately NOT decided here; build it downstream from
+        the flags. Control = is_forested_analysis_condition &
+        !has_any_recorded_disturbance & !has_any_treatment; disturbed =
+        is_forested_analysis_condition & is_natural_disturbance &
+        !is_human_or_harvest & !has_any_treatment.
+      - >-
+        A "no recorded disturbance" flag means FIA recorded no disturbance code.
+        That is an absence of record, not proof of no event.
+      - >-
+        is_high_severity_proxy uses crown fire (DSTRBCD 32) as a stand-in for
+        high-severity fire. That choice has not been signed off scientifically.
+    notes: >-
+      Reusable condition-level disturbance/treatment flags plus raw FIA codes.
+      Filter to whatever population an analysis needs; the repo does not choose
+      control vs disturbed.
+
+  - id: plot_disturbance_history
+    title: FIA condition disturbance events (long form)
+    family: fia_summaries
+    kind: final
+    lifecycle: active
+    path: 05_fia/data/processed/summaries/plot_disturbance_history.parquet
+    format: parquet_file
+    one_row_is: one recorded disturbance slot on one condition in one plot visit
+    keys: [PLT_CN, INVYR, CONDID, disturbance_slot]
+    grain_id: fia_condition_disturbance_slot
+    derived_from: plot_condition_metadata
+    producer: 05_fia/scripts/05_build_fia_summaries.R
+    access_mode: filtered_extract
+    review_status: constrained
+    facets: [STATECD, INVYR, DSTRBCD, disturbance_category, DSTRBYR]
+    caveats:
+      - >-
+        Keeps every recorded event rather than picking one. A condition with
+        three disturbances appears three times; do not count rows as conditions.
+      - >-
+        FIA records a disturbance only above a minimum area and damage threshold,
+        looking back a limited number of years. Absence is not proof of absence.
+
+  - id: plot_treatment_history
+    title: FIA condition treatments (long form)
+    family: fia_summaries
+    kind: final
+    lifecycle: active
+    path: 05_fia/data/processed/summaries/plot_treatment_history.parquet
+    format: parquet_file
+    one_row_is: one recorded treatment slot on one condition in one plot visit
+    keys: [PLT_CN, INVYR, CONDID, treatment_slot]
+    grain_id: fia_condition_treatment_slot
+    derived_from: plot_condition_metadata
+    producer: 05_fia/scripts/05_build_fia_summaries.R
+    access_mode: filtered_extract
+    review_status: constrained
+    facets: [STATECD, INVYR, TRTCD, treatment_category, treatment_year_status]
+    caveats:
+      - >-
+        A treatment is a deliberate management action FIA recorded, normally on
+        at least one acre. It is not a measure of how much was cut.
+      - >-
+        Read treatment_year_status before using any year. It separates real
+        calendar years from missing, continuous, and post-inventory values.
+    notes: >-
+      The TRTYR3 corruption described in the explorer design document is repaired
+      in the current build. Checked 2026-07-22: TRTYR3 is int32 in all 50 state
+      condition partitions, and holds 5,403 four-digit years spanning 1986-2025
+      with no value of 0 or 1 — the same 5,403 records the design document
+      reported as coerced to TRUE. The rebuild is recorded in
+      scratch_output/fia_fix_temp/rebuild_manifest.json (2026-07-21). Treatment
+      timing can be reconsidered for exposure, subject to treatment_year_status.
+
+  - id: plot_damage_agents
+    title: FIA live-tree damage agents (labelled)
+    family: fia_summaries
+    kind: final
+    lifecycle: active
+    path: 05_fia/data/processed/summaries/plot_damage_agents.parquet
+    format: parquet_file
+    one_row_is: >-
+      one species and damage-agent code within one condition of one plot visit
+    keys: [PLT_CN, INVYR, CONDID, SPCD, DAMAGE_AGENT_CD]
+    grain_id: fia_condition_species_damage_agent
+    derived_from: plot_condition_metadata
+    producer: 05_fia/scripts/05_build_fia_summaries.R
+    access_mode: filtered_extract
+    review_status: constrained
+    facets: [state, INVYR, SPCD, DAMAGE_AGENT_CD, agent_category]
+    caveats:
+      - >-
+        Damage seen on a living tree. Different from condition disturbance and
+        from cause of death. agent_label is blank for codes with no label.
+
+  - id: plot_exclusion_flags
+    title: FIA plot-visit review flags
+    family: fia_summaries
+    kind: final
+    lifecycle: active
+    path: 05_fia/data/processed/summaries/plot_exclusion_flags.parquet
+    format: parquet_file
+    one_row_is: one plot visit
+    keys: [PLT_CN, INVYR]
+    grain_id: fia_plot_visit
+    producer: 05_fia/scripts/05_build_fia_summaries.R
+    access_mode: guided_combined
+    review_status: constrained
+    facets: [STATECD, INVYR, exclude_any, has_fire, has_insect]
+    caveats:
+      - >-
+        These flags describe the whole plot visit. Attaching one to a condition
+        row is context, not a property of that condition.
+      - >-
+        FIA samples all land, not just forest. About 59% of plot visits have
+        pct_forested = 0.
+
+  - id: plot_tree_metrics
+    title: FIA plot tree structure
+    family: fia_summaries
+    kind: final
+    lifecycle: active
+    path: 05_fia/data/processed/summaries/plot_tree_metrics.parquet
+    format: parquet_file
+    one_row_is: one plot visit
+    keys: [PLT_CN, INVYR]
+    grain_id: fia_plot_visit
+    producer: 05_fia/scripts/05_build_fia_summaries.R
+    access_mode: guided_combined
+    review_status: constrained
+    facets: [state, INVYR]
+    caveats:
+      - >-
+        Measured across the whole plot visit. If attached to condition rows the
+        values repeat, and repeated values must never be summed.
+      - species_temp_optima_mean is a dead placeholder column; ignore it.
+
+  - id: plot_seedling_metrics
+    title: FIA plot seedling totals
+    family: fia_summaries
+    kind: final
+    lifecycle: active
+    path: 05_fia/data/processed/summaries/plot_seedling_metrics.parquet
+    format: parquet_file
+    one_row_is: one plot visit
+    keys: [PLT_CN, INVYR]
+    grain_id: fia_plot_visit
+    producer: 05_fia/scripts/05_build_fia_summaries.R
+    access_mode: guided_combined
+    review_status: constrained
+    facets: [state, INVYR]
+    caveats:
+      - Species identity is not preserved here; use plot_seedling_species.
+      - Same plot-visit repetition rule as plot_tree_metrics.
+
+  - id: plot_mortality_metrics
+    title: FIA mortality and removals (national)
+    family: fia_summaries
+    kind: final
+    lifecycle: active
+    path: 05_fia/data/processed/summaries/plot_mortality_metrics.parquet
+    format: parquet_file
+    one_row_is: >-
+      one species and cause code within one plot visit, split into natural
+      mortality and harvest removal
+    keys: [PLT_CN, INVYR, SPCD, AGENTCD, component_type]
+    grain_id: fia_plot_visit_species_cause
+    producer: 05_fia/scripts/05_build_fia_summaries.R
+    access_mode: catalog_only
+    review_status: domain_review_required
+    facets: [state, INVYR, SPCD, AGENTCD, component_type]
+    caveats:
+      - >-
+        Carries FIA growth/removal/mortality time-period meaning that this
+        repository has not yet worked through. Not safe as a plain per-visit count.
+
+  - id: plot_tree_species
+    title: FIA tree species composition
+    family: fia_summaries
+    kind: final
+    lifecycle: active
+    path: 05_fia/data/processed/summaries/plot_tree_species.parquet
+    format: parquet_file
+    one_row_is: >-
+      one species on one subplot in one condition of one plot visit, for live
+      trees at least 5 inches across
+    keys: [PLT_CN, INVYR, CONDID, SUBP, SPCD]
+    grain_id: fia_condition_subplot_species
+    derived_from: plot_condition_metadata
+    producer: 05_fia/scripts/05_build_fia_summaries.R
+    access_mode: catalog_only
+    review_status: domain_review_required
+    facets: [state, INVYR, SPCD, SFTWD_HRDWD, FORTYPCD]
+    caveats:
+      - >-
+        Includes every FIA condition class. Forest-specific work must join
+        condition status and filter COND_STATUS_CD == 1 before aggregation.
+      - >-
+        How to combine subplots into a condition total is not settled, and
+        neither is whether abundance should be weighted by condition share.
+      - abundance_for_cwm is a project choice, not an FIA field.
+    notes: >-
+      The physical producer and product retain CONDID and SUBP through this
+      reviewed aggregation grain.
+
+  - id: plot_sapling_species
+    title: FIA sapling species composition
+    family: fia_summaries
+    kind: final
+    lifecycle: active
+    path: 05_fia/data/processed/summaries/plot_sapling_species.parquet
+    format: parquet_file
+    one_row_is: >-
+      one species on one subplot in one condition of one plot visit, for live
+      saplings 1.0-4.9 inches across
+    keys: [PLT_CN, INVYR, CONDID, SUBP, SPCD]
+    grain_id: fia_condition_subplot_species
+    derived_from: plot_condition_metadata
+    producer: 05_fia/scripts/05_build_fia_summaries.R
+    access_mode: catalog_only
+    review_status: domain_review_required
+    facets: [state, INVYR, SPCD, SFTWD_HRDWD, FORTYPCD]
+    caveats:
+      - >-
+        Includes every FIA condition class. Forest-specific work must join
+        condition status and filter COND_STATUS_CD == 1 before aggregation.
+      - Same unsettled subplot and condition-share questions as plot_tree_species.
+
+  - id: plot_seedling_species
+    title: FIA seedling species composition
+    family: fia_summaries
+    kind: final
+    lifecycle: active
+    path: 05_fia/data/processed/summaries/plot_seedling_species.parquet
+    format: parquet_file
+    one_row_is: >-
+      one species on one subplot in one condition of one plot visit, for
+      regeneration under 1 inch across
+    keys: [PLT_CN, INVYR, CONDID, SUBP, SPCD]
+    grain_id: fia_condition_subplot_species
+    derived_from: plot_condition_metadata
+    producer: 05_fia/scripts/05_build_fia_summaries.R
+    access_mode: catalog_only
+    review_status: domain_review_required
+    facets: [state, INVYR, SPCD, SFTWD_HRDWD, FORTYPCD]
+    caveats:
+      - >-
+        Includes every FIA condition class. Forest-specific work must join
+        condition status and filter COND_STATUS_CD == 1 before aggregation.
+      - Same unsettled subplot and condition-share questions as plot_tree_species.
+      - Older manuals handled seedling counts differently; check comparability.
+    notes: Main recruitment input to the thermophilization products.
+
+  # =========================================================================
+  # FIA — reference tables
+  # =========================================================================
+  - id: ref_species
+    title: FIA species reference
+    family: fia_lookups
+    kind: lookup
+    lifecycle: active
+    path: 05_fia/lookups/ref_species.parquet
+    format: parquet_file
+    one_row_is: one FIA species code
+    keys: [SPCD]
+    grain_id: fia_species_code
+    producer: 05_fia/scripts/02_inspect_fia.R
+    intended_access_mode: prepared_download
+    access_mode: catalog_only
+    review_status: certified
+    facets: [SFTWD_HRDWD, GENUS, WOODLAND]
+    caveats: []
+    notes: Attaches scientific and common names to any SPCD.
+
+  - id: ref_forest_type
+    title: FIA forest type reference
+    family: fia_lookups
+    kind: lookup
+    lifecycle: active
+    path: 05_fia/lookups/ref_forest_type.parquet
+    format: parquet_file
+    one_row_is: one FIA forest type code
+    keys: [VALUE]
+    grain_id: fia_forest_type_code
+    producer: 05_fia/scripts/02_inspect_fia.R
+    intended_access_mode: prepared_download
+    access_mode: catalog_only
+    review_status: constrained
+    facets: [TYPGRPCD]
+    caveats:
+      - >-
+        MANUAL_START and MANUAL_END mean a code was valid only for certain field
+        manual versions. Labels are not constant across all years.
+
+  # =========================================================================
+  # Site climate
+  # =========================================================================
+  - id: site_climate
+    title: Monthly climate at survey point locations
+    family: site_climate
+    kind: final
+    lifecycle: active
+    path: site_climate/data/recheck/site_climate.parquet
+    format: parquet_file
+    one_row_is: one site, year, month, and climate variable
+    keys: [site_id, year, month, variable]
+    grain_id: climate_site_month_variable
+    producer: site_climate/scripts/extract_terraclimate_points.R
+    access_mode: filtered_extract
+    review_status: constrained
+    facets: [year, month, variable, water_year]
+    caveats:
+      - >-
+        These are not all FIA plots. Of the 6,956 sites, 4,886 are tree-ring
+        (ITRDB) locations worldwide and 2,070 are FIA. Filter on `source` in the
+        input location list before treating any subset as an FIA sample.
+      - >-
+        The FIA sites join on PLT_CN, at the plot-visit level — not
+        stable_plot_id, which matches nothing here.
+      - >-
+        Joining to this repository's FIA products returns only 198 of the 2,070
+        FIA sites. The other 1,872 are periodic-inventory visits from 1984-1993,
+        and the processed FIA products start at inventory year 2000
+        (config.yaml `processed.fia.invyr_min`). This is a coverage mismatch, not
+        a broken key.
+      - >-
+        FIA coverage is five Interior West states only: MT 910, UT 669, ID 224,
+        CO 156, WY 111.
+      - >-
+        Values come from the TerraClimate grid cell containing the point, not
+        from the site itself.
+      - Scale factors are already applied. Temperatures are degrees C, water is mm.
+      - >-
+        Some points snap to ocean or masked cells and return nothing; those are
+        listed in site_climate/qa/outputs/site_climate_missing_sites.csv.
+    notes: >-
+      A standalone point extraction, separate from the numbered workflows. It is
+      NOT the output of 05_fia/scripts/site_climate/, whose product is not built
+      in this data root; docs/DATA_PRODUCTS.md records that wrong path for it.
+
+      Identifier traced 2026-07-22: all 2,070 FIA site ids match a CN in the raw
+      FIA PLOT tables exactly, so they are genuine PLT_CN values. The periodic
+      inventories they mostly come from are single-year statewide snapshots
+      (MT 1989, UT 1993, ID 1991) and predate the annual inventory design, so
+      comparing them with modern annual-panel plots needs review before use.
+
+      "recheck" reads as a scratch directory; promote this to a stable release
+      path before any handoff.
+
+  - id: site_pixel_map
+    title: Survey point to climate grid cell map
+    family: site_climate
+    kind: final
+    lifecycle: active
+    path: site_climate/data/recheck/site_pixel_map.parquet
+    format: parquet_file
+    one_row_is: one site and the climate grid cell used for it
+    keys: [site_id]
+    grain_id: climate_site
+    producer: site_climate/scripts/extract_terraclimate_points.R
+    access_mode: prepared_download
+    review_status: certified
+    facets: []
+    caveats:
+      - Several sites can share one climate grid cell.
+
+  - id: site_climate_input_locations
+    title: Survey point location list (climate extraction input)
+    family: site_climate
+    kind: intermediate
+    lifecycle: active
+    path: site_climate/input/all_site_locations.csv
+    format: csv
+    one_row_is: one point submitted to the climate extraction
+    keys: [site_id]
+    grain_id: climate_site
+    producer: supplied input — not written by a script in this repository
+    access_mode: catalog_only
+    review_status: constrained
+    facets: [source]
+    caveats:
+      - >-
+        Mixed sources. `source` is ITRDB for 4,886 rows and FIA for 2,070. The
+        two id schemes are unrelated; always filter on `source` first.
+      - >-
+        FIA rows carry a PLT_CN. ITRDB rows carry a tree-ring site code such as
+        `CANA169`. Neither is this repository's stable_plot_id.
+    notes: >-
+      This is the file the built climate product actually came from: all 6,956
+      site_pixel_map ids match it exactly. Confirmed by the project owner as the
+      intended input to the point extraction.
+
+  - id: fia_site_locations
+    title: FIA stable plot location list
+    family: site_climate
+    kind: intermediate
+    lifecycle: active
+    path: 05_fia/data/processed/site_climate/all_site_locations.csv
+    format: csv
+    one_row_is: one stable FIA plot location
+    keys: [site_id]
+    grain_id: climate_site
+    producer: 05_fia/scripts/site_climate/01_build_site_list.R
+    access_mode: catalog_only
+    review_status: constrained
+    facets: []
+    caveats:
+      - >-
+        One representative public coordinate per plot. Public FIA coordinates are
+        fuzzed and some private-land plots are swapped within a county.
+    notes: >-
+      Not a duplicate of site_climate/input/all_site_locations.csv — the two share
+      no ids at all. This one has 408,040 rows keyed by stable_plot_id and is the
+      input to the FIA-wide site-climate extraction, whose output is not built in
+      this data root. The other has 6,956 rows and produced the climate product
+      that does exist. Both are registered because they are different things.
+
+  # =========================================================================
+  # Species climate niches
+  # =========================================================================
+  - id: species_universe
+    title: Species universe
+    family: species_niches
+    kind: final
+    lifecycle: active
+    path: 06_species_niches/data/processed/species_universe.parquet
+    format: parquet_file
+    one_row_is: one source species code seen in the project's community products
+    keys: [species_key]
+    grain_id: species
+    producer: 06_species_niches/scripts/01_build_species_universe.R
+    access_mode: prepared_download
+    review_status: certified
+    facets: [source_code_system, in_seedlings, in_saplings, in_trees, needs_niche]
+    caveats:
+      - >-
+        Covers both FIA tree codes and Phase 2 vegetation plant codes. Check
+        source_code_system before joining.
+      - >-
+        abundance_total is a prioritisation number pooled across layers. It is
+        not a comparable abundance measure.
+
+  - id: species_niche_taxon_crosswalk
+    title: Species taxon crosswalk
+    family: species_niches
+    kind: final
+    lifecycle: active
+    path: 06_species_niches/data/processed/species_niche_taxon_crosswalk.parquet
+    format: parquet_file
+    one_row_is: one source species code with its resolved biological taxon
+    keys: [species_key]
+    grain_id: species
+    derived_from: species_universe
+    producer: 06_species_niches/qa/09_build_species_taxon_crosswalk.R
+    access_mode: prepared_download
+    review_status: certified
+    facets: [taxon_resolution_status, bien_range_available, tnrs_review_class]
+    caveats:
+      - >-
+        Use this to count biological species. Use species_universe to count
+        source codes. Several codes can map to one taxon.
+      - Candidate TNRS names are unreviewed suggestions, not decisions.
+
+  - id: bien_range_availability
+    title: Species range lookup audit
+    family: species_niches
+    kind: qa
+    lifecycle: active
+    path: 06_species_niches/data/processed/bien_range_availability.parquet
+    format: parquet_file
+    one_row_is: one species needing a niche, with the result of the range lookup
+    keys: [species_key]
+    grain_id: species
+    derived_from: species_universe
+    producer: 06_species_niches/scripts/02_check_bien_ranges.R
+    access_mode: prepared_download
+    review_status: certified
+    facets: [bien_range_available, range_lookup_status, needs_range_review]
+    caveats:
+      - >-
+        Records what name was sent to BIEN and whether a map came back. It says
+        nothing about whether the map is ecologically right.
+
+  - id: species_range_polygons
+    title: Species range maps
+    family: species_niches
+    kind: final
+    lifecycle: active
+    path: 06_species_niches/data/processed/species_range_polygons.gpkg
+    format: gpkg_layer
+    gpkg_layer: species_range_polygons
+    one_row_is: one range polygon for one source species code
+    keys: [species_key]
+    grain_id: species
+    derived_from: species_universe
+    producer: 06_species_niches/scripts/03_download_bien_ranges.R
+    access_mode: catalog_only
+    review_status: constrained
+    facets: [download_status, range_extent_review]
+    caveats:
+      - >-
+        BIEN range maps are modelled distributions from an external project, not
+        observations.
+      - >-
+        Check range_extent_review. Some maps are implausibly small or span the
+        whole globe.
+    notes: Spatial product; not offered as an interactive extract.
+
+  - id: species_range_climate
+    title: Species range climate (global ranges)
+    family: species_niches
+    kind: intermediate
+    lifecycle: active
+    path: 06_species_niches/data/processed/species_range_climate.parquet
+    format: parquet_file
+    one_row_is: one species, month, climate variable, and summary statistic
+    keys: [species_key, month, variable, metric]
+    grain_id: species_month_variable_metric
+    derived_from: species_universe
+    producer: 06_species_niches/scripts/04_extract_terraclimate_from_ranges.R
+    access_mode: filtered_extract
+    review_status: constrained
+    facets: [month, variable, metric, climate_period]
+    caveats:
+      - >-
+        Long format: one species has many rows. Filter on variable and metric
+        before reading anything as "the" value for a species.
+
+  - id: species_range_climate_us_study_area
+    title: Species range climate (US study area)
+    family: species_niches
+    kind: intermediate
+    lifecycle: active
+    path: 06_species_niches/data/processed/species_range_climate_us_study_area.parquet
+    format: parquet_file
+    one_row_is: one species, month, climate variable, and summary statistic
+    keys: [species_key, month, variable, metric]
+    grain_id: species_month_variable_metric
+    derived_from: species_universe
+    producer: 06_species_niches/scripts/04_extract_terraclimate_from_ranges.R
+    access_mode: filtered_extract
+    review_status: constrained
+    facets: [month, variable, metric, climate_period, range_scope]
+    caveats:
+      - >-
+        Ranges are clipped to the US study area first, so a species whose range
+        is mostly outside the US is summarised from a fragment of it.
+
+  - id: species_climate_niches
+    title: Species climate niches (global ranges)
+    family: species_niches
+    kind: final
+    lifecycle: active
+    path: 06_species_niches/data/processed/species_climate_niches.parquet
+    format: parquet_file
+    one_row_is: one species
+    keys: [species_key]
+    grain_id: species
+    derived_from: species_universe
+    producer: 06_species_niches/scripts/05_build_species_climate_niches.R
+    access_mode: prepared_download
+    review_status: constrained
+    facets: [source_code_system, climate_period, niche_method]
+    caveats:
+      - >-
+        Describes the climate across a species' mapped range. It does not vary
+        by plot, year, or life stage.
+      - >-
+        Check n_indicators_present and the n_months_ columns. A niche built from
+        fewer than twelve months is not comparable to a complete one.
+    notes: >-
+      Main enrichment for FIA species observations. Coverage is partial; the
+      match rate must be shown before any join is offered.
+
+  - id: species_climate_niches_us_study_area
+    title: Species climate niches (US study area)
+    family: species_niches
+    kind: final
+    lifecycle: active
+    path: 06_species_niches/data/processed/species_climate_niches_us_study_area.parquet
+    format: parquet_file
+    one_row_is: one species
+    keys: [species_key]
+    grain_id: species
+    derived_from: species_universe
+    producer: 06_species_niches/scripts/05_build_species_climate_niches.R
+    access_mode: prepared_download
+    review_status: constrained
+    facets: [source_code_system, climate_period, niche_method, range_scope]
+    caveats:
+      - >-
+        Study-area version. A species common outside the US gets a niche based
+        only on its US range, which shifts the value.
+      - >-
+        Read range_scope on every row. It records whether the study-area range
+        or a global fallback was used.
+    notes: This is the version the thermophilization products consume.
+
+  - id: species_niche_qa
+    title: Species niche QA reports
+    family: species_niches
+    kind: qa
+    lifecycle: active
+    path: 06_species_niches/qa/outputs
+    format: csv_glob
+    glob: "*.csv"
+    one_row_is: varies by report
+    keys: []
+    producer: 06_species_niches/qa/
+    access_mode: prepared_download
+    review_status: certified
+    facets: []
+    caveats:
+      - Diagnostics for review, not analysis inputs.
+    notes: >-
+      Start with species_niche_validation_decision.csv, species_niche_gap_summary.csv,
+      and study_area_climate_gap_summary.csv.
+
+  # =========================================================================
+  # Thermophilization — forest community change
+  # =========================================================================
+  - id: plot_disturbance_severity
+    title: Plot-visit disturbance extent
+    family: thermophilization
+    kind: analysis
+    lifecycle: active
+    path: 07_thermophilization/data/processed/plot_disturbance_severity.parquet
+    format: parquet_file
+    one_row_is: one plot visit
+    keys: [stable_plot_id, PLT_CN, INVYR]
+    grain_id: fia_plot_visit_stable
+    producer: 07_thermophilization/scripts/03_build_plot_disturbance_severity.R
+    access_mode: prepared_download
+    review_status: constrained
+    facets: [INVYR, dominant_disturbance_class, is_high_severity_fire]
+    caveats:
+      - >-
+        Proportions are how much of the mapped plot carried each disturbance
+        type, from FIA's condition records. Not a satellite severity measure.
+      - >-
+        fire_ fields cover all fire codes and insect_ fields cover all insect
+        codes. Crown fire alone is prop_crown_fire. FIA cannot isolate bark beetle.
+      - >-
+        is_high_severity_fire stays empty until a cutoff is set in config.yaml.
+
+  - id: plot_community_climate_seedlings
+    title: Seedling community climate (condition level)
+    family: thermophilization
+    kind: analysis
+    lifecycle: active
+    path: 07_thermophilization/data/processed/plot_community_climate_seedlings.parquet
+    format: parquet_file
+    one_row_is: one condition in one plot visit, for the seedling layer
+    keys: [community_layer, stable_plot_id, PLT_CN, INVYR, CONDID]
+    grain_id: fia_condition_visit_layer
+    derived_from: plot_condition_metadata
+    producer: 07_thermophilization/scripts/01_build_condition_community_climate.R
+    access_mode: prepared_download
+    review_status: constrained
+    facets: [STATECD, INVYR, FORTYPCD]
+    caveats:
+      - >-
+        Includes every FIA condition class; it is not itself a forest-only
+        product. Join condition metadata and filter COND_STATUS_CD == 1 in a
+        forest-specific workflow.
+      - Check niche coverage and global-fallback columns before comparing values.
+
+  - id: plot_community_climate_saplings
+    title: Sapling community climate (condition level)
+    family: thermophilization
+    kind: analysis
+    lifecycle: active
+    path: 07_thermophilization/data/processed/plot_community_climate_saplings.parquet
+    format: parquet_file
+    one_row_is: one condition in one plot visit, for the sapling layer
+    keys: [community_layer, stable_plot_id, PLT_CN, INVYR, CONDID]
+    grain_id: fia_condition_visit_layer
+    derived_from: plot_condition_metadata
+    producer: 07_thermophilization/scripts/01_build_condition_community_climate.R
+    access_mode: prepared_download
+    review_status: constrained
+    facets: [STATECD, INVYR, FORTYPCD]
+    caveats:
+      - >-
+        Includes every FIA condition class; it is not itself a forest-only
+        product. Join condition metadata and filter COND_STATUS_CD == 1 in a
+        forest-specific workflow.
+      - Check niche coverage and global-fallback columns before comparing values.
+
+  - id: plot_community_climate_trees
+    title: Tree community climate (condition level)
+    family: thermophilization
+    kind: analysis
+    lifecycle: active
+    path: 07_thermophilization/data/processed/plot_community_climate_trees.parquet
+    format: parquet_file
+    one_row_is: one condition in one plot visit, for the tree layer
+    keys: [community_layer, stable_plot_id, PLT_CN, INVYR, CONDID]
+    grain_id: fia_condition_visit_layer
+    derived_from: plot_condition_metadata
+    producer: 07_thermophilization/scripts/01_build_condition_community_climate.R
+    access_mode: prepared_download
+    review_status: constrained
+    facets: [STATECD, INVYR, FORTYPCD]
+    caveats:
+      - >-
+        Includes every FIA condition class; it is not itself a forest-only
+        product. Join condition metadata and filter COND_STATUS_CD == 1 in a
+        forest-specific workflow.
+      - Check niche coverage and global-fallback columns before comparing values.
+
+  - id: forest_visit_interval_change_seedlings
+    title: Seedling community climate change between consecutive surveys
+    family: thermophilization
+    kind: analysis
+    lifecycle: active
+    path: 07_thermophilization/data/processed/forest_visit_interval_change_seedlings.parquet
+    format: parquet_file
+    one_row_is: one remeasurement interval, for the seedling layer
+    keys: [community_layer, stable_plot_id, previous_PLT_CN, current_PLT_CN]
+    grain_id: fia_visit_interval_layer
+    derived_from: forest_plot_visit_cwm_seedlings
+    producer: 07_thermophilization/scripts/04_build_visit_interval_change.R
+    access_mode: prepared_download
+    review_status: constrained
+    facets: [INVYR, dominant_disturbance_class]
+    caveats:
+      - >-
+        A plot measured three times gives two rows. Treating them as independent
+        observations understates how correlated repeat visits are.
+      - >-
+        Every interval uses FIA's own PREV_PLT_CN remeasurement link. Visits that
+        are merely chronologically adjacent are excluded, not silently paired.
+      - >-
+        Disturbance columns describe the later visit of the pair. Use
+        fire_within_interval or insect_within_interval to ask whether the dated
+        event falls inside the interval.
+      - >-
+        rate_ columns divide by the INVYR difference. days_between_measurements
+        gives measured elapsed time when that distinction matters.
+
+  - id: forest_visit_interval_change_saplings
+    title: Sapling community climate change between consecutive surveys
+    family: thermophilization
+    kind: analysis
+    lifecycle: active
+    path: 07_thermophilization/data/processed/forest_visit_interval_change_saplings.parquet
+    format: parquet_file
+    one_row_is: one remeasurement interval, for the sapling layer
+    keys: [community_layer, stable_plot_id, previous_PLT_CN, current_PLT_CN]
+    grain_id: fia_visit_interval_layer
+    derived_from: forest_plot_visit_cwm_saplings
+    producer: 07_thermophilization/scripts/04_build_visit_interval_change.R
+    access_mode: prepared_download
+    review_status: constrained
+    facets: [INVYR, dominant_disturbance_class]
+    caveats:
+      - >-
+        A plot measured three times gives two rows. Treating them as independent
+        observations understates how correlated repeat visits are.
+      - >-
+        Every interval uses FIA's own PREV_PLT_CN remeasurement link. Visits that
+        are merely chronologically adjacent are excluded, not silently paired.
+      - >-
+        Disturbance columns describe the later visit of the pair. Use
+        fire_within_interval or insect_within_interval to ask whether the dated
+        event falls inside the interval.
+      - >-
+        rate_ columns divide by the INVYR difference. days_between_measurements
+        gives measured elapsed time when that distinction matters.
+
+  - id: forest_visit_interval_change_trees
+    title: Tree community climate change between consecutive surveys
+    family: thermophilization
+    kind: analysis
+    lifecycle: active
+    path: 07_thermophilization/data/processed/forest_visit_interval_change_trees.parquet
+    format: parquet_file
+    one_row_is: one remeasurement interval, for the tree layer
+    keys: [community_layer, stable_plot_id, previous_PLT_CN, current_PLT_CN]
+    grain_id: fia_visit_interval_layer
+    derived_from: forest_plot_visit_cwm_trees
+    producer: 07_thermophilization/scripts/04_build_visit_interval_change.R
+    access_mode: prepared_download
+    review_status: constrained
+    facets: [INVYR, dominant_disturbance_class]
+    caveats:
+      - >-
+        A plot measured three times gives two rows. Treating them as independent
+        observations understates how correlated repeat visits are.
+      - >-
+        Every interval uses FIA's own PREV_PLT_CN remeasurement link. Visits that
+        are merely chronologically adjacent are excluded, not silently paired.
+      - >-
+        Disturbance columns describe the later visit of the pair. Use
+        fire_within_interval or insect_within_interval to ask whether the dated
+        event falls inside the interval.
+      - >-
+        rate_ columns divide by the INVYR difference. days_between_measurements
+        gives measured elapsed time when that distinction matters.
+
+  - id: disturbance_survey_coverage_by_plot
+    title: Before-and-after survey coverage by plot
+    family: thermophilization
+    kind: qa
+    lifecycle: active
+    path: 07_thermophilization/qa/outputs/disturbance_survey_coverage_by_plot.parquet
+    format: parquet_file
+    one_row_is: one stable plot
+    keys: [stable_plot_id]
+    grain_id: fia_stable_plot
+    producer: 07_thermophilization/qa/02_disturbance_survey_coverage.R
+    access_mode: prepared_download
+    review_status: certified
+    facets: [any_disturbance_before_after, fire_before_after, insect_before_after]
+    caveats:
+      - >-
+        Answers "do we have a survey before and after the event". It does not
+        say the event affected the plot.
+
+  - id: thermophilization_qa
+    title: Forest community change QA reports
+    family: thermophilization
+    kind: qa
+    lifecycle: active
+    path: 07_thermophilization/qa/outputs
+    format: csv_glob
+    glob: "*.csv"
+    one_row_is: varies by report
+    keys: []
+    producer: 07_thermophilization/qa/
+    access_mode: prepared_download
+    review_status: certified
+    facets: []
+    caveats:
+      - Diagnostics for review, not analysis inputs.
+    notes: >-
+      thermophilization_validation_checks.csv is the structural check list;
+      the coverage and missing-species files explain niche gaps.
+
+  # =========================================================================
+  # IDS — aerial damage survey
+  # =========================================================================
+  - id: ids_damage_areas
+    title: IDS damage polygons
+    family: ids
+    kind: final
+    lifecycle: active
+    path: 01_ids/data/processed/ids_layers_cleaned.gpkg
+    format: gpkg_layer
+    gpkg_layer: damage_areas
+    one_row_is: one mapped damage polygon in one survey year
+    keys: [OBSERVATION_ID, DAMAGE_AREA_ID]
+    grain_id: ids_damage_area
+    producer: 01_ids/scripts/03_clean_ids.R
+    access_mode: catalog_only
+    review_status: constrained
+    facets: [SURVEY_YEAR, REGION_ID, DCA_CODE, HOST_CODE, DAMAGE_TYPE_CODE]
+    caveats:
+      - >-
+        Damage sketched from an aircraft. Coverage depends on whether an area was
+        flown that year, so a blank area can mean "no damage" or "not surveyed".
+      - >-
+        ACRES is the polygon's own reported acreage, not a measure of overlap
+        with anything else.
+      - >-
+        A handful of rows (6, in 3 identifier groups) share an identifier but
+        disagree on some attribute; they are kept and listed in
+        01_ids/qa/outputs/damage_areas_identifier_conflicts.csv. They are 0.0001%
+        of the layer and do not materially affect any total.
+    notes: >-
+      Lives in a 5.5 GB GeoPackage. The hosted interface must never scan it;
+      requests are handed to a server-side extractor.
+
+      Cross-archive duplication fixed and the layer rebuilt 2026-07-23:
+      4,475,827 -> 4,472,333 rows, total ACRES 587,582,463 -> 542,565,563 (the
+      earlier build double-counted 7.66% of acreage from observations delivered
+      in more than one regional archive). De-duplication lives in
+      scripts/utils/ids_dedupe.R (called from 03_clean_ids.R) with tests in
+      01_ids/tests/testthat/test_ids_dedupe.R. OBSERVATION_ID + DAMAGE_AREA_ID is
+      now unique except for the 3 attribute-conflict groups noted above.
+
+  - id: ids_damage_points
+    title: IDS damage points
+    family: ids
+    kind: final
+    lifecycle: active
+    path: 01_ids/data/processed/ids_layers_cleaned.gpkg
+    format: gpkg_layer
+    gpkg_layer: damage_points
+    one_row_is: one mapped damage point in one survey year
+    keys: [OBSERVATION_ID]
+    grain_id: ids_observation
+    producer: 01_ids/scripts/03_clean_ids.R
+    access_mode: catalog_only
+    review_status: constrained
+    facets: [SURVEY_YEAR, REGION_ID, DCA_CODE, HOST_CODE]
+    caveats:
+      - Same survey-coverage limit as the damage polygons.
+      - >-
+        Two rows share OBSERVATION_ID but disagree on PERCENT_MID (empty against
+        0.25); both are kept and listed in
+        01_ids/qa/outputs/damage_points_identifier_conflicts.csv. Negligible for
+        totals.
+
+  - id: ids_surveyed_areas
+    title: IDS surveyed areas
+    family: ids
+    kind: final
+    lifecycle: active
+    path: 01_ids/data/processed/ids_layers_cleaned.gpkg
+    format: gpkg_layer
+    gpkg_layer: surveyed_areas
+    one_row_is: one area flown in one survey year
+    keys: [SURVEY_FEATURE_ID]
+    grain_id: ids_surveyed_area
+    producer: 01_ids/scripts/03_clean_ids.R
+    access_mode: catalog_only
+    review_status: certified
+    facets: [SURVEY_YEAR, REGION_ID]
+    caveats: []
+    notes: >-
+      Required to interpret the damage layers. Without it you cannot tell absence
+      of damage from absence of surveying.
+
+  - id: ids_lookups
+    title: IDS code lookups
+    family: ids
+    kind: lookup
+    lifecycle: active
+    path: 01_ids/lookups
+    format: csv_glob
+    glob: "*.csv"
+    one_row_is: one code and its label
+    keys: []
+    producer: 01_ids/scripts/02_inspect_ids.R
+    access_mode: prepared_download
+    review_status: certified
+    facets: []
+    caveats: []
+    notes: >-
+      Covers damage-causal agent, host, region, damage type, severity, and
+      percent-affected codes.
+
+  - id: ids_damage_area_to_surveyed_area
+    title: IDS damage-to-survey assignment
+    family: ids
+    kind: intermediate
+    lifecycle: planned
+    path: processed/ids/damage_area_to_surveyed_area.parquet
+    format: parquet_file
+    one_row_is: one damage polygon and the surveyed area it falls in
+    keys: [OBSERVATION_ID]
+    grain_id: ids_observation
+    producer: 01_ids/scripts/04_assign_surveyed_areas.R
+    access_mode: catalog_only
+    review_status: not_reviewed
+    facets: []
+    caveats: []
+    notes: Documented in DATA_PRODUCTS.md; not built in this data root.
+
+  - id: ids_damage_area_metrics
+    title: IDS damage-area metrics
+    family: ids
+    kind: final
+    lifecycle: planned
+    path: processed/ids/damage_area_area_metrics.parquet
+    format: parquet_file
+    one_row_is: one damage polygon with its computed area measures
+    keys: [OBSERVATION_ID]
+    grain_id: ids_observation
+    producer: 01_ids/scripts/05_compute_area_metrics.R
+    access_mode: catalog_only
+    review_status: not_reviewed
+    facets: []
+    caveats: []
+    notes: >-
+      Documented in DATA_PRODUCTS.md and consumed by the climate summaries;
+      not built in this data root.
+
+  # =========================================================================
+  # Disturbance linkage — planned
+  # =========================================================================
+  - id: plot_footprints
+    title: FIA plot footprints
+    family: disturbance_linkage
+    kind: intermediate
+    lifecycle: planned
+    path: 08_disturbance_linkage/data/processed/plot_footprints.gpkg
+    format: gpkg_layer
+    gpkg_layer: plot_footprints
+    one_row_is: one stable plot, buffered around its public coordinate
+    keys: [stable_plot_id]
+    grain_id: fia_stable_plot
+    producer: 08_disturbance_linkage/scripts/01_build_plot_footprints.R
+    access_mode: catalog_only
+    review_status: domain_review_required
+    facets: []
+    caveats:
+      - >-
+        An 800 m circle around a fuzzed coordinate. It is a search area, not the
+        plot's real location.
+      - >-
+        Stable plots with multiple distinct public coordinate pairs are excluded
+        from this spatial view under the resolved primary-analysis rule; their
+        foundational FIA records are retained elsewhere.
+
+  - id: plot_mtbs_fire_events
+    title: FIA plot fire-severity associations
+    family: disturbance_linkage
+    kind: analysis
+    lifecycle: planned
+    path: 08_disturbance_linkage/data/processed/plot_mtbs_fire_events.parquet
+    format: parquet_file
+    one_row_is: one stable plot, year, and burn-severity class
+    keys: [stable_plot_id, year, severity_class]
+    grain_id: fia_stable_plot_year_severity
+    derived_from: plot_footprints
+    producer: 08_disturbance_linkage/scripts/02_extract_mtbs_severity.R
+    access_mode: catalog_only
+    review_status: domain_review_required
+    facets: []
+    caveats:
+      - >-
+        Requires MTBS rasters that are not stored in this repository.
+      - >-
+        Overlap with a buffered public coordinate is an association, not evidence
+        that the fire reached the measured plot.
+
+  - id: plot_ids_agent_events
+    title: FIA plot IDS damage associations
+    family: disturbance_linkage
+    kind: analysis
+    lifecycle: planned
+    path: 08_disturbance_linkage/data/processed/plot_ids_agent_events.parquet
+    format: parquet_file
+    one_row_is: one stable plot, year, and damage-causal agent code
+    keys: [stable_plot_id, year, DCA_CODE]
+    grain_id: fia_stable_plot_year_agent
+    derived_from: plot_footprints
+    producer: 08_disturbance_linkage/scripts/03_extract_ids_agents.R
+    access_mode: catalog_only
+    review_status: domain_review_required
+    facets: []
+    caveats:
+      - >-
+        overlap_acres is area inside the buffer. source_polygon_acres_sum is the
+        whole source polygon and is for auditing only.
+
+  - id: plot_disturbance_linkage_events
+    title: FIA plot external disturbance events
+    family: disturbance_linkage
+    kind: analysis
+    lifecycle: planned
+    path: 08_disturbance_linkage/data/processed/plot_disturbance_linkage_events.parquet
+    format: parquet_file
+    one_row_is: one stable plot, source, year, and source event code
+    keys: [stable_plot_id, source, year, source_event_code]
+    grain_id: fia_stable_plot_external_event
+    producer: 08_disturbance_linkage/scripts/04_build_plot_disturbance_linkage.R
+    access_mode: catalog_only
+    review_status: domain_review_required
+    facets: []
+    caveats:
+      - >-
+        Stacks MTBS and IDS while keeping their codes separate. The two sources
+        measure different things and their magnitudes are not comparable.
+
+  - id: forested_condition_foundation
+    title: Forested FIA condition foundation
+    family: fia_summaries
+    kind: analysis
+    lifecycle: active
+    path: 05_fia/data/processed/summaries/forested_condition_foundation.parquet
+    format: parquet_file
+    one_row_is: one condition within one FIA plot visit
+    keys: [stable_plot_id, PLT_CN, INVYR, CONDID]
+    grain_id: fia_condition_visit_stable
+    derived_from: plot_condition_metadata
+    producer: 05_fia/scripts/08_build_forested_condition_foundation.R
+    access_mode: prepared_download
+    review_status: constrained
+    facets: [state, INVYR, COND_STATUS_CD]
+    caveats:
+      - No minimum forested-proportion cutoff is applied.
+      - Condition-proportion anomalies are retained and labeled.
+      - >-
+        forested_condition_weight is calculated as COND.CONDPROP_UNADJ
+        divided by its visit's summed forest-condition CONDPROP_UNADJ.
+      - >-
+        The compact general valid_disturbance_years field uses INVYR-era logic;
+        use FIA fire disturbance-slot evidence for fire timing.
+
+  - id: forest_plot_visit_cwm_seedlings
+    title: Seedling community climate by plot visit (forest only)
+    family: thermophilization
+    kind: analysis
+    lifecycle: active
+    path: 07_thermophilization/data/processed/forest_plot_visit_cwm_seedlings.parquet
+    format: parquet_file
+    one_row_is: one plot visit, for the seedling layer
+    keys: [community_layer, stable_plot_id, PLT_CN, INVYR]
+    grain_id: fia_plot_visit_layer
+    derived_from: plot_community_climate_seedlings
+    producer: 07_thermophilization/scripts/02_build_forest_plot_visit_cwm.R
+    access_mode: prepared_download
+    review_status: constrained
+    facets: [STATECD, INVYR]
+    caveats:
+      - >-
+        Only forested conditions (COND_STATUS_CD == 1) contribute. A partly
+        nonforest plot reports the climate affinity of its forested part.
+      - >-
+        Conditions are weighted by their share of the visit's forested area, so
+        a larger mapped condition counts for more than a smaller one.
+      - >-
+        forested_plot_proportion says how much of the plot was forest. Values
+        well below 1 describe a small patch, not a whole forested plot.
+      - Check niche coverage and global-fallback columns before comparing values.
+
+  - id: forest_plot_visit_cwm_saplings
+    title: Sapling community climate by plot visit (forest only)
+    family: thermophilization
+    kind: analysis
+    lifecycle: active
+    path: 07_thermophilization/data/processed/forest_plot_visit_cwm_saplings.parquet
+    format: parquet_file
+    one_row_is: one plot visit, for the sapling layer
+    keys: [community_layer, stable_plot_id, PLT_CN, INVYR]
+    grain_id: fia_plot_visit_layer
+    derived_from: plot_community_climate_saplings
+    producer: 07_thermophilization/scripts/02_build_forest_plot_visit_cwm.R
+    access_mode: prepared_download
+    review_status: constrained
+    facets: [STATECD, INVYR]
+    caveats:
+      - >-
+        Only forested conditions (COND_STATUS_CD == 1) contribute. A partly
+        nonforest plot reports the climate affinity of its forested part.
+      - >-
+        Conditions are weighted by their share of the visit's forested area, so
+        a larger mapped condition counts for more than a smaller one.
+      - >-
+        forested_plot_proportion says how much of the plot was forest. Values
+        well below 1 describe a small patch, not a whole forested plot.
+      - Check niche coverage and global-fallback columns before comparing values.
+
+  - id: forest_plot_visit_cwm_trees
+    title: Tree community climate by plot visit (forest only)
+    family: thermophilization
+    kind: analysis
+    lifecycle: active
+    path: 07_thermophilization/data/processed/forest_plot_visit_cwm_trees.parquet
+    format: parquet_file
+    one_row_is: one plot visit, for the tree layer
+    keys: [community_layer, stable_plot_id, PLT_CN, INVYR]
+    grain_id: fia_plot_visit_layer
+    derived_from: plot_community_climate_trees
+    producer: 07_thermophilization/scripts/02_build_forest_plot_visit_cwm.R
+    access_mode: prepared_download
+    review_status: constrained
+    facets: [STATECD, INVYR]
+    caveats:
+      - >-
+        Only forested conditions (COND_STATUS_CD == 1) contribute. A partly
+        nonforest plot reports the climate affinity of its forested part.
+      - >-
+        Conditions are weighted by their share of the visit's forested area, so
+        a larger mapped condition counts for more than a smaller one.
+      - >-
+        forested_plot_proportion says how much of the plot was forest. Values
+        well below 1 describe a small patch, not a whole forested plot.
+      - Check niche coverage and global-fallback columns before comparing values.
+
+  - id: forest_first_last_change
+    title: Community climate change, first survey to last
+    family: thermophilization
+    kind: analysis
+    lifecycle: active
+    path: 07_thermophilization/data/processed/forest_first_last_change.parquet
+    format: parquet_file
+    one_row_is: one stable plot
+    keys: [stable_plot_id]
+    grain_id: fia_stable_plot
+    derived_from: forest_plot_visit_cwm_trees
+    producer: 07_thermophilization/scripts/05_build_first_last_change.R
+    access_mode: prepared_download
+    review_status: constrained
+    facets: [STATECD]
+    caveats:
+      - >-
+        Restricted to visits where seedlings, saplings, and trees all have a
+        usable value, so all three stages span the same interval.
+      - >-
+        One long change per plot. It cannot say when during the interval the
+        change happened; use the consecutive-interval product for that.
+      - >-
+        Endpoints are ordered by recorded measurement date. Plots measured only
+        once are absent.
+      - >-
+        Check survey_pairing_classes_observed. Rows carrying a chronological
+        fallback rest on a weaker visit link than a structural match.
+
+  - id: forest_first_last_change_by_stage
+    title: Community climate change, first survey to last, per life stage
+    family: thermophilization
+    kind: analysis
+    lifecycle: active
+    path: 07_thermophilization/data/processed/forest_first_last_change_by_stage.parquet
+    format: parquet_file
+    one_row_is: one stable plot and life stage
+    keys: [stable_plot_id, life_stage]
+    grain_id: fia_stable_plot_life_stage
+    derived_from: forest_plot_visit_cwm_trees
+    producer: 07_thermophilization/scripts/05_build_first_last_change.R
+    access_mode: prepared_download
+    review_status: constrained
+    facets: [life_stage]
+    caveats:
+      - >-
+        Each life stage uses its own first and last usable visit, so stages on
+        the same plot can span different intervals. Do not difference stages
+        against each other here; use forest_first_last_change for that.
+      - Endpoints are ordered by recorded measurement date.
+
+  - id: fia_damage_agent_lookup
+    title: FIA damage-agent lookup
+    family: fia_lookups
+    kind: lookup
+    lifecycle: active
+    path: 05_fia/lookups/fia_damage_agent_lookup.csv
+    format: csv
+    one_row_is: one official FIA damage-agent code
+    keys: [DAMAGE_AGENT_CD]
+    grain_id: fia_damage_agent_code
+    producer: 05_fia/scripts/09_build_damage_agent_lookup.py
+    access_mode: prepared_download
+    review_status: constrained
+    facets: [official_group_code, is_insect_agent, code_status]
+    caveats:
+      - >-
+        Extracted from Appendix H of the official FIADB Database Description
+        v9.4. These are current definitions, not a historical code crosswalk.
+      - >-
+        The source appendix does not establish identical meanings across prior
+        manuals, years, or regional implementations.
+      - Regional collection rules and thresholds still require review.
+
+  - id: fia_forest_disturbance_measures
+    title: FIA forest disturbance measures
+    family: disturbance_linkage
+    kind: analysis
+    lifecycle: active
+    path: 08_disturbance_linkage/data/processed/fia_forest_disturbance_measures.parquet
+    format: parquet_file
+    one_row_is: one forested FIA plot visit
+    keys: [stable_plot_id, PLT_CN, INVYR]
+    grain_id: fia_plot_visit_stable
+    derived_from: forested_condition_foundation
+    producer: 08_disturbance_linkage/scripts/02_build_fia_forest_disturbance_measures.R
+    access_mode: prepared_download
+    review_status: constrained
+    facets: [state, INVYR]
+    caveats:
+      - Fire codes and years are paired only within the same FIA disturbance slot.
+      - Fire-year validity uses MEASYEAR when available and INVYR only as fallback.
+      - No binary high-severity threshold is present.
+
+  - id: fia_fire_disturbance_slot_evidence
+    title: FIA fire disturbance-slot evidence
+    family: disturbance_linkage
+    kind: intermediate
+    lifecycle: active
+    path: 08_disturbance_linkage/data/processed/fia_fire_disturbance_slot_evidence.parquet
+    format: parquet_file
+    one_row_is: one fire-coded FIA disturbance slot on one forest condition
+    keys: [stable_plot_id, PLT_CN, INVYR, CONDID, disturbance_slot]
+    grain_id: fia_condition_fire_slot
+    derived_from: forested_condition_foundation
+    producer: 08_disturbance_linkage/scripts/02_build_fia_forest_disturbance_measures.R
+    access_mode: prepared_download
+    review_status: constrained
+    facets: [state, INVYR, disturbance_code, fire_year_status]
+    caveats:
+      - Nonfire slots never appear in this product.
+      - Unknown, continuous, unavailable, and invalid timing remains explicit.
+
+  - id: fia_tree_damage_agent_evidence
+    title: FIA tree damage-agent evidence
+    family: disturbance_linkage
+    kind: intermediate
+    lifecycle: active
+    path: 08_disturbance_linkage/data/processed/fia_tree_damage_agent_evidence
+    format: parquet_dataset
+    one_row_is: one FIA tree record and exact damage-agent code
+    keys: [PLT_CN, INVYR, CONDID, TREE_CN, DAMAGE_AGENT_CD]
+    grain_id: fia_tree_damage_agent
+    derived_from: forested_condition_foundation
+    producer: 08_disturbance_linkage/scripts/03_prepare_fia_damage_agent_evidence.R
+    access_mode: prepared_download
+    review_status: constrained
+    facets: [state, INVYR, DAMAGE_AGENT_CD, COND_STATUS_CD]
+    caveats:
+      - Includes all FIA condition classes and both eligible and ineligible tree records.
+      - Repeated occurrences of the same agent code on one tree are deduplicated with source slots retained.
+      - >-
+        MANUAL and explicit definition/region applicability fields distinguish
+        current lookup coverage from observation-level historical validation.
+      - >-
+        Unmatched raw TREE records are retained with null condition fields and
+        do not enter condition-level fractions.
+
+  - id: fia_condition_damage_denominators
+    title: FIA condition damage denominators
+    family: disturbance_linkage
+    kind: intermediate
+    lifecycle: active
+    path: 08_disturbance_linkage/data/processed/fia_condition_damage_denominators
+    format: parquet_dataset
+    one_row_is: one FIA condition with eligible tree denominator ingredients
+    keys: [stable_plot_id, PLT_CN, INVYR, CONDID]
+    grain_id: fia_condition_visit_stable
+    derived_from: forested_condition_foundation
+    producer: 08_disturbance_linkage/scripts/03_prepare_fia_damage_agent_evidence.R
+    access_mode: prepared_download
+    review_status: constrained
+    facets: [state, INVYR, COND_STATUS_CD]
+    caveats:
+      - Includes all FIA condition classes, including conditions with zero eligible trees.
+      - The denominator definition is stored in structured columns.
+      - >-
+        TPA sums come from raw TREE.TPA_UNADJ. Basal area is calculated as
+        0.005454 * TREE.DIA_inches^2 * TREE.TPA_UNADJ and is in square feet per acre.
+
+  - id: fia_condition_damage_agent_candidates
+    title: FIA condition damage-agent candidates
+    family: disturbance_linkage
+    kind: intermediate
+    lifecycle: active
+    path: 08_disturbance_linkage/data/processed/fia_condition_damage_agent_candidates
+    format: parquet_dataset
+    one_row_is: one FIA condition and exact damage-agent code
+    keys: [stable_plot_id, PLT_CN, INVYR, CONDID, DAMAGE_AGENT_CD]
+    grain_id: fia_condition_damage_agent
+    derived_from: fia_tree_damage_agent_evidence
+    producer: 08_disturbance_linkage/scripts/03_prepare_fia_damage_agent_evidence.R
+    access_mode: prepared_download
+    review_status: constrained
+    facets: [state, INVYR, DAMAGE_AGENT_CD, COND_STATUS_CD]
+    caveats:
+      - Includes all condition classes; forest-specific work must filter COND_STATUS_CD == 1.
+      - >-
+        tree_record_fraction, tpa_unadj_fraction, and basal_area_fraction
+        are alternatives; none is primary.
+      - No condition-area or plot-level weighting is applied.
+      - Historical code meanings and regional applicability remain explicit review fields.
+
+  - id: fia_insect_severity_candidates
+    title: FIA insect severity candidates
+    family: disturbance_linkage
+    kind: intermediate
+    lifecycle: active
+    path: 08_disturbance_linkage/data/processed/fia_insect_severity_candidates
+    format: parquet_dataset
+    one_row_is: one FIA condition and exact insect damage-agent code
+    keys: [stable_plot_id, PLT_CN, INVYR, CONDID, DAMAGE_AGENT_CD]
+    grain_id: fia_condition_damage_agent
+    derived_from: fia_condition_damage_agent_candidates
+    producer: 08_disturbance_linkage/scripts/03_prepare_fia_damage_agent_evidence.R
+    access_mode: prepared_download
+    review_status: constrained
+    facets: [state, INVYR, DAMAGE_AGENT_CD, COND_STATUS_CD, agent_group]
+    caveats:
+      - Filtered only through the reviewed official is_insect_agent flag.
+      - Includes all condition classes; forest-specific work must filter COND_STATUS_CD == 1.
+      - No primary severity fraction is selected and no plot-level weighting is applied.
+      - Historical code meanings and regional applicability remain explicit review fields.
+
+  - id: mtbs_fire_history_evidence
+    title: MTBS fire history evidence
+    family: disturbance_linkage
+    kind: analysis
+    lifecycle: planned
+    path: 08_disturbance_linkage/data/processed/mtbs_fire_history_evidence.parquet
+    format: parquet_file
+    one_row_is: one stable FIA plot and associated MTBS fire event
+    keys: [stable_plot_id, mtbs_event_id]
+    grain_id: fia_stable_plot_mtbs_event
+    producer: 08_disturbance_linkage/scripts/02_extract_mtbs_fire_history.R
+    access_mode: catalog_only
+    review_status: domain_review_required
+    facets: []
+    caveats:
+      - Blocked until an MTBS perimeter event layer is supplied.
+      - Any contact with the fixed 800 m buffer is retained.
+
+  - id: ids_annual_agent_history
+    title: IDS annual exact-agent history
+    family: disturbance_linkage
+    kind: analysis
+    lifecycle: planned
+    path: 08_disturbance_linkage/data/processed/ids_annual_agent_history.parquet
+    format: parquet_file
+    one_row_is: one stable FIA plot, IDS survey year, and exact DCA code or explicit nondetection state
+    keys: [stable_plot_id, survey_year, dca_code]
+    grain_id: fia_stable_plot_year_exact_agent
+    producer: 08_disturbance_linkage/scripts/03_extract_ids_annual_agent_history.R
+    access_mode: catalog_only
+    review_status: domain_review_required
+    facets: [survey_year, dca_code, surveyed_area_status]
+    caveats:
+      - The full all-years product is not yet materialized; a national 2020 validation exists.
+      - Consecutive detections are not combined into episodes.
+
+  - id: fia_plot_visit_context
+    title: FIA raw plot-visit context
+    family: fia_summaries
+    kind: intermediate
+    lifecycle: active
+    path: 05_fia/data/processed/summaries/plot_visit_context.parquet
+    format: parquet_file
+    one_row_is: one raw FIA PLOT record
+    keys: [PLT_CN, INVYR]
+    grain_id: fia_plot_visit
+    producer: 05_fia/scripts/07_build_plot_visit_context.R
+    access_mode: catalog_only
+    review_status: constrained
+    facets: [state, INVYR]
+    caveats:
+      - Includes nonsampled visits and visits outside the analysis window for link auditing.
+
+  - id: fia_visit_pairing_audit
+    title: FIA visit-pairing audit
+    family: disturbance_linkage
+    kind: qa
+    lifecycle: active
+    path: 08_disturbance_linkage/data/processed/fia_visit_pairing_audit.parquet
+    format: parquet_file
+    one_row_is: one current FIA visit and its audited predecessor relationship
+    keys: [current_PLT_CN]
+    grain_id: fia_visit_pairing_audit
+    producer: 08_disturbance_linkage/scripts/01_build_fia_survey_intervals.R
+    access_mode: prepared_download
+    review_status: certified
+    facets: [state, current_INVYR, pairing_class, date_status]
+    caveats: []
+
+  - id: fia_survey_intervals
+    title: FIA resolved survey intervals
+    family: disturbance_linkage
+    kind: intermediate
+    lifecycle: active
+    path: 08_disturbance_linkage/data/processed/fia_survey_intervals.parquet
+    format: parquet_file
+    one_row_is: one resolved previous/current FIA survey relationship
+    keys: [interval_id]
+    grain_id: fia_survey_interval
+    producer: 08_disturbance_linkage/scripts/01_build_fia_survey_intervals.R
+    access_mode: prepared_download
+    review_status: certified
+    facets: [state, pairing_class, date_status, pairing_usable]
+    caveats:
+      - Chronological fallback candidates remain labeled separately from structural links.
+
+  # =========================================================================
+  # Gridded climate workflows
+  # =========================================================================
+  - id: terraclimate_damage_area_summaries
+    title: TerraClimate summaries at IDS damage areas
+    family: climate_grids
+    kind: final
+    lifecycle: planned
+    path: processed/climate/terraclimate/damage_areas_summaries
+    format: parquet_dataset
+    one_row_is: >-
+      one damage polygon, climate variable, and month
+    keys: [DAMAGE_AREA_ID, variable, calendar_year, calendar_month]
+    grain_id: ids_damage_area_variable_month
+    producer: scripts/build_climate_summaries.R
+    access_mode: catalog_only
+    review_status: not_reviewed
+    facets: []
+    caveats: []
+    notes: >-
+      Fourteen variables documented. The pipeline exists; no output is built in
+      this data root.
+
+  - id: prism_damage_area_summaries
+    title: PRISM summaries at IDS damage areas
+    family: climate_grids
+    kind: final
+    lifecycle: planned
+    path: processed/climate/prism/damage_areas_summaries
+    format: parquet_dataset
+    one_row_is: >-
+      one damage polygon, climate variable, and month
+    keys: [DAMAGE_AREA_ID, variable, calendar_year, calendar_month]
+    grain_id: ids_damage_area_variable_month
+    producer: scripts/build_climate_summaries.R
+    access_mode: catalog_only
+    review_status: not_reviewed
+    facets: []
+    caveats:
+      - PRISM covers the lower 48 states only.
+    notes: Pipeline exists; no output built in this data root.
+
+  - id: worldclim_damage_area_summaries
+    title: WorldClim summaries at IDS damage areas
+    family: climate_grids
+    kind: final
+    lifecycle: planned
+    path: processed/climate/worldclim/damage_areas_summaries
+    format: parquet_dataset
+    one_row_is: >-
+      one damage polygon, climate variable, and month
+    keys: [DAMAGE_AREA_ID, variable, calendar_year, calendar_month]
+    grain_id: ids_damage_area_variable_month
+    producer: scripts/build_climate_summaries.R
+    access_mode: catalog_only
+    review_status: not_reviewed
+    facets: []
+    caveats: []
+    notes: Pipeline exists; no output built in this data root.
+
+  - id: terraclimate_pixel_centroids
+    title: TerraClimate pixel centroids for damage areas
+    family: climate_grids
+    kind: lookup
+    lifecycle: active
+    path: 02_terraclimate/lookups/damage_areas_pixel_centroids.parquet
+    format: parquet_file
+    one_row_is: one climate grid cell touched by an IDS damage polygon
+    keys: [pixel_id]
+    grain_id: climate_pixel
+    producer: 02_terraclimate/scripts/01_build_pixel_maps.R
+    access_mode: catalog_only
+    review_status: not_reviewed
+    facets: []
+    caveats: []
+    notes: >-
+      The only gridded-climate artifact present in this data root. Everything it
+      supports is unbuilt, so nobody has had reason to check it. Stays
+      catalog-only until someone does.
