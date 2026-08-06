@@ -5,10 +5,10 @@
 This directory builds the FIA tables needed to ask whether forest plant communities are shifting toward species associated with warmer or drier climates, and whether those shifts are related to disturbance.
 
 > **Current status:** The downstream CWM and change products in this directory
-> were not rebuilt after the August 2026 Florida, Kentucky, and Texas FIA raw
-> refresh. They are not inputs to the disturbance-readiness work and should not
-> be treated as current analysis products. Rebuild them after the analysis
-> design and open weighting/cohort decisions are reviewed.
+> were rebuilt on 2026-08-06 from the refreshed forested-condition foundation,
+> so they now reflect the August 2026 Florida, Kentucky, and Texas FIA raw
+> refresh. The weighting and cohort questions described below are still open,
+> so treat these numbers as current but not final.
 
 In this workflow, a **community climate-affinity metric** means: take the species present in a FIA plot visit, join each species to its climate niche, and summarize those niche values as a weighted mean or weighted median. A warmer community-weighted mean does not mean the plot's climate is warmer; it means the species present are associated with warmer parts of their ranges.
 
