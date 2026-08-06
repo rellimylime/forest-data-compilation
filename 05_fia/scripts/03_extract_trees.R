@@ -25,10 +25,13 @@
 #   Rscript 05_fia/scripts/03_extract_trees.R CO WY MT        # specific states
 #   Rscript 05_fia/scripts/03_extract_trees.R --force-cond    # re-extract cond only (all states)
 #   Rscript 05_fia/scripts/03_extract_trees.R CO --force-cond # re-extract cond only (CO)
+#   Rscript 05_fia/scripts/03_extract_trees.R FL KY TX --force-tree-products
 #
 # --force-cond: skips tree/damage_agent parquets that already exist, but forces
 #   re-extraction of the cond parquet.  Use this when cond_cols has been updated
 #   (e.g. to add TRTCD1-3) without wanting to redo the slow tree aggregation.
+# --force-tree-products: rebuilds tree, damage-agent, and harvest-flag outputs
+#   from TREE while leaving an existing condition parquet unchanged.
 #
 # Output:
 #   05_fia/data/processed/trees/state={ST}/trees_{ST}.parquet
@@ -93,7 +96,13 @@ lookup_dir <- here("05_fia/lookups")
 
 args        <- commandArgs(trailingOnly = TRUE)
 force_cond  <- "--force-cond" %in% args
-state_args  <- toupper(args[!args %in% "--force-cond"])
+force_tree_products <- "--force-tree-products" %in% args
+known_flags <- c("--force-cond", "--force-tree-products")
+unknown_flags <- args[startsWith(args, "--") & !args %in% known_flags]
+if (length(unknown_flags) > 0L) {
+  stop(glue("Unknown option(s): {paste(unknown_flags, collapse=', ')}"))
+}
+state_args  <- toupper(args[!args %in% known_flags])
 
 # Run requested states only, or all configured states when no state list is supplied.
 states      <- if (length(state_args) > 0) state_args else fia_config$states
@@ -117,6 +126,7 @@ cat(glue("Output (harvest): {out_harvest_flags}\n"))
 cat(glue("States: {length(states)}\n"))
 cat(glue("INVYR range: {invyr_min}-{invyr_max}\n"))
 if (force_cond) cat("Mode: --force-cond (cond parquets will be re-extracted even if they exist)\n")
+if (force_tree_products) cat("Mode: --force-tree-products (TREE-derived parquets will be rebuilt)\n")
 cat("\n")
 
 # Read only the columns needed for the downstream FIA products.
@@ -174,11 +184,12 @@ for (i in seq_along(states)) {
   harvest_flags_out <- file.path(out_harvest_flags, glue("state={st}/harvest_flags_{st}.parquet"))
 
   # Determine what needs to be (re-)computed for this state.
-  # In --force-cond mode, cond is always re-extracted even if the parquet exists,
-  # but trees/damage_agents/harvest_flags are left alone if they already exist.
+  # In --force-cond mode, cond is always re-extracted even if the parquet exists.
+  # In --force-tree-products mode, TREE-derived outputs are always rebuilt.
   # Trees and damage agents are paired because both come from the TREE table.
-  need_trees          <- !(file_exists(trees_out) && file_exists(damage_ag_out))
-  need_harvest_flags  <- !file_exists(harvest_flags_out)
+  need_trees          <- force_tree_products ||
+    !(file_exists(trees_out) && file_exists(damage_ag_out))
+  need_harvest_flags  <- force_tree_products || !file_exists(harvest_flags_out)
   need_cond           <- !file_exists(cond_out) || force_cond
 
   # Skip states where every requested output is already available.

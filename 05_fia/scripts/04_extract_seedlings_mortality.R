@@ -20,6 +20,7 @@
 #   Rscript 05_fia/scripts/04_extract_seedlings_mortality.R
 #   Rscript 05_fia/scripts/04_extract_seedlings_mortality.R CO WY MT
 #   Rscript 05_fia/scripts/04_extract_seedlings_mortality.R --force-seedlings
+#   Rscript 05_fia/scripts/04_extract_seedlings_mortality.R --force-mortality
 #
 # Output:
 #   05_fia/data/processed/seedlings/state={ST}/seedlings_{ST}.parquet
@@ -54,12 +55,18 @@ out_seedling <- here(config$processed$fia$seedlings$output_dir)
 out_mort     <- here(config$processed$fia$mortality$output_dir)
 lookup_dir   <- here("05_fia/lookups")
 
-# Allow state-specific reruns and seedling-only refreshes for schema upgrades.
+# Allow state-specific reruns and focused refreshes for schema or raw updates.
 args <- commandArgs(trailingOnly = TRUE)
 force_seedlings <- "--force-seedlings" %in% args
+force_mortality <- "--force-mortality" %in% args
 
 # Treat command-line flags separately from state abbreviations.
-state_args <- toupper(args[!args %in% c("--force-seedlings")])
+known_flags <- c("--force-seedlings", "--force-mortality")
+unknown_flags <- args[startsWith(args, "--") & !args %in% known_flags]
+if (length(unknown_flags) > 0L) {
+  stop(glue("Unknown option(s): {paste(unknown_flags, collapse=', ')}"))
+}
+state_args <- toupper(args[!args %in% known_flags])
 states <- if (length(state_args) > 0) state_args else fia_config$states
 
 # Use the same modern annual-inventory window as the tree extraction.
@@ -80,6 +87,7 @@ cat(glue("States: {length(states)}\n"))
 cat(glue("INVYR range: {invyr_min}-{invyr_max}\n"))
 cat(glue("Mortality codes: {paste(all_codes, collapse=', ')}\n"))
 if (force_seedlings) cat("Mode: --force-seedlings (seedling parquets will be rebuilt)\n")
+if (force_mortality) cat("Mode: --force-mortality (mortality parquets will be rebuilt)\n")
 cat("\n")
 
 # Load REF_SPECIES once so seedlings and mortality share the same species groups.
@@ -128,7 +136,8 @@ for (i in seq_along(states)) {
   mort_out     <- file.path(out_mort,     glue("state={st}/mortality_{st}.parquet"))
 
   # Skip states whose products already exist unless we are refreshing seedlings.
-  if (!force_seedlings && file_exists(seed_out) && file_exists(mort_out)) {
+  if (!force_seedlings && !force_mortality &&
+      file_exists(seed_out) && file_exists(mort_out)) {
     cat(glue("[{i}/{length(states)}] {st}: output exists - skipping\n"))
     n_skipped <- n_skipped + 1
     next
@@ -235,7 +244,7 @@ for (i in seq_along(states)) {
 
     # ------ MORTALITY (TREE_GRM_COMPONENT) ------------------------------------
 
-    if (!file_exists(mort_out)) {
+    if (force_mortality || !file_exists(mort_out)) {
       # Mortality requires GRM plus TREE because GRM lacks species and inventory year.
       if (!file_exists(grm_file)) {
         cat("  TREE_GRM_COMPONENT.csv not found - skipping mortality extraction\n")
