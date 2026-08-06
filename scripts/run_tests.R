@@ -50,6 +50,7 @@ for (module in modules) {
   }
 
   ok <- TRUE
+  
   # Convert a module error into a final nonzero process status.
   tryCatch(
     {

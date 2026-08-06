@@ -80,6 +80,7 @@ cat("  Columns with values only post-2015: ", length(unique_post), "\n")
 cat("  Columns with values in both eras: ", length(consistent), "\n\n")
 
 cat("[3] Missingness by era (fraction NA)...\n")
+
 # Measure missingness separately so a present but sparse field stays visible.
 missing_by_era <- ids_dt[, lapply(.SD, function(x) mean(is.na(x))),
                          by = era, .SDcols = cols]
