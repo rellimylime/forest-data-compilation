@@ -8,6 +8,7 @@ suppressPackageStartupMessages({
 available_modules <- c("01_ids", "02_terraclimate", "03_prism", "04_worldclim",
                        "05_fia", "07_thermophilization", "08_disturbance_linkage")
 
+# Accept module names so a focused test run does not execute the full repository.
 args <- commandArgs(trailingOnly = TRUE)
 strict <- "--strict" %in% args
 args <- args[args != "--strict"]
@@ -21,6 +22,7 @@ if (length(invalid) > 0) {
   )
 }
 
+# Strict mode turns missing generated products into failures instead of skips.
 if (strict) {
   Sys.setenv(STRICT_OUTPUT_CHECKS = "true")
 }
@@ -35,6 +37,7 @@ cat("\n")
 
 all_passed <- TRUE
 
+# Run each module independently so one failure does not hide later results.
 for (module in modules) {
   test_dir_path <- here(module, "tests", "testthat")
   cat("\n")
@@ -47,6 +50,7 @@ for (module in modules) {
   }
 
   ok <- TRUE
+  # Convert a module error into a final nonzero process status.
   tryCatch(
     {
       testthat::test_dir(

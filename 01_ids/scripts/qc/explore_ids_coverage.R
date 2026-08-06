@@ -1,6 +1,4 @@
-# 05_explore_ids_coverage.R
-# Explore IDS raw data for missingness (pre/post 2015), era-specific columns,
-# value distributions, and regional temporal coverage.
+# Compare IDS fields and coverage before and after the 2015 schema change.
 
 suppressPackageStartupMessages({
   library(data.table)
@@ -18,6 +16,7 @@ raw_dir <- here("01_ids/data/raw")
 output_dir <- here("01_ids/data/processed/ids_exploration_raw")
 layer_prefix <- "DAMAGE_AREAS_FLAT"
 
+# Treat each regional geodatabase as one source partition.
 gdb_dirs <- list.dirs(raw_dir, recursive = FALSE, full.names = TRUE)
 gdb_dirs <- gdb_dirs[grepl("\\.gdb$", gdb_dirs)]
 
@@ -33,6 +32,7 @@ extract_region_id <- function(gdb_path) {
 }
 
 read_ids_layer <- function(gdb_path) {
+  # Resolve the regional layer name because archives do not use one exact name.
   layer_name <- get_layer_name(gdb_path, layer_prefix)
   cat(glue("  Reading {basename(gdb_path)} ({layer_name})...\n"))
   ids_sf <- st_read(gdb_path, layer = layer_name, quiet = TRUE)
@@ -45,6 +45,7 @@ read_ids_layer <- function(gdb_path) {
 }
 
 cat("[1] Reading raw IDS data...\n")
+# Combine regions with fill enabled because fields differ across eras.
 ids_list <- lapply(gdb_dirs, read_ids_layer)
 ids_dt <- rbindlist(ids_list, fill = TRUE)
 
@@ -55,11 +56,13 @@ if (!"REGION_ID" %in% names(ids_dt)) {
   stop("REGION_ID column is required for regional coverage.")
 }
 
+# Use 2015 as the documented boundary between legacy and current schemas.
 ids_dt[, era := fifelse(SURVEY_YEAR < 2015, "pre_2015", "post_2015")]
 
 cat("[2] Column availability by era...\n")
 cols <- setdiff(names(ids_dt), "era")
 
+# Mark whether each field contains any actual values in each era.
 cols_by_era <- ids_dt[, lapply(.SD, function(x) sum(!is.na(x)) > 0),
                       by = era, .SDcols = cols]
 cols_long <- melt(cols_by_era, id.vars = "era",
@@ -77,6 +80,7 @@ cat("  Columns with values only post-2015: ", length(unique_post), "\n")
 cat("  Columns with values in both eras: ", length(consistent), "\n\n")
 
 cat("[3] Missingness by era (fraction NA)...\n")
+# Measure missingness separately so a present but sparse field stays visible.
 missing_by_era <- ids_dt[, lapply(.SD, function(x) mean(is.na(x))),
                          by = era, .SDcols = cols]
 missing_long <- melt(missing_by_era, id.vars = "era",
@@ -87,6 +91,7 @@ fwrite(missing_wide, file = file.path(output_dir, "ids_missing_by_era.csv"))
 
 cat("[4] Value summaries for era-specific columns...\n")
 value_summary <- function(dt, col) {
+  # Numeric fields receive quantiles; coded or text fields receive common values.
   x <- dt[[col]]
   if (is.numeric(x)) {
     data.table(
@@ -123,6 +128,7 @@ fwrite(summaries_pre, file.path(output_dir, "ids_value_summary_pre_2015.csv"))
 fwrite(summaries_post, file.path(output_dir, "ids_value_summary_post_2015.csv"))
 
 cat("[5] Regional temporal coverage...\n")
+# Summarize which survey years are represented within each IDS region.
 coverage <- ids_dt[, .(
   min_year = min(SURVEY_YEAR, na.rm = TRUE),
   max_year = max(SURVEY_YEAR, na.rm = TRUE),
@@ -130,6 +136,7 @@ coverage <- ids_dt[, .(
   years = list(sort(unique(SURVEY_YEAR)))
 ), by = REGION_ID]
 
+# List gaps only between a region's first and last observed survey years.
 coverage[, missing_years := lapply(seq_len(.N), function(i) {
   yr_seq <- seq(coverage$min_year[i], coverage$max_year[i])
   setdiff(yr_seq, coverage$years[[i]])
