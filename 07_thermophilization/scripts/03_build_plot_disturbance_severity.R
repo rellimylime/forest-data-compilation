@@ -8,7 +8,7 @@
 # fire, insects, disease, or weather.
 #
 # Input:
-#   05_fia/data/processed/summaries/plot_disturbance_classification.parquet
+#   05_fia/data/processed/summaries/fia_condition_disturbance_flags.parquet
 #
 # Output grain:
 #   one row per stable_plot_id x PLT_CN x INVYR
@@ -75,7 +75,7 @@ qa_dir <- if (is_smoke_run) {
 
 disturbance_path <- file.path(
   fia_summary_dir,
-  "plot_disturbance_classification.parquet"
+  "fia_condition_disturbance_flags.parquet"
 )
 
 out_filename <- thermo_config$files$plot_disturbance_severity

@@ -39,18 +39,18 @@ check_results_path <- file.path(qa_dir, "thermophilization_validation_checks.csv
 summary_path <- file.path(qa_dir, "thermophilization_validation_summary.csv")
 
 product_paths <- list(
-  plot_recruitment_cwm = file.path(thermo_dir, thermo_config$files$plot_recruitment_cwm),
-  plot_recruitment_analysis_cohort = file.path(thermo_dir, thermo_config$files$analysis_cohort),
   plot_disturbance_severity = file.path(thermo_dir, thermo_config$files$plot_disturbance_severity),
   plot_community_climate_seedlings = file.path(thermo_dir, thermo_config$files$plot_community_climate_seedlings),
   plot_community_climate_saplings = file.path(thermo_dir, thermo_config$files$plot_community_climate_saplings),
   plot_community_climate_trees = file.path(thermo_dir, thermo_config$files$plot_community_climate_trees),
-  plot_year_community_cwm_seedlings = file.path(thermo_dir, thermo_config$files$plot_year_community_cwm_seedlings),
-  plot_year_community_cwm_saplings = file.path(thermo_dir, thermo_config$files$plot_year_community_cwm_saplings),
-  plot_year_community_cwm_trees = file.path(thermo_dir, thermo_config$files$plot_year_community_cwm_trees),
-  plot_year_climate_change_seedlings = file.path(thermo_dir, thermo_config$files$plot_year_climate_change_seedlings),
-  plot_year_climate_change_saplings = file.path(thermo_dir, thermo_config$files$plot_year_climate_change_saplings),
-  plot_year_climate_change_trees = file.path(thermo_dir, thermo_config$files$plot_year_climate_change_trees)
+  forest_plot_visit_cwm_seedlings = file.path(thermo_dir, thermo_config$files$forest_plot_visit_cwm_seedlings),
+  forest_plot_visit_cwm_saplings = file.path(thermo_dir, thermo_config$files$forest_plot_visit_cwm_saplings),
+  forest_plot_visit_cwm_trees = file.path(thermo_dir, thermo_config$files$forest_plot_visit_cwm_trees),
+  forest_visit_interval_change_seedlings = file.path(thermo_dir, thermo_config$files$forest_visit_interval_change_seedlings),
+  forest_visit_interval_change_saplings = file.path(thermo_dir, thermo_config$files$forest_visit_interval_change_saplings),
+  forest_visit_interval_change_trees = file.path(thermo_dir, thermo_config$files$forest_visit_interval_change_trees),
+  forest_first_last_change = file.path(thermo_dir, thermo_config$files$forest_first_last_change),
+  forest_first_last_change_by_stage = file.path(thermo_dir, thermo_config$files$forest_first_last_change_by_stage)
 )
 
 # ------------------------------------------------------------------------------
@@ -191,54 +191,6 @@ check_layer_value <- function(dt, product_name, expected_layer) {
 # Product-specific validators
 # ------------------------------------------------------------------------------
 
-validate_recruitment_cwm <- function() {
-  product <- "plot_recruitment_cwm"
-  dt <- read_product(product)
-  if (is.null(dt)) return(invisible(NULL))
-
-  check_required_columns(
-    dt,
-    product,
-    c(
-      "stable_plot_id", "PLT_CN", "INVYR", "CONDID", "cwm_temp",
-      "cwm_cwd", "frac_weight_with_niche"
-    )
-  )
-  check_unique_grain(dt, product, c("stable_plot_id", "PLT_CN", "INVYR", "CONDID"))
-  check_columns_in_unit_interval(dt, product, grep("^frac_", names(dt), value = TRUE))
-  check_nonnegative_columns(dt, product, grep("weight|species|seedling|source_rows", names(dt), value = TRUE), "warning")
-}
-
-validate_analysis_cohort <- function() {
-  product <- "plot_recruitment_analysis_cohort"
-  dt <- read_product(product)
-  if (is.null(dt)) return(invisible(NULL))
-
-  check_required_columns(
-    dt,
-    product,
-    c(
-      "stable_plot_id", "PLT_CN", "INVYR", "CONDID", "analysis_eligible",
-      "disturbed_vs_control", "disturbance_class", "frac_weight_with_niche",
-      "meets_niche_coverage_threshold"
-    )
-  )
-  check_unique_grain(dt, product, c("stable_plot_id", "PLT_CN", "INVYR", "CONDID"))
-  check_columns_in_unit_interval(dt, product, grep("^frac_", names(dt), value = TRUE))
-
-  if ("analysis_eligible" %in% names(dt)) {
-    bad_n <- dt[analysis_eligible != TRUE | is.na(analysis_eligible), .N]
-    add_check(
-      product,
-      "production_cohort_only_contains_eligible_rows",
-      "error",
-      bad_n == 0,
-      bad_n,
-      "Script 02 writes only rows where analysis_eligible is TRUE."
-    )
-  }
-}
-
 validate_disturbance_severity <- function() {
   product <- "plot_disturbance_severity"
   dt <- read_product(product)
@@ -316,8 +268,8 @@ validate_condition_layer <- function(layer) {
   check_nonnegative_columns(dt, product, grep("weight|species|source_rows|subplots", names(dt), value = TRUE), "warning")
 }
 
-validate_plot_year_layer <- function(layer) {
-  product <- paste0("plot_year_community_cwm_", layer)
+validate_forest_plot_visit_layer <- function(layer) {
+  product <- paste0("forest_plot_visit_cwm_", layer)
   dt <- read_product(product)
   if (is.null(dt)) return(invisible(NULL))
 
@@ -326,18 +278,55 @@ validate_plot_year_layer <- function(layer) {
     product,
     c(
       "community_layer", "stable_plot_id", "PLT_CN", "INVYR",
-      "cwm_temp", "median_temp", "cwm_cwd", "median_cwd",
-      "frac_weight_with_niche", "frac_species_with_niche"
+      "mean_temp", "median_temp", "mean_cwd", "median_cwd",
+      "frac_weight_with_niche", "frac_species_with_niche",
+      "forested_plot_proportion", "forested_condition_weight_with_layer",
+      "forest_conditions_only"
     )
   )
   check_unique_grain(dt, product, c("community_layer", "stable_plot_id", "PLT_CN", "INVYR"))
   check_layer_value(dt, product, layer)
   check_columns_in_unit_interval(dt, product, grep("^frac_", names(dt), value = TRUE))
   check_nonnegative_columns(dt, product, grep("weight|species|source_rows|conditions|subplots", names(dt), value = TRUE), "warning")
+
+  # The product's whole point is that nonforest conditions are excluded.
+  if ("forest_conditions_only" %in% names(dt)) {
+    bad_n <- dt[
+      is.na(forest_conditions_only) | !as.logical(forest_conditions_only),
+      .N
+    ]
+    add_check(
+      product,
+      "every_row_is_forest_conditions_only",
+      "error",
+      bad_n == 0,
+      bad_n,
+      "forest_conditions_only must be TRUE on every row."
+    )
+  }
+
+  # Forest condition weights are normalized within the visit, so the weight
+  # carrying this layer can never exceed the whole forested area.
+  if ("forested_condition_weight_with_layer" %in% names(dt)) {
+    bad_n <- dt[
+      !is.na(forested_condition_weight_with_layer) &
+        (forested_condition_weight_with_layer < 0 |
+           forested_condition_weight_with_layer > 1 + 1e-9),
+      .N
+    ]
+    add_check(
+      product,
+      "forested_condition_weight_with_layer_in_unit_interval",
+      "error",
+      bad_n == 0,
+      bad_n,
+      "Normalized forest condition weight must lie in [0, 1]."
+    )
+  }
 }
 
 validate_change_layer <- function(layer) {
-  product <- paste0("plot_year_climate_change_", layer)
+  product <- paste0("forest_visit_interval_change_", layer)
   dt <- read_product(product)
   if (is.null(dt)) return(invisible(NULL))
 
@@ -347,12 +336,25 @@ validate_change_layer <- function(layer) {
     c(
       "community_layer", "stable_plot_id", "previous_PLT_CN", "current_PLT_CN",
       "previous_INVYR", "current_INVYR", "years_between_surveys",
-      "delta_cwm_temp", "rate_cwm_temp_per_year",
-      "delta_cwm_cwd", "rate_cwm_cwd_per_year",
+      "delta_mean_temp", "rate_mean_temp_per_year",
+      "delta_mean_cwd", "rate_mean_cwd_per_year",
       "current_frac_weight_with_niche", "previous_frac_weight_with_niche",
-      "meets_niche_coverage_threshold"
+      "meets_niche_coverage_threshold", "link_status"
     )
   )
+
+  # Only FIA's own remeasurement link may produce an interval.
+  if ("link_status" %in% names(dt)) {
+    bad_n <- dt[link_status != "official_link_match", .N]
+    add_check(
+      product,
+      "every_interval_uses_the_official_remeasurement_link",
+      "error",
+      bad_n == 0,
+      bad_n,
+      "Chronological adjacency alone must not create a change interval."
+    )
+  }
   check_unique_grain(dt, product, c("community_layer", "stable_plot_id", "previous_PLT_CN", "current_PLT_CN"))
   check_layer_value(dt, product, layer)
   check_columns_in_unit_interval(
@@ -411,18 +413,102 @@ validate_change_layer <- function(layer) {
 # Run validation
 # ------------------------------------------------------------------------------
 
+validate_first_last_change <- function() {
+  product <- "forest_first_last_change"
+  dt <- read_product(product)
+  if (is.null(dt)) return(invisible(NULL))
+
+  check_required_columns(
+    dt,
+    product,
+    c(
+      "stable_plot_id", "first_PLT_CN", "last_PLT_CN",
+      "INVYR_first", "INVYR_last", "n_visits_observed",
+      "seedlings_change_mean_temp", "saplings_change_mean_temp",
+      "trees_change_mean_temp"
+    )
+  )
+  check_unique_grain(dt, product, "stable_plot_id")
+  check_nonnegative_columns(dt, product, "n_visits_observed", "error")
+
+  if (all(c("INVYR_first", "INVYR_last") %in% names(dt))) {
+    bad_n <- dt[is.na(INVYR_first) | is.na(INVYR_last) | INVYR_last <= INVYR_first, .N]
+    add_check(
+      product,
+      "last_visit_is_after_first_visit",
+      "error",
+      bad_n == 0,
+      bad_n,
+      "Endpoint ordering must run forward in time."
+    )
+  }
+
+  # Every stage's change must be last minus first, for all eight indicators.
+  for (stage in c("seedlings", "saplings", "trees")) {
+    for (metric in c("mean_temp", "mean_cwd", "mean_pr", "median_temp")) {
+      first_col <- paste(stage, "first", metric, sep = "_")
+      last_col <- paste(stage, "last", metric, sep = "_")
+      change_col <- paste(stage, "change", metric, sep = "_")
+      if (!all(c(first_col, last_col, change_col) %in% names(dt))) next
+
+      bad_n <- dt[
+        !is.na(get(change_col)) &
+          abs(get(change_col) - (get(last_col) - get(first_col))) > 1e-8,
+        .N
+      ]
+      add_check(
+        product,
+        paste0(change_col, "_matches_last_minus_first"),
+        "error",
+        bad_n == 0,
+        bad_n,
+        "Change must equal the last-visit value minus the first-visit value."
+      )
+    }
+  }
+}
+
+validate_first_last_by_stage <- function() {
+  product <- "forest_first_last_change_by_stage"
+  dt <- read_product(product)
+  if (is.null(dt)) return(invisible(NULL))
+
+  check_required_columns(
+    dt,
+    product,
+    c(
+      "stable_plot_id", "life_stage", "PLT_CN_first", "PLT_CN_last",
+      "n_visits_observed", "change_mean_temp"
+    )
+  )
+  check_unique_grain(dt, product, c("stable_plot_id", "life_stage"))
+
+  if ("n_visits_observed" %in% names(dt)) {
+    bad_n <- dt[is.na(n_visits_observed) | n_visits_observed < 2L, .N]
+    add_check(
+      product,
+      "every_row_has_at_least_two_visits",
+      "error",
+      bad_n == 0,
+      bad_n,
+      "A change value needs two surveys of the same plot."
+    )
+  }
+}
+
 cat("Thermophilization Product Validation\n")
 cat("====================================\n\n")
 
-validate_recruitment_cwm()
-validate_analysis_cohort()
 validate_disturbance_severity()
 
 for (layer in c("seedlings", "saplings", "trees")) {
   validate_condition_layer(layer)
-  validate_plot_year_layer(layer)
+  validate_forest_plot_visit_layer(layer)
   validate_change_layer(layer)
 }
+
+validate_first_last_change()
+validate_first_last_by_stage()
 
 checks_dt <- rbindlist(checks, fill = TRUE)
 setorder(checks_dt, severity, status, product, check_name)

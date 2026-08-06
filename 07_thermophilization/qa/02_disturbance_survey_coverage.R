@@ -15,7 +15,7 @@
 #     queries:            named coverage questions (see config for each field)
 #
 # Input (read directly, so this QA does not depend on the 07 build outputs):
-#   05_fia/data/processed/summaries/plot_disturbance_classification.parquet
+#   05_fia/data/processed/summaries/fia_condition_disturbance_flags.parquet
 #   -- condition grain, carries raw DSTRBCD1-3 / DSTRBYR1-3 and INVYR.
 #
 # Definitions used here (documented in 07_thermophilization/README.md):
@@ -103,7 +103,7 @@ if (is.null(coverage_config) || is.null(coverage_config$queries)) {
 type_registry <- coverage_config$disturbance_types
 queries <- coverage_config$queries
 
-disturbance_path <- file.path(fia_summary_dir, "plot_disturbance_classification.parquet")
+disturbance_path <- file.path(fia_summary_dir, "fia_condition_disturbance_flags.parquet")
 if (!file.exists(disturbance_path)) {
   stop(glue("Required input file not found: {disturbance_path}"))
 }

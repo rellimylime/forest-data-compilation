@@ -1,15 +1,4 @@
-# ------------------------------------------------------------------------------
-# Helpers for evaluating survey coverage around dated disturbance events.
-# ------------------------------------------------------------------------------
-
-# Evaluate candidate disturbance years against a plot's survey history.
-#
-# When require_first is TRUE, a candidate is eligible only when it is the first
-# dated disturbance of any type recorded for that stable plot. Plots with an
-# undated/continuous disturbance are excluded because the absence of a prior
-# disturbance cannot be established. Surveys counted after the candidate must
-# also precede the next dated disturbance, while later disturbances remain
-# allowed after the selected post-disturbance survey window.
+# Evaluate whether FIA surveys occur before and after a dated disturbance.
 evaluate_disturbance_windows <- function(type_dated,
                                          dated_events,
                                          slot_events,
@@ -17,6 +6,7 @@ evaluate_disturbance_windows <- function(type_dated,
                                          min_before = 1L,
                                          min_after = 1L,
                                          require_first = FALSE) {
+  # Start with unique dated disturbances of the requested type.
   candidates <- unique(data.table::copy(type_dated)[
     !is.na(stable_plot_id) & !is.na(year),
     .(stable_plot_id, year = as.integer(year))
@@ -35,6 +25,7 @@ evaluate_disturbance_windows <- function(type_dated,
   }
   if (nrow(candidates) == 0) return(empty_result())
 
+  # Use all disturbance types to identify earlier or intervening events.
   event_years <- unique(data.table::copy(dated_events)[
     !is.na(stable_plot_id) & !is.na(year),
     .(stable_plot_id, event_year = as.integer(year))
@@ -52,6 +43,7 @@ evaluate_disturbance_windows <- function(type_dated,
   )
 
   candidates[, next_disturbance_year := NA_integer_]
+  # The optional first-event rule excludes plots with unknown disturbance timing.
   if (isTRUE(require_first)) {
     unknown_timing_plots <- unique(data.table::copy(slot_events)[
       is.na(raw_year) | raw_year %in% c(0L, 9999L),
@@ -63,6 +55,7 @@ evaluate_disturbance_windows <- function(type_dated,
     ]
     if (nrow(candidates) == 0) return(empty_result())
 
+    # Find the next dated disturbance after each candidate event.
     future <- merge(
       candidates[, .(stable_plot_id, candidate_year = year)],
       event_years,
@@ -88,6 +81,7 @@ evaluate_disturbance_windows <- function(type_dated,
     }
   }
 
+  # Compare each candidate with all observed survey years for the same plot.
   surveys <- unique(data.table::copy(survey_years)[
     !is.na(stable_plot_id) & !is.na(survey_year),
     .(stable_plot_id, survey_year = as.integer(survey_year))
@@ -101,6 +95,7 @@ evaluate_disturbance_windows <- function(type_dated,
   )
   if (nrow(joined) == 0) return(empty_result())
 
+  # Count surveys before the event and after it but before another disturbance.
   out <- joined[, .(
     first_disturbance_year = first(first_disturbance_year),
     next_disturbance_year = first(next_disturbance_year),

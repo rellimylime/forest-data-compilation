@@ -1,11 +1,18 @@
+#!/usr/bin/env Rscript
+
 # ==============================================================================
-# 06_build_plot_year_climate_change.R
-# Build repeated-survey climate-affinity change metrics.
+# 04_build_visit_interval_change.R
+# Change in community climate affinity between consecutive FIA surveys.
 #
-# This script compares consecutive FIA survey years for each stable plot and
-# community layer. It calculates change and annualized rate of change in
-# community-weighted species climate-affinity metrics, then joins disturbance
-# proportions for the current survey year.
+# One row per remeasurement interval: each survey of a stable plot is compared
+# with the survey immediately before it. A plot measured in 2002, 2012, and 2022
+# yields two rows (2002->2012 and 2012->2022). The companion product
+# 05_build_first_last_change.R instead compares only the earliest and latest
+# survey, giving one row per plot. Choosing between the two designs is an open
+# analysis decision; both are built so the choice stays open.
+#
+# Input is the forest-only plot-visit CWM, so nonforest conditions are already
+# excluded and forest conditions are area-weighted within each visit.
 #
 # Supported layers:
 #   seedlings, saplings, trees
@@ -14,14 +21,13 @@
 #   one row per community_layer x stable_plot_id x previous_PLT_CN x current_PLT_CN
 #
 # Usage:
-#   Rscript 07_thermophilization/scripts/06_build_plot_year_climate_change.R --layer=seedlings
-#   Rscript 07_thermophilization/scripts/06_build_plot_year_climate_change.R --layer=saplings
-#   Rscript 07_thermophilization/scripts/06_build_plot_year_climate_change.R --layer=trees
-#   Rscript 07_thermophilization/scripts/06_build_plot_year_climate_change.R --layer=seedlings --limit=1000
+#   Rscript 07_thermophilization/scripts/04_build_visit_interval_change.R --layer=seedlings
+#   Rscript 07_thermophilization/scripts/04_build_visit_interval_change.R --layer=saplings
+#   Rscript 07_thermophilization/scripts/04_build_visit_interval_change.R --layer=trees
+#   Rscript 07_thermophilization/scripts/04_build_visit_interval_change.R --layer=seedlings --limit=1000
 #
 # Documentation:
-#   07_thermophilization/README.md#script-06-inputs-and-outputs
-#   07_thermophilization/README.md#plot_year_climate_change_layerparquet
+#   07_thermophilization/README.md
 # ==============================================================================
 
 suppressPackageStartupMessages({
@@ -33,6 +39,7 @@ suppressPackageStartupMessages({
 })
 
 source(here("scripts/utils/load_config.R"))
+source(here("scripts/utils/parquet_atomic.R"))
 
 # ------------------------------------------------------------------------------
 # Command line options
@@ -76,7 +83,9 @@ if (is.na(min_niche_coverage) || min_niche_coverage < 0 || min_niche_coverage > 
 
 config <- load_config()
 thermo_config <- config$processed$thermophilization
+fia_config <- config$processed$fia
 thermo_dir <- here(thermo_config$output_dir)
+summary_dir <- here(fia_config$summaries$output_dir)
 
 smoke_data_dir <- here("07_thermophilization/data/smoke")
 qa_dir <- if (is_smoke_run) {
@@ -85,80 +94,50 @@ qa_dir <- if (is_smoke_run) {
   here("07_thermophilization/qa/outputs")
 }
 
-plot_year_filename <- switch(
-  layer,
-  seedlings = thermo_config$files$plot_year_community_cwm_seedlings,
-  saplings = thermo_config$files$plot_year_community_cwm_saplings,
-  trees = thermo_config$files$plot_year_community_cwm_trees
-)
-if (is.null(plot_year_filename) || !nzchar(plot_year_filename)) {
-  plot_year_filename <- sprintf("plot_year_community_cwm_%s.parquet", layer)
+input_key <- paste0("forest_plot_visit_cwm_", layer)
+input_filename <- thermo_config$files[[input_key]]
+if (is.null(input_filename) || !nzchar(input_filename)) {
+  input_filename <- sprintf("forest_plot_visit_cwm_%s.parquet", layer)
 }
 
-change_filename <- switch(
-  layer,
-  seedlings = thermo_config$files$plot_year_climate_change_seedlings,
-  saplings = thermo_config$files$plot_year_climate_change_saplings,
-  trees = thermo_config$files$plot_year_climate_change_trees
-)
+change_key <- paste0("forest_visit_interval_change_", layer)
+change_filename <- thermo_config$files[[change_key]]
 if (is.null(change_filename) || !nzchar(change_filename)) {
-  change_filename <- sprintf("plot_year_climate_change_%s.parquet", layer)
+  change_filename <- sprintf("forest_visit_interval_change_%s.parquet", layer)
 }
-input_path <- file.path(thermo_dir, plot_year_filename)
+
+input_path <- file.path(thermo_dir, input_filename)
 severity_path <- file.path(thermo_dir, thermo_config$files$plot_disturbance_severity)
+context_path <- file.path(summary_dir, fia_config$summaries$files$plot_visit_context)
 out_path <- file.path(
   if (is_smoke_run) smoke_data_dir else thermo_dir,
   if (is_smoke_run) {
-    sprintf("plot_year_climate_change_%s_limit_%d.parquet", layer, limit_arg)
+    sprintf("forest_visit_interval_change_%s_limit_%d.parquet", layer, limit_arg)
   } else {
     change_filename
   }
 )
 
 qa_suffix <- if (is_smoke_run) sprintf("%s_limit_%d", layer, limit_arg) else layer
-summary_path <- file.path(qa_dir, sprintf("plot_year_climate_change_summary_%s.csv", qa_suffix))
-by_class_path <- file.path(qa_dir, sprintf("plot_year_climate_change_by_disturbance_%s.csv", qa_suffix))
-linkage_path <- file.path(qa_dir, sprintf("plot_year_climate_change_linkage_%s.csv", qa_suffix))
+summary_path <- file.path(qa_dir, sprintf("forest_visit_interval_change_summary_%s.csv", qa_suffix))
+by_class_path <- file.path(qa_dir, sprintf("forest_visit_interval_change_by_disturbance_%s.csv", qa_suffix))
+linkage_path <- file.path(qa_dir, sprintf("forest_visit_interval_change_linkage_%s.csv", qa_suffix))
 
 dir_create(if (is_smoke_run) smoke_data_dir else thermo_dir)
 dir_create(qa_dir)
 
-required_files <- c(input_path, severity_path)
+required_files <- c(input_path, severity_path, context_path)
 missing_files <- required_files[!file.exists(required_files)]
 if (length(missing_files) > 0) {
-  stop(glue("Required input file(s) not found: {paste(missing_files, collapse = ', ')}"))
+  stop(glue(
+    "Required input file(s) not found: {paste(missing_files, collapse = ', ')}\n",
+    "Run: Rscript 07_thermophilization/scripts/02_build_forest_plot_visit_cwm.R"
+  ))
 }
 
 # ------------------------------------------------------------------------------
 # Helpers
 # ------------------------------------------------------------------------------
-
-write_parquet_safely <- function(df, path, compression = "snappy") {
-  # Write through a temporary file so interrupted reruns keep the last complete output.
-  dir_create(dirname(path))
-  tmp_path <- tempfile(
-    pattern = paste0(path_file(path), "_tmp_"),
-    tmpdir = dirname(path),
-    fileext = ".parquet"
-  )
-  on.exit(unlink(tmp_path, force = TRUE), add = TRUE)
-
-  write_parquet(df, tmp_path, compression = compression)
-  file_copy(tmp_path, path, overwrite = TRUE)
-}
-
-write_csv_safely <- function(df, path) {
-  dir_create(dirname(path))
-  tmp_path <- tempfile(
-    pattern = paste0(path_file(path), "_tmp_"),
-    tmpdir = dirname(path),
-    fileext = ".csv"
-  )
-  on.exit(unlink(tmp_path, force = TRUE), add = TRUE)
-
-  fwrite(df, tmp_path)
-  file_copy(tmp_path, path, overwrite = TRUE)
-}
 
 count_section <- function(dt, column, section_name) {
   out <- dt[, .N, by = .(category = get(column))]
@@ -171,65 +150,92 @@ count_section <- function(dt, column, section_name) {
 # Load inputs
 # ------------------------------------------------------------------------------
 
-cat("Plot-Year Climate Change Build\n")
-cat("==============================\n\n")
+cat("Forest Visit Interval Change Build\n")
+cat("==================================\n\n")
 cat(glue("Community layer input: {input_path}"), "\n")
 cat(glue("Disturbance input:     {severity_path}"), "\n")
+cat(glue("Visit context input:   {context_path}"), "\n")
 cat(glue("Output:                {out_path}"), "\n\n")
 
-plot_year <- as.data.table(read_parquet(input_path))
+visits <- as.data.table(read_parquet(input_path))
 severity <- as.data.table(read_parquet(severity_path))
 
 if (is_smoke_run) {
-  keep_plots <- unique(plot_year$stable_plot_id)[seq_len(min(limit_arg, uniqueN(plot_year$stable_plot_id)))]
-  plot_year <- plot_year[stable_plot_id %in% keep_plots]
+  keep_plots <- unique(visits$stable_plot_id)[seq_len(min(limit_arg, uniqueN(visits$stable_plot_id)))]
+  visits <- visits[stable_plot_id %in% keep_plots]
 }
 
 required_plot_cols <- c(
-  "community_layer", "stable_plot_id", "PLT_CN", "INVYR", "state",
-  "STATECD", "UNITCD", "COUNTYCD", "PLOT", "LAT", "LON", "ELEV",
-  "pct_forested", "n_species_total", "plot_community_weight_total",
-  "frac_weight_with_niche"
+  "community_layer", "stable_plot_id", "PLT_CN", "INVYR", "PREV_PLT_CN",
+  "state", "STATECD", "UNITCD", "COUNTYCD", "PLOT", "LAT", "LON", "ELEV",
+  "forested_plot_proportion", "n_forested_conditions_with_layer",
+  "forested_condition_weight_with_layer", "frac_weight_with_niche"
 )
-missing_plot_cols <- setdiff(required_plot_cols, names(plot_year))
+missing_plot_cols <- setdiff(required_plot_cols, names(visits))
 if (length(missing_plot_cols) > 0) {
-  stop(glue("Plot-year CWM table is missing required column(s): {paste(missing_plot_cols, collapse = ', ')}"))
+  stop(glue(
+    "Forest plot-visit CWM is missing required column(s): ",
+    "{paste(missing_plot_cols, collapse = ', ')}"
+  ))
 }
 
 metric_cols <- c(
-  "cwm_temp", "cwm_heat", "cwm_cold", "cwm_temp_seasonality",
-  "cwm_cwd", "cwm_peak_cwd", "cwm_pr", "cwm_dry_month_pr",
-  "median_temp", "median_heat", "median_cold", "median_temp_seasonality",
-  "median_cwd", "median_peak_cwd", "median_pr", "median_dry_month_pr"
+  paste0("mean_", c(
+    "temp", "heat", "cold", "temp_seasonality",
+    "cwd", "peak_cwd", "pr", "dry_month_pr"
+  )),
+  paste0("median_", c(
+    "temp", "heat", "cold", "temp_seasonality",
+    "cwd", "peak_cwd", "pr", "dry_month_pr"
+  ))
 )
-missing_metric_cols <- setdiff(metric_cols, names(plot_year))
+missing_metric_cols <- setdiff(metric_cols, names(visits))
 if (length(missing_metric_cols) > 0) {
-  stop(glue("Plot-year CWM table is missing metric column(s): {paste(missing_metric_cols, collapse = ', ')}"))
+  stop(glue("Forest plot-visit CWM is missing metric column(s): {paste(missing_metric_cols, collapse = ', ')}"))
 }
+
+# ------------------------------------------------------------------------------
+# Order visits by measurement date
+# ------------------------------------------------------------------------------
+# Interval direction decides the sign of every change value. Order on the
+# recorded measurement date rather than INVYR alone, so this product and the
+# first/last product agree on which survey came first.
+
+context <- as.data.table(read_parquet(context_path))
+context <- context[, .(
+  PLT_CN, measurement_date_lower, measurement_date_upper, measurement_date_precision
+)]
+if (anyDuplicated(context$PLT_CN)) stop("Visit context must be unique by PLT_CN.")
+
+visits <- merge(visits, context, by = "PLT_CN", all.x = TRUE, sort = FALSE)
+n_undated_visits <- visits[is.na(measurement_date_lower), uniqueN(PLT_CN)]
+if (n_undated_visits > 0L) {
+  stop(
+    format(n_undated_visits, big.mark = ","),
+    " plot visit(s) have no measurement date in ", context_path, ".\n",
+    "Survey intervals cannot be ordered. Rebuild the visit context: ",
+    "Rscript 05_fia/scripts/07_build_plot_visit_context.R"
+  )
+}
+
+setorder(visits, stable_plot_id, measurement_date_lower, measurement_date_upper, INVYR, PLT_CN)
 
 # ------------------------------------------------------------------------------
 # Build consecutive survey intervals
 # ------------------------------------------------------------------------------
 
-if (!"PREV_PLT_CN" %in% names(plot_year)) {
-  stop(paste0(
-    "Plot-year CWM table lacks PREV_PLT_CN; cannot enforce the official ",
-    "FIA remeasurement link. Rebuild the plot-year CWM (script 05) so ",
-    "PREV_PLT_CN is carried through."
-  ))
-}
-
-setorder(plot_year, stable_plot_id, INVYR, PLT_CN)
-
 shift_cols <- c(
-  "PLT_CN", "INVYR", "pct_forested", "n_species_total",
-  "plot_community_weight_total", "frac_weight_with_niche", metric_cols
+  "PLT_CN", "INVYR", "measurement_date_lower",
+  "forested_plot_proportion", "n_forested_conditions_with_layer",
+  "forested_condition_weight_with_layer", "frac_weight_with_niche", metric_cols
 )
 for (col in shift_cols) {
-  plot_year[, paste0("previous_", col) := shift(get(col), type = "lag"), by = stable_plot_id]
+  visits[, paste0("previous_", col) := shift(get(col), type = "lag"), by = stable_plot_id]
 }
 
-plot_year[, years_between_surveys := INVYR - previous_INVYR]
+visits[, years_between_surveys := INVYR - previous_INVYR]
+visits[, days_between_measurements :=
+  as.integer(measurement_date_lower) - as.integer(previous_measurement_date_lower)]
 
 # ------------------------------------------------------------------------------
 # Repeated-visit linkage contract
@@ -239,9 +245,8 @@ plot_year[, years_between_surveys := INVYR - previous_INVYR]
 #   current PREV_PLT_CN == previous (lagged) PLT_CN
 # Chronological adjacency alone is NOT a remeasurement link: plots that were
 # replaced or re-established at a reused location carry a null or different
-# PREV_PLT_CN, and must not be turned into a spurious change interval. See the
-# FIA data-integrity investigation (~1% of intervals were chronological-only).
-plot_year[, link_status := fcase(
+# PREV_PLT_CN, and must not be turned into a spurious change interval.
+visits[, link_status := fcase(
   is.na(previous_PLT_CN),                     "no_prior_visit_in_layer",
   is.na(PREV_PLT_CN),                         "null_official_link",
   PREV_PLT_CN == previous_PLT_CN,             "official_link_match",
@@ -251,14 +256,14 @@ plot_year[, link_status := fcase(
 # Diagnostics: count each linkage outcome before filtering.
 link_diag <- data.table(
   layer = layer,
-  n_plot_year_rows = nrow(plot_year),
-  n_rows_with_prior_visit_in_layer = plot_year[!is.na(previous_PLT_CN), .N],
-  n_official_link_match = plot_year[link_status == "official_link_match", .N],
-  n_null_official_link = plot_year[link_status == "null_official_link", .N],
-  n_official_link_mismatch = plot_year[link_status == "official_link_mismatch", .N],
+  n_plot_visit_rows = nrow(visits),
+  n_rows_with_prior_visit_in_layer = visits[!is.na(previous_PLT_CN), .N],
+  n_official_link_match = visits[link_status == "official_link_match", .N],
+  n_null_official_link = visits[link_status == "null_official_link", .N],
+  n_official_link_mismatch = visits[link_status == "official_link_mismatch", .N],
   # Prior visit outside the analysis window: FIA records a previous plot but it is
   # not present as a CWM-bearing row for this layer, so no interval can be built.
-  n_prior_visit_outside_layer = plot_year[
+  n_prior_visit_outside_layer = visits[
     is.na(previous_PLT_CN) & !is.na(PREV_PLT_CN), .N]
 )
 cat("Repeated-visit linkage (", layer, "):\n", sep = "")
@@ -268,7 +273,7 @@ cat(sprintf("  official_link_mismatch   : %d (excluded)\n", link_diag$n_official
 cat(sprintf("  prior_visit_outside_layer: %d\n", link_diag$n_prior_visit_outside_layer))
 
 # Keep only official, forward-in-time remeasurement intervals.
-changes <- plot_year[
+changes <- visits[
   link_status == "official_link_match" & years_between_surveys > 0
 ]
 
@@ -287,11 +292,10 @@ for (metric in metric_cols) {
 changes[, `:=`(
   current_PLT_CN = PLT_CN,
   current_INVYR = INVYR,
-  current_pct_forested = pct_forested,
-  current_n_species_total = n_species_total,
-  current_plot_community_weight_total = plot_community_weight_total,
+  current_forested_plot_proportion = forested_plot_proportion,
+  current_n_forested_conditions_with_layer = n_forested_conditions_with_layer,
+  current_forested_condition_weight_with_layer = forested_condition_weight_with_layer,
   current_frac_weight_with_niche = frac_weight_with_niche,
-  previous_frac_weight_with_niche = previous_frac_weight_with_niche,
   meets_niche_coverage_threshold = (
     !is.na(frac_weight_with_niche) &
       !is.na(previous_frac_weight_with_niche) &
@@ -388,13 +392,16 @@ identity_cols <- c(
   "COUNTYCD", "PLOT", "previous_PLT_CN", "current_PLT_CN", "PREV_PLT_CN",
   "link_status",
   "previous_INVYR", "current_INVYR", "years_between_surveys",
+  "days_between_measurements",
   "LAT", "LON", "ELEV", "region_east_west"
 )
 
 context_cols <- c(
-  "previous_pct_forested", "current_pct_forested",
-  "previous_n_species_total", "current_n_species_total",
-  "previous_plot_community_weight_total", "current_plot_community_weight_total",
+  "previous_forested_plot_proportion", "current_forested_plot_proportion",
+  "previous_n_forested_conditions_with_layer",
+  "current_n_forested_conditions_with_layer",
+  "previous_forested_condition_weight_with_layer",
+  "current_forested_condition_weight_with_layer",
   "previous_frac_weight_with_niche", "current_frac_weight_with_niche",
   "meets_niche_coverage_threshold", "min_niche_coverage_threshold"
 )
@@ -445,10 +452,10 @@ summary <- data.table(
     "n_stable_plots_with_fire_within_interval",
     "n_rows_with_insect_within_interval",
     "n_stable_plots_with_insect_within_interval",
-    "median_delta_cwm_temp",
-    "median_rate_cwm_temp_per_year",
-    "median_delta_cwm_cwd",
-    "median_rate_cwm_cwd_per_year"
+    "median_delta_mean_temp",
+    "median_rate_mean_temp_per_year",
+    "median_delta_mean_cwd",
+    "median_rate_mean_cwd_per_year"
   ),
   value = c(
     nrow(changes),
@@ -461,10 +468,10 @@ summary <- data.table(
     uniqueN(changes[fire_within_interval == TRUE]$stable_plot_id),
     sum(changes$insect_within_interval, na.rm = TRUE),
     uniqueN(changes[insect_within_interval == TRUE]$stable_plot_id),
-    stats::median(changes$delta_cwm_temp, na.rm = TRUE),
-    stats::median(changes$rate_cwm_temp_per_year, na.rm = TRUE),
-    stats::median(changes$delta_cwm_cwd, na.rm = TRUE),
-    stats::median(changes$rate_cwm_cwd_per_year, na.rm = TRUE)
+    stats::median(changes$delta_mean_temp, na.rm = TRUE),
+    stats::median(changes$rate_mean_temp_per_year, na.rm = TRUE),
+    stats::median(changes$delta_mean_cwd, na.rm = TRUE),
+    stats::median(changes$rate_mean_cwd_per_year, na.rm = TRUE)
   )
 )
 summary[, `:=`(
@@ -491,10 +498,10 @@ setcolorder(by_class, c("community_layer", "section", "category", "N", "min_nich
 # Write outputs
 # ------------------------------------------------------------------------------
 
-write_parquet_safely(changes, out_path)
-write_csv_safely(summary, summary_path)
-write_csv_safely(by_class, by_class_path)
-write_csv_safely(link_diag, linkage_path)
+write_parquet_atomic(changes, out_path, compression = "snappy")
+fwrite(summary, summary_path)
+fwrite(by_class, by_class_path)
+fwrite(link_diag, linkage_path)
 
 cat("\nDone.\n")
 cat(glue("Change parquet: {out_path}"), "\n")
