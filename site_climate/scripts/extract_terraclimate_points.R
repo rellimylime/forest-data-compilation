@@ -23,11 +23,18 @@
 # Optional arguments:
 #   --input=path/to/site_locations.csv
 #   --output-dir=path/to/output_dir
+#   --qa-dir=path/to/qa_output_dir
 #   --start-year=1958
 #   --end-year=2024
+#   --variables=tmmx,tmmn,pr,def,pet,aet
+#   --batch-size=2500
+#   --backend=gee|local-ncss
 #
 # Prerequisite:
-#   Google Earth Engine access configured in local/user_config.yaml.
+#   For --backend=gee, Google Earth Engine access configured in
+#   local/user_config.yaml. The --backend=local-ncss route downloads fixed
+#   regional grids from the official TerraClimate THREDDS NCSS and performs all
+#   site/pixel matching locally.
 # ==============================================================================
 
 # Packages
@@ -71,7 +78,7 @@ output_dir <- arg_value(
   "output-dir",
   here("site_climate/data/processed")
 )
-qa_dir <- here("site_climate/qa/outputs")
+qa_dir <- arg_value("qa-dir", here("site_climate/qa/outputs"))
 dir_create(output_dir)
 dir_create(qa_dir)
 
@@ -83,8 +90,26 @@ end_year <- as.integer(arg_value(
 ))
 years <- start_year:end_year
 
-# Variables and TerraClimate scale factors
-site_vars <- c("tmmx", "tmmn", "pr", "def", "pet", "aet")
+# Variables and TerraClimate scale factors. The default is unchanged; the
+# optional subset supports small, reproducible analysis-specific extractions.
+default_site_vars <- c("tmmx", "tmmn", "pr", "def", "pet", "aet")
+variables_arg <- arg_value("variables", paste(default_site_vars, collapse = ","))
+site_vars <- trimws(strsplit(variables_arg, ",", fixed = TRUE)[[1]])
+unknown_vars <- setdiff(site_vars, names(tc_config$variables))
+if (length(site_vars) == 0 || length(unknown_vars) > 0) {
+  stop(sprintf(
+    "Unknown or empty TerraClimate variable selection: %s",
+    paste(unknown_vars, collapse = ", ")
+  ))
+}
+batch_size <- as.integer(arg_value("batch-size", "2500"))
+if (is.na(batch_size) || batch_size < 1L) {
+  stop("--batch-size must be a positive integer.")
+}
+backend <- arg_value("backend", "gee")
+if (!backend %in% c("gee", "local-ncss")) {
+  stop("--backend must be either 'gee' or 'local-ncss'.")
+}
 scale_factors <- vapply(
   tc_config$variables,
   function(v) v$scale,
@@ -168,36 +193,166 @@ cat(sprintf(
   nrow(sites), n_pixels
 ))
 
-# Initialize Google Earth Engine
-ee <- init_gee()
-
 cat(sprintf(
-  "Extracting %s variables x 12 months x %s years (%s-%s) at %s pixels...\n",
-  length(site_vars), length(years), start_year, end_year, n_pixels
+  "Extracting %s variables x 12 months x %s years (%s-%s) at %s pixels using %s...\n",
+  length(site_vars), length(years), start_year, end_year, n_pixels, backend
 ))
-
-# Annual checkpoint directory
-tmp_dir <- file.path(output_dir, "_gee_annual")
-dir_create(tmp_dir)
 
 # Extract each unique TerraClimate pixel once
 pixel_coords <- pixel_map |>
   distinct(pixel_id, x, y)
 
-# Write one GEE extraction parquet per year
-extract_climate_from_gee(
-  pixel_coords = pixel_coords,
-  gee_asset = tc_config$gee_asset,
-  variables = site_vars,
-  years = years,
-  ee = ee,
-  scale = tc_config$gee_scale,
-  batch_size = 2500,
-  output_dir = tmp_dir,
-  output_prefix = "sites",
-  scale_factors = scale_factors,
-  monthly = TRUE
-)
+if (backend == "gee") {
+  # Annual checkpoint directory
+  tmp_dir <- file.path(output_dir, "_gee_annual")
+  dir_create(tmp_dir)
+
+  # Write one GEE extraction parquet per year
+  ee <- init_gee()
+  extract_climate_from_gee(
+    pixel_coords = pixel_coords,
+    gee_asset = tc_config$gee_asset,
+    variables = site_vars,
+    years = years,
+    ee = ee,
+    scale = tc_config$gee_scale,
+    batch_size = batch_size,
+    output_dir = tmp_dir,
+    output_prefix = "sites",
+    scale_factors = scale_factors,
+    monthly = TRUE
+  )
+} else {
+  # Local NCSS backend: download fixed broad regional grids from the official
+  # TerraClimate THREDDS server, extract the already-mapped pixel centers
+  # locally, and discard each temporary NetCDF. No site coordinate or site ID is
+  # sent to the remote service.
+  if (!identical(site_vars, "def")) {
+    stop("The local-ncss backend currently supports --variables=def only.")
+  }
+
+  tmp_dir <- file.path(output_dir, "_local_annual")
+  netcdf_dir <- file.path(output_dir, "_netcdf_temp")
+  dir_create(tmp_dir)
+  dir_create(netcdf_dir)
+
+  fixed_regions <- data.frame(
+    region = c("conus", "alaska", "hawaii"),
+    west = c(-125, -155, -161),
+    east = c(-66, -129, -154),
+    south = c(24, 54, 18),
+    north = c(50, 62, 23)
+  )
+  pixel_coords$region <- ifelse(
+    pixel_coords$y < 25 & pixel_coords$x < -150, "hawaii",
+    ifelse(pixel_coords$y > 50, "alaska", "conus")
+  )
+
+  outside <- pixel_coords |>
+    inner_join(fixed_regions, by = "region") |>
+    filter(x < west | x > east | y < south | y > north)
+  if (nrow(outside) > 0) {
+    stop(sprintf("%s mapped pixels fall outside the fixed NCSS regions.", nrow(outside)))
+  }
+
+  ncss_base <- paste0(
+    "https://tds-proxy.nkn.uidaho.edu/thredds/ncss/grid/",
+    "TERRACLIMATE_ALL/data/TerraClimate_def_%d.nc"
+  )
+
+  for (year in years) {
+    annual_file <- file.path(tmp_dir, sprintf("sites_%d.parquet", year))
+    if (file.exists(annual_file)) {
+      cat(sprintf("  %d: exists, skipping\n", year))
+      next
+    }
+
+    cat(sprintf("  %d: ", year))
+    region_results <- list()
+    year_available <- TRUE
+
+    for (j in seq_len(nrow(fixed_regions))) {
+      region_row <- fixed_regions[j, ]
+      region_pixels <- pixel_coords |>
+        filter(region == region_row$region)
+      if (nrow(region_pixels) == 0) next
+
+      query <- paste0(
+        sprintf(ncss_base, year),
+        "?var=def",
+        "&north=", region_row$north,
+        "&west=", region_row$west,
+        "&east=", region_row$east,
+        "&south=", region_row$south,
+        "&horizStride=1",
+        "&time_start=", year, "-01-01T00%3A00%3A00Z",
+        "&time_end=", year, "-12-01T00%3A00%3A00Z",
+        "&timeStride=1&accept=netcdf"
+      )
+      nc_path <- file.path(
+        netcdf_dir,
+        sprintf("TerraClimate_def_%d_%s.nc", year, region_row$region)
+      )
+
+      downloaded <- tryCatch({
+        utils::download.file(query, nc_path, mode = "wb", quiet = TRUE,
+                             method = "libcurl")
+        TRUE
+      }, error = function(e) {
+        message(sprintf("\n    %s unavailable: %s", region_row$region,
+                        conditionMessage(e)))
+        FALSE
+      })
+      if (!downloaded || !file.exists(nc_path)) {
+        year_available <- FALSE
+        break
+      }
+
+      raster <- terra::rast(nc_path)
+      raster_dates <- as.Date(terra::time(raster))
+      if (length(raster_dates) != 12L || anyNA(raster_dates)) {
+        stop(sprintf("Unexpected monthly time axis in %s.", nc_path))
+      }
+      values <- terra::extract(
+        raster,
+        as.matrix(region_pixels[, c("x", "y")])
+      )
+      if ("ID" %in% names(values)) values$ID <- NULL
+
+      month_parts <- lapply(seq_len(terra::nlyr(raster)), function(k) {
+        data.frame(
+          pixel_id = region_pixels$pixel_id,
+          x = region_pixels$x,
+          y = region_pixels$y,
+          year = as.integer(format(raster_dates[k], "%Y")),
+          month = as.integer(format(raster_dates[k], "%m")),
+          def = as.numeric(values[[k]])
+        )
+      })
+      region_results[[region_row$region]] <- bind_rows(month_parts) |>
+        filter(is.finite(def))
+
+      # The NetCDF is a reproducible download checkpoint, not a retained input.
+      unlink(nc_path)
+    }
+
+    if (!year_available) {
+      existing_nc <- list.files(
+        netcdf_dir,
+        pattern = sprintf("^TerraClimate_def_%d_.*[.]nc$", year),
+        full.names = TRUE
+      )
+      if (length(existing_nc) > 0) unlink(existing_nc)
+      cat("unavailable, skipped\n")
+      next
+    }
+
+    year_data <- bind_rows(region_results) |>
+      select(pixel_id, x, y, year, month, def)
+    write_parquet(year_data, annual_file, compression = "snappy")
+    cat(sprintf("saved %s pixel-month rows\n", format(nrow(year_data), big.mark = ",")))
+  }
+}
 
 # Completed annual files
 annual_files <- list.files(
@@ -211,7 +366,7 @@ annual_files <- annual_files[vapply(
   logical(1)
 )]
 if (length(annual_files) == 0) {
-  stop("No non-empty annual GEE parquet files found.")
+  stop("No non-empty annual TerraClimate parquet files found.")
 }
 
 cat(sprintf("Consolidating %s annual files...\n", length(annual_files)))

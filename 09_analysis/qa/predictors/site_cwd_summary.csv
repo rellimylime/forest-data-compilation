@@ -1,0 +1,2 @@
+histories_total,histories_complete,histories_incomplete,histories_no_site_climate,coverage_pct,min_mm,median_mm,p90_mm,p99_mm,p995_mm,p999_mm,max_mm,min_expected_months,max_expected_months,max_mean_monthly_mm,max_single_month_mm
+78527,78518,5,4,99.9885389738561,0,3077,11085.73,21610.87,25116.8494999999,30119.2395999998,38928.8,6,327,193.6325,348.6

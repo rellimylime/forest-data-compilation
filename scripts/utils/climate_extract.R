@@ -219,10 +219,12 @@ extract_climate_from_gee <- function(pixel_coords,
 
   n_pixels <- nrow(pixel_coords)
 
-  # For monthly stacking (14 vars x 12 months = 168 bands), reduce batch size
-  # to keep GEE response payload manageable
+  # Keep the response payload at or below the historical 14 vars x 12 months x
+  # 2,500 points target. This preserves the old cap for full extractions while
+  # allowing a larger point batch for a one-variable QA extraction.
   if (monthly) {
-    stacked_batch_size <- min(batch_size, 2500)
+    payload_cap <- floor((14 * 12 * 2500) / (12 * length(variables)))
+    stacked_batch_size <- min(batch_size, payload_cap)
   }
 
   cat(sprintf("Extracting %d variables for %d unique pixels across %d years\n",
