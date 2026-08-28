@@ -6,7 +6,8 @@ suppressPackageStartupMessages({
 })
 
 available_modules <- c("01_ids", "02_terraclimate", "03_prism", "04_worldclim",
-                       "05_fia", "07_thermophilization", "08_disturbance_linkage")
+                       "05_fia", "07_thermophilization", "08_disturbance_linkage",
+                       "09_analysis")
 
 # Accept module names so a focused test run does not execute the full repository.
 args <- commandArgs(trailingOnly = TRUE)

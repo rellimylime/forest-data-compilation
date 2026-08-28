@@ -37,6 +37,10 @@ flowchart TB
     ids_clean --> tc
     ids_clean --> pr
     ids_clean --> wc
+
+    fia_summary --> analysis["09_analysis condition histories and models"]
+    analysis --> mortality["Cumulative agent-attributed mortality<br/>complete first-to-last history"]
+    analysis --> cwm["Condition temperature / precipitation / CWD change"]
 ```
 
 ## Workstream Links
@@ -48,6 +52,10 @@ flowchart TB
 | PRISM | [03_prism/README.md](../03_prism/README.md) | [03_prism/WORKFLOW.md](../03_prism/WORKFLOW.md) | [03_prism/scripts/](../03_prism/scripts/) |
 | WorldClim | [04_worldclim/README.md](../04_worldclim/README.md) | [04_worldclim/WORKFLOW.md](../04_worldclim/WORKFLOW.md) | [04_worldclim/scripts/](../04_worldclim/scripts/) |
 | FIA | [05_fia/README.md](../05_fia/README.md) | [05_fia/WORKFLOW.md](../05_fia/WORKFLOW.md) | [05_fia/scripts/](../05_fia/scripts/) |
+| Condition-level analysis | [09_analysis/README.md](../09_analysis/README.md) | [Current methods](../09_analysis/docs/METHODS.md) | [Numbered scripts](../09_analysis/scripts/) |
+
+The mortality branch is distinct from the pending live-damaged-plus-dead severity
+definition; no severity product is currently emitted.
 
 ## Shared Components
 

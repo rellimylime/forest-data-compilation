@@ -43,6 +43,8 @@ vignettes/*.pdf
 docs/
 !/docs/
 !/docs/**
+!09_analysis/docs/
+!09_analysis/docs/**
 !01_ids/docs
 !02_terraclimate/docs
 !05_fia/docs/
