@@ -101,6 +101,8 @@ scratch_output/
 **/qa/outputs/**
 !**/qa/outputs/
 !**/qa/outputs/.gitkeep
+!**/qa/outputs/**/
+!**/qa/outputs/**/.gitkeep
 **/qa/figures/**
 !**/qa/figures/
 !**/qa/figures/.gitkeep

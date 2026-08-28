@@ -55,7 +55,9 @@ visit_context_path <- file.path(
   here(fia_cfg$summaries$output_dir), "plot_visit_context.parquet"
 )
 out_dir <- here(analysis_cfg$output_dir)
-qa_dir <- here("09_analysis/qa/intervals")
+qa_dir <- here(
+  "09_analysis/qa/outputs/00_remeasurement_components"
+)
 dir_create(out_dir)
 dir_create(qa_dir)
 

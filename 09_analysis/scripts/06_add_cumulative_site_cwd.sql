@@ -130,5 +130,49 @@ COPY (
     'month timestamp (first day) within exact FIA measurement dates'
       AS history_inclusion_rule
   FROM monthly_def
-) TO '09_analysis/qa/predictors/site_cwd_source.csv'
+) TO '09_analysis/qa/outputs/06_cumulative_site_cwd/site_cwd_source.csv'
+  (HEADER, DELIMITER ',');
+
+COPY (
+  SELECT
+    COUNT(*) AS histories_total,
+    COUNT(*) FILTER (WHERE cumulative_site_CWD_complete) AS histories_complete,
+    COUNT(*) FILTER (
+      WHERE cumulative_site_CWD_status = 'incomplete_months'
+    ) AS histories_incomplete,
+    COUNT(*) FILTER (
+      WHERE cumulative_site_CWD_status = 'no_site_climate'
+    ) AS histories_no_site_climate,
+    100.0 * COUNT(*) FILTER (WHERE cumulative_site_CWD_complete) / COUNT(*)
+      AS coverage_pct,
+    MIN(cumulative_site_CWD_mm) AS min_mm,
+    MEDIAN(cumulative_site_CWD_mm) AS median_mm,
+    quantile_cont(cumulative_site_CWD_mm, 0.90) AS p90_mm,
+    quantile_cont(cumulative_site_CWD_mm, 0.99) AS p99_mm,
+    quantile_cont(cumulative_site_CWD_mm, 0.995) AS p995_mm,
+    quantile_cont(cumulative_site_CWD_mm, 0.999) AS p999_mm,
+    MAX(cumulative_site_CWD_mm) AS max_mm,
+    MIN(expected_CWD_months) AS min_expected_months,
+    MAX(expected_CWD_months) AS max_expected_months,
+    MAX(mean_monthly_site_CWD_mm) AS max_mean_monthly_mm,
+    MAX(max_monthly_site_CWD_mm) AS max_single_month_mm
+  FROM history_cwd
+) TO '09_analysis/qa/outputs/06_cumulative_site_cwd/site_cwd_summary.csv'
+  (HEADER, DELIMITER ',');
+
+COPY (
+  SELECT *
+  FROM history_cwd
+  WHERE NOT cumulative_site_CWD_complete
+  ORDER BY state, stable_plot_id, remeasurement_component_id, CONDID
+) TO '09_analysis/qa/outputs/06_cumulative_site_cwd/site_cwd_incomplete_histories.csv'
+  (HEADER, DELIMITER ',');
+
+COPY (
+  SELECT *
+  FROM history_cwd
+  WHERE cumulative_site_CWD_complete
+  ORDER BY cumulative_site_CWD_mm DESC, history_id
+  LIMIT 100
+) TO '09_analysis/qa/outputs/06_cumulative_site_cwd/site_cwd_extremes.csv'
   (HEADER, DELIMITER ',');

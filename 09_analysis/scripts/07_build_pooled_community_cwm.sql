@@ -402,7 +402,7 @@ COPY (
     min(last_temperature_niche_coverage) AS min_last_niche_weight_coverage,
     median(last_temperature_niche_coverage) AS median_last_niche_weight_coverage
   FROM community_history_response
-) TO '09_analysis/qa/cwm/pooled_cwm_coverage.csv'
+) TO '09_analysis/qa/outputs/07_pooled_community_cwm/pooled_cwm_coverage.csv'
   (HEADER, DELIMITER ',');
 
 COPY (
@@ -416,7 +416,7 @@ COPY (
   FROM community_rows
   GROUP BY life_stage, sampling_element
   ORDER BY life_stage, sampling_element
-) TO '09_analysis/qa/cwm/pooled_cwm_sampling.csv'
+) TO '09_analysis/qa/outputs/07_pooled_community_cwm/pooled_cwm_sampling.csv'
   (HEADER, DELIMITER ',');
 
 COPY (
@@ -431,5 +431,5 @@ COPY (
     count(*) AS condition_visits
   FROM endpoint_props
   GROUP BY endpoint_prop_status
-) TO '09_analysis/qa/cwm/pooled_cwm_endpoint_props.csv'
+) TO '09_analysis/qa/outputs/07_pooled_community_cwm/pooled_cwm_endpoint_props.csv'
   (HEADER, DELIMITER ',');

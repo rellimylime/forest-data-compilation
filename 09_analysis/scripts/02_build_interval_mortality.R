@@ -17,7 +17,7 @@ cfg <- load_config()
 raw_dir <- here(cfg$raw$fia$local_dir)
 analysis_dir <- here("09_analysis/data/processed")
 intermediate_dir <- here("09_analysis/data/intermediate")
-qa_dir <- here("09_analysis/qa/mortality")
+qa_dir <- here("09_analysis/qa/outputs/02_interval_mortality")
 dir_create(c(analysis_dir, intermediate_dir, qa_dir))
 
 agents <- c("fire", "insect", "disease")

@@ -25,7 +25,9 @@ death_path <- file.path(
 )
 raw_dir <- file.path("05_fia", "data", "raw")
 out_dir <- file.path("09_analysis", "data", "processed")
-qa_dir <- file.path("09_analysis", "qa", "mortality")
+qa_dir <- file.path(
+  "09_analysis", "qa", "outputs", "04_cumulative_mortality"
+)
 dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 dir.create(qa_dir, recursive = TRUE, showWarnings = FALSE)
 

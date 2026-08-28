@@ -18,7 +18,9 @@ raw_dir <- here(cfg$raw$fia$local_dir)
 fia_summary_dir <- here(cfg$processed$fia$summaries$output_dir)
 niche_dir <- here(cfg$processed$species_niches$output_dir)
 analysis_dir <- here("09_analysis/data/processed")
-qa_dir <- here("09_analysis/qa/cwm")
+qa_dir <- here(
+  "09_analysis/qa/outputs/01_condition_histories_and_cwm"
+)
 dir_create(c(analysis_dir, qa_dir))
 
 condition_cutoff <- cfg$processed$analysis$condition_minimum_proportion

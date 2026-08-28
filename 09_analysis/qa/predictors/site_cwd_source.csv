@@ -1,2 +1,0 @@
-site_month_rows,sites_with_CWD,first_CWD_month,last_CWD_month,min_monthly_CWD_mm,max_monthly_CWD_mm,duplicate_site_month_keys,source_variable,source_units,netcdf_scale_factor,history_inclusion_rule
-26887176,77262,1997-01-01,2025-12-01,0.0,349.8,0,TerraClimate def,mm per month,0.1,month timestamp (first day) within exact FIA measurement dates
