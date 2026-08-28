@@ -22,9 +22,12 @@ script 06.
 
 ## QA
 
-QA summaries live under topic folders in `qa/`: `intervals/`, `cwm/`,
-`mortality/`, and `predictors/`. They describe row flow, bounds, weighting,
-sampling, and climate coverage. Large row-level copies are not retained in QA.
+QA summaries live in `qa/outputs/<producer>/`, where `<producer>` begins with
+the numbered script that creates the result. `qa/qa_products.csv` records every
+QA output, its producer, and whether it is required. Run
+`qa/scripts/validate_qa_products.R --require-outputs` after rebuilding the
+analysis to verify the complete QA chain. Large row-level copies are not
+retained in QA.
 
 ## Model runs
 
