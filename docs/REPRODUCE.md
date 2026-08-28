@@ -151,6 +151,34 @@ This writes corrected same-slot FIA fire timing and neutral tree/condition damag
 
 See [the disturbance preparation workflow](../08_disturbance_linkage/WORKFLOW.md) for product grains and the resolved multiple-coordinate exclusion rule.
 
+## Path 7: Condition-Level Cumulative-Mortality Analysis
+
+This path requires the FIA summary and site-list products from Path 3 and the
+species climate niches from Path 4. It does not require the optional disturbance
+linkage products from Path 6.
+
+Before running the analysis, also build the FIA plot-visit context:
+
+```bash
+Rscript 05_fia/scripts/07_build_plot_visit_context.R
+Rscript 05_fia/scripts/site_climate/01_build_site_list.R
+```
+
+Then run the tracked analysis orchestrator from the repository root:
+
+```bash
+Rscript 09_analysis/scripts/run_analysis_pipeline.R \
+  --run-id=20260822_cumulative_mortality_site_cwd_all_groups_v01
+```
+
+The runner executes the official PREV histories, stable-condition CWM products,
+interval and cumulative mortality, TerraClimate site CWD extraction, pooled
+community response, preliminary models, robustness checks, and final QA
+provenance validation. Every compact QA result is registered in
+`09_analysis/qa/qa_products.csv` and written beneath a folder named for its
+producer. See [the analysis README](../09_analysis/README.md) for restart and
+cache-reuse options.
+
 ## Archived Reference: ERA5
 
 `archive/05_era5/` is kept as a documented reference workflow, not as part of the active production checklist above.
