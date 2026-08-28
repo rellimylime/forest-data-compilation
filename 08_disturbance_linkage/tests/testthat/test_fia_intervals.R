@@ -34,6 +34,56 @@ make_visit <- function(
   )
 }
 
+test_that("connectivity_edge_valid excludes chronological fallbacks", {
+  # Two sampled visits on one plot, ordered dates, but FIA supplies no link.
+  # pairing_usable accepts this pair; connectivity_edge_valid must not.
+  visits <- add_fia_measurement_date_bounds(rbindlist(list(
+    make_visit("p1", 1L, NA_integer_, 2010L),
+    make_visit("p1", 2L, NA_integer_, 2015L)
+  )))
+  out <- build_fia_pairing_products(visits)
+  audit <- out$visit_pairing_audit
+
+  fallback <- audit[current_PLT_CN == 2L]
+  expect_equal(fallback$selected_pair_source, "chronological_sampled_fallback")
+  expect_true(fallback$pairing_usable)            # technical check passes
+  expect_false(fallback$connectivity_edge_valid)  # FIA asserts no link
+  expect_equal(fallback$connectivity_edge_reason, "no_official_link")
+
+  # And it must be excluded from the scientific cohort.
+  intervals <- out$survey_intervals
+  expect_equal(intervals[connectivity_edge_valid & pairing_usable, .N], 0L)
+})
+
+test_that("connectivity_edge_valid accepts an official link and rejects cross-plot", {
+  visits <- add_fia_measurement_date_bounds(rbindlist(list(
+    make_visit("p1", 1L, NA_integer_, 2010L),
+    make_visit("p1", 2L, 1L, 2015L),
+    make_visit("p2", 3L, 1L, 2016L)   # official link to another stable plot
+  )))
+  audit <- build_fia_pairing_products(visits)$visit_pairing_audit
+
+  expect_true(audit[current_PLT_CN == 2L, connectivity_edge_valid])
+  expect_equal(audit[current_PLT_CN == 2L, connectivity_edge_reason],
+               "official_link_valid")
+  expect_false(audit[current_PLT_CN == 3L, connectivity_edge_valid])
+  expect_equal(audit[current_PLT_CN == 3L, connectivity_edge_reason],
+               "official_target_other_stable_plot")
+})
+
+test_that("connectivity_edge_valid ignores sampled status and date ordering", {
+  # An unsampled endpoint with reversed dates is unusable as a response
+  # endpoint, but FIA still asserts the link, so connectivity holds.
+  visits <- add_fia_measurement_date_bounds(rbindlist(list(
+    make_visit("p1", 1L, NA_integer_, 2015L),
+    make_visit("p1", 2L, 1L, 2010L, sampled = FALSE)
+  )))
+  audit <- build_fia_pairing_products(visits)$visit_pairing_audit
+
+  expect_true(audit[current_PLT_CN == 2L, connectivity_edge_valid])
+  expect_false(audit[current_PLT_CN == 2L, pairing_usable])
+})
+
 test_that("FIA measurement bounds retain day precision and use bounded fallbacks", {
   x <- data.table(
     INVYR = c(2020L, 2020L, 2020L, 2020L, NA_integer_),

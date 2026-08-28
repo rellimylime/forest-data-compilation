@@ -663,6 +663,14 @@ processed:
       # excluded from valid-pixel denominators and reported separately.
       non_processing_classes: [6]
 
+  # Current condition-level cumulative-mortality analysis.
+  analysis:
+    output_dir: "09_analysis/data/processed"
+    qa_dir: "09_analysis/qa"
+    doc_dir: "09_analysis/docs"
+    model_output_dir: "09_analysis/results/model_runs"
+    condition_minimum_proportion: 0.30
+
   # Standardized climate outputs (long format, dataset-agnostic)
   climate:
     output_dir: "processed/climate"

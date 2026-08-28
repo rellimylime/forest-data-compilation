@@ -272,6 +272,25 @@ build_fia_pairing_products <- function(
     default = "first_observed_visit"
   )]
 
+  # Connectivity: an explicit PREV_PLT_CN that resolves to an available visit on
+  # the same stable plot. Nothing else belongs in this flag -- not sampled
+  # status, not date ordering, not whether either endpoint can supply a
+  # biological measurement. Those are downstream usability criteria and they
+  # vary by analysis; connectivity is a fixed property of the FIA link.
+  #
+  # Kept separate from `pairing_usable` below, which is a technical endpoint
+  # check and which a chronological fallback can pass.
+  current[, connectivity_edge_valid := official_link_present &
+    official_target_available &
+    official_target_same_stable_plot]
+  current[is.na(connectivity_edge_valid), connectivity_edge_valid := FALSE]
+  current[, connectivity_edge_reason := fcase(
+    !official_link_present, "no_official_link",
+    !official_target_available, "official_target_unavailable",
+    !official_target_same_stable_plot, "official_target_other_stable_plot",
+    default = "official_link_valid"
+  )]
+
   # Assign in stages so bit64 PLT_CN values retain their exact type.
   current[, selected_previous_PLT_CN := current_PREV_PLT_CN]
 
@@ -378,6 +397,7 @@ build_fia_pairing_products <- function(
     "current_date_lower", "current_date_upper",
     "interval_years_min", "interval_years_max",
     "pairing_class", "selected_pair_source",
+    "connectivity_edge_valid", "connectivity_edge_reason",
     "date_status", "pairing_usable", "pairing_usable_reason",
     "previous_latitude", "previous_longitude",
     "current_latitude", "current_longitude",
@@ -389,7 +409,13 @@ build_fia_pairing_products <- function(
   # Summarize link patterns by class, dates, state, and measurement decade.
   pairing_counts <- audit[, .(
     n_current_visits = .N,
-    n_pairing_usable = sum(pairing_usable, na.rm = TRUE)
+    n_pairing_usable = sum(pairing_usable, na.rm = TRUE),
+    # Both flags are reported so the gap between "technically usable" and
+    # "FIA actually asserts this link" stays visible in the QA table.
+    n_connectivity_edge_valid = sum(connectivity_edge_valid, na.rm = TRUE),
+    n_scientific_cohort = sum(
+      connectivity_edge_valid & pairing_usable, na.rm = TRUE
+    )
   ), by = .(
     pairing_class,
     date_status,
