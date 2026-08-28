@@ -1,0 +1,219 @@
+---
+title: "Preliminary model robustness checks"
+subtitle: "Cumulative mortality and forest-community climate-niche change"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    self_contained: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+library(data.table)
+library(knitr)
+
+run_dir <- Sys.getenv("ANALYSIS_RUN_DIR")
+robust_dir <- file.path(run_dir, "robustness")
+coefficients <- fread(file.path(robust_dir, "coefficients.csv"))
+fits <- fread(file.path(robust_dir, "model_fit.csv"))
+common <- fread(file.path(robust_dir, "common_history_summary.csv"))
+support <- fread(file.path(robust_dir, "condition_support_summary.csv"))
+stability <- fread(file.path(robust_dir, "mortality_stability.csv"))
+interactions <- fread(file.path(robust_dir, "life_stage_interaction_tests.csv"))
+pairwise <- fread(file.path(robust_dir, "life_stage_pairwise_differences.csv"))
+baseline_check <- fread(file.path(robust_dir, "baseline_reproduction.csv"))
+
+term_labels <- c(
+  fire_cumulative_mortality_pct = "Fire mortality",
+  insect_cumulative_mortality_pct = "Insect mortality",
+  disease_cumulative_mortality_pct = "Disease mortality",
+  cumulative_site_CWD_mm = "Cumulative site CWD",
+  mean_monthly_site_CWD_mm = "Mean monthly site CWD",
+  full_survey_period_years = "Survey period"
+)
+response_labels <- c(
+  temperature = "Temperature CWM",
+  precipitation = "Precipitation CWM",
+  CWD = "CWD CWM"
+)
+fmt <- function(x, digits = 4) formatC(x, digits = digits, format = "g")
+```
+
+## What these checks answer
+
+The approved preliminary model remains the reference model. These checks ask
+whether its disturbance coefficients depend on:
+
+1. comparing different condition histories across life stages;
+2. retaining conditions that occupy only part of a plot;
+3. broad geographic differences among states;
+4. representing site water deficit as cumulative exposure while also including
+   survey duration.
+
+They also test life-stage differences directly on identical histories. They do
+not introduce a new severity definition or replace cumulative mortality.
+
+## Main findings
+
+```{r finding-values, include=FALSE}
+supported <- stability[p_value_baseline < 0.05]
+supported_stage <- supported[group != "community"]
+n_interactions <- interactions[p_value < 0.05, .N]
+state_max_r2 <- fits[scenario == "state_fixed_effects", max(r_squared)]
+```
+
+- All `r nrow(supported)` disturbance coefficients whose baseline 95% interval
+  excluded zero retained the same direction across every applicable check.
+- All `r nrow(supported)` remained below p = 0.05 with state effects, mean
+  monthly CWD, and cumulative CWD without the separate survey-period term.
+- `r supported[p_value_condition_prop_80 < 0.05, .N]` of those
+  `r nrow(supported)` remained below p = 0.05 when conditions were required to
+  occupy at least 80% of the plot.
+- On the smaller identical-history sample,
+  `r supported_stage[p_value_common_histories < 0.05, .N]` of the
+  `r nrow(supported_stage)` supported life-stage coefficients remained below
+  p = 0.05. Their loss of precision should not be read as proof of no effect.
+- `r n_interactions` of the `r nrow(interactions)` joint life-stage tests were
+  below p = 0.05. The seedling contrasts therefore cannot be explained only by
+  different sample sizes.
+- Even the state-effects models explain at most
+  `r round(100 * state_max_r2, 2)`% of response variance. These remain weakly
+  predictive, observational preliminary models.
+
+## Reproduction check
+
+The robustness script refit the approved models before changing anything. The
+largest absolute coefficient difference was
+`r format(max(baseline_check$estimate_absolute_difference), scientific = TRUE)`
+and the largest standard-error difference was
+`r format(max(baseline_check$standard_error_absolute_difference), scientific = TRUE)`.
+
+## Are the life-stage samples different?
+
+```{r common-history-table}
+common_show <- copy(common)
+common_show[, response := response_labels[response]]
+setnames(
+  common_show,
+  c(
+    "response", "common_histories", "seedling_baseline_histories",
+    "sapling_baseline_histories", "adult_baseline_histories"
+  ),
+  c(
+    "Response", "Histories shared by all stages", "Seedling histories",
+    "Sapling histories", "Adult histories"
+  )
+)
+kable(common_show, format.args = list(big.mark = ","))
+```
+
+The common-history models remove sample-composition differences: seedlings,
+saplings, and adults are fit on the same condition histories for each response.
+
+## Do life-stage coefficients actually differ?
+
+```{r interaction-table}
+interaction_show <- copy(interactions)
+interaction_show[, `:=`(
+  response = response_labels[response],
+  predictor = term_labels[predictor],
+  p_value = fmt(p_value, 3)
+)]
+setnames(
+  interaction_show,
+  c("response", "predictor", "histories", "statistic", "df", "p_value"),
+  c("Response", "Predictor", "Common histories", "Wald statistic", "df", "p")
+)
+kable(interaction_show, digits = 3, format.args = list(big.mark = ","))
+```
+
+The joint test asks whether the seedling, sapling, and adult coefficients are
+equal. A small p-value means the life-stage contrast is larger than expected
+from sampling uncertainty under this model.
+
+```{r pairwise-table}
+pair_show <- copy(pairwise[
+  comparison %in% c("Saplings - Seedlings", "Adults - Seedlings")
+])
+pair_show[, `:=`(
+  response = response_labels[response],
+  predictor = term_labels[predictor],
+  estimate = fmt(estimate),
+  conf_low = fmt(conf_low),
+  conf_high = fmt(conf_high),
+  p_value = fmt(p_value, 3)
+)]
+setnames(
+  pair_show,
+  c(
+    "response", "predictor", "comparison", "estimate", "conf_low",
+    "conf_high", "p_value"
+  ),
+  c("Response", "Predictor", "Comparison", "Difference", "95% low", "95% high", "p")
+)
+kable(pair_show[, -"std_error"], align = "lllrrrr")
+```
+
+## Does condition spatial support matter?
+
+The primary analysis requires a condition to occupy at least 30% of the plot.
+The 80% check retains histories whose condition remains at least 80% of the plot
+through every interval. This reduces, but cannot eliminate, concern that a
+condition-level disturbance may not represent the exact microplot where
+seedlings were tallied.
+
+```{r support-table}
+support_show <- dcast(
+  support,
+  group_label ~ threshold,
+  value.var = "histories"
+)
+setnames(support_show, "group_label", "Community group")
+kable(support_show, format.args = list(big.mark = ","))
+```
+
+## Are the disturbance results stable?
+
+```{r stability-figures, out.width='100%'}
+for (slug in c("temperature", "precipitation", "cwd")) {
+  print(knitr::include_graphics(file.path(
+    robust_dir, "figures",
+    paste0(slug, "_mortality_coefficient_stability.png")
+  )))
+}
+```
+
+```{r sign-stability-table}
+sign_show <- stability[, .(
+  coefficients = .N,
+  sign_consistent = sum(sign_consistent),
+  sign_changes = sum(!sign_consistent)
+), by = .(response, group_label)]
+sign_show[, response := response_labels[response]]
+setnames(
+  sign_show,
+  c("response", "group_label", "coefficients", "sign_consistent", "sign_changes"),
+  c("Response", "Community group", "Disturbance coefficients", "Stable sign", "Sign changes")
+)
+kable(sign_show)
+```
+
+## Cumulative CWD and survey duration
+
+Three formulations are compared in the stability figure:
+
+- the approved model with cumulative CWD and survey duration;
+- mean monthly CWD and survey duration;
+- cumulative CWD without a separate duration term.
+
+The alternative formulations are diagnostics. Cumulative CWD remains the
+intended total-exposure predictor unless the collaborators choose otherwise.
+
+## Interpretation
+
+These are observational preliminary models with very low explained variance.
+Coefficient direction and uncertainty are more informative here than p-values
+alone. A stable coefficient is not automatically causal, and an unstable
+coefficient identifies a modeling or sampling dependency that should be
+resolved before final inference.

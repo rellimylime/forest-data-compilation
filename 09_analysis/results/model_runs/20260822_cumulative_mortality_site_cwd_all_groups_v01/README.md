@@ -9,3 +9,5 @@ saplings, adults, and the pooled live community.
 - `sample_flow.csv`: complete-case counts
 - `tables/`: sjPlot model tables
 - `figures/`: raw relationships and ggeffects marginal predictions
+- `robustness/robustness_results.html`: sample, condition-support, state,
+  CWD-duration, and life-stage comparison checks

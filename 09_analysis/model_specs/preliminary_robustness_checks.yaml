@@ -1,0 +1,12 @@
+run_id: 20260822_cumulative_mortality_site_cwd_all_groups_v01
+primary_model: cumulative_mortality_site_cwd
+checks:
+  - same histories observed for seedlings, saplings, and adults
+  - minimum condition proportion of 0.80 across the history
+  - state fixed effects
+  - mean monthly site CWD with survey duration
+  - cumulative site CWD without survey duration
+  - clustered life-stage interaction tests on common histories
+condition_support_threshold: 0.80
+covariance: HC1 clustered by stable_plot_id
+purpose: robustness only; does not replace the preliminary model

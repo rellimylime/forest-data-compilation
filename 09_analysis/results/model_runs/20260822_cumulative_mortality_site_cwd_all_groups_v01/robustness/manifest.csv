@@ -1,0 +1,6 @@
+item,value
+primary_model_run,20260822_cumulative_mortality_site_cwd_all_groups_v01
+condition_support_threshold,0.8
+common_history_definition,Same history has complete outcome and predictors for all three life stages
+covariance,HC1 clustered by stable_plot_id
+report,robustness_results.html

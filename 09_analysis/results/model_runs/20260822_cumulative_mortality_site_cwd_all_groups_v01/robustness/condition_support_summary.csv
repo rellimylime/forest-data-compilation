@@ -1,0 +1,17 @@
+group,group_label,threshold,histories,stable_plots
+seedlings,Seedlings,0.3,64517,63720
+seedlings,Seedlings,0.5,62148,61887
+seedlings,Seedlings,0.8,44636,44634
+seedlings,Seedlings,0.95,40779,40777
+saplings,Saplings,0.3,56373,55837
+saplings,Saplings,0.5,54529,54344
+saplings,Saplings,0.8,39593,39591
+saplings,Saplings,0.95,36321,36319
+trees,Adults,0.3,76320,75192
+trees,Adults,0.5,73127,72816
+trees,Adults,0.8,52466,52464
+trees,Adults,0.95,47989,47987
+community,Pooled all live,0.3,77831,76582
+community,Pooled all live,0.5,74532,74184
+community,Pooled all live,0.8,53383,53381
+community,Pooled all live,0.95,48794,48792
