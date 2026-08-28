@@ -1,0 +1,6 @@
+predictor,reference_value,definition
+fire_cumulative_mortality_pct,0,No fire-attributed mortality
+insect_cumulative_mortality_pct,0,No insect-attributed mortality
+disease_cumulative_mortality_pct,0,No disease-attributed mortality
+cumulative_site_CWD_mm,3056.9,Median among pooled-community histories with complete predictors
+full_survey_period_years,11.6018809421138,Median among pooled-community histories with complete predictors

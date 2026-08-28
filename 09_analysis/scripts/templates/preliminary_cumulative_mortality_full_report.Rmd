@@ -1,0 +1,293 @@
+---
+title: "Preliminary cumulative-mortality model results"
+subtitle: "Life-stage and pooled climate-niche change models"
+output:
+  html_document:
+    self_contained: true
+    toc: true
+    toc_float: true
+    number_sections: true
+    df_print: paged
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  message = FALSE,
+  warning = FALSE,
+  fig.align = "center",
+  out.width = "100%"
+)
+
+run_dir <- Sys.getenv("ANALYSIS_RUN_DIR")
+if (!nzchar(run_dir) || !dir.exists(run_dir)) {
+  stop("ANALYSIS_RUN_DIR must identify the model-run output directory.")
+}
+run_dir <- normalizePath(run_dir, winslash = "/")
+project_dir <- normalizePath(".", winslash = "/")
+table_dir <- file.path(run_dir, "tables")
+figure_dir <- file.path(run_dir, "figures")
+output_dir <- run_dir
+
+response_order <- c("temperature", "precipitation", "cwd")
+response_labels <- c(
+  temperature = "Temperature CWM change",
+  precipitation = "Precipitation CWM change",
+  cwd = "CWD CWM change"
+)
+section_order <- c("raw_relationship", "marginal_effect")
+section_labels <- c(
+  raw_relationship = "Raw relationships",
+  marginal_effect = "Adjusted marginal effects"
+)
+driver_order <- c(
+  "Fire mortality",
+  "Insect mortality",
+  "Disease mortality",
+  "Cumulative site CWD"
+)
+
+table_style_path <- file.path(table_dir, "sjplot_table_style.html")
+table_fragment_paths <- setNames(
+  file.path(table_dir, paste0(response_order, "_models_fragment.html")),
+  response_order
+)
+figure_manifest_path <- file.path(figure_dir, "figure_manifest.csv")
+sample_path <- file.path(output_dir, "sample_flow.csv")
+
+required_assets <- c(
+  table_style_path,
+  unname(table_fragment_paths),
+  figure_manifest_path,
+  sample_path
+)
+missing_assets <- required_assets[!file.exists(required_assets)]
+if (length(missing_assets) > 0L) {
+  stop(
+    "The report assets have not been fully produced:\n- ",
+    paste(missing_assets, collapse = "\n- ")
+  )
+}
+
+read_html_fragment <- function(path) {
+  paste(readLines(path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+}
+
+emit_html_fragment <- function(path) {
+  cat(as.character(htmltools::HTML(read_html_fragment(path))), "\n\n")
+}
+
+resolve_figure_path <- function(path) {
+  is_absolute <- grepl("^([A-Za-z]:[/\\\\]|/)", path)
+  candidates <- if (is_absolute) {
+    path
+  } else {
+    c(
+      file.path(run_dir, path),
+      file.path(figure_dir, path),
+      file.path(project_dir, path),
+      path
+    )
+  }
+  existing <- candidates[file.exists(candidates)]
+  if (length(existing) == 0L) {
+    return(NA_character_)
+  }
+  normalizePath(existing[1L], winslash = "/")
+}
+
+samples <- read.csv(sample_path, check.names = FALSE, stringsAsFactors = FALSE)
+figure_manifest <- read.csv(
+  figure_manifest_path,
+  check.names = FALSE,
+  stringsAsFactors = FALSE
+)
+
+required_manifest_columns <- c(
+  "section", "response", "driver_label", "figure_path", "caption", "plot_order"
+)
+missing_manifest_columns <- setdiff(required_manifest_columns, names(figure_manifest))
+if (length(missing_manifest_columns) > 0L) {
+  stop(
+    "figure_manifest.csv is missing required columns: ",
+    paste(missing_manifest_columns, collapse = ", ")
+  )
+}
+
+if (!setequal(unique(figure_manifest$section), section_order)) {
+  stop("Manifest section values must be raw_relationship and marginal_effect.")
+}
+if (!setequal(unique(figure_manifest$response), response_order)) {
+  stop("Manifest response values must be temperature, precipitation, and cwd.")
+}
+if (!setequal(unique(figure_manifest$driver_label), driver_order)) {
+  stop(
+    "Manifest driver_label values must be: ",
+    paste(driver_order, collapse = "; ")
+  )
+}
+
+expected_grid <- expand.grid(
+  section = section_order,
+  response = response_order,
+  driver_label = driver_order,
+  stringsAsFactors = FALSE
+)
+manifest_keys <- paste(
+  figure_manifest$section,
+  figure_manifest$response,
+  figure_manifest$driver_label,
+  sep = "__"
+)
+expected_keys <- paste(
+  expected_grid$section,
+  expected_grid$response,
+  expected_grid$driver_label,
+  sep = "__"
+)
+if (nrow(figure_manifest) != 24L || anyDuplicated(manifest_keys) ||
+    !setequal(manifest_keys, expected_keys)) {
+  stop(
+    "figure_manifest.csv must contain exactly one plot for each of the 24 ",
+    "section x response x driver combinations."
+  )
+}
+
+if (anyNA(suppressWarnings(as.numeric(figure_manifest$plot_order))) ||
+    anyDuplicated(figure_manifest$plot_order)) {
+  stop("plot_order must contain 24 unique numeric values.")
+}
+
+figure_manifest$figure_path_resolved <- vapply(
+  figure_manifest$figure_path,
+  resolve_figure_path,
+  character(1)
+)
+missing_figures <- figure_manifest$figure_path[is.na(figure_manifest$figure_path_resolved)]
+if (length(missing_figures) > 0L) {
+  stop(
+    "The following manifest figures do not exist:\n- ",
+    paste(missing_figures, collapse = "\n- ")
+  )
+}
+
+figure_manifest$response <- factor(
+  figure_manifest$response,
+  levels = response_order
+)
+figure_manifest$section <- factor(
+  figure_manifest$section,
+  levels = section_order
+)
+figure_manifest$driver_label <- factor(
+  figure_manifest$driver_label,
+  levels = driver_order
+)
+figure_manifest$plot_order <- as.numeric(figure_manifest$plot_order)
+figure_manifest <- figure_manifest[
+  order(
+    figure_manifest$response,
+    figure_manifest$section,
+    figure_manifest$driver_label,
+    figure_manifest$plot_order
+  ),
+]
+```
+
+```{r report-style, results='asis'}
+emit_html_fragment(table_style_path)
+cat(
+  "<style>",
+  ".report-note {max-width: 1050px; line-height: 1.55;}",
+  ".figure-caption {max-width: 1050px; margin: -0.5rem auto 2rem auto;",
+  "color: #444; font-size: 0.95rem; line-height: 1.4;}",
+  ".model-table-block {overflow-x: auto; margin-bottom: 2rem;}",
+  "</style>\n"
+)
+```
+
+# Overview
+
+<div class="report-note">
+
+This report assembles the current preliminary cumulative-mortality results for
+seedling, sapling, adult, and pooled all-live forest-community climate niches.
+The three responses are raw first-to-last changes in temperature,
+precipitation, and climatic water deficit (CWD) community-weighted means.
+
+Every model includes cumulative fire, insect, and disease mortality,
+cumulative site-level TerraClimate CWD over the complete survey period, and
+the length of that survey period. Model coefficients are unstandardized. The
+model tables report HC1 uncertainty clustered by stable FIA plot.
+
+For each response, the raw-relationship figures show the observed response and
+one focal driver without covariate adjustment. The marginal-effect figures show
+the fitted relationship for that driver at one shared covariate reference:
+other agent mortalities equal zero, with site CWD and survey duration fixed at
+their pooled-history medians when they are not focal. These are preliminary
+associations, not final causal estimates.
+
+</div>
+
+# Model samples
+
+```{r sample-table}
+knitr::kable(
+  samples,
+  format = "html",
+  caption = "Rows and stable FIA plots represented in the preliminary models.",
+  big.mark = ",",
+  table.attr = "style='width:100%; max-width:1050px;'"
+)
+```
+
+```{r response-sections, results='asis', fig.show='asis'}
+for (response_name in response_order) {
+  cat("\n# ", response_labels[[response_name]], "\n\n", sep = "")
+  cat("\n## Model results\n\n")
+  cat("<div class='model-table-block'>\n")
+  emit_html_fragment(table_fragment_paths[[response_name]])
+  cat("</div>\n\n")
+
+  for (section_name in section_order) {
+    cat("\n## ", section_labels[[section_name]], "\n\n", sep = "")
+    section_rows <- figure_manifest[
+      figure_manifest$response == response_name &
+        figure_manifest$section == section_name,
+    ]
+
+    for (driver_name in driver_order) {
+      figure_row <- section_rows[
+        as.character(section_rows$driver_label) == driver_name,
+      ]
+      cat("\n### ", driver_name, "\n\n", sep = "")
+      image_path <- as.character(knitr::include_graphics(
+        figure_row$figure_path_resolved,
+        rel_path = FALSE
+      ))
+      # Objects printed inside a for-loop bypass knitr's top-level image hook.
+      # Emit the validated path as Markdown so Pandoc embeds it in the
+      # self-contained HTML instead of printing the path as ordinary text.
+      cat("![", driver_name, "](", image_path, "){width=100%}\n\n", sep = "")
+      cat(
+        "\n<div class='figure-caption'>",
+        htmltools::htmlEscape(figure_row$caption),
+        "</div>\n\n",
+        sep = ""
+      )
+    }
+  }
+}
+```
+
+# Interpretation guardrails
+
+- Mortality predictors are cumulative percentages over each complete condition
+  history; they are not annualized rates in these preliminary models.
+- Cumulative site CWD is TerraClimate `def` exposure at the FIA site, not the
+  CWD community-niche response.
+- The raw figures are descriptive. Use the model tables and marginal-effect
+  figures when discussing covariate-adjusted model results.
+- Seedlings, saplings, adults, and the exploratory pooled all-live forest are
+  shown as four separate model columns and plot panels.

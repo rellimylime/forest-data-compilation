@@ -1,0 +1,13 @@
+model_id,formula
+seedlings__temperature,delta_temperature ~ fire_cumulative_mortality_pct + insect_cumulative_mortality_pct +      disease_cumulative_mortality_pct + cumulative_site_CWD_mm +      full_survey_period_years
+seedlings__precipitation,delta_precipitation ~ fire_cumulative_mortality_pct + insect_cumulative_mortality_pct +      disease_cumulative_mortality_pct + cumulative_site_CWD_mm +      full_survey_period_years
+seedlings__CWD,delta_CWD ~ fire_cumulative_mortality_pct + insect_cumulative_mortality_pct +      disease_cumulative_mortality_pct + cumulative_site_CWD_mm +      full_survey_period_years
+saplings__temperature,delta_temperature ~ fire_cumulative_mortality_pct + insect_cumulative_mortality_pct +      disease_cumulative_mortality_pct + cumulative_site_CWD_mm +      full_survey_period_years
+saplings__precipitation,delta_precipitation ~ fire_cumulative_mortality_pct + insect_cumulative_mortality_pct +      disease_cumulative_mortality_pct + cumulative_site_CWD_mm +      full_survey_period_years
+saplings__CWD,delta_CWD ~ fire_cumulative_mortality_pct + insect_cumulative_mortality_pct +      disease_cumulative_mortality_pct + cumulative_site_CWD_mm +      full_survey_period_years
+trees__temperature,delta_temperature ~ fire_cumulative_mortality_pct + insect_cumulative_mortality_pct +      disease_cumulative_mortality_pct + cumulative_site_CWD_mm +      full_survey_period_years
+trees__precipitation,delta_precipitation ~ fire_cumulative_mortality_pct + insect_cumulative_mortality_pct +      disease_cumulative_mortality_pct + cumulative_site_CWD_mm +      full_survey_period_years
+trees__CWD,delta_CWD ~ fire_cumulative_mortality_pct + insect_cumulative_mortality_pct +      disease_cumulative_mortality_pct + cumulative_site_CWD_mm +      full_survey_period_years
+community__temperature,delta_temperature ~ fire_cumulative_mortality_pct + insect_cumulative_mortality_pct +      disease_cumulative_mortality_pct + cumulative_site_CWD_mm +      full_survey_period_years
+community__precipitation,delta_precipitation ~ fire_cumulative_mortality_pct + insect_cumulative_mortality_pct +      disease_cumulative_mortality_pct + cumulative_site_CWD_mm +      full_survey_period_years
+community__CWD,delta_CWD ~ fire_cumulative_mortality_pct + insect_cumulative_mortality_pct +      disease_cumulative_mortality_pct + cumulative_site_CWD_mm +      full_survey_period_years

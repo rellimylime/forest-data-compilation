@@ -1,0 +1,13 @@
+model_id,group,group_label,response,n,stable_plots,r_squared,adjusted_r_squared,vcov
+seedlings__temperature,seedlings,Seedlings,temperature,59395,58711,0.00163462899598438,0.00155057594146224,HC1 clustered by stable_plot_id
+saplings__temperature,saplings,Saplings,temperature,50463,50031,0.0012806171787984,0.00118164980233715,HC1 clustered by stable_plot_id
+trees__temperature,trees,Adults,temperature,73981,72893,0.00336703460994019,0.00329967178700052,HC1 clustered by stable_plot_id
+community__temperature,community,Pooled all live,temperature,77669,76422,0.00217628665096166,0.00211204604003068,HC1 clustered by stable_plot_id
+seedlings__precipitation,seedlings,Seedlings,precipitation,59395,58711,0.000939656282479334,0.000855544717735302,HC1 clustered by stable_plot_id
+saplings__precipitation,saplings,Saplings,precipitation,50463,50031,0.00121825125959628,0.00111927770302933,HC1 clustered by stable_plot_id
+trees__precipitation,trees,Adults,precipitation,73981,72893,0.00335604990614722,0.00328868634074708,HC1 clustered by stable_plot_id
+community__precipitation,community,Pooled all live,precipitation,77669,76422,0.00123324007296632,0.00116893874801582,HC1 clustered by stable_plot_id
+seedlings__CWD,seedlings,Seedlings,CWD,59395,58711,0.00135653130047046,0.00127245483271543,HC1 clustered by stable_plot_id
+saplings__CWD,saplings,Saplings,CWD,50463,50031,0.000756101820938671,0.000657082468006554,HC1 clustered by stable_plot_id
+trees__CWD,trees,Adults,CWD,73981,72893,0.0034684065437312,0.00340105057256135,HC1 clustered by stable_plot_id
+community__CWD,community,Pooled all live,CWD,77669,76422,0.00107845218941662,0.00101414089911045,HC1 clustered by stable_plot_id

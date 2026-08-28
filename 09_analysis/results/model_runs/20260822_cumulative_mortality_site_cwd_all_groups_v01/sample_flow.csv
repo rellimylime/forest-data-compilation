@@ -1,0 +1,13 @@
+model_id,group,group_label,response,available_rows,complete_rows,excluded_rows,stable_plots,positive_fire,positive_insect,positive_disease
+seedlings__temperature,seedlings,Seedlings,temperature,64517,59395,5122,58711,2581,11876,19130
+saplings__temperature,saplings,Saplings,temperature,56373,50463,5910,50031,1320,10222,16592
+trees__temperature,trees,Adults,temperature,76320,73981,2339,72893,3245,14446,22026
+community__temperature,community,Pooled all live,temperature,77831,77669,162,76422,3749,14776,22705
+seedlings__precipitation,seedlings,Seedlings,precipitation,64517,59395,5122,58711,2581,11876,19130
+saplings__precipitation,saplings,Saplings,precipitation,56373,50463,5910,50031,1320,10222,16592
+trees__precipitation,trees,Adults,precipitation,76320,73981,2339,72893,3245,14446,22026
+community__precipitation,community,Pooled all live,precipitation,77831,77669,162,76422,3749,14776,22705
+seedlings__CWD,seedlings,Seedlings,CWD,64517,59395,5122,58711,2581,11876,19130
+saplings__CWD,saplings,Saplings,CWD,56373,50463,5910,50031,1320,10222,16592
+trees__CWD,trees,Adults,CWD,76320,73981,2339,72893,3245,14446,22026
+community__CWD,community,Pooled all live,CWD,77831,77669,162,76422,3749,14776,22705

@@ -1,0 +1,19 @@
+run_id: 20260822_cumulative_mortality_site_cwd_all_groups_v01
+status: preliminary
+responses:
+  - delta_temperature
+  - delta_precipitation
+  - delta_CWD
+groups:
+  - seedlings
+  - saplings
+  - trees
+  - community
+predictors:
+  - fire_cumulative_mortality_pct
+  - insect_cumulative_mortality_pct
+  - disease_cumulative_mortality_pct
+  - cumulative_site_CWD_mm
+  - full_survey_period_years
+covariance: HC1 clustered by stable_plot_id
+model_class: lm
