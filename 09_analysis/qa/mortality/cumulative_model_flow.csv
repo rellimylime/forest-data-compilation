@@ -1,0 +1,4 @@
+layer,model_rows,temperature_rows,precipitation_rows,CWD_rows,positive_fire_rows,positive_insect_rows,positive_disease_rows,rows_with_intermediate_entries
+saplings,56373,50468,50468,50468,2603,11292,18067,28754
+seedlings,64517,59404,59404,59404,3389,12650,20207,31743
+trees,76320,73990,73990,73990,4155,14695,22377,34185
