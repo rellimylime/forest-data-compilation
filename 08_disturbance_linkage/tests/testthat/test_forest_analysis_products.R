@@ -93,12 +93,17 @@ test_that("first-to-last product remains unique and ordered", {
   data <- as.data.table(read_parquet(
     path,
     col_select = c(
-      "stable_plot_id", "first_PLT_CN", "last_PLT_CN",
+      "stable_plot_id", "remeasurement_component_id",
+      "first_PLT_CN", "last_PLT_CN",
       "measurement_date_lower_first", "measurement_date_lower_last",
       "n_visits_observed"
     )
   ))
-  expect_equal(anyDuplicated(data$stable_plot_id), 0L)
+  # The key is the remeasurement component, not the stable plot. A plot whose
+  # PREV_PLT_CN chain is broken holds several separate histories and correctly
+  # contributes one row per history; requiring uniqueness by stable_plot_id
+  # would force those back into a single pair spanning the break.
+  expect_equal(anyDuplicated(data$remeasurement_component_id), 0L)
   expect_true(all(data$first_PLT_CN != data$last_PLT_CN))
   expect_true(all(data$n_visits_observed >= 2L))
   expect_true(all(
