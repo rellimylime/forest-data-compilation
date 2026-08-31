@@ -508,7 +508,7 @@ processed:
 
     # ------------------------------------------------------------------------
     # Pre/post-disturbance survey coverage QA.
-    # Driven by: 07_thermophilization/qa/02_disturbance_survey_coverage.R
+    # Driven by: 07_thermophilization/qa/scripts/02_disturbance_survey_coverage.R
     #
     # Answers, for any disturbance type you designate below: "how many stable
     # plots have an FIA survey BEFORE and AFTER the disturbance?" -- the plots
@@ -604,7 +604,7 @@ processed:
     area_crs: "EPSG:5070"       # Conus Albers equal-area; buffers/overlays done here
     inputs:
       # Canonical raw-PLOT visit context, including exact measurement dates and
-      # official predecessor links. Built by 05_fia/scripts/07_build_plot_visit_context.R.
+      # official predecessor links. Built by 05_fia/scripts/foundations/01_build_plot_visit_context.R.
       fia_plot_visit_context: "05_fia/data/processed/summaries/plot_visit_context.parquet"
       # FIA plot coordinates (carries stable_plot_id, PLT_CN, INVYR, LAT, LON).
       fia_plot_source: "05_fia/data/processed/summaries/plot_condition_metadata.parquet"
@@ -625,9 +625,6 @@ processed:
       fia_survey_interval_validation_checks: "fia_survey_interval_validation_checks.csv"
       fia_visit_spatial_linkage_status: "fia_visit_spatial_linkage_status.parquet"
       plot_footprints: "plot_footprints.gpkg"
-      plot_mtbs_fire_events: "plot_mtbs_fire_events.parquet"
-      plot_ids_agent_events: "plot_ids_agent_events.parquet"
-      plot_disturbance_linkage_events: "plot_disturbance_linkage_events.parquet"
       fia_forest_disturbance_measures: "fia_forest_disturbance_measures.parquet"
       fia_fire_disturbance_slot_evidence: "fia_fire_disturbance_slot_evidence.parquet"
       fia_tree_damage_agent_evidence: "fia_tree_damage_agent_evidence"

@@ -323,7 +323,7 @@ products:
     one_row_is: one mapped condition within one plot visit
     keys: [PLT_CN, INVYR, CONDID]
     grain_id: fia_condition_visit
-    producer: 05_fia/scripts/03_extract_trees.R
+    producer: 05_fia/scripts/core/03_extract_trees.R
     access_mode: catalog_only
     review_status: constrained
     facets: [state, INVYR, COND_STATUS_CD, FORTYPCD]
@@ -345,7 +345,7 @@ products:
     keys: [PLT_CN, INVYR, CONDID, SUBP, SPCD, STATUSCD, size_class, canopy_layer]
     grain_id: fia_tree_stratum
     derived_from: fia_cond_partitions
-    producer: 05_fia/scripts/03_extract_trees.R
+    producer: 05_fia/scripts/core/03_extract_trees.R
     access_mode: catalog_only
     review_status: domain_review_required
     facets: [state, INVYR, SPCD, STATUSCD, size_class, canopy_layer]
@@ -368,7 +368,7 @@ products:
     keys: [PLT_CN, INVYR, CONDID, SUBP, SPCD]
     grain_id: fia_condition_subplot_species
     derived_from: fia_cond_partitions
-    producer: 05_fia/scripts/04_extract_seedlings_mortality.R
+    producer: 05_fia/scripts/core/04_extract_seedlings_mortality.R
     access_mode: catalog_only
     review_status: domain_review_required
     facets: [state, INVYR, SPCD]
@@ -389,7 +389,7 @@ products:
       natural mortality and harvest removal
     keys: [PLT_CN, INVYR, SPCD, AGENTCD, component_type]
     grain_id: fia_plot_visit_species_cause
-    producer: 05_fia/scripts/04_extract_seedlings_mortality.R
+    producer: 05_fia/scripts/core/04_extract_seedlings_mortality.R
     access_mode: catalog_only
     review_status: domain_review_required
     facets: [state, INVYR, SPCD, AGENTCD, component_type]
@@ -411,7 +411,7 @@ products:
     keys: [PLT_CN, INVYR, CONDID, SPCD, DAMAGE_AGENT_CD]
     grain_id: fia_condition_species_damage_agent
     derived_from: fia_cond_partitions
-    producer: 05_fia/scripts/03_extract_trees.R
+    producer: 05_fia/scripts/core/03_extract_trees.R
     access_mode: catalog_only
     review_status: constrained
     facets: [state, INVYR, SPCD, DAMAGE_AGENT_CD]
@@ -430,7 +430,7 @@ products:
     one_row_is: one plot visit where at least one tree carried a harvest/removal code
     keys: [PLT_CN, INVYR]
     grain_id: fia_plot_visit
-    producer: 05_fia/scripts/03_extract_trees.R
+    producer: 05_fia/scripts/core/03_extract_trees.R
     access_mode: catalog_only
     review_status: certified
     facets: [state, INVYR]
@@ -452,7 +452,7 @@ products:
     keys: [PLT_CN, INVYR, CONDID, SUBP, GROWTH_HABIT_CD, LAYER]
     grain_id: fia_condition_subplot_growth_habit
     derived_from: fia_cond_partitions
-    producer: 05_fia/scripts/06_extract_understory.R
+    producer: 05_fia/scripts/understory/01_extract_understory.R
     access_mode: catalog_only
     review_status: not_reviewed
     facets: [state, INVYR, growth_habit, layer_label]
@@ -468,7 +468,7 @@ products:
         A row means a growth habit was present (cover > 0). The raw table is
         zero-padded; those zero rows are dropped.
     notes: >-
-      Producer recovered 2026-07-23: 05_fia/scripts/06_extract_understory.R
+      Producer recovered 2026-07-23: 05_fia/scripts/understory/01_extract_understory.R
       rebuilds this from the raw P2VEG_SUBP_STRUCTURE + SUBP_COND tables (added to
       config.yaml tables_required). Verified byte-identical to the previously
       orphaned product on CA/CO/MT. The script downloads its own inputs, so the
@@ -486,7 +486,7 @@ products:
     keys: [PLT_CN, INVYR, CONDID, SUBP, VEG_FLDSPCD, UNIQUE_SP_NBR, LAYER]
     grain_id: fia_condition_subplot_plant
     derived_from: fia_cond_partitions
-    producer: 05_fia/scripts/06_extract_understory.R
+    producer: 05_fia/scripts/understory/01_extract_understory.R
     access_mode: catalog_only
     review_status: not_reviewed
     facets: [state, INVYR, growth_habit, plant_family, plant_us_nativity]
@@ -500,7 +500,7 @@ products:
         their current name via the dictionary's NEW_SYMBOL/NEW_SCIENTIFIC_NAME;
         other trait fields stay with the recorded symbol.
     notes: >-
-      Producer recovered 2026-07-23: 05_fia/scripts/06_extract_understory.R
+      Producer recovered 2026-07-23: 05_fia/scripts/understory/01_extract_understory.R
       rebuilds this from raw P2VEG_SUBPLOT_SPP + SUBP_COND, with plant attributes
       from REF_PLANT_DICTIONARY. Verified byte-identical to the previously
       orphaned product on CA/CO/MT, except 13 rows of one symbol (SPLU5) where the
@@ -522,7 +522,7 @@ products:
     one_row_is: one mapped condition within one plot visit
     keys: [PLT_CN, INVYR, CONDID]
     grain_id: fia_condition_visit
-    producer: 05_fia/scripts/05_build_fia_summaries.R
+    producer: 05_fia/scripts/core/05_build_fia_summaries.R
     access_mode: guided_combined
     review_status: constrained
     facets: [state, STATECD, INVYR, COND_STATUS_CD, FORTYPCD, forest_type_group]
@@ -551,7 +551,7 @@ products:
     one_row_is: one mapped condition within one plot visit
     keys: [PLT_CN, INVYR, CONDID]
     grain_id: fia_condition_visit
-    producer: 05_fia/scripts/05_build_fia_summaries.R
+    producer: 05_fia/scripts/core/05_build_fia_summaries.R
     access_mode: filtered_extract
     review_status: constrained
     facets: [state, STATECD, INVYR, COND_STATUS_CD, FORTYPCD]
@@ -569,7 +569,7 @@ products:
     keys: [PLT_CN, INVYR, CONDID]
     grain_id: fia_condition_visit
     derived_from: plot_condition_metadata
-    producer: 05_fia/scripts/05_build_fia_summaries.R
+    producer: 05_fia/scripts/core/05_build_fia_summaries.R
     access_mode: guided_combined
     review_status: constrained
     facets: [state, STATECD, INVYR, disturbance_class, region_east_west]
@@ -603,7 +603,7 @@ products:
     keys: [PLT_CN, INVYR, CONDID, disturbance_slot]
     grain_id: fia_condition_disturbance_slot
     derived_from: plot_condition_metadata
-    producer: 05_fia/scripts/05_build_fia_summaries.R
+    producer: 05_fia/scripts/core/05_build_fia_summaries.R
     access_mode: filtered_extract
     review_status: constrained
     facets: [STATECD, INVYR, DSTRBCD, disturbance_category, DSTRBYR]
@@ -626,7 +626,7 @@ products:
     keys: [PLT_CN, INVYR, CONDID, treatment_slot]
     grain_id: fia_condition_treatment_slot
     derived_from: plot_condition_metadata
-    producer: 05_fia/scripts/05_build_fia_summaries.R
+    producer: 05_fia/scripts/core/05_build_fia_summaries.R
     access_mode: filtered_extract
     review_status: constrained
     facets: [STATECD, INVYR, TRTCD, treatment_category, treatment_year_status]
@@ -658,7 +658,7 @@ products:
     keys: [PLT_CN, INVYR, CONDID, SPCD, DAMAGE_AGENT_CD]
     grain_id: fia_condition_species_damage_agent
     derived_from: plot_condition_metadata
-    producer: 05_fia/scripts/05_build_fia_summaries.R
+    producer: 05_fia/scripts/core/05_build_fia_summaries.R
     access_mode: filtered_extract
     review_status: constrained
     facets: [state, INVYR, SPCD, DAMAGE_AGENT_CD, agent_category]
@@ -677,7 +677,7 @@ products:
     one_row_is: one plot visit
     keys: [PLT_CN, INVYR]
     grain_id: fia_plot_visit
-    producer: 05_fia/scripts/05_build_fia_summaries.R
+    producer: 05_fia/scripts/core/05_build_fia_summaries.R
     access_mode: guided_combined
     review_status: constrained
     facets: [STATECD, INVYR, exclude_any, has_fire, has_insect]
@@ -699,7 +699,7 @@ products:
     one_row_is: one plot visit
     keys: [PLT_CN, INVYR]
     grain_id: fia_plot_visit
-    producer: 05_fia/scripts/05_build_fia_summaries.R
+    producer: 05_fia/scripts/core/05_build_fia_summaries.R
     access_mode: guided_combined
     review_status: constrained
     facets: [state, INVYR]
@@ -719,7 +719,7 @@ products:
     one_row_is: one plot visit
     keys: [PLT_CN, INVYR]
     grain_id: fia_plot_visit
-    producer: 05_fia/scripts/05_build_fia_summaries.R
+    producer: 05_fia/scripts/core/05_build_fia_summaries.R
     access_mode: guided_combined
     review_status: constrained
     facets: [state, INVYR]
@@ -739,7 +739,7 @@ products:
       mortality and harvest removal
     keys: [PLT_CN, INVYR, SPCD, AGENTCD, component_type]
     grain_id: fia_plot_visit_species_cause
-    producer: 05_fia/scripts/05_build_fia_summaries.R
+    producer: 05_fia/scripts/core/05_build_fia_summaries.R
     access_mode: catalog_only
     review_status: domain_review_required
     facets: [state, INVYR, SPCD, AGENTCD, component_type]
@@ -761,7 +761,7 @@ products:
     keys: [PLT_CN, INVYR, CONDID, SUBP, SPCD]
     grain_id: fia_condition_subplot_species
     derived_from: plot_condition_metadata
-    producer: 05_fia/scripts/05_build_fia_summaries.R
+    producer: 05_fia/scripts/core/05_build_fia_summaries.R
     access_mode: catalog_only
     review_status: domain_review_required
     facets: [state, INVYR, SPCD, SFTWD_HRDWD, FORTYPCD]
@@ -790,7 +790,7 @@ products:
     keys: [PLT_CN, INVYR, CONDID, SUBP, SPCD]
     grain_id: fia_condition_subplot_species
     derived_from: plot_condition_metadata
-    producer: 05_fia/scripts/05_build_fia_summaries.R
+    producer: 05_fia/scripts/core/05_build_fia_summaries.R
     access_mode: catalog_only
     review_status: domain_review_required
     facets: [state, INVYR, SPCD, SFTWD_HRDWD, FORTYPCD]
@@ -813,7 +813,7 @@ products:
     keys: [PLT_CN, INVYR, CONDID, SUBP, SPCD]
     grain_id: fia_condition_subplot_species
     derived_from: plot_condition_metadata
-    producer: 05_fia/scripts/05_build_fia_summaries.R
+    producer: 05_fia/scripts/core/05_build_fia_summaries.R
     access_mode: catalog_only
     review_status: domain_review_required
     facets: [state, INVYR, SPCD, SFTWD_HRDWD, FORTYPCD]
@@ -838,7 +838,7 @@ products:
     one_row_is: one FIA species code
     keys: [SPCD]
     grain_id: fia_species_code
-    producer: 05_fia/scripts/02_inspect_fia.R
+    producer: 05_fia/scripts/core/02_inspect_fia.R
     intended_access_mode: prepared_download
     access_mode: catalog_only
     review_status: certified
@@ -856,7 +856,7 @@ products:
     one_row_is: one FIA forest type code
     keys: [VALUE]
     grain_id: fia_forest_type_code
-    producer: 05_fia/scripts/02_inspect_fia.R
+    producer: 05_fia/scripts/core/02_inspect_fia.R
     intended_access_mode: prepared_download
     access_mode: catalog_only
     review_status: constrained
@@ -1025,7 +1025,7 @@ products:
     keys: [species_key]
     grain_id: species
     derived_from: species_universe
-    producer: 06_species_niches/qa/09_build_species_taxon_crosswalk.R
+    producer: 06_species_niches/qa/scripts/09_build_species_taxon_crosswalk.R
     access_mode: prepared_download
     review_status: certified
     facets: [taxon_resolution_status, bien_range_available, tnrs_review_class]
@@ -1383,7 +1383,7 @@ products:
     one_row_is: one stable plot
     keys: [stable_plot_id]
     grain_id: fia_stable_plot
-    producer: 07_thermophilization/qa/02_disturbance_survey_coverage.R
+    producer: 07_thermophilization/qa/scripts/02_disturbance_survey_coverage.R
     access_mode: prepared_download
     review_status: certified
     facets: [any_disturbance_before_after, fire_before_after, insect_before_after]
@@ -1566,7 +1566,7 @@ products:
     one_row_is: one stable plot, buffered around its public coordinate
     keys: [stable_plot_id]
     grain_id: fia_stable_plot
-    producer: 08_disturbance_linkage/scripts/01_build_plot_footprints.R
+    producer: 08_disturbance_linkage/scripts/spatial/01_build_plot_footprints.R
     access_mode: catalog_only
     review_status: domain_review_required
     facets: []
@@ -1579,67 +1579,6 @@ products:
         from this spatial view under the resolved primary-analysis rule; their
         foundational FIA records are retained elsewhere.
 
-  - id: plot_mtbs_fire_events
-    title: FIA plot fire-severity associations
-    family: disturbance_linkage
-    kind: analysis
-    lifecycle: planned
-    path: 08_disturbance_linkage/data/processed/plot_mtbs_fire_events.parquet
-    format: parquet_file
-    one_row_is: one stable plot, year, and burn-severity class
-    keys: [stable_plot_id, year, severity_class]
-    grain_id: fia_stable_plot_year_severity
-    derived_from: plot_footprints
-    producer: 08_disturbance_linkage/scripts/02_extract_mtbs_severity.R
-    access_mode: catalog_only
-    review_status: domain_review_required
-    facets: []
-    caveats:
-      - >-
-        Requires MTBS rasters that are not stored in this repository.
-      - >-
-        Overlap with a buffered public coordinate is an association, not evidence
-        that the fire reached the measured plot.
-
-  - id: plot_ids_agent_events
-    title: FIA plot IDS damage associations
-    family: disturbance_linkage
-    kind: analysis
-    lifecycle: planned
-    path: 08_disturbance_linkage/data/processed/plot_ids_agent_events.parquet
-    format: parquet_file
-    one_row_is: one stable plot, year, and damage-causal agent code
-    keys: [stable_plot_id, year, DCA_CODE]
-    grain_id: fia_stable_plot_year_agent
-    derived_from: plot_footprints
-    producer: 08_disturbance_linkage/scripts/03_extract_ids_agents.R
-    access_mode: catalog_only
-    review_status: domain_review_required
-    facets: []
-    caveats:
-      - >-
-        overlap_acres is area inside the buffer. source_polygon_acres_sum is the
-        whole source polygon and is for auditing only.
-
-  - id: plot_disturbance_linkage_events
-    title: FIA plot external disturbance events
-    family: disturbance_linkage
-    kind: analysis
-    lifecycle: planned
-    path: 08_disturbance_linkage/data/processed/plot_disturbance_linkage_events.parquet
-    format: parquet_file
-    one_row_is: one stable plot, source, year, and source event code
-    keys: [stable_plot_id, source, year, source_event_code]
-    grain_id: fia_stable_plot_external_event
-    producer: 08_disturbance_linkage/scripts/04_build_plot_disturbance_linkage.R
-    access_mode: catalog_only
-    review_status: domain_review_required
-    facets: []
-    caveats:
-      - >-
-        Stacks MTBS and IDS while keeping their codes separate. The two sources
-        measure different things and their magnitudes are not comparable.
-
   - id: forested_condition_foundation
     title: Forested FIA condition foundation
     family: fia_summaries
@@ -1651,7 +1590,7 @@ products:
     keys: [stable_plot_id, PLT_CN, INVYR, CONDID]
     grain_id: fia_condition_visit_stable
     derived_from: plot_condition_metadata
-    producer: 05_fia/scripts/08_build_forested_condition_foundation.R
+    producer: 05_fia/scripts/foundations/02_build_forested_condition_foundation.R
     access_mode: prepared_download
     review_status: constrained
     facets: [state, INVYR, COND_STATUS_CD]
@@ -1807,7 +1746,7 @@ products:
     one_row_is: one official FIA damage-agent code
     keys: [DAMAGE_AGENT_CD]
     grain_id: fia_damage_agent_code
-    producer: 05_fia/scripts/09_build_damage_agent_lookup.py
+    producer: 05_fia/scripts/reference/01_build_damage_agent_lookup.py
     access_mode: prepared_download
     review_status: constrained
     facets: [official_group_code, is_insect_agent, code_status]
@@ -1831,7 +1770,7 @@ products:
     keys: [stable_plot_id, PLT_CN, INVYR]
     grain_id: fia_plot_visit_stable
     derived_from: forested_condition_foundation
-    producer: 08_disturbance_linkage/scripts/02_build_fia_forest_disturbance_measures.R
+    producer: 08_disturbance_linkage/scripts/fia/02_build_forest_disturbance_measures.R
     access_mode: prepared_download
     review_status: constrained
     facets: [state, INVYR]
@@ -1851,7 +1790,7 @@ products:
     keys: [stable_plot_id, PLT_CN, INVYR, CONDID, disturbance_slot]
     grain_id: fia_condition_fire_slot
     derived_from: forested_condition_foundation
-    producer: 08_disturbance_linkage/scripts/02_build_fia_forest_disturbance_measures.R
+    producer: 08_disturbance_linkage/scripts/fia/02_build_forest_disturbance_measures.R
     access_mode: prepared_download
     review_status: constrained
     facets: [state, INVYR, disturbance_code, fire_year_status]
@@ -1870,7 +1809,7 @@ products:
     keys: [PLT_CN, INVYR, CONDID, TREE_CN, DAMAGE_AGENT_CD]
     grain_id: fia_tree_damage_agent
     derived_from: forested_condition_foundation
-    producer: 08_disturbance_linkage/scripts/03_prepare_fia_damage_agent_evidence.R
+    producer: 08_disturbance_linkage/scripts/fia/03_prepare_damage_agent_evidence.R
     access_mode: prepared_download
     review_status: constrained
     facets: [state, INVYR, DAMAGE_AGENT_CD, COND_STATUS_CD]
@@ -1895,7 +1834,7 @@ products:
     keys: [stable_plot_id, PLT_CN, INVYR, CONDID]
     grain_id: fia_condition_visit_stable
     derived_from: forested_condition_foundation
-    producer: 08_disturbance_linkage/scripts/03_prepare_fia_damage_agent_evidence.R
+    producer: 08_disturbance_linkage/scripts/fia/03_prepare_damage_agent_evidence.R
     access_mode: prepared_download
     review_status: constrained
     facets: [state, INVYR, COND_STATUS_CD]
@@ -1917,7 +1856,7 @@ products:
     keys: [stable_plot_id, PLT_CN, INVYR, CONDID, DAMAGE_AGENT_CD]
     grain_id: fia_condition_damage_agent
     derived_from: fia_tree_damage_agent_evidence
-    producer: 08_disturbance_linkage/scripts/03_prepare_fia_damage_agent_evidence.R
+    producer: 08_disturbance_linkage/scripts/fia/03_prepare_damage_agent_evidence.R
     access_mode: prepared_download
     review_status: constrained
     facets: [state, INVYR, DAMAGE_AGENT_CD, COND_STATUS_CD]
@@ -1940,7 +1879,7 @@ products:
     keys: [stable_plot_id, PLT_CN, INVYR, CONDID, DAMAGE_AGENT_CD]
     grain_id: fia_condition_damage_agent
     derived_from: fia_condition_damage_agent_candidates
-    producer: 08_disturbance_linkage/scripts/03_prepare_fia_damage_agent_evidence.R
+    producer: 08_disturbance_linkage/scripts/fia/03_prepare_damage_agent_evidence.R
     access_mode: prepared_download
     review_status: constrained
     facets: [state, INVYR, DAMAGE_AGENT_CD, COND_STATUS_CD, agent_group]
@@ -1960,7 +1899,7 @@ products:
     one_row_is: one stable FIA plot and associated MTBS fire event
     keys: [stable_plot_id, mtbs_event_id]
     grain_id: fia_stable_plot_mtbs_event
-    producer: 08_disturbance_linkage/scripts/02_extract_mtbs_fire_history.R
+    producer: 08_disturbance_linkage/scripts/mtbs/02_extract_fire_history.R
     access_mode: catalog_only
     review_status: domain_review_required
     facets: []
@@ -1978,7 +1917,7 @@ products:
     one_row_is: one stable FIA plot, IDS survey year, and exact DCA code or explicit nondetection state
     keys: [stable_plot_id, survey_year, dca_code]
     grain_id: fia_stable_plot_year_exact_agent
-    producer: 08_disturbance_linkage/scripts/03_extract_ids_annual_agent_history.R
+    producer: 08_disturbance_linkage/scripts/ids/01_extract_annual_agent_history.R
     access_mode: catalog_only
     review_status: domain_review_required
     facets: [survey_year, dca_code, surveyed_area_status]
@@ -1996,7 +1935,7 @@ products:
     one_row_is: one raw FIA PLOT record
     keys: [PLT_CN, INVYR]
     grain_id: fia_plot_visit
-    producer: 05_fia/scripts/07_build_plot_visit_context.R
+    producer: 05_fia/scripts/foundations/01_build_plot_visit_context.R
     access_mode: catalog_only
     review_status: constrained
     facets: [state, INVYR]
@@ -2013,7 +1952,7 @@ products:
     one_row_is: one current FIA visit and its audited predecessor relationship
     keys: [current_PLT_CN]
     grain_id: fia_visit_pairing_audit
-    producer: 08_disturbance_linkage/scripts/01_build_fia_survey_intervals.R
+    producer: 08_disturbance_linkage/scripts/fia/01_build_survey_intervals.R
     access_mode: prepared_download
     review_status: certified
     facets: [state, current_INVYR, pairing_class, date_status]
@@ -2029,7 +1968,7 @@ products:
     one_row_is: one resolved previous/current FIA survey relationship
     keys: [interval_id]
     grain_id: fia_survey_interval
-    producer: 08_disturbance_linkage/scripts/01_build_fia_survey_intervals.R
+    producer: 08_disturbance_linkage/scripts/fia/01_build_survey_intervals.R
     access_mode: prepared_download
     review_status: certified
     facets: [state, pairing_class, date_status, pairing_usable]
