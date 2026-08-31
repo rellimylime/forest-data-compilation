@@ -12,6 +12,7 @@ This directory contains repo-level helpers that are shared across workstreams. I
 | `SETUP.md` | Human-readable environment setup instructions. Start here on a new machine. |
 | `build_climate_summaries.R` | Shared IDS climate post-processing script for TerraClimate, PRISM, and WorldClim. |
 | `run_tests.R` | Runs the R test suite by module. |
+| `audit_repository_structure.R` | Checks module layout and verifies that QA and registry outputs name existing producers. |
 | `utils/` | Shared R helper functions used by multiple workstreams. |
 | `demos/` | Optional example analyses that write local demo outputs. |
 
@@ -72,6 +73,7 @@ Use `run_tests.R` for module-level R tests:
 Rscript scripts/run_tests.R
 Rscript scripts/run_tests.R 05_fia
 Rscript scripts/run_tests.R --strict
+Rscript --vanilla scripts/audit_repository_structure.R
 ```
 
 See [docs/TESTING.md](../docs/TESTING.md) for the current QA/testing notes.
