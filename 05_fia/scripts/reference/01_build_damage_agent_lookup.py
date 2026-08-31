@@ -141,7 +141,7 @@ def extract_agent_rows(
 
 def main() -> None:
     # Use the repository copy of the official guide unless another PDF is supplied.
-    repository_root = Path(__file__).resolve().parents[2]
+    repository_root = Path(__file__).resolve().parents[3]
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--pdf",

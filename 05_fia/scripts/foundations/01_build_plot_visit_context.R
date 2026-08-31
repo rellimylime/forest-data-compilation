@@ -10,7 +10,7 @@
 #   05_fia/data/processed/summaries/plot_visit_context.parquet
 #
 # Usage:
-#   Rscript 05_fia/scripts/07_build_plot_visit_context.R
+#   Rscript 05_fia/scripts/foundations/01_build_plot_visit_context.R
 # ==============================================================================
 
 suppressPackageStartupMessages({

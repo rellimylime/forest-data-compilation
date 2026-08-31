@@ -23,7 +23,7 @@ N_BUCKETS = 64
 
 def main() -> None:
     # Resolve paths from the repository so the audit can run from any directory.
-    repository_root = Path(__file__).resolve().parents[2]
+    repository_root = Path(__file__).resolve().parents[3]
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--raw-root",

@@ -74,7 +74,7 @@ build_tree_species <- function(out_dir, proc_fia, states, out_cond_metadata) {
     cat(glue(
       "  Tree parquets missing: {paste(missing_tree_cols, collapse = ', ')}\n"
     ))
-    cat("  Re-run: Rscript 05_fia/scripts/03_extract_trees.R --force-trees\n\n")
+cat("  Re-run: Rscript 05_fia/scripts/core/03_extract_trees.R --force-trees\n\n")
     return(c(
       tree_species = out_tree_species,
       sapling_species = out_sapling_species

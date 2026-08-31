@@ -7,9 +7,9 @@
 # directory is replaced, so one failed table cannot leave a partial snapshot.
 #
 # Usage:
-#   Rscript 05_fia/scripts/01_download_fia.R
-#   Rscript 05_fia/scripts/01_download_fia.R CO WY MT
-#   Rscript 05_fia/scripts/01_download_fia.R --refresh FL KY TX
+#   Rscript 05_fia/scripts/core/01_download_fia.R
+#   Rscript 05_fia/scripts/core/01_download_fia.R CO WY MT
+#   Rscript 05_fia/scripts/core/01_download_fia.R --refresh FL KY TX
 #
 # By default, a state with every configured file already present is skipped.
 # --refresh reacquires every configured table for the requested states.

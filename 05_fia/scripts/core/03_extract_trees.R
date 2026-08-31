@@ -21,11 +21,11 @@
 #   fallback if CCLCD is NA: DIA >= 5.0 = overstory, < 5.0 = understory
 #
 # Usage:
-#   Rscript 05_fia/scripts/03_extract_trees.R
-#   Rscript 05_fia/scripts/03_extract_trees.R CO WY MT        # specific states
-#   Rscript 05_fia/scripts/03_extract_trees.R --force-cond    # re-extract cond only (all states)
-#   Rscript 05_fia/scripts/03_extract_trees.R CO --force-cond # re-extract cond only (CO)
-#   Rscript 05_fia/scripts/03_extract_trees.R FL KY TX --force-tree-products
+#   Rscript 05_fia/scripts/core/03_extract_trees.R
+#   Rscript 05_fia/scripts/core/03_extract_trees.R CO WY MT        # specific states
+#   Rscript 05_fia/scripts/core/03_extract_trees.R --force-cond    # re-extract cond only (all states)
+#   Rscript 05_fia/scripts/core/03_extract_trees.R CO --force-cond # re-extract cond only (CO)
+#   Rscript 05_fia/scripts/core/03_extract_trees.R FL KY TX --force-tree-products
 #
 # --force-cond: skips tree/damage_agent parquets that already exist, but forces
 #   re-extraction of the cond parquet.  Use this when cond_cols has been updated
@@ -497,4 +497,4 @@ cat(glue("  Skipped:   {n_skipped} state(s) (output already exists)\n"))
 cat(glue("  Failed:    {n_failed} state(s)\n"))
 cat(glue("  Time:      {sprintf('%.1f', elapsed_total)} min\n\n"))
 
-cat("Next step: Rscript 05_fia/scripts/04_extract_seedlings_mortality.R\n")
+cat("Next step: Rscript 05_fia/scripts/core/04_extract_seedlings_mortality.R\n")

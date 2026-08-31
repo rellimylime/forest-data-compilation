@@ -277,8 +277,8 @@ Built by [`06_extract_understory.R`](scripts/06_extract_understory.R) from the r
 Run it after `03_extract_trees.R` (it reads the cond partitions for plot identity and coordinates):
 
 ```bash
-Rscript 05_fia/scripts/06_extract_understory.R          # all states
-Rscript 05_fia/scripts/06_extract_understory.R CA CO MT # specific states
+Rscript 05_fia/scripts/understory/01_extract_understory.R          # all states
+Rscript 05_fia/scripts/understory/01_extract_understory.R CA CO MT # specific states
 ```
 
 Structure cover is recorded in every state; per-species cover (`understory_veg`) is collected mainly in the Interior West plus Alaska, Hawaii, and Oregon, so only those 13 states have a species partition.
@@ -761,13 +761,13 @@ metrics_insect <- metrics |> inner_join(flags |> filter(has_insect), by = c("PLT
 
 ```r
 # From repo root
-Rscript 05_fia/scripts/qc/validate_seedling_products.R
+Rscript 05_fia/qa/scripts/validate_seedling_products.R
 ```
 
 **3. Run It** From repo root:
 
 ```powershell
-& 'C:\Program Files\R\R-4.5.1\bin\Rscript.exe' 05_fia/scripts/qc/validate_seedling_products.R
+& 'C:\Program Files\R\R-4.5.1\bin\Rscript.exe' 05_fia/qa/scripts/validate_seedling_products.R
 ```
 
 ---
@@ -803,7 +803,7 @@ FIA plots and IDS damage areas share geographic space but use different spatial 
 ## Troubleshooting
 
 **A DataMart state download fails**
-- Re-run `Rscript 05_fia/scripts/01_download_fia.R CO`; the previous complete state remains in place if staging fails
+- Re-run `Rscript 05_fia/scripts/core/01_download_fia.R CO`; the previous complete state remains in place if staging fails
 - Use `--refresh CO` when the existing files are complete but need intentional replacement
 - Official archives use `https://apps.fs.usda.gov/fia/datamart/CSV/{ST}_{TABLE}.zip`
 

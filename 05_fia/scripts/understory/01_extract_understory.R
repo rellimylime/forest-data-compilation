@@ -27,11 +27,11 @@
 # rFIA path as 01_download_fia.R.
 #
 # Usage:
-#   Rscript 05_fia/scripts/06_extract_understory.R
-#   Rscript 05_fia/scripts/06_extract_understory.R CO WY MT
-#   Rscript 05_fia/scripts/06_extract_understory.R --force
-#   Rscript 05_fia/scripts/06_extract_understory.R --output-dir=/tmp/staging
-#   Rscript 05_fia/scripts/06_extract_understory.R --no-download
+#   Rscript 05_fia/scripts/understory/01_extract_understory.R
+#   Rscript 05_fia/scripts/understory/01_extract_understory.R CO WY MT
+#   Rscript 05_fia/scripts/understory/01_extract_understory.R --force
+#   Rscript 05_fia/scripts/understory/01_extract_understory.R --output-dir=/tmp/staging
+#   Rscript 05_fia/scripts/understory/01_extract_understory.R --no-download
 #
 # Output:
 #   05_fia/data/processed/understory_structure/state={ST}/understory_structure_{ST}.parquet

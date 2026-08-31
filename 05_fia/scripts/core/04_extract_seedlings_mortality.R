@@ -17,10 +17,10 @@
 #   Note: TREE_GRM_COMPONENT does not carry INVYR directly.
 #
 # Usage:
-#   Rscript 05_fia/scripts/04_extract_seedlings_mortality.R
-#   Rscript 05_fia/scripts/04_extract_seedlings_mortality.R CO WY MT
-#   Rscript 05_fia/scripts/04_extract_seedlings_mortality.R --force-seedlings
-#   Rscript 05_fia/scripts/04_extract_seedlings_mortality.R --force-mortality
+#   Rscript 05_fia/scripts/core/04_extract_seedlings_mortality.R
+#   Rscript 05_fia/scripts/core/04_extract_seedlings_mortality.R CO WY MT
+#   Rscript 05_fia/scripts/core/04_extract_seedlings_mortality.R --force-seedlings
+#   Rscript 05_fia/scripts/core/04_extract_seedlings_mortality.R --force-mortality
 #
 # Output:
 #   05_fia/data/processed/seedlings/state={ST}/seedlings_{ST}.parquet
@@ -328,4 +328,4 @@ cat(glue("  Skipped:   {n_skipped} state(s) (output already exists)\n"))
 cat(glue("  Failed:    {n_failed} state(s)\n"))
 cat(glue("  Time:      {sprintf('%.1f', elapsed_total)} min\n\n"))
 
-cat("Next step: Rscript 05_fia/scripts/05_build_fia_summaries.R\n")
+cat("Next step: Rscript 05_fia/scripts/core/05_build_fia_summaries.R\n")

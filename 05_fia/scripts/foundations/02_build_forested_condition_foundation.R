@@ -30,7 +30,7 @@ qa_dir <- here("05_fia/qa/outputs")
 if (!file.exists(input_path)) {
   stop(
     "Condition metadata is missing: ", input_path, "\n",
-    "Run: Rscript 05_fia/scripts/05_build_fia_summaries.R"
+      "Run: Rscript 05_fia/scripts/core/05_build_fia_summaries.R"
   )
 }
 

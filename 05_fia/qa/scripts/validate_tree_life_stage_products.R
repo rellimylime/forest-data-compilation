@@ -3,7 +3,7 @@
 # Validate the recovered TREE-derived tree and sapling composition products.
 #
 # Run:
-#   Rscript 05_fia/scripts/qc/validate_tree_life_stage_products.R
+#   Rscript 05_fia/qa/scripts/validate_tree_life_stage_products.R
 # ==============================================================================
 
 suppressPackageStartupMessages({

@@ -1,0 +1,3 @@
+output_pattern,producer_script,description
+forested_condition_*.csv,05_fia/scripts/foundations/02_build_forested_condition_foundation.R,Forested-condition eligibility and grain checks
+fia_tree_cn_*.csv,05_fia/scripts/reference/02_audit_tree_cn.py,Global TREE.CN uniqueness audit

@@ -23,34 +23,34 @@ flowchart LR
 
 | Step | Script | Main result |
 |---|---|---|
-| 1 | [01_download_fia.R](scripts/01_download_fia.R) | State FIA CSVs and national reference tables |
-| 2 | [02_inspect_fia.R](scripts/02_inspect_fia.R) | Species and forest-type lookup parquets |
-| 3 | [03_extract_trees.R](scripts/03_extract_trees.R) | State tree, condition, damage-agent, and harvest-flag partitions |
-| 4 | [04_extract_seedlings_mortality.R](scripts/04_extract_seedlings_mortality.R) | State seedling and mortality partitions |
-| 5 | [05_build_fia_summaries.R](scripts/05_build_fia_summaries.R) | National metric, species-composition, disturbance, and review products |
+| 1 | [01_download_fia.R](scripts/core/01_download_fia.R) | State FIA CSVs and national reference tables |
+| 2 | [02_inspect_fia.R](scripts/core/02_inspect_fia.R) | Species and forest-type lookup parquets |
+| 3 | [03_extract_trees.R](scripts/core/03_extract_trees.R) | State tree, condition, damage-agent, and harvest-flag partitions |
+| 4 | [04_extract_seedlings_mortality.R](scripts/core/04_extract_seedlings_mortality.R) | State seedling and mortality partitions |
+| 5 | [05_build_fia_summaries.R](scripts/core/05_build_fia_summaries.R) | National metric, species-composition, disturbance, and review products |
 
 Detailed processing rules and dependencies are in [WORKFLOW.md: Script Details](WORKFLOW.md#script-details).
 
 ## Quick Start
 
 ```bash
-Rscript 05_fia/scripts/01_download_fia.R
-Rscript 05_fia/scripts/02_inspect_fia.R
-Rscript 05_fia/scripts/03_extract_trees.R
-Rscript 05_fia/scripts/04_extract_seedlings_mortality.R
-Rscript 05_fia/scripts/05_build_fia_summaries.R
+Rscript 05_fia/scripts/core/01_download_fia.R
+Rscript 05_fia/scripts/core/02_inspect_fia.R
+Rscript 05_fia/scripts/core/03_extract_trees.R
+Rscript 05_fia/scripts/core/04_extract_seedlings_mortality.R
+Rscript 05_fia/scripts/core/05_build_fia_summaries.R
 ```
 
 Script `01` uses base R to download official state-table ZIP archives directly from FIA DataMart; `rFIA` is not required. Existing complete states are skipped. Use `--refresh` when intentionally replacing a state's full raw snapshot, for
-example `Rscript 05_fia/scripts/01_download_fia.R --refresh FL KY TX`. See [Setup](../scripts/SETUP.md) and [Reproduce](../docs/REPRODUCE.md) for environment and server instructions.
+example `Rscript 05_fia/scripts/core/01_download_fia.R --refresh FL KY TX`. See [Setup](../scripts/SETUP.md) and [Reproduce](../docs/REPRODUCE.md) for environment and server instructions.
 
 After a full-state refresh, propagate every configured raw table with:
 
 ```bash
-Rscript 05_fia/scripts/03_extract_trees.R FL KY TX --force-cond --force-tree-products
-Rscript 05_fia/scripts/04_extract_seedlings_mortality.R FL KY TX --force-seedlings --force-mortality
-Rscript 05_fia/scripts/06_extract_understory.R FL KY TX --force --no-download
-Rscript 05_fia/scripts/05_build_fia_summaries.R
+Rscript 05_fia/scripts/core/03_extract_trees.R FL KY TX --force-cond --force-tree-products
+Rscript 05_fia/scripts/core/04_extract_seedlings_mortality.R FL KY TX --force-seedlings --force-mortality
+Rscript 05_fia/scripts/understory/01_extract_understory.R FL KY TX --force --no-download
+Rscript 05_fia/scripts/core/05_build_fia_summaries.R
 ```
 
 The state list in these commands must match the states passed to `--refresh`. Later source-specific workflows only need rerunning when they consume one of these changed FIA products or public coordinates.
@@ -131,7 +131,18 @@ This extension is not an input to the current BIEN-range species-niche method. S
 | `lookups/` | Species and forest-type reference parquets |
 | `data/processed/*/state={ST}/` | State-partitioned FIA extracts |
 | `data/processed/summaries/` | National metric, species-composition, disturbance, treatment, and review products |
+| `scripts/core/` | Required FIA download, extraction, and summary sequence |
+| `scripts/foundations/` | Shared visit- and condition-grain tables used by downstream analyses |
 | `scripts/summaries/` | Focused builders called by script `05` |
-| `scripts/qc/` | FIA product validation scripts |
+| `scripts/understory/` | Independent Phase 2 vegetation extraction |
 | `scripts/site_climate/` | Optional FIA-site TerraClimate extension |
+| `scripts/reference/` | Reproducible lookup construction and source-key audits |
+| `scripts/utilities/` | Maintainer tools that do not produce analysis inputs |
+| `qa/scripts/` | FIA product validation scripts |
+| `qa/outputs/` | Generated validation summaries; not source code |
 | `tests/` | Automated output checks |
+
+Numbering restarts inside a named script family because each family has its own
+dependency order. The core server workflow is `scripts/core/`, followed by the
+specific downstream families required by the analysis; the complete order is
+listed in [Reproduce](../docs/REPRODUCE.md).

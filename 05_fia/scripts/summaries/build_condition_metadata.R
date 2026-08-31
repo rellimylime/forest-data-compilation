@@ -51,7 +51,7 @@ build_condition_metadata <- function(out_dir, cond_ds) {
     )
     if (length(missing_required) > 0) {
       cat(glue("  Missing stable-id columns: {paste(missing_required, collapse=', ')}\n"))
-      cat("  Re-run: Rscript 05_fia/scripts/03_extract_trees.R --force-cond\n\n")
+cat("  Re-run: Rscript 05_fia/scripts/core/03_extract_trees.R --force-cond\n\n")
     } else {
       # Read only metadata columns so the condition table stays manageable in memory.
       available_cols <- intersect(needed_cols, names(cond_ds))

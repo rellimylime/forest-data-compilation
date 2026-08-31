@@ -49,7 +49,7 @@ build_seedling_species <- function(out_dir, proc_fia, out_cond_metadata) {
       missing_seed_cols <- setdiff(c("CONDID", "SUBP", "treecount_total"), names(seed_ds))
       if (length(missing_seed_cols) > 0) {
         cat(glue("  Seedling parquets missing: {paste(missing_seed_cols, collapse=', ')}\n"))
-        cat("  Re-run: Rscript 05_fia/scripts/04_extract_seedlings_mortality.R --force-seedlings\n\n")
+cat("  Re-run: Rscript 05_fia/scripts/core/04_extract_seedlings_mortality.R --force-seedlings\n\n")
       } else {
         # Keep seedling composition/count fields; condition metadata supplies plot identity.
         seed_cols <- intersect(

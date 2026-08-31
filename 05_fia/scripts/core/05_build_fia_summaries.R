@@ -6,7 +6,7 @@
 # 05_fia/scripts/summaries/ so each product can be read, tested, and edited on its own.
 #
 # Usage:
-#   Rscript 05_fia/scripts/05_build_fia_summaries.R
+#   Rscript 05_fia/scripts/core/05_build_fia_summaries.R
 #
 # Output: 05_fia/data/processed/summaries/
 # ==============================================================================

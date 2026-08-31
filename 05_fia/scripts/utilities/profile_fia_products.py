@@ -17,9 +17,9 @@ product:
 Read-only. Never writes into any product directory.
 
 Usage:
-    python3 05_fia/scripts/profile_fia_products.py
-    python3 05_fia/scripts/profile_fia_products.py --product plot_condition_metadata
-    python3 05_fia/scripts/profile_fia_products.py --root /path/to/repo --out docs/
+python3 05_fia/scripts/utilities/profile_fia_products.py
+python3 05_fia/scripts/utilities/profile_fia_products.py --product plot_condition_metadata
+python3 05_fia/scripts/utilities/profile_fia_products.py --root /path/to/repo --out docs/
 
 If --root is omitted it uses $FOREST_DATA_ROOT, then the repository root
 inferred from this file's location.
@@ -393,7 +393,7 @@ def render_markdown(report: dict) -> str:
 
 def main() -> int:
     here = Path(__file__).resolve()
-    inferred_root = here.parent.parent.parent
+    inferred_root = here.parent.parent.parent.parent
 
     ap = argparse.ArgumentParser()
     ap.add_argument("--root", default=os.environ.get("FOREST_DATA_ROOT", str(inferred_root)))

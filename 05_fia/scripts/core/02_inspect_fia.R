@@ -8,7 +8,7 @@
 # - Prints a quick summary of each state's table sizes
 #
 # Usage:
-#   Rscript 05_fia/scripts/02_inspect_fia.R
+#   Rscript 05_fia/scripts/core/02_inspect_fia.R
 #
 # Output:
 #   05_fia/lookups/ref_species.parquet
@@ -166,4 +166,4 @@ if (length(downloaded_states) == 0) {
   cat(glue("\n  States with data: {length(downloaded_states)}/{length(states)}\n\n"))
 }
 
-cat("Next step: Rscript 05_fia/scripts/03_extract_trees.R\n")
+cat("Next step: Rscript 05_fia/scripts/core/03_extract_trees.R\n")
