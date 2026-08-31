@@ -21,6 +21,7 @@ source(here("scripts/utils/load_config.R"))
 source(here("scripts/utils/parquet_atomic.R"))
 source(here("scripts/utils/forest_analysis.R"))
 source(here("scripts/utils/fia_damage_agents.R"))
+source(here("scripts/utils/build_freshness.R"))
 
 `%||%` <- function(left, right) {
   if (is.null(left) || length(left) == 0L || !nzchar(left)) right else left
@@ -86,6 +87,9 @@ if (!file.exists(visit_context_path)) {
 args <- commandArgs(trailingOnly = TRUE)
 state_args <- toupper(args[!grepl("^--", args)])
 states <- if (length(state_args) > 0L) state_args else raw_cfg$states
+
+# --force / --force=<state> overrides the freshness check for this run.
+options(build_force_rebuild = build_force_from_args(args))
 dia_min <- as.numeric(raw_cfg$tree_filters$dia_min_inches)
 invyr_min <- as.integer(raw_cfg$invyr_min)
 invyr_max <- as.integer(raw_cfg$invyr_max)
@@ -126,6 +130,8 @@ for (path in c(out_dir, qa_dir, unlist(output_dirs))) dir_create(path)
 
 # Process one state at a time to avoid loading the national TREE table in memory.
 state_qa <- vector("list", length(states))
+qa_path <- file.path(qa_dir, "fia_damage_agent_build_by_state.csv")
+prior_qa <- if (file.exists(qa_path)) fread(qa_path) else NULL
 for (i in seq_along(states)) {
   state_code <- states[[i]]
   tree_path <- file.path(raw_dir, state_code, paste0(state_code, "_TREE.csv"))
@@ -157,7 +163,32 @@ for (i in seq_along(states)) {
     next
   }
 
-  cat(glue("[{i}/{length(states)}] {state_code}\n"))
+  # Freshness is decided per state so one refreshed state does not force a
+  # national rebuild. The tree evidence stands in for all four products: they
+  # come out of one pass and are written together.
+  state_evidence_path <- file.path(
+    output_dirs$tree_evidence, paste0("state=", state_code), "part.parquet"
+  )
+  state_decision <- build_should_rebuild(
+    state_evidence_path,
+    input_paths = c(foundation_path, visit_context_path, lookup_path, tree_path),
+    required_cols = c("PLT_CN", "INVYR", "CONDID", "TREE_CN", "DAMAGE_AGENT_CD"),
+    label = state_code
+  )
+  if (!state_decision$rebuild) {
+    cat(glue("[{i}/{length(states)}] {state_code} skip ({state_decision$reason})\n"))
+    # Carry the previous QA row forward so a skipped state keeps its counts
+    # instead of reporting a hole where the numbers used to be.
+    prior_row <- if (!is.null(prior_qa) && state_code %in% prior_qa$state) {
+      prior_qa[state == state_code]
+    } else {
+      data.table(state = state_code, status = "skipped_fresh")
+    }
+    state_qa[[i]] <- prior_row
+    next
+  }
+
+  cat(glue("[{i}/{length(states)}] {state_code} rebuild ({state_decision$reason})\n"))
   trees <- fread(
     tree_path,
     select = fia_damage_required_tree_cols,
@@ -205,7 +236,6 @@ for (i in seq_along(states)) {
 }
 
 qa <- rbindlist(state_qa, fill = TRUE)
-qa_path <- file.path(qa_dir, "fia_damage_agent_build_by_state.csv")
 # Preserve QA for states not included in a partial rebuild.
 if (file.exists(qa_path) && !setequal(states, raw_cfg$states)) {
   previous_qa <- fread(qa_path)
