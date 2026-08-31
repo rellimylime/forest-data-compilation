@@ -152,31 +152,31 @@ SCRIPT_SEARCH_INDEX = [
     },
     {
         "title": "Download FIA",
-        "path": "05_fia/scripts/01_download_fia.R",
+        "path": "05_fia/scripts/core/01_download_fia.R",
         "body": "Download USDA FIADB source files.",
         "page": "pages/3_FIA_Forest.py",
     },
     {
         "title": "Inspect FIA",
-        "path": "05_fia/scripts/02_inspect_fia.R",
+        "path": "05_fia/scripts/core/02_inspect_fia.R",
         "body": "Inspect FIADB schema and generate lookup tables.",
         "page": "pages/3_FIA_Forest.py",
     },
     {
         "title": "Extract FIA trees and conditions",
-        "path": "05_fia/scripts/03_extract_trees.R",
+        "path": "05_fia/scripts/core/03_extract_trees.R",
         "body": "Extract TREE, COND, PLOT-related records and build basal-area inputs.",
         "page": "pages/3_FIA_Forest.py",
     },
     {
         "title": "Extract FIA seedlings and mortality",
-        "path": "05_fia/scripts/04_extract_seedlings_mortality.R",
+        "path": "05_fia/scripts/core/04_extract_seedlings_mortality.R",
         "body": "Extract SEEDLING and TREE_GRM_COMPONENT mortality source records.",
         "page": "pages/3_FIA_Forest.py",
     },
     {
         "title": "Build FIA summaries",
-        "path": "05_fia/scripts/05_build_fia_summaries.R",
+        "path": "05_fia/scripts/core/05_build_fia_summaries.R",
         "body": "Build analysis-ready FIA summary parquets from extracted FIA source records.",
         "page": "pages/3_FIA_Forest.py",
     },
@@ -241,9 +241,9 @@ def fia_extraction_hint(table: str, column: str = "") -> str:
     table = (table or "").upper()
     column = (column or "").upper()
     if table in {"TREE", "COND", "PLOT", "REF_SPECIES", "REF_FOREST_TYPE"} or column in {"SPCD", "DIA", "PLT_CN", "CONDID"}:
-        return "Start with `Rscript 05_fia/scripts/03_extract_trees.R`, then run `Rscript 05_fia/scripts/05_build_fia_summaries.R`."
+        return "Start with `Rscript 05_fia/scripts/core/03_extract_trees.R`, then run `Rscript 05_fia/scripts/core/05_build_fia_summaries.R`."
     if table in {"SEEDLING", "TREE_GRM_COMPONENT"} or "MORT" in column:
-        return "Start with `Rscript 05_fia/scripts/04_extract_seedlings_mortality.R`, then run `Rscript 05_fia/scripts/05_build_fia_summaries.R`."
+        return "Start with `Rscript 05_fia/scripts/core/04_extract_seedlings_mortality.R`, then run `Rscript 05_fia/scripts/core/05_build_fia_summaries.R`."
     if table.startswith("REF_"):
         return "Use the FIA navigator for the source reference table, then add the field to the relevant FIA extraction/summarizer if needed."
     return "Use the FIA navigator to inspect the source table/variable, then add it to the FIA extraction and summary scripts if it should become a workflow output."

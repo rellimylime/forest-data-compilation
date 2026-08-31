@@ -25,9 +25,9 @@ The IDS pipeline is the required foundation for all IDS + climate work.
 
 Optional QC:
 
-- [validate_ids.R](../01_ids/scripts/qc/validate_ids.R)
-- [explore_ids_coverage.R](../01_ids/scripts/qc/explore_ids_coverage.R)
-- [IDS QC README](../01_ids/scripts/qc/README.md)
+- [validate_ids.R](../01_ids/qa/scripts/validate_ids.R)
+- [explore_ids_coverage.R](../01_ids/qa/scripts/explore_ids_coverage.R)
+- [IDS QA README](../01_ids/qa/README.md)
 
 ## Path 2: Choose a Climate Dataset
 
@@ -42,10 +42,6 @@ Use TerraClimate if you want global coverage and the broadest variable set, and 
 | 1 | [01_build_pixel_maps.R](../02_terraclimate/scripts/01_build_pixel_maps.R) | Map IDS features to TerraClimate pixels | `02_terraclimate/data/processed/pixel_maps/*.parquet` | [02_terraclimate/README.md](../02_terraclimate/README.md) |
 | 2 | [02_extract_terraclimate.R](../02_terraclimate/scripts/02_extract_terraclimate.R) | Extract monthly TerraClimate values via GEE | `02_terraclimate/data/processed/pixel_values/terraclimate_{year}.parquet` | [02_terraclimate/WORKFLOW.md](../02_terraclimate/WORKFLOW.md) |
 | 3 | [build_climate_summaries.R](../scripts/build_climate_summaries.R) | Build observation-level climate summaries | `processed/climate/terraclimate/damage_areas_summaries/*.parquet` | [ARCHITECTURE.md](ARCHITECTURE.md) |
-
-Optional exploratory step:
-
-- [00_explore_terraclimate.R](../02_terraclimate/scripts/explore/00_explore_terraclimate.R)
 
 ### PRISM
 
@@ -74,16 +70,21 @@ The FIA workstream is independent of the IDS + climate workstream, except for th
 
 | Step | Script | What it does | Main outputs | Details |
 |---|---|---|---|---|
-| 1 | [01_download_fia.R](../05_fia/scripts/01_download_fia.R) | Download FIA CSV tables by state and the REF tables | `05_fia/data/raw/{ST}/`, `05_fia/data/raw/REF/` | [05_fia/README.md](../05_fia/README.md) |
-| 2 | [02_inspect_fia.R](../05_fia/scripts/02_inspect_fia.R) | Inspect schema and build lookup parquets | `05_fia/lookups/*.parquet` | [05_fia/WORKFLOW.md](../05_fia/WORKFLOW.md) |
-| 3 | [03_extract_trees.R](../05_fia/scripts/03_extract_trees.R) | Extract tree, condition, damage-agent, and harvest-flag tables | `05_fia/data/processed/{trees,cond,damage_agents,harvest_flags}/state={ST}/` | [05_fia/WORKFLOW.md](../05_fia/WORKFLOW.md) |
-| 4 | [04_extract_seedlings_mortality.R](../05_fia/scripts/04_extract_seedlings_mortality.R) | Extract seedling and mortality summaries by state | `05_fia/data/processed/{seedlings,mortality}/state={ST}/` | [05_fia/WORKFLOW.md](../05_fia/WORKFLOW.md) |
-| 5 | [05_build_fia_summaries.R](../05_fia/scripts/05_build_fia_summaries.R) | Build national plot-level summary parquets | `05_fia/data/processed/summaries/*.parquet` | [05_fia/WORKFLOW.md](../05_fia/WORKFLOW.md) |
+| 1 | [01_download_fia.R](../05_fia/scripts/core/01_download_fia.R) | Download FIA CSV tables by state and the REF tables | `05_fia/data/raw/{ST}/`, `05_fia/data/raw/REF/` | [05_fia/README.md](../05_fia/README.md) |
+| 2 | [02_inspect_fia.R](../05_fia/scripts/core/02_inspect_fia.R) | Inspect schema and build lookup parquets | `05_fia/lookups/*.parquet` | [05_fia/WORKFLOW.md](../05_fia/WORKFLOW.md) |
+| 3 | [03_extract_trees.R](../05_fia/scripts/core/03_extract_trees.R) | Extract tree, condition, damage-agent, and harvest-flag tables | `05_fia/data/processed/{trees,cond,damage_agents,harvest_flags}/state={ST}/` | [05_fia/WORKFLOW.md](../05_fia/WORKFLOW.md) |
+| 4 | [04_extract_seedlings_mortality.R](../05_fia/scripts/core/04_extract_seedlings_mortality.R) | Extract seedling and mortality summaries by state | `05_fia/data/processed/{seedlings,mortality}/state={ST}/` | [05_fia/WORKFLOW.md](../05_fia/WORKFLOW.md) |
+| 5 | [05_build_fia_summaries.R](../05_fia/scripts/core/05_build_fia_summaries.R) | Build national plot-level summary parquets | `05_fia/data/processed/summaries/*.parquet` | [05_fia/WORKFLOW.md](../05_fia/WORKFLOW.md) |
 | Optional 1 | [01_build_site_list.R](../05_fia/scripts/site_climate/01_build_site_list.R) | Build the FIA site list for optional climate extraction | `05_fia/data/processed/site_climate/all_site_locations.csv` | [05_fia/WORKFLOW.md](../05_fia/WORKFLOW.md#optional-site-climate-extension) |
 | Optional 2 | [02_extract_terraclimate.R](../05_fia/scripts/site_climate/02_extract_terraclimate.R) | Extract TerraClimate for FIA site locations | `05_fia/data/processed/site_climate/` | [05_fia/WORKFLOW.md](../05_fia/WORKFLOW.md#optional-site-climate-extension) |
 
 Notes:
 
+- `05_fia/scripts/core/` is the required FIA sequence. The other named script
+  families are downstream branches and restart their numbering independently.
+- Build `scripts/foundations/01_build_plot_visit_context.R` before the current
+  condition-history analysis. Build the forested-condition foundation only for
+  workflows that consume it.
 - The site-climate extension is optional and requires Google Earth Engine.
 - The main FIA summary outputs, plus `all_site_locations.csv`, `site_pixel_map.parquet`, and `site_climate.parquet`, are reviewable in git.
 
@@ -96,7 +97,7 @@ Run this path after the FIA species-composition products exist.
 | 1 | [01_build_species_universe.R](../06_species_niches/scripts/01_build_species_universe.R) | Combine FIA and P2VEG source taxa | `species_universe.parquet` | [Workflow](../06_species_niches/WORKFLOW.md#01-build-species-universe) |
 | 2 | [02_check_bien_ranges.R](../06_species_niches/scripts/02_check_bien_ranges.R) | Check BIEN availability and apply reviewed name overrides | `bien_range_availability.parquet` | [Workflow](../06_species_niches/WORKFLOW.md#02-check-bien-ranges) |
 | 3 | [03_download_bien_ranges.R](../06_species_niches/scripts/03_download_bien_ranges.R) | Cache and consolidate BIEN polygons | `species_range_polygons.gpkg` | [Workflow](../06_species_niches/WORKFLOW.md#03-download-bien-ranges) |
-| QA gate | [01_validate_species_niche_workflow.R](../06_species_niches/qa/01_validate_species_niche_workflow.R) | Validate scripts 01-03 before the long extraction | Validation decision and checks | [QA Guide](../06_species_niches/qa/README.md) |
+| QA gate | [01_validate_species_niche_workflow.R](../06_species_niches/qa/scripts/01_validate_species_niche_workflow.R) | Validate scripts 01-03 before the long extraction | Validation decision and checks | [QA Guide](../06_species_niches/qa/README.md) |
 | 4 | [04_extract_terraclimate_from_ranges.R](../06_species_niches/scripts/04_extract_terraclimate_from_ranges.R) | Extract 1981-2010 range climatologies through GEE | `species_range_climate_us_study_area.parquet` | [Workflow](../06_species_niches/WORKFLOW.md#04-extract-terraclimate-from-ranges) |
 | 5 | [05_build_species_climate_niches.R](../06_species_niches/scripts/05_build_species_climate_niches.R) | Build eight compact species indicators | `species_climate_niches_us_study_area.parquet` | [Workflow](../06_species_niches/WORKFLOW.md#05-build-species-climate-niches) |
 
@@ -113,7 +114,7 @@ Requires the FIA plot-visit context and forested-condition foundation from Path 
 | 3 | [03_build_plot_disturbance_severity.R](../07_thermophilization/scripts/03_build_plot_disturbance_severity.R) | Aggregate condition-level disturbance to plot-visit proportions | `plot_disturbance_severity.parquet` | [Output guide](../07_thermophilization/README.md#plot_disturbance_severityparquet) |
 | 4 | [04_build_visit_interval_change.R](../07_thermophilization/scripts/04_build_visit_interval_change.R) | Change between each survey and the one before it, with annualized rates | `forest_visit_interval_change_<layer>.parquet` | [Output guide](../07_thermophilization/README.md#forest_visit_interval_change_layerparquet) |
 | 5 | [05_build_first_last_change.R](../07_thermophilization/scripts/05_build_first_last_change.R) | Change between a plot's earliest and latest survey | `forest_first_last_change.parquet` | [Output guide](../07_thermophilization/README.md#forest_first_last_changeparquet) |
-| QA gate | [01_validate_thermophilization_products.R](../07_thermophilization/qa/01_validate_thermophilization_products.R) | Validate row grains, required columns, proportions, coverage fields, link status, and rate arithmetic | `thermophilization_validation_*.csv` | [QA guide](../07_thermophilization/README.md#qa-csvs) |
+| QA gate | [01_validate_thermophilization_products.R](../07_thermophilization/qa/scripts/01_validate_thermophilization_products.R) | Validate row grains, required columns, proportions, coverage fields, link status, and rate arithmetic | `thermophilization_validation_*.csv` | [QA guide](../07_thermophilization/README.md#qa-csvs) |
 
 Steps 4 and 5 build the two change designs. Both are kept because choosing between them is an open decision; see [METHOD_DECISIONS_NEEDED.md](METHOD_DECISIONS_NEEDED.md).
 
@@ -129,8 +130,8 @@ Rscript 07_thermophilization/scripts/04_build_visit_interval_change.R --layer=se
 Rscript 07_thermophilization/scripts/04_build_visit_interval_change.R --layer=saplings
 Rscript 07_thermophilization/scripts/04_build_visit_interval_change.R --layer=trees
 Rscript 07_thermophilization/scripts/05_build_first_last_change.R
-Rscript 07_thermophilization/qa/01_validate_thermophilization_products.R
-Rscript 07_thermophilization/qa/02_disturbance_survey_coverage.R
+Rscript 07_thermophilization/qa/scripts/01_validate_thermophilization_products.R
+Rscript 07_thermophilization/qa/scripts/02_disturbance_survey_coverage.R
 ```
 
 ## Path 6: Forest Disturbance Data Preparation
@@ -138,11 +139,11 @@ Rscript 07_thermophilization/qa/02_disturbance_survey_coverage.R
 Run this after the FIA condition foundation and plot-visit context exist.
 
 ```bash
-python 05_fia/scripts/09_build_damage_agent_lookup.py
-python 05_fia/scripts/10_audit_tree_cn.py
-Rscript 08_disturbance_linkage/scripts/02_build_fia_forest_disturbance_measures.R
-Rscript 08_disturbance_linkage/scripts/03_prepare_fia_damage_agent_evidence.R
-Rscript 08_disturbance_linkage/qa/03_validate_damage_agent_preparation.R
+python 05_fia/scripts/reference/01_build_damage_agent_lookup.py
+python 05_fia/scripts/reference/02_audit_tree_cn.py
+Rscript 08_disturbance_linkage/scripts/fia/02_build_forest_disturbance_measures.R
+Rscript 08_disturbance_linkage/scripts/fia/03_prepare_damage_agent_evidence.R
+Rscript 08_disturbance_linkage/qa/scripts/fia/03_validate_damage_agent_preparation.R
 Rscript scripts/run_tests.R 05_fia 08_disturbance_linkage
 python forest_explorer/catalog/build_inventory.py
 ```
@@ -160,7 +161,7 @@ linkage products from Path 6.
 Before running the analysis, also build the FIA plot-visit context:
 
 ```bash
-Rscript 05_fia/scripts/07_build_plot_visit_context.R
+Rscript 05_fia/scripts/foundations/01_build_plot_visit_context.R
 Rscript 05_fia/scripts/site_climate/01_build_site_list.R
 ```
 
@@ -178,6 +179,16 @@ provenance validation. Every compact QA result is registered in
 `09_analysis/qa/qa_products.csv` and written beneath a folder named for its
 producer. See [the analysis README](../09_analysis/README.md) for restart and
 cache-reuse options.
+
+Before transferring to a new server, run the read-only repository audit:
+
+```bash
+Rscript --vanilla scripts/audit_repository_structure.R
+```
+
+This checks that module layouts and every QA/registry producer path still match
+the tracked code. Generated data and QA results remain out of Git and are rebuilt
+from these producers on the server.
 
 ## Archived Reference: ERA5
 

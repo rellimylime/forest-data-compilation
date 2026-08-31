@@ -241,7 +241,7 @@ def state_order_present(values) -> list:
 st.title("🌲 FIA Forest Inventory")
 st.markdown(
     "USDA Forest Inventory and Analysis — processed summaries for all 50 US states. "
-    "Source tables from `05_fia/scripts/05_build_fia_summaries.R`. "
+        "Source tables from `05_fia/scripts/core/05_build_fia_summaries.R`. "
     "Charts here are interactive: most are rendered from compact aggregates that ship with "
     "the dashboard repository, so they work even without the underlying parquet files."
 )

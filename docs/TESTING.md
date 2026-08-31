@@ -25,12 +25,12 @@ Shared test helpers live in `tests/testthat/helpers.R`. They check common condit
 
 | Workstream | QA script or location | When to run | What it checks |
 |---|---|---|---|
-| IDS | [validate_ids.R](../01_ids/scripts/qc/validate_ids.R) | After `01_ids/scripts/03_clean_ids.R` | IDS layer structure, cleaning actions, geometry validity, missing data, and merge readiness |
-| IDS | [explore_ids_coverage.R](../01_ids/scripts/qc/explore_ids_coverage.R) | After `01_ids/scripts/01_download_ids.R` or when source data change | Schema availability by era, value distributions, and temporal coverage |
+| IDS | [validate_ids.R](../01_ids/qa/scripts/validate_ids.R) | After `01_ids/scripts/03_clean_ids.R` | IDS layer structure, cleaning actions, geometry validity, missing data, and merge readiness |
+| IDS | [explore_ids_coverage.R](../01_ids/qa/scripts/explore_ids_coverage.R) | After `01_ids/scripts/01_download_ids.R` or when source data change | Schema availability by era, value distributions, and temporal coverage |
 | FIA site climate | [03_validate_site_climate.R](../05_fia/scripts/site_climate/03_validate_site_climate.R) | After optional FIA site-climate extraction | Site/pixel matching, month/year completeness, and basic value checks |
-| Species niches | [01_validate_species_niche_workflow.R](../06_species_niches/qa/01_validate_species_niche_workflow.R) | After scripts `01`-`03`, and again after scripts `04`-`05` | Handoffs among species universe, BIEN availability, polygons, range climate, compact niches, and CWM coverage |
+| Species niches | [01_validate_species_niche_workflow.R](../06_species_niches/qa/scripts/01_validate_species_niche_workflow.R) | After scripts `01`-`03`, and again after scripts `04`-`05` | Handoffs among species universe, BIEN availability, polygons, range climate, compact niches, and CWM coverage |
 | Species niches | Gap documentation scripts in [06_species_niches/qa/](../06_species_niches/qa/) | After the niche products are current | Missing-data categories, taxonomic review queues, study-area climate gaps, global fallback species, and taxon-level coverage |
-| Thermophilization | [01_validate_thermophilization_products.R](../07_thermophilization/qa/01_validate_thermophilization_products.R) | After rebuilding thermophilization scripts `01`-`06` | File presence, documented row grains, required columns, valid proportions, niche coverage fields, and repeated-survey rate calculations |
+| Thermophilization | [01_validate_thermophilization_products.R](../07_thermophilization/qa/scripts/01_validate_thermophilization_products.R) | After rebuilding thermophilization scripts `01`-`06` | File presence, documented row grains, required columns, valid proportions, niche coverage fields, and repeated-survey rate calculations |
 
 ## Module Test Suites
 

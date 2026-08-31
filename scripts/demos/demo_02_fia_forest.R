@@ -17,7 +17,7 @@
 #   Rscript scripts/demo_02_fia_forest.R
 #
 # Prerequisites (run FIA pipeline first):
-#   Rscript 05_fia/scripts/05_build_fia_summaries.R
+#   Rscript 05_fia/scripts/core/05_build_fia_summaries.R
 #
 # Output: output/demo_02_fia_forest/  (figures + CSV summaries)
 #

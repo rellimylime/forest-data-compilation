@@ -38,7 +38,7 @@ OUTPUTS = [
         "section": "FIA foundation",
         "label": "Forested-condition foundation",
         "path": "05_fia/data/processed/summaries/forested_condition_foundation.parquet",
-        "producer": "05_fia/scripts/08_build_forested_condition_foundation.R",
+        "producer": "05_fia/scripts/foundations/02_build_forested_condition_foundation.R",
         "grain": "PLT_CN x INVYR x CONDID",
         "role": "Which conditions are forest, and each one's share of the visit's forested area.",
     },
@@ -102,7 +102,7 @@ OUTPUTS = [
         "section": "Diagnostics",
         "label": "Before/after survey coverage",
         "path": "07_thermophilization/qa/outputs/disturbance_survey_coverage_by_plot.parquet",
-        "producer": "07_thermophilization/qa/02_disturbance_survey_coverage.R",
+        "producer": "07_thermophilization/qa/scripts/02_disturbance_survey_coverage.R",
         "grain": "stable_plot_id",
         "role": "Which plots have a survey before and after a disturbance, per query.",
     },
@@ -339,14 +339,14 @@ with tab_outputs:
 with tab_use:
     st.markdown('<div class="fd-section-label">Run order</div>', unsafe_allow_html=True)
     st.code(
-        "Rscript 05_fia/scripts/07_build_plot_visit_context.R\n"
-        "Rscript 05_fia/scripts/08_build_forested_condition_foundation.R\n"
+        "Rscript 05_fia/scripts/foundations/01_build_plot_visit_context.R\n"
+        "Rscript 05_fia/scripts/foundations/02_build_forested_condition_foundation.R\n"
         "Rscript 07_thermophilization/scripts/01_build_condition_community_climate.R --layer=trees\n"
         "Rscript 07_thermophilization/scripts/02_build_forest_plot_visit_cwm.R\n"
         "Rscript 07_thermophilization/scripts/03_build_plot_disturbance_severity.R\n"
         "Rscript 07_thermophilization/scripts/04_build_visit_interval_change.R --layer=trees\n"
         "Rscript 07_thermophilization/scripts/05_build_first_last_change.R\n"
-        "Rscript 07_thermophilization/qa/01_validate_thermophilization_products.R",
+        "Rscript 07_thermophilization/qa/scripts/01_validate_thermophilization_products.R",
         language="bash",
     )
     st.caption(

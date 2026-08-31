@@ -556,14 +556,14 @@ with tab_fia:
                     "title": "Download FIA tables",
                     "body": "Get state tables and national reference tables from FIA DataMart.",
                     "tone": "green",
-                    "pill": "05_fia/scripts/01_download_fia.R",
+                    "pill": "05_fia/scripts/core/01_download_fia.R",
                 },
                 {
                     "step": "2",
                     "title": "Inspect and build lookups",
                     "body": "Check schema and write the species and forest-type lookup parquets.",
                     "tone": "green",
-                    "pill": "05_fia/scripts/02_inspect_fia.R",
+                    "pill": "05_fia/scripts/core/02_inspect_fia.R",
                 },
                 {
                     "step": "3",
@@ -577,7 +577,7 @@ with tab_fia:
                     "title": "Build national summaries",
                     "body": "Aggregate the state outputs into the tracked FIA summary files used downstream.",
                     "tone": "green",
-                    "pill": "05_fia/scripts/05_build_fia_summaries.R",
+                    "pill": "05_fia/scripts/core/05_build_fia_summaries.R",
                 },
             ]
         ),

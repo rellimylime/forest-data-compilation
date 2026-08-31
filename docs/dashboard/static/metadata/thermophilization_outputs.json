@@ -16,7 +16,7 @@
             "label": "Forested-condition foundation",
             "file": "forested_condition_foundation.parquet",
             "path": "05_fia/data/processed/summaries/forested_condition_foundation.parquet",
-            "producer": "05_fia/scripts/08_build_forested_condition_foundation.R",
+      "producer": "05_fia/scripts/foundations/02_build_forested_condition_foundation.R",
             "grain": "PLT_CN x INVYR x CONDID",
             "role": "Which conditions are forest, and each one's share of the visit's forested area. The single source of truth for forest status and area weight."
         },
@@ -88,7 +88,7 @@
             "label": "Before/after survey coverage",
             "file": "disturbance_survey_coverage_by_plot.parquet",
             "path": "07_thermophilization/qa/outputs/disturbance_survey_coverage_by_plot.parquet",
-            "producer": "07_thermophilization/qa/02_disturbance_survey_coverage.R",
+            "producer": "07_thermophilization/qa/scripts/02_disturbance_survey_coverage.R",
             "grain": "stable_plot_id",
             "role": "Which plots have a survey before and after a disturbance, for each configured query."
         }

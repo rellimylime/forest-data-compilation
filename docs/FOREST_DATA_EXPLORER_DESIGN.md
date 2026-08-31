@@ -86,7 +86,7 @@ The September release succeeds when the researcher can:
 ### FIA protocol context is missing from the current condition summary
 
 - **Repository finding:** the raw 2000–2024 `PLOT` files contain 1,217,271 visits spanning `PLOT.MANUAL` 0.0 through 9.4.
-- **Repository finding:** [`03_extract_trees.R`](../05_fia/scripts/03_extract_trees.R) currently selects `PREV_PLT_CN`, location, and `INVYR` from `PLOT`, but not `MANUAL`, `MEASYEAR`, `DESIGNCD`, or `REMPER`.
+- **Repository finding:** [`03_extract_trees.R`](../05_fia/scripts/core/03_extract_trees.R) currently selects `PREV_PLT_CN`, location, and `INVYR` from `PLOT`, but not `MANUAL`, `MEASYEAR`, `DESIGNCD`, or `REMPER`.
 - **Repository finding:** the current `plot_condition_metadata.parquet` therefore cannot by itself enforce or explain all protocol-dependent restrictions.
 - **Official FIA support:** `PLOT.MANUAL` identifies the field-guide version used to collect a plot. FIADB also distinguishes inventory year, measurement date, design, and remeasurement period. See *FIADB User Guides — Volume: Database Description, version 9.4, revision August 2025*.
 

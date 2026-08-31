@@ -44,7 +44,13 @@ If you want a specific workstream right away:
 | `05_fia/` | Build FIA plot/condition summaries, species composition tables, disturbance/treatment history, and optional site climate | [05_fia/README.md](05_fia/README.md) |
 | `06_species_niches/` | Build species-level climate niche indicators from BIEN range maps and TerraClimate | [06_species_niches/README.md](06_species_niches/README.md) |
 | `07_thermophilization/` | Join FIA communities to species niches, calculate plot-year community climate affinity, and estimate repeated-survey change rates | [07_thermophilization/README.md](07_thermophilization/README.md) |
+| `08_disturbance_linkage/` | Prepare reusable FIA, MTBS, IDS, and spatial disturbance evidence; not required by the current mortality models | [08_disturbance_linkage/README.md](08_disturbance_linkage/README.md) |
 | `09_analysis/` | Stable-condition mortality and temperature/precipitation/CWD analytical candidates | [09_analysis/README.md](09_analysis/README.md) |
+
+Simple pipelines keep one flat numeric sequence. Modules with independent
+product families use named subdirectories and restart numbering inside each
+family. QA code always belongs under `qa/scripts/`; generated diagnostics belong
+under `qa/outputs/` and are not committed.
 
 ## At a Glance
 

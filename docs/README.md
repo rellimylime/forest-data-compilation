@@ -72,7 +72,7 @@ This is the main navigation page for the repository documentation. Use it to mov
 ### QC and validation
 
 - [Testing and QC](TESTING.md)
-- [IDS QC README](../01_ids/scripts/qc/README.md)
+- [IDS QA README](../01_ids/qa/README.md)
 - [TerraClimate cleaning log](../02_terraclimate/cleaning_log.md)
 
 ## Workstream Guide
