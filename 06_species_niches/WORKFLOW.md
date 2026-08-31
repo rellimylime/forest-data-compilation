@@ -289,16 +289,16 @@ Production run:
 Rscript 06_species_niches/scripts/01_build_species_universe.R
 Rscript 06_species_niches/scripts/02_check_bien_ranges.R
 Rscript 06_species_niches/scripts/03_download_bien_ranges.R
-Rscript 06_species_niches/qa/01_validate_species_niche_workflow.R
+Rscript 06_species_niches/qa/scripts/01_validate_species_niche_workflow.R
 Rscript 06_species_niches/scripts/04_extract_terraclimate_from_ranges.R --range-scope=us_study_area
 Rscript 06_species_niches/scripts/05_build_species_climate_niches.R --range-scope=us_study_area
-Rscript 06_species_niches/qa/01_validate_species_niche_workflow.R
-Rscript 06_species_niches/qa/04_document_species_niche_gaps.R
-Rscript 06_species_niches/qa/05_prioritize_species_niche_gap_actions.R
-Rscript 06_species_niches/qa/06_validate_study_area_climate_gaps.R
-Rscript 06_species_niches/qa/07_check_tnrs_candidate_bien_ranges.R
-Rscript 06_species_niches/qa/08_describe_global_fallback_species.R
-Rscript 06_species_niches/qa/09_build_species_taxon_crosswalk.R
+Rscript 06_species_niches/qa/scripts/01_validate_species_niche_workflow.R
+Rscript 06_species_niches/qa/scripts/04_document_species_niche_gaps.R
+Rscript 06_species_niches/qa/scripts/05_prioritize_species_niche_gap_actions.R
+Rscript 06_species_niches/qa/scripts/06_validate_study_area_climate_gaps.R
+Rscript 06_species_niches/qa/scripts/07_check_tnrs_candidate_bien_ranges.R
+Rscript 06_species_niches/qa/scripts/08_describe_global_fallback_species.R
+Rscript 06_species_niches/qa/scripts/09_build_species_taxon_crosswalk.R
 ```
 
 Use `--limit=N` for smoke runs. Smoke outputs are written under `data/smoke/` and `qa/smoke/` and do not replace production products.

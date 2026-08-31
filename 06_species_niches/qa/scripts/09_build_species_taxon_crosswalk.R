@@ -11,7 +11,7 @@
 # missing" from "biological taxa missing."
 #
 # Usage:
-#   Rscript 06_species_niches/qa/09_build_species_taxon_crosswalk.R
+#   Rscript 06_species_niches/qa/scripts/09_build_species_taxon_crosswalk.R
 # ==============================================================================
 
 suppressPackageStartupMessages({

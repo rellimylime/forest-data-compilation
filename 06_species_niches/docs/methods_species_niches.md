@@ -118,7 +118,7 @@ The thermophilization scripts should consume only a vetted niche table. BIEN ran
 The formal validation entry point is:
 
 ```bash
-Rscript 06_species_niches/qa/01_validate_species_niche_workflow.R
+Rscript 06_species_niches/qa/scripts/01_validate_species_niche_workflow.R
 ```
 
 This validator checks that the species universe has unique keys, genus-only records are not targeted for species-level niches, BIEN availability has exactly one row per niche target, BIEN availability includes both available and missing ranges, range polygons match the BIEN-available species set, geometries are non-empty and valid, and downstream range-climate / compact-niche / CWM products match the current polygon species set.

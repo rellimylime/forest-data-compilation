@@ -8,7 +8,7 @@
 # species need synonym fixes, genus-level treatment, exclusion, or documentation.
 #
 # Usage:
-#   Rscript 06_species_niches/qa/05_prioritize_species_niche_gap_actions.R
+#   Rscript 06_species_niches/qa/scripts/05_prioritize_species_niche_gap_actions.R
 # ==============================================================================
 
 suppressPackageStartupMessages({
@@ -23,7 +23,7 @@ dir_create(qa_dir)
 
 ledger_path <- file.path(qa_dir, "species_niche_gap_ledger.csv")
 if (!file.exists(ledger_path)) {
-  stop("Gap ledger not found. Run 06_species_niches/qa/04_document_species_niche_gaps.R first.")
+  stop("Gap ledger not found. Run 06_species_niches/qa/scripts/04_document_species_niche_gaps.R first.")
 }
 
 ledger <- fread(ledger_path)

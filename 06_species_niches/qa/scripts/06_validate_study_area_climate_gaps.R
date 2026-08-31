@@ -9,7 +9,7 @@
 # BIEN polygon.
 #
 # Usage:
-#   Rscript 06_species_niches/qa/06_validate_study_area_climate_gaps.R
+#   Rscript 06_species_niches/qa/scripts/06_validate_study_area_climate_gaps.R
 # ==============================================================================
 
 suppressPackageStartupMessages({

@@ -10,7 +10,7 @@
 # inputs.
 #
 # Usage:
-#   Rscript 06_species_niches/qa/08_describe_global_fallback_species.R
+#   Rscript 06_species_niches/qa/scripts/08_describe_global_fallback_species.R
 # ==============================================================================
 
 suppressPackageStartupMessages({

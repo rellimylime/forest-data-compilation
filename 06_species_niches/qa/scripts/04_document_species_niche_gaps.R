@@ -11,7 +11,7 @@
 # The outputs are meant for documentation, handoff, and model filtering decisions.
 #
 # Usage:
-#   Rscript 06_species_niches/qa/04_document_species_niche_gaps.R
+#   Rscript 06_species_niches/qa/scripts/04_document_species_niche_gaps.R
 # ==============================================================================
 
 suppressPackageStartupMessages({
@@ -48,7 +48,7 @@ if (length(missing_inputs) > 0) {
 }
 
 if (!file.exists(validation_checks_path)) {
-  stop("Run 06_species_niches/qa/01_validate_species_niche_workflow.R before documenting final gaps.")
+  stop("Run 06_species_niches/qa/scripts/01_validate_species_niche_workflow.R before documenting final gaps.")
 }
 
 validation_checks <- fread(validation_checks_path)

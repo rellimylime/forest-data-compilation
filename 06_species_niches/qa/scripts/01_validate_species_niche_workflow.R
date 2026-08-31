@@ -9,7 +9,7 @@
 # structural check fails. Review-level issues are written as warnings and CSVs.
 #
 # Usage:
-#   Rscript 06_species_niches/qa/01_validate_species_niche_workflow.R
+#   Rscript 06_species_niches/qa/scripts/01_validate_species_niche_workflow.R
 # ==============================================================================
 
 suppressPackageStartupMessages({

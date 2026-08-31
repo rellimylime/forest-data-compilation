@@ -7,8 +7,8 @@
 # candidate that BIEN can map?
 #
 # Usage:
-#   Rscript 06_species_niches/qa/07_check_tnrs_candidate_bien_ranges.R
-#   Rscript 06_species_niches/qa/07_check_tnrs_candidate_bien_ranges.R --limit=50
+#   Rscript 06_species_niches/qa/scripts/07_check_tnrs_candidate_bien_ranges.R
+#   Rscript 06_species_niches/qa/scripts/07_check_tnrs_candidate_bien_ranges.R --limit=50
 # ==============================================================================
 
 suppressPackageStartupMessages({

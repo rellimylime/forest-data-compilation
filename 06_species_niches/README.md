@@ -38,7 +38,7 @@ Detailed inputs, processing choices, rerun behavior, and QA outputs are in [WORK
 Rscript 06_species_niches/scripts/01_build_species_universe.R
 Rscript 06_species_niches/scripts/02_check_bien_ranges.R
 Rscript 06_species_niches/scripts/03_download_bien_ranges.R
-Rscript 06_species_niches/qa/01_validate_species_niche_workflow.R
+Rscript 06_species_niches/qa/scripts/01_validate_species_niche_workflow.R
 Rscript 06_species_niches/scripts/04_extract_terraclimate_from_ranges.R --range-scope=us_study_area
 Rscript 06_species_niches/scripts/05_build_species_climate_niches.R --range-scope=us_study_area
 ```

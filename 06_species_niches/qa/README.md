@@ -32,7 +32,7 @@ The other output files are supporting diagnostics. They are useful when a specif
 Run this after scripts `01` through `03`, and again after scripts `04` and `05`:
 
 ```bash
-Rscript 06_species_niches/qa/01_validate_species_niche_workflow.R
+Rscript 06_species_niches/qa/scripts/01_validate_species_niche_workflow.R
 ```
 
 This script checks the handoffs among:
@@ -136,12 +136,12 @@ The validator treats empty or invalid geometries as blocking errors. Nonpositive
 After scripts `04` and `05` have been rerun from current inputs, document final niche gaps with:
 
 ```bash
-Rscript 06_species_niches/qa/04_document_species_niche_gaps.R
-Rscript 06_species_niches/qa/05_prioritize_species_niche_gap_actions.R
-Rscript 06_species_niches/qa/06_validate_study_area_climate_gaps.R
-Rscript 06_species_niches/qa/07_check_tnrs_candidate_bien_ranges.R
-Rscript 06_species_niches/qa/08_describe_global_fallback_species.R
-Rscript 06_species_niches/qa/09_build_species_taxon_crosswalk.R
+Rscript 06_species_niches/qa/scripts/04_document_species_niche_gaps.R
+Rscript 06_species_niches/qa/scripts/05_prioritize_species_niche_gap_actions.R
+Rscript 06_species_niches/qa/scripts/06_validate_study_area_climate_gaps.R
+Rscript 06_species_niches/qa/scripts/07_check_tnrs_candidate_bien_ranges.R
+Rscript 06_species_niches/qa/scripts/08_describe_global_fallback_species.R
+Rscript 06_species_niches/qa/scripts/09_build_species_taxon_crosswalk.R
 ```
 
 Main outputs:
