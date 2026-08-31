@@ -6,6 +6,7 @@
 SET preserve_insertion_order = false;
 SET threads = 4;
 
+-- 1. Identify stable-condition histories that pass every interval eligibility rule.
 CREATE OR REPLACE TEMP VIEW eligible_edges AS
 SELECT *
 FROM read_parquet('09_analysis/data/processed/interval_agent_mortality.parquet')
@@ -34,6 +35,7 @@ HAVING min(t2_visit_number) = 2
    AND count(*) = n_visits_in_component - 1
    AND count(DISTINCT t2_visit_number) = n_visits_in_component - 1;
 
+-- 2. Attach condition-level CWM values to both endpoints of every retained edge.
 CREATE OR REPLACE TEMP VIEW cwm_edges AS
 SELECT
   e.stable_plot_id,
@@ -54,6 +56,7 @@ INNER JOIN read_parquet(
   '09_analysis/data/processed/stable_condition_cwm_change.parquet'
 ) AS c USING (stable_condition_interval_key);
 
+-- 3. Reduce each complete history to its first-to-last community response.
 CREATE OR REPLACE TEMP VIEW first_last_cwm AS
 SELECT
   stable_plot_id,
@@ -79,6 +82,7 @@ FROM cwm_edges
 GROUP BY stable_plot_id, remeasurement_component_id, state, CONDID, layer
 HAVING has_first_edge = 1 AND has_last_edge = 1;
 
+-- 4. Write the model-ready histories and compact QA summaries.
 COPY (
   SELECT
     h.stable_plot_id,

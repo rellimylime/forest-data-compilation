@@ -4,6 +4,7 @@
 SET preserve_insertion_order = false;
 SET threads = 4;
 
+-- 1. Read the retained first-to-last histories.
 CREATE OR REPLACE TEMP VIEW model_histories AS
 SELECT DISTINCT
   history_id,
@@ -17,6 +18,7 @@ FROM read_parquet(
   '09_analysis/data/processed/lifestage_model_base.parquet'
 );
 
+-- 2. Recover actual measurement dates from every official PREV component.
 CREATE OR REPLACE TEMP VIEW component_visits AS
 SELECT
   PLT_CN,
@@ -30,6 +32,7 @@ FROM read_parquet(
   '09_analysis/data/processed/fia_remeasurement_components.parquet'
 );
 
+-- 3. Collapse component visits to one inclusive date range per history.
 CREATE OR REPLACE TEMP VIEW history_dates AS
 SELECT
   h.*,
@@ -49,6 +52,7 @@ FROM model_histories AS h
 LEFT JOIN component_visits AS f ON h.first_PLT_CN = f.PLT_CN
 LEFT JOIN component_visits AS l ON h.last_PLT_CN = l.PLT_CN;
 
+-- 4. Write extraction inputs: history dates and unique FIA site locations.
 COPY (
   SELECT *
   FROM history_dates

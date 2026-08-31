@@ -7,6 +7,7 @@
 SET preserve_insertion_order = false;
 SET threads = 4;
 
+-- 1. Normalize first and last measurement dates for each retained history.
 CREATE OR REPLACE TEMP VIEW history_dates AS
 SELECT
   *,
@@ -20,6 +21,7 @@ FROM read_parquet(
   '09_analysis/data/intermediate/history_measurement_dates.parquet'
 );
 
+-- 2. Normalize TerraClimate monthly def values and reject duplicate site-months.
 CREATE OR REPLACE TEMP VIEW monthly_def AS
 SELECT
   CAST(site_id AS VARCHAR) AS stable_plot_id,
@@ -30,6 +32,7 @@ FROM read_parquet(
 )
 WHERE variable = 'def';
 
+-- 3. Sum only months whose month-start falls inside the history date range.
 CREATE OR REPLACE TEMP VIEW history_cwd_sums AS
 SELECT
   h.history_id,
@@ -45,6 +48,7 @@ LEFT JOIN monthly_def AS c
  AND c.climate_month <= h.last_included_month
 GROUP BY h.history_id;
 
+-- 4. Compute expected-month coverage and retain incomplete-history diagnostics.
 CREATE OR REPLACE TEMP VIEW history_cwd AS
 SELECT
   h.*,
@@ -68,6 +72,7 @@ SELECT
 FROM history_dates AS h
 INNER JOIN history_cwd_sums AS s USING (history_id);
 
+-- 5. Write the model table and QA products used to validate units and coverage.
 COPY (
   SELECT *
   FROM history_cwd

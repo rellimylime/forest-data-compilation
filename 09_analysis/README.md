@@ -35,7 +35,7 @@ model inputs.
 The required upstream products are:
 
 - FIA raw state tables plus the summary products from `05_fia` scripts 01-05;
-- `plot_visit_context.parquet` from `05_fia/scripts/07_build_plot_visit_context.R`;
+- `plot_visit_context.parquet` from `05_fia/scripts/foundations/01_build_plot_visit_context.R`;
 - `all_site_locations.csv` from `05_fia/scripts/site_climate/01_build_site_list.R`;
 - the US study-area species niches from `06_species_niches` scripts 01-05; and
 - a configured TerraClimate extraction backend.

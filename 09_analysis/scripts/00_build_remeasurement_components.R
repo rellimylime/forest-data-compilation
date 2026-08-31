@@ -67,7 +67,7 @@ qa_path <- file.path(qa_dir, "remeasurement_component_summary.csv")
 if (!file.exists(visit_context_path)) {
   stop(
     "FIA plot-visit context is missing: ", visit_context_path, "\n",
-    "Run: Rscript 05_fia/scripts/07_build_plot_visit_context.R"
+      "Run: Rscript 05_fia/scripts/foundations/01_build_plot_visit_context.R"
   )
 }
 
