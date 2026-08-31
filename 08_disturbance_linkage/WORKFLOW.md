@@ -4,7 +4,7 @@ Configuration lives under `processed.disturbance_linkage` in `config.yaml`. This
 
 ## FIA fire preparation
 
-`02_build_fia_forest_disturbance_measures.R` reads the forested-condition foundation and plot-visit context.
+`scripts/fia/02_build_forest_disturbance_measures.R` reads the forested-condition foundation and plot-visit context.
 
 Each FIA condition has three code-year disturbance slots:
 
@@ -46,12 +46,12 @@ The known-wrong development output that collected nonfire years is not retained 
 The lookup is extracted from Appendix H of the official FIADB Database Description v9.4:
 
 ```bash
-python 05_fia/scripts/09_build_damage_agent_lookup.py
+python 05_fia/scripts/reference/01_build_damage_agent_lookup.py
 ```
 
 The lookup retains exact codes, official names and groups, thresholds, the Appendix H region field, retirement status, and a reviewed insect flag. Its definitions are explicitly labeled `official_v9.4_definition_only`. `manual_version_applicability` is `not_established_by_source_appendix`; the current appendix is not treated as a historical code crosswalk.
 
-`05_fia/scripts/10_audit_tree_cn.py` scanned all 26,113,544 rows in the 50 physical raw `TREE` files and found no duplicated `TREE.CN` values. Products still declare the complete tree-agent key rather than depending on an undocumented uniqueness assumption.
+`05_fia/scripts/reference/02_audit_tree_cn.py` scanned all 26,113,544 rows in the 50 physical raw `TREE` files and found no duplicated `TREE.CN` values. Products still declare the complete tree-agent key rather than depending on an undocumented uniqueness assumption.
 
 The preparation script reads raw `TREE` records and writes state-partitioned Parquet datasets:
 
@@ -107,7 +107,7 @@ basal_area_fraction
 
 None is primary. Condition-area weighting and plot-level aggregation are not applied. The tree-agent evidence is retained so a future reviewed grouping can deduplicate trees carrying multiple exact codes.
 
-The earlier, misleading `fia_insect_impact_measures_v1` development product and producer were removed. New builds use `03_prepare_fia_damage_agent_evidence.R`.
+The earlier, misleading `fia_insect_impact_measures_v1` development product and producer were removed. New builds use `scripts/fia/03_prepare_damage_agent_evidence.R`.
 
 See [FIA_DISTURBANCE_DATA_DICTIONARY.md](FIA_DISTURBANCE_DATA_DICTIONARY.md) for exact raw-column provenance, units, formulas, and eligibility rules.
 
@@ -131,7 +131,7 @@ Foundational tables preserve coordinate provenance. The agreed primary-analysis 
 
 An external overlap with an 800 m public-coordinate buffer is an association, not proof that the disturbance affected the measured FIA condition.
 
-`01_build_fia_visit_spatial_linkage_status.R` writes:
+`scripts/spatial/02_build_visit_linkage_status.R` writes:
 
 ```text
 fia_visit_spatial_linkage_status.parquet
@@ -170,9 +170,9 @@ coverage_unknown
 
 Partial coverage is not labeled fully surveyed. Absence from the damage layer is not used to infer survey coverage.
 
-`00_prepare_mtbs_fire_perimeters.R` validates the downloaded national archive and writes the configured `mtbs_fire_perimeters.gpkg`. The current source is the June 21, 2026 USGS/USDA Forest Service `S_USA.MTBS_Burn_Area_Boundary` release, DOI `10.5066/P9IED7RZ`. Its SHA-256 is recorded in `config.yaml` and checked before conversion.
+`scripts/mtbs/01_prepare_fire_perimeters.R` validates the downloaded national archive and writes the configured `mtbs_fire_perimeters.gpkg`. The current source is the June 21, 2026 USGS/USDA Forest Service `S_USA.MTBS_Burn_Area_Boundary` release, DOI `10.5066/P9IED7RZ`. Its SHA-256 is recorded in `config.yaml` and checked before conversion.
 
-`02_extract_mtbs_fire_history.R` retains every MTBS event whose burned-area boundary touches an eligible 800 m FIA footprint. It preserves exact event and mapping IDs, ignition date, event year, fire name and type, MTBS burned-area acres, and overlap area/fraction. It does not select a primary fire, filter fire types, summarize temporal endpoints, or use severity rasters.
+`scripts/mtbs/02_extract_fire_history.R` retains every MTBS event whose burned-area boundary touches an eligible 800 m FIA footprint. It preserves exact event and mapping IDs, ignition date, event year, fire name and type, MTBS burned-area acres, and overlap area/fraction. It does not select a primary fire, filter fire types, summarize temporal endpoints, or use severity rasters.
 
 The current `fire_type` values are `Wildfire`, `Prescribed Fire`, `Wildland Fire Use`, and `Other`. They are retained so downstream analyses can explicitly include or exclude each type.
 
@@ -200,11 +200,17 @@ Visit history remains neutral. See [INTERVAL_FOUNDATION.md](INTERVAL_FOUNDATION.
 ## Run order
 
 ```bash
-Rscript 08_disturbance_linkage/scripts/01_build_fia_visit_spatial_linkage_status.R
-Rscript 08_disturbance_linkage/scripts/00_prepare_mtbs_fire_perimeters.R
-Rscript 08_disturbance_linkage/scripts/02_extract_mtbs_fire_history.R
-Rscript 08_disturbance_linkage/scripts/03_extract_ids_annual_agent_history.R
-Rscript 08_disturbance_linkage/scripts/04_build_disturbance_readiness.R
+Rscript 08_disturbance_linkage/scripts/fia/01_build_survey_intervals.R
+Rscript 08_disturbance_linkage/scripts/fia/02_build_forest_disturbance_measures.R
+Rscript 08_disturbance_linkage/scripts/fia/03_prepare_damage_agent_evidence.R
+Rscript 08_disturbance_linkage/scripts/spatial/01_build_plot_footprints.R
+Rscript 08_disturbance_linkage/scripts/spatial/02_build_visit_linkage_status.R
+Rscript 08_disturbance_linkage/scripts/mtbs/01_prepare_fire_perimeters.R
+Rscript 08_disturbance_linkage/scripts/mtbs/02_extract_fire_history.R
+Rscript 08_disturbance_linkage/scripts/ids/01_extract_annual_agent_history.R
+Rscript 08_disturbance_linkage/scripts/integration/01_build_readiness_summary.R
+Rscript 08_disturbance_linkage/qa/scripts/fia/01_validate_survey_intervals.R
+Rscript 08_disturbance_linkage/qa/scripts/fia/03_validate_damage_agent_preparation.R
 Rscript scripts/run_tests.R 05_fia 08_disturbance_linkage
 ```
 

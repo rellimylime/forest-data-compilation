@@ -39,13 +39,13 @@ qa_dir <- here(link_cfg$qa_dir)
 if (!file.exists(foundation_path)) {
   stop(
     "Forested-condition foundation is missing: ", foundation_path, "\n",
-    "Run: Rscript 05_fia/scripts/08_build_forested_condition_foundation.R"
+      "Run: Rscript 05_fia/scripts/foundations/02_build_forested_condition_foundation.R"
   )
 }
 if (!file.exists(visit_context_path)) {
   stop(
     "FIA plot-visit context is missing: ", visit_context_path, "\n",
-    "Run: Rscript 05_fia/scripts/07_build_plot_visit_context.R"
+      "Run: Rscript 05_fia/scripts/foundations/01_build_plot_visit_context.R"
   )
 }
 

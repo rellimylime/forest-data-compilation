@@ -12,7 +12,7 @@
 # Output: plot_footprints.gpkg  (config processed.disturbance_linkage.files)
 #
 # Usage:
-#   Rscript 08_disturbance_linkage/scripts/01_build_plot_footprints.R
+#   Rscript 08_disturbance_linkage/scripts/spatial/01_build_plot_footprints.R
 # ==============================================================================
 
 suppressPackageStartupMessages({

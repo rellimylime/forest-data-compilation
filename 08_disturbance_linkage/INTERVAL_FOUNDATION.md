@@ -161,9 +161,9 @@ Validation checks enforce primary keys, endpoint referential integrity, configur
 ## Run order
 
 ```bash
-Rscript 05_fia/scripts/07_build_plot_visit_context.R
-Rscript 08_disturbance_linkage/scripts/01_build_fia_survey_intervals.R
-Rscript 08_disturbance_linkage/qa/02_validate_fia_survey_intervals.R
+Rscript 05_fia/scripts/foundations/01_build_plot_visit_context.R
+Rscript 08_disturbance_linkage/scripts/fia/01_build_survey_intervals.R
+Rscript 08_disturbance_linkage/qa/scripts/fia/01_validate_survey_intervals.R
 Rscript scripts/run_tests.R 08_disturbance_linkage
 ```
 

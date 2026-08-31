@@ -73,7 +73,7 @@ summary_path <- file.path(
 if (!file.exists(context_path)) {
   stop(
     "FIA plot-visit context not found: ", context_path, "\n",
-    "Run: Rscript 05_fia/scripts/07_build_plot_visit_context.R"
+      "Run: Rscript 05_fia/scripts/foundations/01_build_plot_visit_context.R"
   )
 }
 

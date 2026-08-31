@@ -1,5 +1,7 @@
 #!/usr/bin/env Rscript
 
+# Validate the FIA damage-agent evidence, denominator, and candidate products.
+
 suppressPackageStartupMessages({
   library(here)
   library(data.table)
@@ -10,6 +12,7 @@ suppressPackageStartupMessages({
 
 source(here("scripts/utils/load_config.R"))
 
+# Load product locations and require every prepared dataset.
 config <- load_config()
 link_cfg <- config$processed$disturbance_linkage
 fia_cfg <- config$processed$fia
@@ -41,6 +44,7 @@ if (length(missing) > 0L) {
   stop("Missing damage-agent product(s): ", paste(missing, collapse = ", "))
 }
 
+# Read only the fields needed for validation.
 evidence <- open_dataset(paths$evidence) |>
   select(
     state, PLT_CN, INVYR, CONDID, TREE_CN, DAMAGE_AGENT_CD,

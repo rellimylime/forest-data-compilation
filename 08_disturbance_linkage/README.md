@@ -63,15 +63,26 @@ The foundational FIA records retain every reported public coordinate. For the ma
 ## Run the preparation and readiness round
 
 ```bash
-Rscript 08_disturbance_linkage/scripts/01_build_fia_visit_spatial_linkage_status.R
-Rscript 08_disturbance_linkage/scripts/00_prepare_mtbs_fire_perimeters.R
-Rscript 08_disturbance_linkage/scripts/02_extract_mtbs_fire_history.R
-Rscript 08_disturbance_linkage/scripts/03_extract_ids_annual_agent_history.R
-Rscript 08_disturbance_linkage/scripts/04_build_disturbance_readiness.R
+Rscript 08_disturbance_linkage/scripts/fia/01_build_survey_intervals.R
+Rscript 08_disturbance_linkage/scripts/fia/02_build_forest_disturbance_measures.R
+Rscript 08_disturbance_linkage/scripts/fia/03_prepare_damage_agent_evidence.R
+Rscript 08_disturbance_linkage/scripts/spatial/01_build_plot_footprints.R
+Rscript 08_disturbance_linkage/scripts/spatial/02_build_visit_linkage_status.R
+Rscript 08_disturbance_linkage/scripts/mtbs/01_prepare_fire_perimeters.R
+Rscript 08_disturbance_linkage/scripts/mtbs/02_extract_fire_history.R
+Rscript 08_disturbance_linkage/scripts/ids/01_extract_annual_agent_history.R
+Rscript 08_disturbance_linkage/scripts/integration/01_build_readiness_summary.R
+Rscript 08_disturbance_linkage/qa/scripts/fia/01_validate_survey_intervals.R
+Rscript 08_disturbance_linkage/qa/scripts/fia/03_validate_damage_agent_preparation.R
 Rscript scripts/run_tests.R 08_disturbance_linkage
 ```
 
 For one IDS year, use `--year=2020`. Add `--overwrite` only when intentionally rebuilding an existing partition.
+
+The folders under `scripts/` are independent product families, not alternative
+versions of one analysis. Numbering restarts inside each family. The commands
+above give the supported complete preparation order; none of these external
+evidence products is required by the current `09_analysis` mortality models.
 
 The MTBS preparation step validates the downloaded archive checksum and source schema before replacing the canonical GeoPackage.
 

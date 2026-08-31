@@ -5,8 +5,8 @@
 # conditions to plots, or filter the general evidence to forest land.
 #
 # Usage:
-#   Rscript 08_disturbance_linkage/scripts/03_prepare_fia_damage_agent_evidence.R
-#   Rscript 08_disturbance_linkage/scripts/03_prepare_fia_damage_agent_evidence.R WV
+#   Rscript 08_disturbance_linkage/scripts/fia/03_prepare_damage_agent_evidence.R
+#   Rscript 08_disturbance_linkage/scripts/fia/03_prepare_damage_agent_evidence.R WV
 
 suppressPackageStartupMessages({
   library(here)
@@ -67,19 +67,19 @@ output_dirs <- list(
 if (!file.exists(foundation_path)) {
   stop(
     "Forested-condition foundation is missing: ", foundation_path, "\n",
-    "Run: Rscript 05_fia/scripts/08_build_forested_condition_foundation.R"
+      "Run: Rscript 05_fia/scripts/foundations/02_build_forested_condition_foundation.R"
   )
 }
 if (!file.exists(lookup_path)) {
   stop(
     "Reviewed FIA damage-agent lookup is missing: ", lookup_path, "\n",
-    "Run: python 05_fia/scripts/09_build_damage_agent_lookup.py"
+      "Run: python 05_fia/scripts/reference/01_build_damage_agent_lookup.py"
   )
 }
 if (!file.exists(visit_context_path)) {
   stop(
     "FIA plot-visit context is missing: ", visit_context_path, "\n",
-    "Run: Rscript 05_fia/scripts/07_build_plot_visit_context.R"
+      "Run: Rscript 05_fia/scripts/foundations/01_build_plot_visit_context.R"
   )
 }
 
