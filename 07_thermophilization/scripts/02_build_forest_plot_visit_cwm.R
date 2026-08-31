@@ -27,7 +27,7 @@ foundation_path <- file.path(summary_dir, foundation_name)
 if (!file.exists(foundation_path)) {
   stop(
     "Forested-condition foundation is missing: ", foundation_path, "\n",
-    "Run: Rscript 05_fia/scripts/08_build_forested_condition_foundation.R"
+      "Run: Rscript 05_fia/scripts/foundations/02_build_forested_condition_foundation.R"
   )
 }
 # The condition foundation supplies the authoritative forest flag and area weight.

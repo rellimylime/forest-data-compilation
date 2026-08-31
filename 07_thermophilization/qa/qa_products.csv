@@ -1,0 +1,9 @@
+output_pattern,producer_script,description
+plot_community_climate_*.csv,07_thermophilization/scripts/01_build_condition_community_climate.R,Condition community-climate coverage and missing species
+forest_plot_visit_cwm_summary_*.csv,07_thermophilization/scripts/02_build_forest_plot_visit_cwm.R,Legacy plot-visit aggregation summary
+plot_disturbance_severity_*.csv,07_thermophilization/scripts/03_build_plot_disturbance_severity.R,Legacy disturbance-severity summaries
+forest_visit_interval_change_*.csv,07_thermophilization/scripts/04_build_visit_interval_change.R,Visit-interval response and linkage summaries
+forest_first_last_change_summary.csv,07_thermophilization/scripts/05_build_first_last_change.R,First-to-last response summary
+thermophilization_validation_*.csv,07_thermophilization/qa/scripts/01_validate_thermophilization_products.R,Cross-product validation checks
+disturbance_survey_coverage_*,07_thermophilization/qa/scripts/02_disturbance_survey_coverage.R,Survey and disturbance coverage diagnostics
+*.png,07_thermophilization/qa/scripts/03_plot_forest_analysis_qa.R,Exploratory QA figures

@@ -45,8 +45,8 @@
 #   disturbance_survey_coverage_checks.csv    internal-consistency + FIA sanity
 #
 # Usage:
-#   Rscript 07_thermophilization/qa/02_disturbance_survey_coverage.R
-#   Rscript 07_thermophilization/qa/02_disturbance_survey_coverage.R --limit=5000
+#   Rscript 07_thermophilization/qa/scripts/02_disturbance_survey_coverage.R
+#   Rscript 07_thermophilization/qa/scripts/02_disturbance_survey_coverage.R --limit=5000
 # ==============================================================================
 
 suppressPackageStartupMessages({

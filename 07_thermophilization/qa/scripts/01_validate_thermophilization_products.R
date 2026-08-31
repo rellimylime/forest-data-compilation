@@ -11,7 +11,7 @@
 # niche-coverage ranges, and repeated-survey rate calculations.
 #
 # Usage:
-#   Rscript 07_thermophilization/qa/01_validate_thermophilization_products.R
+#   Rscript 07_thermophilization/qa/scripts/01_validate_thermophilization_products.R
 # ==============================================================================
 
 suppressPackageStartupMessages({

@@ -177,7 +177,7 @@ if (n_undated_visits > 0L) {
     format(n_undated_visits, big.mark = ","),
     " plot visit(s) have no measurement date in ", context_path, ".\n",
     "First/last endpoints cannot be ordered. Rebuild the visit context: ",
-    "Rscript 05_fia/scripts/07_build_plot_visit_context.R"
+      "Rscript 05_fia/scripts/foundations/01_build_plot_visit_context.R"
   )
 }
 

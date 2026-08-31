@@ -22,7 +22,7 @@ Main inputs:
 
 - FIA species composition tables for seedlings, saplings, and trees from [`05_fia/`](../05_fia/README.md).
 - BIEN/TerraClimate species climate niches from [`06_species_niches/`](../06_species_niches/README.md).
-- The FIA forested-condition foundation from `05_fia/scripts/08_build_forested_condition_foundation.R`.
+- The FIA forested-condition foundation from `05_fia/scripts/foundations/02_build_forested_condition_foundation.R`.
 
 Open weighting, cohort, and severity choices are tracked in [`docs/METHOD_DECISIONS_NEEDED.md`](../docs/METHOD_DECISIONS_NEEDED.md). Producer scripts preserve the information needed to make those choices; they do not make them.
 
@@ -64,8 +64,8 @@ Neither is the designated primary design. Choosing between them is open decision
 Species niches and the FIA forested-condition foundation must be current first:
 
 ```bash
-Rscript 05_fia/scripts/07_build_plot_visit_context.R
-Rscript 05_fia/scripts/08_build_forested_condition_foundation.R
+Rscript 05_fia/scripts/foundations/01_build_plot_visit_context.R
+Rscript 05_fia/scripts/foundations/02_build_forested_condition_foundation.R
 ```
 
 Then:
@@ -80,8 +80,8 @@ Rscript 07_thermophilization/scripts/04_build_visit_interval_change.R --layer=se
 Rscript 07_thermophilization/scripts/04_build_visit_interval_change.R --layer=saplings
 Rscript 07_thermophilization/scripts/04_build_visit_interval_change.R --layer=trees
 Rscript 07_thermophilization/scripts/05_build_first_last_change.R
-Rscript 07_thermophilization/qa/01_validate_thermophilization_products.R
-Rscript 07_thermophilization/qa/02_disturbance_survey_coverage.R
+Rscript 07_thermophilization/qa/scripts/01_validate_thermophilization_products.R
+Rscript 07_thermophilization/qa/scripts/02_disturbance_survey_coverage.R
 ```
 
 Script `02` builds all three layers by default; pass `--layer=trees` to restrict it.
