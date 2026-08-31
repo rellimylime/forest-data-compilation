@@ -7,7 +7,6 @@ For a quick-start guide and directory overview, see **README.md**.
 This document covers the technical architecture, per-script details, usage examples, and troubleshooting.
 
 ## Status
-- [x] Explore TerraClimate data (scripts/explore/00_explore_terraclimate.R)
 - [x] Build pixel maps (01_build_pixel_maps.R)
 - [x] Extract monthly pixel values (02_extract_terraclimate.R)
 - [x] Build observation summaries (scripts/build_climate_summaries.R terraclimate)
@@ -73,17 +72,6 @@ Water year conversion helper.
 | `water_to_calendar_year()` | Reverse conversion |
 | `add_water_year()` | Append water_year and water_year_month columns |
 | `water_year_month_label()` | Get month abbreviation for water year month number |
-
----
-
-### [00_explore_terraclimate.R](scripts/explore/00_explore_terraclimate.R)
-Exploratory analysis of TerraClimate data structure and values before committing to the full extraction workflow. Console output only, no files written.
-
-- Initializes GEE and prints TerraClimate config
-- Loads 100 sample IDS features (2020, Region 5)
-- Tests centroid extraction on 5 variables
-- Compares raw vs scaled values with sanity checks
-- Estimates full extraction time across all ~4.5M features
 
 ---
 

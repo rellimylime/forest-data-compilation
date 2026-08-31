@@ -41,10 +41,6 @@ flowchart LR
 | 2 | [02_extract_terraclimate.R](scripts/02_extract_terraclimate.R) | Extract monthly TerraClimate values via GEE and write yearly parquet files |
 | 3 | [build_climate_summaries.R](../scripts/build_climate_summaries.R) | Build final observation-level summaries |
 
-Optional exploratory script:
-
-- [00_explore_terraclimate.R](scripts/explore/00_explore_terraclimate.R)
-
 ## Quick Start
 
 Prerequisite: complete the IDS foundation steps in [01_ids/README.md](../01_ids/README.md).
