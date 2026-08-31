@@ -14,7 +14,7 @@ For the project-wide QC overview, see [`docs/TESTING.md`](../../../docs/TESTING.
 
 **Usage:**
 ```bash
-Rscript 01_ids/scripts/qc/validate_ids.R
+Rscript 01_ids/qa/scripts/validate_ids.R
 ```
 
 ### What it checks
@@ -45,7 +45,7 @@ The final section prints either `✓ DATA READY FOR TERRACLIMATE MERGE` or lists
 
 **Usage:**
 ```bash
-Rscript 01_ids/scripts/qc/explore_ids_coverage.R
+Rscript 01_ids/qa/scripts/explore_ids_coverage.R
 ```
 
 ### What it checks
