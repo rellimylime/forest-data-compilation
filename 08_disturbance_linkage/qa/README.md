@@ -9,7 +9,7 @@ endpoint-linkage and MTBS-severity development products are not part of the
 supported workflow.
 
 ```bash
-Rscript --vanilla 08_disturbance_linkage/qa/scripts/fia/01_validate_survey_intervals.R
-Rscript --vanilla 08_disturbance_linkage/qa/scripts/fia/03_validate_damage_agent_preparation.R
-Rscript --vanilla scripts/run_tests.R 08_disturbance_linkage
+Rscript 08_disturbance_linkage/qa/scripts/fia/01_validate_survey_intervals.R
+Rscript 08_disturbance_linkage/qa/scripts/fia/03_validate_damage_agent_preparation.R
+Rscript scripts/run_tests.R 08_disturbance_linkage
 ```

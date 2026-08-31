@@ -183,7 +183,7 @@ cache-reuse options.
 Before transferring to a new server, run the read-only repository audit:
 
 ```bash
-Rscript --vanilla scripts/audit_repository_structure.R
+Rscript scripts/audit_repository_structure.R
 ```
 
 This checks that module layouts and every QA/registry producer path still match

@@ -15,5 +15,5 @@ reproducible from a tracked producer.
 Run the tracked test suite after rebuilding FIA products:
 
 ```bash
-Rscript --vanilla scripts/run_tests.R 05_fia
+Rscript scripts/run_tests.R 05_fia
 ```

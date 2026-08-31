@@ -73,7 +73,7 @@ Use `run_tests.R` for module-level R tests:
 Rscript scripts/run_tests.R
 Rscript scripts/run_tests.R 05_fia
 Rscript scripts/run_tests.R --strict
-Rscript --vanilla scripts/audit_repository_structure.R
+Rscript scripts/audit_repository_structure.R
 ```
 
 See [docs/TESTING.md](../docs/TESTING.md) for the current QA/testing notes.
