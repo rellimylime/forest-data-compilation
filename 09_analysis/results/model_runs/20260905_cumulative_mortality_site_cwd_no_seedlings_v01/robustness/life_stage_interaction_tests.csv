@@ -1,0 +1,16 @@
+response,predictor,histories,statistic,df,p_value
+temperature,fire_cumulative_mortality_pct,22188,0.0432329941840838,1,0.835287174516898
+temperature,insect_cumulative_mortality_pct,22188,2.45959097519929,1,0.116809196023156
+temperature,disease_cumulative_mortality_pct,22188,0.0840388262303014,1,0.771896942681486
+temperature,cumulative_site_CWD_mm,22188,0.0418987975471801,1,0.837812804198594
+temperature,full_survey_period_years,22188,0.975027268921194,1,0.323429584746723
+precipitation,fire_cumulative_mortality_pct,22188,3.50692560547917,1,0.0611127629898899
+precipitation,insect_cumulative_mortality_pct,22188,0.945148514557376,1,0.330957283282823
+precipitation,disease_cumulative_mortality_pct,22188,3.34985200062695,1,0.067211056033262
+precipitation,cumulative_site_CWD_mm,22188,5.28811906932621,1,0.0214713987375363
+precipitation,full_survey_period_years,22188,1.92407496324141,1,0.165408134043367
+CWD,fire_cumulative_mortality_pct,22188,1.29242613678417,1,0.255601325531383
+CWD,insect_cumulative_mortality_pct,22188,0.330214749281804,1,0.565532663274356
+CWD,disease_cumulative_mortality_pct,22188,3.59809652554684,1,0.0578457683680891
+CWD,cumulative_site_CWD_mm,22188,9.35463035023614,1,0.00222422823320042
+CWD,full_survey_period_years,22188,0.612368053395187,1,0.433897586865102

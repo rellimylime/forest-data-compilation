@@ -1,0 +1,6 @@
+item,value
+reference_model_run,20260905_cumulative_mortality_site_cwd_no_seedlings_v01
+condition_support_threshold,0.8
+common_history_definition,Same history has complete outcome and predictors for saplings and adults
+covariance,HC1 clustered by stable_plot_id
+report,robustness_results.html

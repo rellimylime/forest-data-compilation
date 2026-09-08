@@ -1,0 +1,13 @@
+group,group_label,threshold,histories,stable_plots
+saplings,Saplings,0.3,56373,55837
+saplings,Saplings,0.5,54529,54344
+saplings,Saplings,0.8,39593,39591
+saplings,Saplings,0.95,36321,36319
+trees,Adults,0.3,76320,75192
+trees,Adults,0.5,73127,72816
+trees,Adults,0.8,52466,52464
+trees,Adults,0.95,47989,47987
+community,Combined saplings + adults,0.3,76791,75565
+community,Combined saplings + adults,0.5,73547,73200
+community,Combined saplings + adults,0.8,52680,52678
+community,Combined saplings + adults,0.95,48171,48169
