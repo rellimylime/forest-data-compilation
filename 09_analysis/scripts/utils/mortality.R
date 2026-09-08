@@ -1,5 +1,6 @@
 # Shared helpers for the cumulative-mortality workflow.
 
+# Group a positive FIA cause-of-death code into the modeled agent families.
 fia_agent_family <- function(code) {
   data.table::fcase(
     !is.na(code) & code >= 10L & code <= 19L, "insect",
@@ -10,6 +11,7 @@ fia_agent_family <- function(code) {
   )
 }
 
+# Preserve the distinction among positive, zero, missing, and unexpected codes.
 fia_agent_completeness <- function(code) {
   data.table::fcase(
     is.na(code), "missing",
@@ -19,10 +21,12 @@ fia_agent_completeness <- function(code) {
   )
 }
 
+# Restrict deaths to the two GRM components documented as interval mortality.
 fia_is_verified_interval_death <- function(component) {
   component %in% c("MORTALITY1", "MORTALITY2")
 }
 
+# Apply the stable forest-condition and minimum condition-proportion rules.
 fia_condition_interval_eligible <- function(
     same_condid,
     t1_status,
@@ -58,6 +62,7 @@ fia_sampling_element <- function(
   )
 }
 
+# Use the midpoint of an uncertain measurement-date range.
 fia_mid_date <- function(lower, upper) {
   lower <- as.Date(lower)
   upper <- as.Date(upper)

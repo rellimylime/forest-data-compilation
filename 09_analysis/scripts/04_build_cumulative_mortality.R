@@ -35,12 +35,14 @@ for (path in c(edge_path, response_path, death_path)) {
   if (!file.exists(path)) stop("Missing input: ", path)
 }
 
+# Normalize FIA control numbers before joining files with different read types.
 as_id <- function(x) {
   z <- as.character(x)
   z[z %chin% c("", "NA")] <- NA_character_
   z
 }
 
+# Select the sampling-element condition proportion used to expand each tree.
 prop_for_tree <- function(diameter, tpa, micro, subplot, macro, generic) {
   specific <- fcase(
     !is.na(diameter) & diameter >= 1 & diameter < 5, micro,
@@ -51,6 +53,7 @@ prop_for_tree <- function(diameter, tpa, micro, subplot, macro, generic) {
   fifelse(!is.na(specific) & specific > 0, specific, generic)
 }
 
+# Load complete history edges, CWM responses, and verified interval deaths.
 edges <- as.data.table(read_parquet(edge_path))
 responses <- as.data.table(read_parquet(response_path))
 verified_deaths <- as.data.table(read_parquet(death_path))
@@ -66,6 +69,7 @@ if (edges[, anyDuplicated(stable_condition_interval_key)]) {
   stop("History edges are not unique by stable condition interval key")
 }
 
+# Reduce the history edges to the visits that can add trees to the risk set.
 risk_visit_cols <- c(
   "history_id", "stable_plot_id", "remeasurement_component_id", "state",
   "CONDID", "t1_visit_number", "PREV_PLT_CN", "T1_CONDPROP_UNADJ",
@@ -79,6 +83,7 @@ agents <- c("fire", "insect", "disease")
 state_results <- list()
 state_flow <- list()
 
+# Reconstruct tree lineages and risk-set entry weights within each state.
 for (state_name in sort(unique(risk_visits$state))) {
   message("Cumulative risk sets: ", state_name)
   rv <- risk_visits[state == state_name]
@@ -129,6 +134,7 @@ for (state_name in sort(unique(risk_visits$state))) {
     stop("Duplicate live tree within a history visit in state ", state_name)
   }
 
+  # Follow each live tree forward and preserve its first observed entry weight.
   mapped_parts <- list()
   entry_parts <- list()
   previous_map <- NULL
@@ -204,6 +210,7 @@ for (state_name in sort(unique(risk_visits$state))) {
   entries <- rbindlist(entry_parts, fill = TRUE)
   entries <- unique(entries, by = c("history_id", "entry_PLT_CN", "entry_TRE_CN"))
 
+  # Sum each unique lineage once to form the cumulative abundance denominator.
   denominator <- entries[, .(
     cumulative_population_records = .N,
     cumulative_population_abundance = sum(entry_weight),
@@ -216,6 +223,7 @@ for (state_name in sort(unique(risk_visits$state))) {
     history_id, stable_plot_id, remeasurement_component_id, state, CONDID
   )]
 
+  # Map each verified death back to the lineage's original risk-set entry.
   deaths <- verified_deaths[state == state_name, .(
     stable_condition_interval_key, PREV_PLT_CN, T1_TRE_CN,
     current_TRE_CN, agent_family
@@ -250,6 +258,7 @@ for (state_name in sort(unique(risk_visits$state))) {
     by = c("history_id", "current_TRE_CN", "agent_family")
   )
 
+  # Summarize attributed death records and entry abundance by agent family.
   modeled_deaths <- deaths[agent_family %chin% agents]
   death_flow <- modeled_deaths[, .(
     modeled_death_records = .N,
@@ -281,6 +290,7 @@ for (state_name in sort(unique(risk_visits$state))) {
     }
   }
 
+  # Join denominator and numerator summaries and calculate bounded percentages.
   out <- merge(
     denominator,
     death_wide,
@@ -328,6 +338,7 @@ for (state_name in sort(unique(risk_visits$state))) {
   )
 }
 
+# Combine state results and enforce the cumulative mortality bound.
 mortality <- rbindlist(state_results, fill = TRUE)
 flow <- rbindlist(state_flow, fill = TRUE)
 
@@ -338,6 +349,7 @@ for (agent in agents) {
   }
 }
 
+# Attach the mortality predictors to each life-stage CWM response history.
 model_data <- merge(
   responses,
   mortality[cumulative_riskset_complete == TRUE],
@@ -350,6 +362,7 @@ model_data <- merge(
 )
 setorder(model_data, state, stable_plot_id, remeasurement_component_id, CONDID, layer)
 
+# Write the reusable mortality and model-input products.
 mortality_output <- mortality[cumulative_riskset_complete %in% TRUE]
 mortality_output[, c(
   "invalid_entry_weight_records", "unmapped_modeled_death_records",
@@ -370,6 +383,7 @@ write_parquet_atomic(
 )
 fwrite(flow, file.path(qa_dir, "cumulative_tree_flow_by_state.csv"))
 
+# Report model coverage and verify that no cumulative percentage exceeds 100.
 model_flow <- model_data[, .(
   model_rows = .N,
   temperature_rows = sum(!is.na(delta_temperature)),

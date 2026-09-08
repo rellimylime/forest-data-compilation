@@ -22,6 +22,7 @@ dir_create(c(analysis_dir, intermediate_dir, qa_dir))
 
 agents <- c("fire", "insect", "disease")
 
+# Normalize FIA control numbers before joining files with different read types.
 as_id <- function(x) {
   value <- as.character(x)
   value[value %chin% c("", "NA")] <- NA_character_
@@ -30,6 +31,7 @@ as_id <- function(x) {
 
 sum_or_zero <- function(x) sum(x, na.rm = TRUE)
 
+# Express an interval mortality fraction as percentage points per year.
 annual_rate <- function(numerator, denominator, years) {
   value <- rep(NA_real_, length(numerator))
   usable <- !is.na(numerator) & numerator >= 0 &
@@ -39,6 +41,7 @@ annual_rate <- function(numerator, denominator, years) {
   value
 }
 
+# Select the condition proportion for the sampling element that observed a tree.
 condition_prop_for_tree <- function(
     element,
     microplot_prop,
@@ -54,6 +57,7 @@ condition_prop_for_tree <- function(
   fifelse(!is.na(specific) & specific > 0, specific, generic_prop)
 }
 
+# Load the eligible condition intervals produced by the preceding stage.
 interval_path <- file.path(analysis_dir, "stable_condition_intervals.parquet")
 if (!file.exists(interval_path)) {
   stop("Missing stable condition intervals. Run script 01 first: ", interval_path)
@@ -66,6 +70,7 @@ if (intervals[, anyDuplicated(stable_condition_interval_key)]) {
   stop("Stable-condition interval keys are not unique")
 }
 
+# Process one state's raw TREE and TREE_GRM_COMPONENT files at a time.
 process_state <- function(state_name, state_intervals) {
   message("Interval mortality: ", state_name)
   tree_path <- file.path(raw_dir, state_name, paste0(state_name, "_TREE.csv"))
@@ -78,6 +83,7 @@ process_state <- function(state_name, state_intervals) {
          paste(missing_inputs, collapse = "; "))
   }
 
+  # Read only the TREE fields needed for risk-set and outcome construction.
   tree <- fread(
     tree_path,
     select = c(
@@ -174,6 +180,7 @@ process_state <- function(state_name, state_intervals) {
     set(current, which(is.na(current[[column]])), column, FALSE)
   }
 
+  # Link each T1 risk-set tree to its T2 record through PREV_TRE_CN.
   linked <- merge(
     risk[, .(
       risk_tree_key, stable_condition_interval_key, T2_PLT_CN, T1_TRE_CN
@@ -203,6 +210,7 @@ process_state <- function(state_name, state_intervals) {
     set(risk, which(is.na(risk[[column]])), column, FALSE)
   }
 
+  # Assign one mutually exclusive interval outcome and agent family to each tree.
   risk[, agent_family := fia_agent_family(current_AGENTCD)]
   risk[, interval_outcome := fcase(
     current_link_count == 0L, "unmatched",
@@ -214,6 +222,7 @@ process_state <- function(state_name, state_intervals) {
     default = "unresolved"
   )]
 
+  # Summarize denominator coverage and tree outcomes for each condition interval.
   interval_summary <- risk[, .(
     T1_population_records = .N,
     T1_population_abundance = sum_or_zero(T1_adjusted_weight),
@@ -240,6 +249,7 @@ process_state <- function(state_name, state_intervals) {
     set(interval_output, which(is.na(interval_output[[column]])), column, 0)
   }
 
+  # Add each agent's death abundance and annual mortality to the same intervals.
   for (agent in agents) {
     agent_summary <- risk[
       interval_outcome == "verified death" & agent_family == agent,
@@ -271,6 +281,7 @@ process_state <- function(state_name, state_intervals) {
     )]
   }
 
+  # Mark intervals usable only when weights and tree outcomes are complete.
   interval_output[, analysis_ready :=
     T1_population_records > 0 & T1_population_abundance > 0 &
       T1_missing_weight_records == 0 & unresolved_records == 0]
@@ -283,6 +294,7 @@ process_state <- function(state_name, state_intervals) {
     )
   }
 
+  # Retain one deduplicated record for every attributed verified death.
   verified_deaths <- risk[
     interval_outcome == "verified death" & agent_family %chin% agents,
     .(
@@ -303,6 +315,7 @@ process_state <- function(state_name, state_intervals) {
   list(intervals = interval_output, deaths = verified_deaths)
 }
 
+# Combine the independently processed state results.
 state_names <- sort(unique(intervals$state))
 state_results <- lapply(state_names, function(state_name) {
   process_state(state_name, intervals[state == state_name])
@@ -317,6 +330,7 @@ verified_deaths <- rbindlist(
   fill = TRUE
 )
 
+# Enforce row, key, and numerator-denominator invariants before writing output.
 if (nrow(interval_mortality) != nrow(intervals)) {
   stop("Interval mortality output lost stable-condition intervals")
 }
@@ -332,6 +346,7 @@ for (agent in agents) {
   }
 }
 
+# Write the analysis product and the tree-level death lineage used downstream.
 output_columns <- c(
   "stable_condition_interval_key", "stable_plot_id",
   "remeasurement_component_id", "state", "CONDID", "PREV_PLT_CN",
@@ -362,6 +377,7 @@ write_parquet_atomic(
   file.path(intermediate_dir, "interval_verified_deaths.parquet")
 )
 
+# Report the interval flow and the basic distribution of each mortality measure.
 flow <- data.table(
   stage = c(
     "eligible stable-condition intervals",

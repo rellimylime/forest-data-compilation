@@ -31,6 +31,7 @@ metric_map <- c(
   CWD = "cwd_annual_sum"
 )
 
+# Calculate an abundance-weighted mean only from usable values and weights.
 weighted_mean_or_na <- function(value, weight) {
   usable <- !is.na(value) & !is.na(weight) & weight > 0
   if (!any(usable)) return(NA_real_)
