@@ -4,7 +4,7 @@ library(testthat)
 
 robustness_dir <- here(
   "09_analysis", "results", "model_runs",
-  "20260822_cumulative_mortality_site_cwd_all_groups_v01",
+  "20260905_cumulative_mortality_site_cwd_no_seedlings_v01",
   "robustness"
 )
 
@@ -29,9 +29,9 @@ test_that("robustness scenarios and life-stage tests are complete", {
     robustness_dir, "life_stage_pairwise_differences.csv"
   ))
 
-  expect_equal(fits[scenario == "baseline", .N], 12L)
-  expect_equal(fits[scenario == "common_histories", .N], 9L)
+  expect_equal(fits[scenario == "baseline", .N], 9L)
+  expect_equal(fits[scenario == "common_histories", .N], 6L)
   expect_equal(interactions[, .N], 15L)
-  expect_equal(pairwise[, .N], 45L)
+  expect_equal(pairwise[, .N], 15L)
   expect_true(all(interactions$p_value >= 0 & interactions$p_value <= 1))
 })

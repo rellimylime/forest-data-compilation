@@ -4,6 +4,7 @@
 
 args <- commandArgs(trailingOnly = TRUE)
 
+# Read one named command-line option while allowing a default.
 arg_value <- function(name, default = NULL) {
   prefix <- paste0("--", name, "=")
   hit <- args[startsWith(args, prefix)]
@@ -18,10 +19,11 @@ from_stage <- arg_value("from", "00")
 through_stage <- arg_value("through", "10")
 run_id <- arg_value(
   "run-id",
-  "20260822_cumulative_mortality_site_cwd_all_groups_v01"
+  "20260905_cumulative_mortality_site_cwd_no_seedlings_v01"
 )
 climate_backend <- arg_value("climate-backend", "gee")
 
+# Anchor every relative input and output path at the repository root.
 repo_root <- normalizePath(here::here(), winslash = "/", mustWork = TRUE)
 setwd(repo_root)
 
@@ -41,6 +43,7 @@ invisible(lapply(
   showWarnings = FALSE
 ))
 
+# Run an R stage and stop immediately if it fails.
 run_r <- function(script, script_args = character(), env = character()) {
   command <- file.path(R.home("bin"), "Rscript")
   command_args <- c(script, script_args)
@@ -50,6 +53,7 @@ run_r <- function(script, script_args = character(), env = character()) {
   if (!identical(status, 0L)) stop("Stage failed: ", script)
 }
 
+# Run a SQL stage with the DuckDB CLI or the project R packages.
 run_sql <- function(script) {
   cat("DuckDB ", script, "\n", sep = "")
   if (dry_run) return(invisible(TRUE))
@@ -81,6 +85,7 @@ run_sql <- function(script) {
   DBI::dbExecute(connection, sql)
 }
 
+# Map each stage ID to the one action it performs.
 stages <- list(
   list(id = "00", run = function() {
     run_r("09_analysis/scripts/00_build_remeasurement_components.R")
@@ -148,6 +153,7 @@ stages <- list(
   })
 )
 
+# Resolve the requested start and end stages before running anything.
 stage_ids <- vapply(stages, `[[`, character(1), "id")
 from_index <- match(from_stage, stage_ids)
 through_index <- match(through_stage, stage_ids)
@@ -158,6 +164,7 @@ if (is.na(from_index) || is.na(through_index)) {
 }
 if (from_index > through_index) stop("--from must not follow --through.")
 
+# Run the selected consecutive stages in documented order.
 cat("Analysis run: ", run_id, "\n", sep = "")
 cat(
   "Stages: ", stage_ids[[from_index]], " through ",

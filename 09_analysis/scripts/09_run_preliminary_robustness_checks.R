@@ -13,7 +13,7 @@ suppressPackageStartupMessages({
 
 run_id <- Sys.getenv(
   "ANALYSIS_RUN_ID",
-  unset = "20260822_cumulative_mortality_site_cwd_all_groups_v01"
+  unset = "20260905_cumulative_mortality_site_cwd_no_seedlings_v01"
 )
 data_dir <- file.path("09_analysis", "data", "processed")
 run_dir <- file.path("09_analysis", "results", "model_runs", run_id)
@@ -22,8 +22,8 @@ figure_dir <- file.path(output_dir, "figures")
 dir.create(figure_dir, recursive = TRUE, showWarnings = FALSE)
 
 responses <- c("temperature", "precipitation", "CWD")
-groups <- c("seedlings", "saplings", "trees", "community")
-stage_groups <- groups[1:3]
+groups <- c("saplings", "trees", "community")
+stage_groups <- groups[1:2]
 mortality_terms <- c(
   "fire_cumulative_mortality_pct",
   "insect_cumulative_mortality_pct",
@@ -49,10 +49,9 @@ scenario_order <- c(
   "state_fixed_effects", "mean_monthly_CWD", "no_survey_period"
 )
 group_labels <- c(
-  seedlings = "Seedlings",
   saplings = "Saplings",
   trees = "Adults",
-  community = "Pooled all live"
+  community = "Combined saplings + adults"
 )
 
 stage_data <- as.data.table(read_parquet(
@@ -80,6 +79,7 @@ support <- intervals[, .(
   )
 ), by = .(stable_plot_id, remeasurement_component_id, CONDID)]
 
+# Join condition support and monthly CWD fields needed by the checks.
 attach_qa_fields <- function(x) {
   out <- merge(
     x, support,
@@ -92,12 +92,12 @@ attach_qa_fields <- function(x) {
 stage_data <- attach_qa_fields(stage_data)
 community_data <- attach_qa_fields(community_data)
 source_data <- list(
-  seedlings = stage_data[layer == "seedlings"],
   saplings = stage_data[layer == "saplings"],
   trees = stage_data[layer == "trees"],
   community = community_data
 )
 
+# Select the exact complete cases required by one model definition.
 model_sample <- function(d, outcome, predictors) {
   needed <- c(outcome, predictors, "stable_plot_id", "history_id")
   d[
@@ -106,6 +106,7 @@ model_sample <- function(d, outcome, predictors) {
   ]
 }
 
+# Fit one clustered model and return its coefficients, fit, and sample.
 fit_model <- function(d, response, group, scenario, predictors, extra = NULL) {
   outcome <- paste0("delta_", response)
   sample_columns <- predictors
@@ -148,7 +149,7 @@ fit_model <- function(d, response, group, scenario, predictors, extra = NULL) {
   list(coefficients = coefficients, fit = fit, sample = sample)
 }
 
-# Find histories with complete responses for all three life stages.
+# Find histories with complete responses for both retained life stages.
 common_history_ids <- list()
 common_history_summary <- list()
 for (response in responses) {
@@ -164,9 +165,6 @@ for (response in responses) {
   common_history_summary[[response]] <- data.table(
     response,
     common_histories = length(common_ids),
-    seedling_baseline_histories = uniqueN(
-      complete_stage[layer == "seedlings", history_id]
-    ),
     sapling_baseline_histories = uniqueN(
       complete_stage[layer == "saplings", history_id]
     ),
@@ -179,6 +177,8 @@ for (response in responses) {
 coefficient_parts <- list()
 fit_parts <- list()
 part <- 0L
+
+# Append one fitted scenario to the cumulative result lists.
 add_fit <- function(result) {
   part <<- part + 1L
   coefficient_parts[[part]] <<- result$coefficients
@@ -319,58 +319,41 @@ for (response in responses) {
       grepl(":", names(beta), fixed = TRUE) &
         grepl(predictor, names(beta), fixed = TRUE)
     ]
-    sapling_name <- interaction_names[
-      grepl("layersaplings", interaction_names, fixed = TRUE)
-    ]
     adult_name <- interaction_names[
       grepl("layertrees", interaction_names, fixed = TRUE)
     ]
-    if (length(sapling_name) != 1L || length(adult_name) != 1L) {
+    if (length(adult_name) != 1L) {
       stop("Could not identify life-stage interactions for ", predictor)
     }
 
-    joint_names <- c(sapling_name, adult_name)
-    b <- beta[joint_names]
-    v <- vcov[joint_names, joint_names, drop = FALSE]
-    statistic <- as.numeric(t(b) %*% qr.solve(v, b))
+    estimate <- unname(beta[adult_name])
+    variance <- unname(vcov[adult_name, adult_name])
+    standard_error <- sqrt(variance)
+    statistic <- estimate^2 / variance
     interaction_index <- interaction_index + 1L
     interaction_tests[[interaction_index]] <- data.table(
       response,
       predictor,
       histories = length(common_history_ids[[response]]),
       statistic,
-      df = 2L,
-      p_value = pchisq(statistic, df = 2L, lower.tail = FALSE)
+      df = 1L,
+      p_value = pchisq(statistic, df = 1L, lower.tail = FALSE)
     )
 
-    contrasts <- list(
-      "Saplings - Seedlings" = setNames(1, sapling_name),
-      "Adults - Seedlings" = setNames(1, adult_name),
-      "Adults - Saplings" = setNames(c(-1, 1), c(sapling_name, adult_name))
+    pairwise_index <- pairwise_index + 1L
+    pairwise_tests[[pairwise_index]] <- data.table(
+      response,
+      predictor,
+      comparison = "Adults - Saplings",
+      estimate,
+      std_error = standard_error,
+      conf_low = estimate - critical * standard_error,
+      conf_high = estimate + critical * standard_error,
+      p_value = 2 * pt(
+        abs(estimate / standard_error),
+        df = df.residual(model), lower.tail = FALSE
+      )
     )
-    for (comparison in names(contrasts)) {
-      weights <- contrasts[[comparison]]
-      estimate <- sum(weights * beta[names(weights)])
-      variance <- as.numeric(
-        t(weights) %*% vcov[names(weights), names(weights), drop = FALSE] %*%
-          weights
-      )
-      standard_error <- sqrt(variance)
-      pairwise_index <- pairwise_index + 1L
-      pairwise_tests[[pairwise_index]] <- data.table(
-        response,
-        predictor,
-        comparison,
-        estimate,
-        std_error = standard_error,
-        conf_low = estimate - critical * standard_error,
-        conf_high = estimate + critical * standard_error,
-        p_value = 2 * pt(
-          abs(estimate / standard_error),
-          df = df.residual(model), lower.tail = FALSE
-        )
-      )
-    }
   }
 }
 
@@ -506,13 +489,13 @@ for (response_value in levels(plot_data$response_label)) {
 
 manifest <- data.table(
   item = c(
-    "primary_model_run", "condition_support_threshold",
+    "reference_model_run", "condition_support_threshold",
     "common_history_definition", "covariance", "report"
   ),
   value = c(
     run_id,
     as.character(condition_support_threshold),
-    "Same history has complete outcome and predictors for all three life stages",
+    "Same history has complete outcome and predictors for saplings and adults",
     "HC1 clustered by stable_plot_id",
     "robustness_results.html"
   )

@@ -1,20 +1,20 @@
 -- Build a pooled forest-community CWM for each eligible condition visit by
--- pooling live seedlings, saplings, and trees with comparable FIA individual-
--- abundance expansions. This is the current preliminary response product.
--- life-stage-specific model figures are not retained.
+-- pooling live saplings and trees with comparable FIA individual-abundance
+-- expansions. Seedlings are excluded because their microplot sampling does
+-- not reliably match condition-level disturbance.
 --
 -- Sampling-element condition adjustment:
---   seedlings and saplings -> TPA_UNADJ / MICRPROP_UNADJ
+--   saplings -> TPA_UNADJ / MICRPROP_UNADJ
 --   ordinary >=5-inch trees -> TPA_UNADJ / SUBPPROP_UNADJ
 --   macroplot-signature tree groups -> TPA_UNADJ / MACRPROP_UNADJ
 -- The generic CONDPROP_UNADJ is used only when the applicable element-specific
 -- proportion is unavailable. Tree groups are already live-only and separated
--- from saplings by the FIA summary producer. Seedling rows are tallies, so their
--- expanded seedlings_tpa—not database-row count—is used.
+-- from saplings by the FIA summary producer.
 
 SET preserve_insertion_order = false;
 SET threads = 4;
 
+-- 1. Select one record per modeled stable-condition history.
 CREATE OR REPLACE TEMP VIEW model_histories AS
 SELECT
   history_id,
@@ -41,6 +41,7 @@ FROM read_parquet(
 )
 QUALIFY row_number() OVER (PARTITION BY history_id ORDER BY layer) = 1;
 
+-- 2. Recover the sampling-element condition proportions at every endpoint.
 CREATE OR REPLACE TEMP VIEW history_edges AS
 SELECT
   e.history_id,
@@ -110,6 +111,7 @@ SELECT
 FROM endpoint_prop_rows
 GROUP BY history_id, PLT_CN, CONDID;
 
+-- 3. Expand live adult and sapling abundance with the matching sampling element.
 CREATE OR REPLACE TEMP VIEW tree_groups AS
 SELECT
   p.history_id,
@@ -165,33 +167,12 @@ FROM read_parquet(
 INNER JOIN endpoint_props AS p USING (PLT_CN, CONDID)
 WHERE s.n_trees_tpa > 0;
 
-CREATE OR REPLACE TEMP VIEW seedling_groups AS
-SELECT
-  p.history_id,
-  s.PLT_CN,
-  s.INVYR,
-  s.CONDID,
-  s.SPCD,
-  'seedlings' AS life_stage,
-  CAST(s.seedlings_tpa AS DOUBLE) AS abundance_unadjusted,
-  'microplot' AS sampling_element,
-  s.seedlings_tpa /
-    coalesce(nullif(p.MICRPROP_UNADJ, 0), p.CONDPROP_UNADJ)
-      AS abundance_adjusted,
-  p.MICRPROP_UNADJ IS NULL OR p.MICRPROP_UNADJ <= 0 AS used_generic_prop
-FROM read_parquet(
-  '05_fia/data/processed/summaries/plot_seedling_species.parquet'
-) AS s
-INNER JOIN endpoint_props AS p USING (PLT_CN, CONDID)
-WHERE s.seedlings_tpa > 0;
-
 CREATE OR REPLACE TEMP VIEW community_rows AS
 SELECT * FROM tree_groups
 UNION ALL BY NAME
-SELECT * FROM sapling_groups
-UNION ALL BY NAME
-SELECT * FROM seedling_groups;
+SELECT * FROM sapling_groups;
 
+-- 4. Pool expanded abundance by species and attach fixed species niche values.
 CREATE OR REPLACE TEMP VIEW community_species AS
 SELECT
   history_id,
@@ -206,6 +187,7 @@ SELECT
 FROM community_rows
 GROUP BY history_id, PLT_CN, CONDID, SPCD;
 
+-- Prefer study-area species niches and use the global value only as fallback.
 CREATE OR REPLACE TEMP VIEW niches AS
 SELECT
   species_key,
@@ -238,6 +220,7 @@ FROM (
 )
 QUALIFY row_number() OVER (PARTITION BY species_key ORDER BY priority) = 1;
 
+-- Join each pooled species abundance to its fixed climate-niche values.
 CREATE OR REPLACE TEMP VIEW community_joined AS
 SELECT
   s.*,
@@ -249,13 +232,12 @@ FROM community_species AS s
 LEFT JOIN niches AS n
   ON n.species_key = 'fia_spcd:' || CAST(s.SPCD AS VARCHAR);
 
+-- Retain life-stage abundance totals for interpreting the combined community.
 CREATE OR REPLACE TEMP VIEW stage_totals AS
 SELECT
   history_id,
   PLT_CN,
   CONDID,
-  sum(abundance_adjusted) FILTER (WHERE life_stage = 'seedlings')
-    AS seedling_abundance,
   sum(abundance_adjusted) FILTER (WHERE life_stage = 'saplings')
     AS sapling_abundance,
   sum(abundance_adjusted) FILTER (WHERE life_stage = 'trees')
@@ -266,6 +248,7 @@ SELECT
 FROM community_rows
 GROUP BY history_id, PLT_CN, CONDID;
 
+-- Calculate the combined abundance-weighted niche means and coverage.
 CREATE OR REPLACE TEMP VIEW community_cwm AS
 SELECT
   j.history_id,
@@ -306,11 +289,8 @@ GROUP BY j.history_id, j.PLT_CN, j.CONDID;
 CREATE OR REPLACE TEMP VIEW community_condition_visits AS
 SELECT
   c.*,
-  coalesce(s.seedling_abundance, 0) AS seedling_abundance,
   coalesce(s.sapling_abundance, 0) AS sapling_abundance,
   coalesce(s.tree_abundance, 0) AS tree_abundance,
-  coalesce(s.seedling_abundance, 0) / nullif(c.total_individual_abundance, 0)
-    AS seedling_abundance_share,
   coalesce(s.sapling_abundance, 0) / nullif(c.total_individual_abundance, 0)
     AS sapling_abundance_share,
   coalesce(s.tree_abundance, 0) / nullif(c.total_individual_abundance, 0)
@@ -327,6 +307,7 @@ SELECT
 FROM community_cwm AS c
 INNER JOIN stage_totals AS s USING (history_id, PLT_CN, CONDID);
 
+-- Save the reusable condition-visit combined CWM product.
 COPY (
   SELECT *
   FROM community_condition_visits
@@ -334,6 +315,7 @@ COPY (
 ) TO '09_analysis/data/processed/pooled_condition_visit_cwm.parquet'
   (FORMAT PARQUET, COMPRESSION ZSTD, OVERWRITE_OR_IGNORE true);
 
+-- Calculate first-to-last combined CWM change for every model history.
 CREATE OR REPLACE TEMP VIEW community_history_response AS
 SELECT
   h.*,
@@ -348,8 +330,6 @@ SELECT
   l.CWD - f.CWD AS delta_CWD,
   f.total_individual_abundance AS first_total_individual_abundance,
   l.total_individual_abundance AS last_total_individual_abundance,
-  f.seedling_abundance_share AS first_seedling_abundance_share,
-  l.seedling_abundance_share AS last_seedling_abundance_share,
   f.sapling_abundance_share AS first_sapling_abundance_share,
   l.sapling_abundance_share AS last_sapling_abundance_share,
   f.tree_abundance_share AS first_tree_abundance_share,
@@ -372,6 +352,7 @@ INNER JOIN community_condition_visits AS l
  AND l.PLT_CN = h.last_PLT_CN
  AND l.CONDID = h.CONDID;
 
+-- Write the combined model input and its compact QA summaries.
 COPY (
   SELECT *
   FROM community_history_response
@@ -391,12 +372,12 @@ COPY (
     count(*) FILTER (WHERE cumulative_site_CWD_complete)
       AS histories_with_complete_site_CWD,
     count(*) FILTER (
-      WHERE first_life_stages_present = 3 AND last_life_stages_present = 3
-    ) AS histories_all_three_stages_at_both_endpoints,
-    avg(first_seedling_abundance_share) AS mean_first_seedling_share,
-    median(first_seedling_abundance_share) AS median_first_seedling_share,
-    avg(last_seedling_abundance_share) AS mean_last_seedling_share,
-    median(last_seedling_abundance_share) AS median_last_seedling_share,
+      WHERE first_life_stages_present = 2 AND last_life_stages_present = 2
+    ) AS histories_both_stages_at_both_endpoints,
+    avg(first_sapling_abundance_share) AS mean_first_sapling_share,
+    median(first_sapling_abundance_share) AS median_first_sapling_share,
+    avg(last_sapling_abundance_share) AS mean_last_sapling_share,
+    median(last_sapling_abundance_share) AS median_last_sapling_share,
     min(first_temperature_niche_coverage) AS min_first_niche_weight_coverage,
     median(first_temperature_niche_coverage) AS median_first_niche_weight_coverage,
     min(last_temperature_niche_coverage) AS min_last_niche_weight_coverage,

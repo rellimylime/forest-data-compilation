@@ -80,11 +80,8 @@ The FIA workstream is independent of the IDS + climate workstream, except for th
 
 Notes:
 
-- `05_fia/scripts/core/` is the required FIA sequence. The other named script
-  families are downstream branches and restart their numbering independently.
-- Build `scripts/foundations/01_build_plot_visit_context.R` before the current
-  condition-history analysis. Build the forested-condition foundation only for
-  workflows that consume it.
+- `05_fia/scripts/core/` is the required FIA sequence. The other named script families are downstream branches and restart their numbering independently.
+- Build `scripts/foundations/01_build_plot_visit_context.R` before the current condition-history analysis. Build the forested-condition foundation only for workflows that consume it.
 - The site-climate extension is optional and requires Google Earth Engine.
 - The main FIA summary outputs, plus `all_site_locations.csv`, `site_pixel_map.parquet`, and `site_climate.parquet`, are reviewable in git.
 
@@ -154,9 +151,7 @@ See [the disturbance preparation workflow](../08_disturbance_linkage/WORKFLOW.md
 
 ## Path 7: Condition-Level Cumulative-Mortality Analysis
 
-This path requires the FIA summary and site-list products from Path 3 and the
-species climate niches from Path 4. It does not require the optional disturbance
-linkage products from Path 6.
+This path requires the FIA summary and site-list products from Path 3 and the species climate niches from Path 4. It does not require the optional disturbance linkage products from Path 6.
 
 Before running the analysis, also build the FIA plot-visit context:
 
@@ -169,16 +164,10 @@ Then run the tracked analysis orchestrator from the repository root:
 
 ```bash
 Rscript 09_analysis/scripts/run_analysis_pipeline.R \
-  --run-id=20260822_cumulative_mortality_site_cwd_all_groups_v01
+  --run-id=20260905_cumulative_mortality_site_cwd_no_seedlings_v01
 ```
 
-The runner executes the official PREV histories, stable-condition CWM products,
-interval and cumulative mortality, TerraClimate site CWD extraction, pooled
-community response, preliminary models, robustness checks, and final QA
-provenance validation. Every compact QA result is registered in
-`09_analysis/qa/qa_products.csv` and written beneath a folder named for its
-producer. See [the analysis README](../09_analysis/README.md) for restart and
-cache-reuse options.
+The runner executes the official PREV histories, stable-condition CWM products, interval and cumulative mortality, TerraClimate site CWD extraction, pooled community response, preliminary models, robustness checks, and final QA provenance validation. Every compact QA result is registered in `09_analysis/qa/qa_products.csv` and written beneath a folder named for its producer. See [the analysis README](../09_analysis/README.md) for restart and cache-reuse options.
 
 Before transferring to a new server, run the read-only repository audit:
 
@@ -186,9 +175,7 @@ Before transferring to a new server, run the read-only repository audit:
 Rscript scripts/audit_repository_structure.R
 ```
 
-This checks that module layouts and every QA/registry producer path still match
-the tracked code. Generated data and QA results remain out of Git and are rebuilt
-from these producers on the server.
+This checks that module layouts and every QA/registry producer path still match the tracked code. Generated data and QA results remain out of Git and are rebuilt from these producers on the server.
 
 ## Archived Reference: ERA5
 

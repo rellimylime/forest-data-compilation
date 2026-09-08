@@ -192,11 +192,10 @@ Until a producer exists, treat these as inputs to preserve, not as products the 
 | Stable-condition CWM change | `09_analysis/data/processed/stable_condition_cwm_change.parquet` | Local/scripted | `09_analysis/scripts/01_build_condition_histories_and_cwm.R` | Condition × life stage; T1/T2/delta temperature, precipitation, CWD; no plot aggregation |
 | Cumulative history mortality | `09_analysis/data/processed/history_cumulative_mortality.parquet` | Local/scripted | `09_analysis/scripts/04_build_cumulative_mortality.R` | Complete first-to-last history; baseline plus intermediate lineage entries; not annualized |
 | Life-stage model input | `09_analysis/data/processed/lifestage_model_data.parquet` | Local/scripted | `09_analysis/scripts/06_add_cumulative_site_cwd.sql` | Compact input with cumulative TerraClimate site CWD |
-| Pooled-community model input | `09_analysis/data/processed/pooled_model_data.parquet` | Local/scripted | `09_analysis/scripts/07_build_pooled_community_cwm.sql` | All live life stages combined with individual-abundance expansions |
-| Preliminary model run | `09_analysis/results/model_runs/20260822_cumulative_mortality_site_cwd_all_groups_v01/` | Local/scripted | `09_analysis/scripts/08_fit_preliminary_models_and_report.R` | Twelve models, sjPlot tables, raw plots, ggeffects plots, and one HTML report |
+| Combined-community model input | `09_analysis/data/processed/pooled_model_data.parquet` | Local/scripted | `09_analysis/scripts/07_build_pooled_community_cwm.sql` | Live saplings and adults combined with individual-abundance expansions; seedlings excluded |
+| Preliminary model run | `09_analysis/results/model_runs/20260905_cumulative_mortality_site_cwd_no_seedlings_v01/` | Local/scripted | `09_analysis/scripts/08_fit_preliminary_models_and_report.R` | Nine models, sjPlot tables, raw plots, ggeffects plots, and one HTML report |
 
-See the current [methods](../09_analysis/docs/METHODS.md) and complete
-[product guide](../09_analysis/docs/PRODUCTS.md).
+See the current [methods](../09_analysis/docs/METHODS.md) and complete [product guide](../09_analysis/docs/PRODUCTS.md).
 
 ## See also
 

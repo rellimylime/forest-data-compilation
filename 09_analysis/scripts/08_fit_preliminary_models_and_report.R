@@ -1,7 +1,7 @@
 #!/usr/bin/env Rscript
 
-# Fit the twelve preliminary models and build Joan's single-file report.
-# twelve models (three climate-niche responses by four vegetation groups), raw
+# Fit the nine preliminary models and build Joan's single-file report.
+# Nine models (three climate-niche responses by three vegetation groups), raw
 # complete-case relationships with descriptive GAM smooths, and clustered-HC1
 # marginal predictions from ggeffects::ggpredict().
 
@@ -19,9 +19,10 @@ suppressPackageStartupMessages({
   library(sjPlot)
 })
 
+# Resolve the run directory and create its table and figure subdirectories.
 run_id <- Sys.getenv(
   "ANALYSIS_RUN_ID",
-  unset = "20260822_cumulative_mortality_site_cwd_all_groups_v01"
+  unset = "20260905_cumulative_mortality_site_cwd_no_seedlings_v01"
 )
 data_dir <- file.path("09_analysis", "data", "processed")
 run_dir <- file.path("09_analysis", "results", "model_runs", run_id)
@@ -39,6 +40,7 @@ for (path in c(
   dir.create(path, recursive = TRUE, showWarnings = FALSE)
 }
 
+# Define the modeled responses, groups, predictors, and display labels once.
 stage_input <- file.path(data_dir, "lifestage_model_data.parquet")
 community_input <- file.path(data_dir, "pooled_model_data.parquet")
 report_source <- file.path(
@@ -52,7 +54,7 @@ stopifnot(
 )
 
 responses <- c("temperature", "precipitation", "CWD")
-groups <- c("seedlings", "saplings", "trees", "community")
+groups <- c("saplings", "trees", "community")
 predictors <- c(
   "fire_cumulative_mortality_pct",
   "insect_cumulative_mortality_pct",
@@ -62,10 +64,9 @@ predictors <- c(
 )
 drivers <- predictors[1:4]
 group_labels <- c(
-  seedlings = "Seedlings",
   saplings = "Saplings",
   trees = "Adults",
-  community = "Pooled all live"
+  community = "Combined saplings + adults"
 )
 response_labels <- c(
   temperature = "Temperature CWM change",
@@ -104,6 +105,7 @@ predictor_table_labels <- c(
   "Full survey period (years)"
 )
 
+# Return plot-clustered HC1 covariance for a fitted model.
 vcov_plot_hc1 <- function(x, ...) {
   cluster <- attr(x, "cluster", exact = TRUE)
   if (is.null(cluster) || length(cluster) != nobs(x) || anyNA(cluster)) {
@@ -112,10 +114,10 @@ vcov_plot_hc1 <- function(x, ...) {
   sandwich::vcovCL(x, cluster = cluster, type = "HC1")
 }
 
+# Read the stage-specific and combined model inputs.
 stage_data <- as.data.table(read_parquet(stage_input))
 community_data <- as.data.table(read_parquet(community_input))
 source_data <- list(
-  seedlings = stage_data[layer == "seedlings"],
   saplings = stage_data[layer == "saplings"],
   trees = stage_data[layer == "trees"],
   community = community_data
@@ -127,6 +129,7 @@ coefficient_parts <- list()
 fit_parts <- list()
 sample_parts <- list()
 
+# Fit three responses for each community definition on exact complete cases.
 for (group_name in groups) {
   group_source <- source_data[[group_name]]
   for (response_name in responses) {
@@ -187,6 +190,7 @@ for (group_name in groups) {
   }
 }
 
+# Combine and order coefficient, fit, and sample-flow records.
 coefficients <- rbindlist(coefficient_parts)
 fits <- rbindlist(fit_parts)
 samples <- rbindlist(sample_parts)
@@ -210,6 +214,7 @@ fits[, `:=`(
 setorder(fits, response_order, group_order)
 fits[, c("response_order", "group_order") := NULL]
 
+# Save the numeric model results before building presentation outputs.
 coefficient_path <- file.path(
   output_dir, "coefficients.csv"
 )
@@ -222,8 +227,8 @@ fwrite(fits, fit_path)
 fwrite(samples, sample_path)
 
 # Common prediction reference: no competing agent mortality, and the median
-# site CWD and survey duration among the pooled-community histories. This makes
-# all four vegetation-group curves describe the same covariate setting.
+# site CWD and survey duration among the combined-community histories. This makes
+# all three vegetation-group curves describe the same covariate setting.
 reference_source <- community_data[
   cumulative_site_CWD_complete %in% TRUE &
     complete.cases(community_data[, ..predictors])
@@ -242,8 +247,8 @@ reference_table <- data.table(
     "No fire-attributed mortality",
     "No insect-attributed mortality",
     "No disease-attributed mortality",
-    "Median among pooled-community histories with complete predictors",
-    "Median among pooled-community histories with complete predictors"
+    "Median among combined-community histories with complete predictors",
+    "Median among combined-community histories with complete predictors"
   )
 )
 reference_path <- file.path(
@@ -251,7 +256,7 @@ reference_path <- file.path(
 )
 fwrite(reference_table, reference_path)
 
-# Four-column sjPlot model tables, one for each response.
+# Three-column sjPlot model tables, one for each response.
 table_manifest_parts <- list()
 style_written <- FALSE
 for (response_name in responses) {
@@ -321,6 +326,7 @@ table_manifest <- rbindlist(table_manifest_parts)
 table_manifest_path <- file.path(table_dir, "table_manifest.csv")
 fwrite(table_manifest, table_manifest_path)
 
+# Use one consistent visual theme for all raw and adjusted plots.
 raw_theme <- theme_minimal(base_size = 11.5) +
   theme(
     panel.grid.minor = element_blank(),
@@ -335,6 +341,7 @@ raw_theme <- theme_minimal(base_size = 11.5) +
 figure_manifest_parts <- list()
 figure_counter <- 0L
 
+# Build one raw and one adjusted figure for every response-driver pair.
 for (response_name in responses) {
   outcome <- paste0("delta_", response_name)
   response_sample <- samples[response == response_name]
@@ -472,12 +479,12 @@ for (response_name in responses) {
         paste(unname(group_labels), collapse = ", ")
       ),
       plot_order = 2L * figure_counter - 1L,
-      panels = 4L,
+      panels = 3L,
       uncertainty = "Descriptive GAM 95% confidence interval"
     )
 
     # Marginal predictions use a common x grid and the same reference values
-    # across all four models so the panels are directly comparable.
+    # across all three models so the panels are directly comparable.
     x_grid <- if (driver_name %in% predictors[1:3]) {
       seq(0, 100, length.out = 51L)
     } else {
@@ -541,7 +548,7 @@ for (response_name in responses) {
         y = paste("Predicted", response_labels[[response_name]]),
         caption = paste(
           "Other agent mortalities are fixed at 0; site CWD and survey duration",
-          "are fixed at their pooled-history medians when they are not focal."
+          "are fixed at their combined-history medians when they are not focal."
         )
       ) +
       raw_theme
@@ -568,39 +575,34 @@ for (response_name in responses) {
         paste(unname(group_labels), collapse = ", ")
       ),
       plot_order = 2L * figure_counter,
-      panels = 4L,
+      panels = 3L,
       uncertainty = "HC1 standard errors clustered by stable_plot_id"
     )
   }
 }
 
+# Save figure provenance in the order used by the report.
 figure_manifest <- rbindlist(figure_manifest_parts)
 setorder(figure_manifest, response, section, plot_order)
 figure_manifest_path <- file.path(figure_dir, "figure_manifest.csv")
 fwrite(figure_manifest, figure_manifest_path)
 
+# Document the generated figure and table directories.
 writeLines(c(
   "# Preliminary full-report figures",
   "",
-  "These 24 figures are generated for Joan's long preliminary-results report:",
-  "12 raw complete-case relationships with descriptive GAMs and 12 adjusted",
-  "marginal-effect figures created with `ggeffects::ggpredict()`.",
+  "These 24 figures are generated for Joan's long preliminary-results report: 12 raw complete-case relationships with descriptive GAMs and 12 adjusted marginal-effect figures created with `ggeffects::ggpredict()`.",
   "",
-  "Every figure has four panels in this order: Seedlings, Saplings, Adults, and",
-  "Pooled all live. See `figure_manifest.csv` for response, driver, method, and",
-  "provenance. Run `09_analysis/scripts/08_fit_preliminary_models_and_report.R`",
-  "to regenerate the figures and self-contained HTML."
+  "Every figure has three panels in this order: Saplings, Adults, and combined saplings + adults. See `figure_manifest.csv` for response, driver, method, and provenance. Run `09_analysis/scripts/08_fit_preliminary_models_and_report.R` to regenerate the figures and self-contained HTML."
 ), file.path(figure_dir, "README.md"))
 
 writeLines(c(
   "# Preliminary full-report model tables",
   "",
-  "These three four-column tables are generated with `sjPlot::tab_model()` and",
-  "contain Seedlings, Saplings, Adults, and Pooled all live models. The",
-  "`*_fragment.html` files are embedded in the long report; the other HTML files",
-  "are standalone versions. See `table_manifest.csv` for provenance."
+  "These three three-column tables are generated with `sjPlot::tab_model()` and contain sapling, adult, and combined sapling-and-adult models. The `*_fragment.html` files are embedded in the long report; the other HTML files are complete browser-ready versions. See `table_manifest.csv` for provenance."
 ), file.path(table_dir, "README.md"))
 
+# Render one self-contained HTML report from the saved tables and figures.
 report_output <- file.path(
   report_dir, "preliminary_results.html"
 )
@@ -617,12 +619,13 @@ rmarkdown::render(
   quiet = FALSE
 )
 
+# Confirm that the rendered report contains all expected sections and images.
 stopifnot(file.exists(report_output), file.info(report_output)$size > 100000L)
 report_text <- paste(readLines(report_output, warn = FALSE), collapse = "\n")
 report_visible_text <- gsub("<[^>]+>", " ", report_text)
 report_visible_text <- gsub("[[:space:]]+", " ", report_visible_text)
 required_report_text <- c(
-  "Seedlings", "Saplings", "Adults", "Pooled all live",
+  "Saplings", "Adults", "Combined saplings + adults",
   "Raw relationships", "Adjusted marginal effects",
   "Cumulative fire mortality", "Cumulative insect mortality",
   "Cumulative disease mortality", "Cumulative site CWD"
@@ -640,6 +643,7 @@ embedded_pngs <- lengths(regmatches(
 ))
 stopifnot(embedded_pngs >= 24L)
 
+# Record the exact report inputs, software versions, and output counts.
 report_manifest <- data.table(
   run_id = run_id,
   report_file = report_output,
@@ -665,6 +669,7 @@ report_manifest_path <- file.path(
 )
 fwrite(report_manifest, report_manifest_path)
 
+# Save machine-readable formulas and a short run directory index.
 model_formulas <- data.table(
   model_id = names(models),
   formula = vapply(models, function(model) {
@@ -676,15 +681,15 @@ fwrite(model_formulas, file.path(run_dir, "model_formulas.csv"))
 writeLines(c(
   paste0("# ", run_id),
   "",
-  "Twelve preliminary linear models: three CWM responses by seedlings,",
-  "saplings, adults, and the pooled live community.",
+  "Nine preliminary linear models: three CWM responses for saplings, adults, and the combined sapling-and-adult community.",
   "",
   "- `preliminary_results.html`: self-contained report to review or send",
   "- `coefficients.csv`: estimates, clustered HC1 uncertainty, and p-values",
   "- `model_fit.csv`: sample sizes and R-squared values",
   "- `sample_flow.csv`: complete-case counts",
   "- `tables/`: sjPlot model tables",
-  "- `figures/`: raw relationships and ggeffects marginal predictions"
+  "- `figures/`: raw relationships and ggeffects marginal predictions",
+  "- `robustness/robustness_results.html`: retained model checks"
 ), file.path(run_dir, "README.md"))
 
 message("Wrote Joan's self-contained preliminary full report: ", report_output)

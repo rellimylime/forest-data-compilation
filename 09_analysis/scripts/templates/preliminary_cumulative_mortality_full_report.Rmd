@@ -1,6 +1,6 @@
 ---
 title: "Preliminary cumulative-mortality model results"
-subtitle: "Life-stage and pooled climate-niche change models"
+subtitle: "Individual and combined climate-niche change models"
 output:
   html_document:
     self_contained: true
@@ -203,6 +203,20 @@ cat(
   ".figure-caption {max-width: 1050px; margin: -0.5rem auto 2rem auto;",
   "color: #444; font-size: 0.95rem; line-height: 1.4;}",
   ".model-table-block {overflow-x: auto; margin-bottom: 2rem;}",
+  ".zoomable-plot {cursor: zoom-in;}",
+  ".plot-viewer {width: 96vw; max-width: none; height: 92vh; padding: 0;",
+  "border: 1px solid #777;}",
+  ".plot-viewer::backdrop {background: rgba(0, 0, 0, 0.75);}",
+  ".plot-viewer-toolbar {display: flex; gap: 0.5rem; align-items: center;",
+  "padding: 0.5rem 0.75rem; border-bottom: 1px solid #aaa; background: white;}",
+  ".plot-viewer-toolbar button {min-width: 2.5rem;}",
+  ".plot-viewer-help {margin-left: auto; color: #444;}",
+  ".plot-viewer-viewport {height: calc(92vh - 3.25rem); overflow: hidden;",
+  "display: flex; align-items: center; justify-content: center;",
+  "background: white; touch-action: none; cursor: grab;}",
+  ".plot-viewer-viewport.is-dragging {cursor: grabbing;}",
+  ".plot-viewer-image {max-width: 100%; max-height: 100%;",
+  "transform-origin: center center; user-select: none; -webkit-user-drag: none;}",
   "</style>\n"
 )
 ```
@@ -211,22 +225,13 @@ cat(
 
 <div class="report-note">
 
-This report assembles the current preliminary cumulative-mortality results for
-seedling, sapling, adult, and pooled all-live forest-community climate niches.
-The three responses are raw first-to-last changes in temperature,
-precipitation, and climatic water deficit (CWD) community-weighted means.
+This report assembles the current preliminary cumulative-mortality results for sapling, adult, and combined sapling-plus-adult forest-community climate niches. The three responses are raw first-to-last changes in temperature, precipitation, and climatic water deficit (CWD) community-weighted means.
 
-Every model includes cumulative fire, insect, and disease mortality,
-cumulative site-level TerraClimate CWD over the complete survey period, and
-the length of that survey period. Model coefficients are unstandardized. The
-model tables report HC1 uncertainty clustered by stable FIA plot.
+Every model includes cumulative fire, insect, and disease mortality, cumulative site-level TerraClimate CWD over the complete survey period, and the length of that survey period. Model coefficients are unstandardized. The model tables report HC1 uncertainty clustered by stable FIA plot.
 
-For each response, the raw-relationship figures show the observed response and
-one focal driver without covariate adjustment. The marginal-effect figures show
-the fitted relationship for that driver at one shared covariate reference:
-other agent mortalities equal zero, with site CWD and survey duration fixed at
-their pooled-history medians when they are not focal. These are preliminary
-associations, not final causal estimates.
+For each response, the raw-relationship figures show the observed response and one focal driver without covariate adjustment. The marginal-effect figures show the fitted relationship for that driver at one shared covariate reference: other agent mortalities equal zero, with site CWD and survey duration fixed at their combined-history medians when they are not focal. These are preliminary associations, not final causal estimates.
+
+Select any plot to open a full-screen viewer. Use the mouse wheel or the controls to zoom, and drag the enlarged plot to pan. The displayed data are not cropped.
 
 </div>
 
@@ -269,7 +274,11 @@ for (response_name in response_order) {
       # Objects printed inside a for-loop bypass knitr's top-level image hook.
       # Emit the validated path as Markdown so Pandoc embeds it in the
       # self-contained HTML instead of printing the path as ordinary text.
-      cat("![", driver_name, "](", image_path, "){width=100%}\n\n", sep = "")
+      cat(
+        "![", driver_name, "](", image_path,
+        "){.zoomable-plot width=100%}\n\n",
+        sep = ""
+      )
       cat(
         "\n<div class='figure-caption'>",
         htmltools::htmlEscape(figure_row$caption),
@@ -281,13 +290,101 @@ for (response_name in response_order) {
 }
 ```
 
+<dialog id="plot-viewer" class="plot-viewer" aria-label="Zoomed plot viewer">
+<div class="plot-viewer-toolbar">
+<button type="button" id="plot-viewer-minus" aria-label="Zoom out">−</button>
+<button type="button" id="plot-viewer-reset">Reset</button>
+<button type="button" id="plot-viewer-plus" aria-label="Zoom in">+</button>
+<span class="plot-viewer-help">Wheel to zoom; drag to pan</span>
+<button type="button" id="plot-viewer-close">Close</button>
+</div>
+<div id="plot-viewer-viewport" class="plot-viewer-viewport">
+<img id="plot-viewer-image" class="plot-viewer-image" alt="">
+</div>
+</dialog>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () { const dialog = document.getElementById("plot-viewer"); const viewport = document.getElementById("plot-viewer-viewport"); const viewerImage = document.getElementById("plot-viewer-image"); const closeButton = document.getElementById("plot-viewer-close"); const resetButton = document.getElementById("plot-viewer-reset"); const plusButton = document.getElementById("plot-viewer-plus"); const minusButton = document.getElementById("plot-viewer-minus"); let scale = 1; let offsetX = 0; let offsetY = 0; let dragging = false; let previousX = 0; let previousY = 0;
+
+function applyTransform() {
+    viewerImage.style.transform =
+      `translate(${offsetX}px, ${offsetY}px) scale(${scale})`;
+}
+
+function resetView() {
+    scale = 1;
+    offsetX = 0;
+    offsetY = 0;
+    applyTransform();
+}
+
+function changeScale(multiplier) {
+    scale = Math.min(8, Math.max(1, scale * multiplier));
+    if (scale === 1) {
+      offsetX = 0;
+      offsetY = 0;
+    }
+    applyTransform();
+}
+
+document.querySelectorAll("img.zoomable-plot").forEach(function (image) {
+    image.setAttribute("tabindex", "0");
+    image.setAttribute("role", "button");
+    image.setAttribute("aria-label", `${image.alt}. Open zoomed plot.`);
+
+    function openViewer() {
+      viewerImage.src = image.src;
+      viewerImage.alt = image.alt;
+      resetView();
+      dialog.showModal();
+    }
+
+    image.addEventListener("click", openViewer);
+    image.addEventListener("keydown", function (event) {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        openViewer();
+      }
+    });
+});
+
+viewport.addEventListener("wheel", function (event) {
+    event.preventDefault();
+    changeScale(event.deltaY < 0 ? 1.2 : 1 / 1.2);
+}, { passive: false });
+
+viewport.addEventListener("pointerdown", function (event) {
+    if (scale <= 1) return;
+    dragging = true;
+    previousX = event.clientX;
+    previousY = event.clientY;
+    viewport.classList.add("is-dragging");
+    viewport.setPointerCapture(event.pointerId);
+});
+
+viewport.addEventListener("pointermove", function (event) {
+    if (!dragging) return;
+    offsetX += event.clientX - previousX;
+    offsetY += event.clientY - previousY;
+    previousX = event.clientX;
+    previousY = event.clientY;
+    applyTransform();
+});
+
+function stopDragging() {
+    dragging = false;
+    viewport.classList.remove("is-dragging");
+}
+
+viewport.addEventListener("pointerup", stopDragging); viewport.addEventListener("pointercancel", stopDragging); viewport.addEventListener("dblclick", resetView); plusButton.addEventListener("click", function () { changeScale(1.25); }); minusButton.addEventListener("click", function () { changeScale(0.8); }); resetButton.addEventListener("click", resetView); closeButton.addEventListener("click", function () { dialog.close(); }); dialog.addEventListener("click", function (event) {
+    if (event.target === dialog) dialog.close();
+}); });
+</script>
+
 # Interpretation guardrails
 
-- Mortality predictors are cumulative percentages over each complete condition
-  history; they are not annualized rates in these preliminary models.
-- Cumulative site CWD is TerraClimate `def` exposure at the FIA site, not the
-  CWD community-niche response.
-- The raw figures are descriptive. Use the model tables and marginal-effect
-  figures when discussing covariate-adjusted model results.
-- Seedlings, saplings, adults, and the exploratory pooled all-live forest are
-  shown as four separate model columns and plot panels.
+- Mortality predictors are cumulative percentages over each complete condition history; they are not annualized rates in these preliminary models.
+- Cumulative site CWD is TerraClimate `def` exposure at the FIA site, not the CWD community-niche response.
+- The raw figures are descriptive. Use the model tables and marginal-effect figures when discussing covariate-adjusted model results.
+- Saplings, adults, and the combined sapling-plus-adult forest community are shown as three separate model columns and plot panels.
+- Seedlings are excluded because their microplot sampling does not reliably align with the condition-level disturbance predictors.
