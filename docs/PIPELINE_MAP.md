@@ -54,8 +54,7 @@ flowchart TB
 | FIA | [05_fia/README.md](../05_fia/README.md) | [05_fia/WORKFLOW.md](../05_fia/WORKFLOW.md) | [05_fia/scripts/](../05_fia/scripts/) |
 | Condition-level analysis | [09_analysis/README.md](../09_analysis/README.md) | [Current methods](../09_analysis/docs/METHODS.md) | [Numbered scripts](../09_analysis/scripts/) |
 
-The mortality branch is distinct from the pending live-damaged-plus-dead severity
-definition; no severity product is currently emitted.
+The mortality branch is distinct from the pending live-damaged-plus-dead severity definition; no severity product is currently emitted.
 
 ## Shared Components
 

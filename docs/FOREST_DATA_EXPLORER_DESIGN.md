@@ -1,8 +1,6 @@
 # Forest Data Explorer Design
 
-**Status:** Design recommendation for review  
-**Target:** Smallest defensible release by September 15, 2026  
-**Decision:** Extend the existing Streamlit dashboard with a guided extraction workflow backed by PyArrow scans of reviewed Parquet products. Do not add a database or a separate frontend.
+**Status:** Design recommendation for review **Target:** Smallest defensible release by September 15, 2026 **Decision:** Extend the existing Streamlit dashboard with a guided extraction workflow backed by PyArrow scans of reviewed Parquet products. Do not add a database or a separate frontend.
 
 ## How evidence is labeled
 

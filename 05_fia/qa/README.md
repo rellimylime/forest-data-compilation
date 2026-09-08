@@ -1,8 +1,6 @@
 # FIA QA
 
-Validation code lives in `qa/scripts/`; generated checks live in `qa/outputs/`.
-The output directory is ignored except for `.gitkeep` because every result is
-reproducible from a tracked producer.
+Validation code lives in `qa/scripts/`; generated checks live in `qa/outputs/`. The output directory is ignored except for `.gitkeep` because every result is reproducible from a tracked producer.
 
 | Producer | Generated QA results |
 |---|---|

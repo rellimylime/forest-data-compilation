@@ -18,12 +18,7 @@ This document covers WorldClim-specific technical details. For the shared pixel 
 
 ## Dataset Overview
 
-**Source:** [WorldClim Version 2.1](https://www.worldclim.org/)
-**Resolution:** ~4.5km (2.5 arc-minutes / 0.04166°)
-**Coverage:** Global
-**Temporal Resolution:** Monthly, 1950-2024 (CRU TS 4.09 interpolation)
-**Variables:** 3 climate variables (tmin, tmax, prec)
-**Access Method:** Direct download (local GeoTIFF files)
+**Source:** [WorldClim Version 2.1](https://www.worldclim.org/) **Resolution:** ~4.5km (2.5 arc-minutes / 0.04166°) **Coverage:** Global **Temporal Resolution:** Monthly, 1950-2024 (CRU TS 4.09 interpolation) **Variables:** 3 climate variables (tmin, tmax, prec) **Access Method:** Direct download (local GeoTIFF files)
 
 **Key Differences from TerraClimate:**
 - Similar resolution (~4.5km vs 4km)
@@ -184,15 +179,10 @@ For detailed workflow architecture, see [`docs/ARCHITECTURE.md`](../docs/ARCHITE
 ## Troubleshooting
 
 ### Unexpected "missing" messages during extraction
-**Symptom:** Script prints `missing tmin/2020-01` etc.
-**Cause:** Assumed filename convention (`wc2.1_cruts4.09_2.5m_{var}_{YYYY}-{MM}.tif`)
-doesn't match actual filenames extracted from zip.
-**Solution:** Check actual filenames: `list.files("04_worldclim/data/raw/tmin")`.
-Update the `sprintf()` pattern in `03_extract_worldclim.R` line ~95 accordingly.
+**Symptom:** Script prints `missing tmin/2020-01` etc. **Cause:** Assumed filename convention (`wc2.1_cruts4.09_2.5m_{var}_{YYYY}-{MM}.tif`) doesn't match actual filenames extracted from zip. **Solution:** Check actual filenames: `list.files("04_worldclim/data/raw/tmin")`. Update the `sprintf()` pattern in `03_extract_worldclim.R` line ~95 accordingly.
 
 ### Download failures
-**Cause:** geodata.ucdavis.edu server issues or network interruption.
-**Solution:** Script includes retry logic. Check server status if persistent.
+**Cause:** geodata.ucdavis.edu server issues or network interruption. **Solution:** Script includes retry logic. Check server status if persistent.
 
 ### Large raw file sizes
 **Note:** Decade files are ~70-100 MB each. 24 total files = ~600 MB. This is manageable compared to GEE-based datasets.

@@ -1,10 +1,6 @@
 # TerraClimate Extraction Log
 
-**Dataset:** TerraClimate extracted at IDS observation locations
-**Data Manager:** Emily Miller
-**Institution:** UCSB, Bren School, Landscapes of Change Lab
-**Log Created:** 2026-01-31
-**Last Updated:** 2026-02-23
+**Dataset:** TerraClimate extracted at IDS observation locations **Data Manager:** Emily Miller **Institution:** UCSB, Bren School, Landscapes of Change Lab **Log Created:** 2026-01-31 **Last Updated:** 2026-02-23
 
 ---
 
@@ -26,11 +22,9 @@ Issues identified during TerraClimate extraction and processing that affect the 
 
 ### Issue #001: Raw Values Require Scaling
 
-**Date identified:** 2025-01-31
-**Fields affected:** All 14 climate variables
+**Date identified:** 2025-01-31 **Fields affected:** All 14 climate variables
 
-**Description:**
-TerraClimate stores values as integers for storage efficiency. Each variable has a scale factor that must be applied to convert to physical units.
+**Description:** TerraClimate stores values as integers for storage efficiency. Each variable has a scale factor that must be applied to convert to physical units.
 
 **Example:**
 - Raw tmmx value: 254
@@ -45,11 +39,9 @@ TerraClimate stores values as integers for storage efficiency. Each variable has
 
 ### Issue #002: Coastal/Edge NoData Pixels
 
-**Date identified:** 2025-01-31
-**Records affected:** ~1,200 observations (0.03%)
+**Date identified:** 2025-01-31 **Records affected:** ~1,200 observations (0.03%)
 
-**Description:**
-TerraClimate has NoData values over oceans and at dataset edges. IDS observations near coastlines may overlap NoData pixels, resulting in missing climate data.
+**Description:** TerraClimate has NoData values over oceans and at dataset edges. IDS observations near coastlines may overlap NoData pixels, resulting in missing climate data.
 
 **Distribution by region:**
 - Region 10 (Alaska): ~700 observations (most affected, dataset edges)
@@ -67,11 +59,9 @@ TerraClimate has NoData values over oceans and at dataset edges. IDS observation
 
 ### Issue #003: TerraClimate Temporal Lag
 
-**Date identified:** 2025-01-31
-**Potential impact:** Recent years (2024+)
+**Date identified:** 2025-01-31 **Potential impact:** Recent years (2024+)
 
-**Description:**
-TerraClimate data release lags by several months to over a year behind real-time. At extraction time (2026-02), 2024 data was available and extracted successfully.
+**Description:** TerraClimate data release lags by several months to over a year behind real-time. At extraction time (2026-02), 2024 data was available and extracted successfully.
 
 **Decision:** Use available data as-is. If future analysis reveals data quality issues for the most recent year, consider using prior year as proxy.
 
@@ -81,11 +71,9 @@ TerraClimate data release lags by several months to over a year behind real-time
 
 ### Issue #004: Flux Variables Need Annual Summation
 
-**Date identified:** 2025-01-31
-**Variables affected:** pr, aet, pet, def, ro, soil (flux variables)
+**Date identified:** 2025-01-31 **Variables affected:** pr, aet, pet, def, ro, soil (flux variables)
 
-**Description:**
-Flux variables (precipitation, evapotranspiration, runoff, deficit, soil moisture) are monthly accumulations. For annual totals, these should be summed across 12 months, not averaged.
+**Description:** Flux variables (precipitation, evapotranspiration, runoff, deficit, soil moisture) are monthly accumulations. For annual totals, these should be summed across 12 months, not averaged.
 
 **Decision:** The current workflow preserves individual monthly values in long format. Users calculate annual totals as needed:
 
@@ -106,12 +94,9 @@ annual_pr_wrong <- summarize(annual_mean = mean(value))  # INCORRECT for flux va
 
 ### Issue #005: 10 IDS Observations Excluded - No Pixel Overlap
 
-**Date identified:** 2026-02-23
-**Records affected:** 10 observations (0.0002%)
+**Date identified:** 2026-02-23 **Records affected:** 10 observations (0.0002%)
 
-**Description:**
-The TerraClimate pixel map (`damage_areas_pixel_map.parquet`) contains 4,475,817 unique OBSERVATION_IDs, while the IDS damage_areas layer has 4,475,827 - a difference of exactly 10.
-These 10 observations have geometries so degenerate (near-zero-area slivers or self-intersecting polygons) that `exactextractr::exact_extract()` returns zero rows for them. No TerraClimate pixel at ~4km resolution overlaps the geometry, so these observations have no pixel mapping and no climate summaries.
+**Description:** The TerraClimate pixel map (`damage_areas_pixel_map.parquet`) contains 4,475,817 unique OBSERVATION_IDs, while the IDS damage_areas layer has 4,475,827 - a difference of exactly 10. These 10 observations have geometries so degenerate (near-zero-area slivers or self-intersecting polygons) that `exactextractr::exact_extract()` returns zero rows for them. No TerraClimate pixel at ~4km resolution overlaps the geometry, so these observations have no pixel mapping and no climate summaries.
 
 **Evidence:**
 - IDS `damage_areas` total OBSERVATION_IDs: 4,475,827

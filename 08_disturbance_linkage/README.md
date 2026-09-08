@@ -53,9 +53,7 @@ The foundational FIA records retain every reported public coordinate. For the ma
 ## External evidence status
 
 - IDS detections and survey coverage are separate products. A missing DCA code is never used as a nondetection row. Coverage comes from the actual `surveyed_areas` source layer, and partial buffer overlap remains labeled partial.
-- IDS output is resumable by survey year. Existing complete years are retained;
-  if a year has coverage but no agent file after an interruption, only its agent
-  calculation is resumed. `--overwrite` intentionally rebuilds both partitions.
+- IDS output is resumable by survey year. Existing complete years are retained; if a year has coverage but no agent file after an interruption, only its agent calculation is resumed. `--overwrite` intentionally rebuilds both partitions.
 - MTBS event evidence uses the cited June 21, 2026 national burned-area boundary release. The source archive, checksum, prepared GeoPackage, and plot-event evidence are present.
 - MTBS evidence has one `fire_ignition_date`; the source has exact days for every event. `search_buffer_overlap_fraction` refers only to the 800 m search circle, never to an FIA condition.
 - Older MTBS severity-raster and integrated modeling summaries are not part of the current preparation scope.
@@ -79,10 +77,7 @@ Rscript scripts/run_tests.R 08_disturbance_linkage
 
 For one IDS year, use `--year=2020`. Add `--overwrite` only when intentionally rebuilding an existing partition.
 
-The folders under `scripts/` are independent product families, not alternative
-versions of one analysis. Numbering restarts inside each family. The commands
-above give the supported complete preparation order; none of these external
-evidence products is required by the current `09_analysis` mortality models.
+The folders under `scripts/` are independent product families, not alternative versions of one analysis. Numbering restarts inside each family. The commands above give the supported complete preparation order; none of these external evidence products is required by the current `09_analysis` mortality models.
 
 The MTBS preparation step validates the downloaded archive checksum and source schema before replacing the canonical GeoPackage.
 

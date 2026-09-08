@@ -74,12 +74,7 @@ The readable representation avoids loss of precision from serializing FIADB 64-b
 
 Official `PREV_PLT_CN` is authoritative when its target is available and belongs to the current record's stable plot. If that target is nonadjacent in date order, the official target is still followed and the interval is classified as `previous_link_to_nonadjacent_visit`.
 
-When `PREV_PLT_CN` is null, the table records the most recent earlier sampled
-visit with the same `stable_plot_id` as a fallback candidate. In plain language,
-this means only: "this is the nearest earlier row that might be the prior visit."
-FIA did not supply the link, so the fallback is not proof of a remeasurement and
-must not be admitted to an analysis automatically. A fallback never overrides a
-present official link.
+When `PREV_PLT_CN` is null, the table records the most recent earlier sampled visit with the same `stable_plot_id` as a fallback candidate. In plain language, this means only: "this is the nearest earlier row that might be the prior visit." FIA did not supply the link, so the fallback is not proof of a remeasurement and must not be admitted to an analysis automatically. A fallback never overrides a present official link.
 
 Cross-stable targets and unavailable official targets remain in the audit but do not become intervals.
 

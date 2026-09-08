@@ -24,19 +24,9 @@ The raw source columns remain in the foundation alongside the calculated values,
 
 ### Wyoming nonsampled zero-proportion visits
 
-The condition-proportion QA includes 154 Wyoming visits from `INVYR = 2000` with one
-`COND_STATUS_CD = 5` condition and `CONDPROP_UNADJ = 0`. Their plot records are
-nonsampled. They are therefore not sampled condition-area errors and do not enter
-forest-community calculations. The code definitions are documented in the USDA
-Forest Service [FIADB Database Description and Users Manual, version 4.0](https://research.fs.usda.gov/download/treesearch/37446.pdf).
+The condition-proportion QA includes 154 Wyoming visits from `INVYR = 2000` with one `COND_STATUS_CD = 5` condition and `CONDPROP_UNADJ = 0`. Their plot records are nonsampled. They are therefore not sampled condition-area errors and do not enter forest-community calculations. The code definitions are documented in the USDA Forest Service [FIADB Database Description and Users Manual, version 4.0](https://research.fs.usda.gov/download/treesearch/37446.pdf).
 
-The USDA Forest Service report [*Wyoming's Forests, 2002*](https://research.fs.usda.gov/treesearch/22228)
-cites the applicable source as “Forest Service field procedures,” a 1999
-unpublished Interior West FIA field guide on file in Ogden, Utah. The report does
-not give that guide a version number. Consequently, FIADB `MANUAL = 0.9` should
-be read as the database's pre-national/regional protocol label, not as evidence
-that the unpublished guide itself was titled version 0.9. The original 1999
-field guide has not been located in the public FIA user-guide archive.
+The USDA Forest Service report [*Wyoming's Forests, 2002*](https://research.fs.usda.gov/treesearch/22228) cites the applicable source as “Forest Service field procedures,” a 1999 unpublished Interior West FIA field guide on file in Ogden, Utah. The report does not give that guide a version number. Consequently, FIADB `MANUAL = 0.9` should be read as the database's pre-national/regional protocol label, not as evidence that the unpublished guide itself was titled version 0.9. The original 1999 field guide has not been located in the public FIA user-guide archive.
 
 ## What “eligible” means
 

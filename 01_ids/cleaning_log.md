@@ -1,10 +1,6 @@
 # IDS Data Cleaning Log
 
-**Dataset:** USDA Forest Service Insect and Disease Detection Survey (IDS)
-**Data Manager:** Emily Miller
-**Institution:** UCSB, Bren School, Landscapes of Change Lab
-**Log Created:** 2026-01-30
-**Last Updated:** 2026-02-03
+**Dataset:** USDA Forest Service Insect and Disease Detection Survey (IDS) **Data Manager:** Emily Miller **Institution:** UCSB, Bren School, Landscapes of Change Lab **Log Created:** 2026-01-30 **Last Updated:** 2026-02-03
 
 ---
 
@@ -44,11 +40,9 @@ All 10 regions have identical field structure (44 fields). No cross-region incon
 
 ### Issue #001: Legacy vs DMSM Data Split
 
-**Date identified:** 2025-01-30
-**Fields affected:** PERCENT_AFFECTED_*, LEGACY_*
+**Date identified:** 2025-01-30 **Fields affected:** PERCENT_AFFECTED_*, LEGACY_*
 
-**Description:**
-Data collection methodology changed ~2015 from legacy system to DMSM (Digital Mobile Sketch Mapping).
+**Description:** Data collection methodology changed ~2015 from legacy system to DMSM (Digital Mobile Sketch Mapping).
 - Pre-2015: Uses LEGACY_TPA (trees per acre), LEGACY_NO_TREES, LEGACY_SEVERITY_CODE
 - Post-2015: Uses PERCENT_AFFECTED_CODE (1-5 scale of canopy damage)
 
@@ -66,11 +60,9 @@ These are NOT directly comparable measures of damage intensity.
 
 ### Issue #002: Administrative Metadata Missing
 
-**Date identified:** 2025-01-30
-**Fields affected:** CREATED_DATE, MODIFIED_DATE, FEATURE_USER_ID, OBSERVATION_USER_ID, LABEL
+**Date identified:** 2025-01-30 **Fields affected:** CREATED_DATE, MODIFIED_DATE, FEATURE_USER_ID, OBSERVATION_USER_ID, LABEL
 
-**Description:**
-These administrative/metadata fields are 100% missing in the sample.
+**Description:** These administrative/metadata fields are 100% missing in the sample.
 
 **Decision:** Drop these fields during cleaning to reduce file size.
 
@@ -78,11 +70,9 @@ These administrative/metadata fields are 100% missing in the sample.
 
 ### Issue #003: Code vs Text Field Redundancy
 
-**Date identified:** 2025-01-30
-**Fields affected:** Multiple code/text pairs
+**Date identified:** 2025-01-30 **Fields affected:** Multiple code/text pairs
 
-**Description:**
-Several fields have both numeric codes and text descriptions:
+**Description:** Several fields have both numeric codes and text descriptions:
 - HOST_CODE / HOST (HOST 92% missing)
 - DCA_CODE / DCA_COMMON_NAME
 - DAMAGE_TYPE_CODE / DAMAGE_TYPE
@@ -96,11 +86,9 @@ Several fields have both numeric codes and text descriptions:
 
 ### Issue #004: DMSM-Specific Fields Empty in Legacy Data
 
-**Date identified:** 2025-01-30
-**Fields affected:** COLLECTION_MODE, SNAPGRID_ROW, SNAPGRID_COLUMN, AREA_TYPE
+**Date identified:** 2025-01-30 **Fields affected:** COLLECTION_MODE, SNAPGRID_ROW, SNAPGRID_COLUMN, AREA_TYPE
 
-**Description:**
-Grid-based collection fields only populated for DMSM data.
+**Description:** Grid-based collection fields only populated for DMSM data.
 - AREA_TYPE in legacy: always "POLYGON"
 - AREA_TYPE in DMSM: "POLYGON" or "GRID_240/480/960/1920"
 
@@ -110,11 +98,9 @@ Grid-based collection fields only populated for DMSM data.
 
 ### Issue #005: Pancake Features (Multiple Observations)
 
-**Date identified:** 2025-01-30
-**Fields affected:** DAMAGE_AREA_ID, OBSERVATION_ID, OBSERVATION_COUNT
+**Date identified:** 2025-01-30 **Fields affected:** DAMAGE_AREA_ID, OBSERVATION_ID, OBSERVATION_COUNT
 
-**Description:**
-Per documentation, overlapping damage from multiple agents creates "pancake" features:
+**Description:** Per documentation, overlapping damage from multiple agents creates "pancake" features:
 - Same DAMAGE_AREA_ID (same geometry)
 - Different OBSERVATION_ID (different damage observation)
 - Flagged as OBSERVATION_COUNT = "MULTIPLE"
@@ -127,11 +113,9 @@ Per documentation, overlapping damage from multiple agents creates "pancake" fea
 
 ### Issue #006: PERCENT_AFFECTED_CODE = -1
 
-**Date identified:** 2025-01-30
-**Records affected:** 121,648 in R5 alone (~35% of region), all from 2015
+**Date identified:** 2025-01-30 **Records affected:** 121,648 in R5 alone (~35% of region), all from 2015
 
-**Description:**
-Records with PERCENT_AFFECTED_CODE = -1, exclusively from 2015 (transition year). Appears across all damage types. Likely placeholder during legacy→DMSM transition. LEGACY_* fields are populated for these records.
+**Description:** Records with PERCENT_AFFECTED_CODE = -1, exclusively from 2015 (transition year). Appears across all damage types. Likely placeholder during legacy→DMSM transition. LEGACY_* fields are populated for these records.
 
 **Decision:** Recode -1 to NA during cleaning. Use LEGACY_* fields for intensity on these records.
 
@@ -139,8 +123,7 @@ Records with PERCENT_AFFECTED_CODE = -1, exclusively from 2015 (transition year)
 
 ### Issue #007: OBSERVATION_COUNT Capitalization
 
-**Date identified:** 2025-01-30
-**Description:** Values are "SINGLE", "Single", and "MULTIPLE" (inconsistent case).
+**Date identified:** 2025-01-30 **Description:** Values are "SINGLE", "Single", and "MULTIPLE" (inconsistent case).
 
 **Decision:** Standardize to uppercase during cleaning.
 
@@ -148,11 +131,9 @@ Records with PERCENT_AFFECTED_CODE = -1, exclusively from 2015 (transition year)
 
 ### Issue #008: CRS Mismatch Across Regions
 
-**Date identified:** 2025-01-30
-**Regions affected:** All
+**Date identified:** 2025-01-30 **Regions affected:** All
 
-**Description:**
-Three different coordinate reference systems across regions:
+**Description:** Three different coordinate reference systems across regions:
 - **CONUS (R1-R6, R8-R9):** USA_Contiguous_Albers_Equal_Area_Conic_USGS_version
 - **Alaska (R10):** NAD83 / Alaska Albers
 - **Hawaii (R5-HI):** Hawaii Albers Equal Area Conic
@@ -165,9 +146,7 @@ Cannot merge without transformation.
 
 ### Issue #009: US_AREA Column Uninformative
 
-**Date identified:** 2025-01-30
-**Description:**
-US_AREA column contains only 3 values: "CONUS", "ALASKA", "HAWAII". Redundant with REGION_ID and SOURCE_FILE.
+**Date identified:** 2025-01-30 **Description:** US_AREA column contains only 3 values: "CONUS", "ALASKA", "HAWAII". Redundant with REGION_ID and SOURCE_FILE.
 
 **Decision:** Drop US_AREA column. Use region_lookup.csv to get US_AREA from REGION_ID if needed. SOURCE_FILE column distinguishes CA vs HI within Region 5.
 

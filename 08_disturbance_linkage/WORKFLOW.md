@@ -140,9 +140,7 @@ fia_visit_spatial_linkage_status.parquet
 
 It retains each visit's reported `LAT` and `LON`. `linkage_LAT` and `linkage_LON` are populated only when the stable plot has exactly one usable coordinate across its visits. Coordinate identity is exact at the source's six-decimal precision. Every row for a multi-coordinate stable plot has `eligible_spatial_linkage = FALSE`.
 
-The status script verifies the eligible IDs in `plot_footprints.gpkg`; the
-footprint producer rebuilds the 800 m buffers from the current single-coordinate
-plot set. Neither script chooses, averages, or substitutes coordinates.
+The status script verifies the eligible IDs in `plot_footprints.gpkg`; the footprint producer rebuilds the 800 m buffers from the current single-coordinate plot set. Neither script chooses, averages, or substitutes coordinates.
 
 `03_extract_ids_annual_agent_history.R` writes separate, resumable year partitions:
 
@@ -156,8 +154,7 @@ ids_annual_survey_coverage/
 
 The detection product contains detections only and retains exact DCA codes, labels, source observation and damage-area identifiers, IDS attribute ranges/codes, unioned overlap area, overlap fraction, coverage relationship, linkage method, and source snapshot. No agent grouping or outbreak construction is applied.
 
-The linkage uses the IDS `damage_areas` polygons. Point detections represent small
-clusters and are outside the current large-extent analysis scope.
+The linkage uses the IDS `damage_areas` polygons. Point detections represent small clusters and are outside the current large-extent analysis scope.
 
 The coverage product is built from the actual IDS `surveyed_areas` layer. Its `coverage_relationship` is one of:
 
@@ -214,16 +211,6 @@ Rscript 08_disturbance_linkage/qa/scripts/fia/03_validate_damage_agent_preparati
 Rscript scripts/run_tests.R 05_fia 08_disturbance_linkage
 ```
 
-The IDS script skips complete existing year partitions. If coverage was written
-before an agent calculation failed, the restart reuses that coverage and builds
-only the missing agent partition. Use `--year=YYYY` for a single-year run and
-`--overwrite` for an intentional rebuild.
+The IDS script skips complete existing year partitions. If coverage was written before an agent calculation failed, the restart reuses that coverage and builds only the missing agent partition. Use `--year=YYYY` for a single-year run and `--overwrite` for an intentional rebuild.
 
-Surveyed-area coverage uses exact geometry. A buffer wholly covered by one
-survey polygon is assigned its known full buffer area without constructing a
-redundant clipped polygon; buffers crossing polygon boundaries still use exact
-intersection and union. A 1999 regression comparison retained identical keys,
-coverage classes, source identifiers, and nonnumeric fields; maximum numerical
-differences were `7.1e-06` square metres of area and `3.6e-12` in overlap
-fraction. IDS legacy count, TPA, and percent summaries are stored as doubles so
-large grouped sums cannot change type mid-calculation.
+Surveyed-area coverage uses exact geometry. A buffer wholly covered by one survey polygon is assigned its known full buffer area without constructing a redundant clipped polygon; buffers crossing polygon boundaries still use exact intersection and union. A 1999 regression comparison retained identical keys, coverage classes, source identifiers, and nonnumeric fields; maximum numerical differences were `7.1e-06` square metres of area and `3.6e-12` in overlap fraction. IDS legacy count, TPA, and percent summaries are stored as doubles so large grouped sums cannot change type mid-calculation.

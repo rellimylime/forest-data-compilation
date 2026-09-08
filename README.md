@@ -47,10 +47,7 @@ If you want a specific workstream right away:
 | `08_disturbance_linkage/` | Prepare reusable FIA, MTBS, IDS, and spatial disturbance evidence; not required by the current mortality models | [08_disturbance_linkage/README.md](08_disturbance_linkage/README.md) |
 | `09_analysis/` | Stable-condition mortality and temperature/precipitation/CWD analytical candidates | [09_analysis/README.md](09_analysis/README.md) |
 
-Simple pipelines keep one flat numeric sequence. Modules with independent
-product families use named subdirectories and restart numbering inside each
-family. QA code always belongs under `qa/scripts/`; generated diagnostics belong
-under `qa/outputs/` and are not committed.
+Simple pipelines keep one flat numeric sequence. Modules with independent product families use named subdirectories and restart numbering inside each family. QA code always belongs under `qa/scripts/`; generated diagnostics belong under `qa/outputs/` and are not committed.
 
 ## At a Glance
 

@@ -17,12 +17,7 @@ This document covers PRISM-specific technical details. For the shared pixel deco
 
 ## Dataset Overview
 
-**Source:** [PRISM Climate Group, Oregon State University](https://prism.oregonstate.edu/)
-**Resolution:** ~800m (0.04166° / 1/24°)
-**Coverage:** Contiguous United States only (CONUS)
-**Temporal Resolution:** Monthly, 1981-present
-**Variables:** 7 climate variables (ppt, tmean, tmin, tmax, tdmean, vpdmin, vpdmax)
-**Access Method:** Direct web service (services.nacse.org) - no GEE account required
+**Source:** [PRISM Climate Group, Oregon State University](https://prism.oregonstate.edu/) **Resolution:** ~800m (0.04166° / 1/24°) **Coverage:** Contiguous United States only (CONUS) **Temporal Resolution:** Monthly, 1981-present **Variables:** 7 climate variables (ppt, tmean, tmin, tmax, tdmean, vpdmin, vpdmax) **Access Method:** Direct web service (services.nacse.org) - no GEE account required
 
 **Key Differences from TerraClimate:**
 - Much higher spatial resolution (800m vs 4km) - more pixels per observation
@@ -162,12 +157,10 @@ For detailed workflow architecture, see [`docs/ARCHITECTURE.md`](../docs/ARCHITE
 **Expected:** PRISM does not cover these regions. Observations outside CONUS will have no PRISM summaries.
 
 ### Large pixel map file sizes
-**Cause:** 800m resolution produces 5-25x more pixel mappings than TerraClimate.
-**Solution:** This is expected. Parquet compression keeps file sizes manageable.
+**Cause:** 800m resolution produces 5-25x more pixel mappings than TerraClimate. **Solution:** This is expected. Parquet compression keeps file sizes manageable.
 
 ### Download failures
-**Cause:** Network interruption or PRISM server error.
-**Solution:** The script catches errors per-variable and stores NA; failed downloads are logged as WARNings. Re-run the script - completed years are skipped automatically.
+**Cause:** Network interruption or PRISM server error. **Solution:** The script catches errors per-variable and stores NA; failed downloads are logged as WARNings. Re-run the script - completed years are skipped automatically.
 
 ---
 

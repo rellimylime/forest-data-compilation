@@ -41,8 +41,7 @@ Rscript 05_fia/scripts/core/04_extract_seedlings_mortality.R
 Rscript 05_fia/scripts/core/05_build_fia_summaries.R
 ```
 
-Script `01` uses base R to download official state-table ZIP archives directly from FIA DataMart; `rFIA` is not required. Existing complete states are skipped. Use `--refresh` when intentionally replacing a state's full raw snapshot, for
-example `Rscript 05_fia/scripts/core/01_download_fia.R --refresh FL KY TX`. See [Setup](../scripts/SETUP.md) and [Reproduce](../docs/REPRODUCE.md) for environment and server instructions.
+Script `01` uses base R to download official state-table ZIP archives directly from FIA DataMart; `rFIA` is not required. Existing complete states are skipped. Use `--refresh` when intentionally replacing a state's full raw snapshot, for example `Rscript 05_fia/scripts/core/01_download_fia.R --refresh FL KY TX`. See [Setup](../scripts/SETUP.md) and [Reproduce](../docs/REPRODUCE.md) for environment and server instructions.
 
 After a full-state refresh, propagate every configured raw table with:
 
@@ -142,7 +141,4 @@ This extension is not an input to the current BIEN-range species-niche method. S
 | `qa/outputs/` | Generated validation summaries; not source code |
 | `tests/` | Automated output checks |
 
-Numbering restarts inside a named script family because each family has its own
-dependency order. The core server workflow is `scripts/core/`, followed by the
-specific downstream families required by the analysis; the complete order is
-listed in [Reproduce](../docs/REPRODUCE.md).
+Numbering restarts inside a named script family because each family has its own dependency order. The core server workflow is `scripts/core/`, followed by the specific downstream families required by the analysis; the complete order is listed in [Reproduce](../docs/REPRODUCE.md).
