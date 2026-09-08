@@ -4,11 +4,15 @@
 
 args <- commandArgs(trailingOnly = TRUE)
 require_outputs <- "--require-outputs" %in% args
+
+# Locate the QA registry and the output directory it governs.
 repo_root <- normalizePath(here::here(), winslash = "/", mustWork = TRUE)
 manifest_path <- file.path(repo_root, "09_analysis", "qa", "qa_products.csv")
 output_root <- file.path(repo_root, "09_analysis", "qa", "outputs")
 
 products <- read.csv(manifest_path, stringsAsFactors = FALSE)
+
+# Check that the registry has the required fields and unique output paths.
 required_columns <- c(
   "stage", "output_path", "producer_script", "required", "description"
 )
@@ -20,6 +24,7 @@ if (anyDuplicated(products$output_path)) {
   stop("QA manifest contains duplicate output paths.")
 }
 
+# Read the Git index so every registered producer can be checked for tracking.
 tracked <- system2(
   "git",
   c("-C", shQuote(repo_root), "ls-files"),
@@ -30,6 +35,7 @@ if (!is.null(attr(tracked, "status")) && attr(tracked, "status") != 0L) {
   stop("Could not read the Git file index.")
 }
 
+# Verify each product has an existing tracked producer that names its output.
 problems <- character()
 for (i in seq_len(nrow(products))) {
   product <- products[i, ]
@@ -57,6 +63,7 @@ for (i in seq_len(nrow(products))) {
   }
 }
 
+# Find local QA results that have no corresponding registry entry.
 local_outputs <- list.files(
   output_root,
   recursive = TRUE,
@@ -74,6 +81,7 @@ if (length(unregistered)) {
   problems <- c(problems, paste("Unregistered QA output:", unregistered))
 }
 
+# Fail once with the full problem list, or report a clean registry.
 if (length(problems)) {
   stop(paste(problems, collapse = "\n"), call. = FALSE)
 }
