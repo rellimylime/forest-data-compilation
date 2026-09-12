@@ -67,7 +67,7 @@ COPY (
     s.longitude,
     s.source
   FROM read_csv_auto(
-    '05_fia/data/processed/site_climate/all_site_locations.csv',
+    '05_fia/data/processed/site_climate/fia_stable_plot_locations.csv',
     all_varchar = true
   ) AS s
   INNER JOIN (SELECT DISTINCT stable_plot_id FROM model_histories) AS h

@@ -1,0 +1,20 @@
+artifact: site_climate/input/pi_survey_point_locations.csv
+original_filename: all_site_locations.csv
+role: immutable_input
+provided_by: project_principal_investigator
+source_version: unknown
+receipt_date: unknown
+first_tracked:
+  commit: 5fc6537
+  date: 2026-03-02
+rows: 6956
+columns:
+  - site_id
+  - latitude
+  - longitude
+  - source
+sha256: 7d42963367913b88ffced727fcd33f18c5f1f83e71a913c9f6939cdeb58c59b0
+notes:
+  - This file is supplied data and has no producer script in this repository.
+  - The renamed file is byte-identical to the attached original all_site_locations.csv.
+  - Do not replace it with the generated FIA stable-plot location product.

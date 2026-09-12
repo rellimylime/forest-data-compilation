@@ -514,7 +514,7 @@ The core FIA pipeline ends with `05_build_fia_summaries.R`. The following script
 
 **Output:**
 
-- `data/processed/site_climate/all_site_locations.csv`
+- `data/processed/site_climate/fia_stable_plot_locations.csv`
 
 **Grain:** One row per `stable_plot_id`
 
@@ -540,7 +540,7 @@ Regenerating the site list changes the set of GEE input points. Remove or separa
 ### [02_extract_terraclimate.R](scripts/site_climate/02_extract_terraclimate.R)
 
 **Inputs:**
-- `data/processed/site_climate/all_site_locations.csv`: site_id, latitude, longitude, source
+- `data/processed/site_climate/fia_stable_plot_locations.csv`: site_id, latitude, longitude, source
 - GEE credentials (`local/user_config.yaml`)
 
 **Outputs:**
@@ -559,7 +559,7 @@ One row maps one FIA site to the TerraClimate grid cell used for extraction. Mul
 
 | Column | Type | Description |
 |--------|------|-------------|
-| site_id | character | From all_site_locations.csv |
+| site_id | character | From fia_stable_plot_locations.csv |
 | year | int | Calendar year |
 | month | int | Calendar month (1-12) |
 | water_year | int | Oct–Sep water year (month≥10: year+1) |
@@ -585,7 +585,7 @@ One row maps one FIA site to the TerraClimate grid cell used for extraction. Mul
 ### [03_validate_site_climate.R](scripts/site_climate/03_validate_site_climate.R)
 
 **Inputs:**
-- `data/processed/site_climate/all_site_locations.csv`
+- `data/processed/site_climate/fia_stable_plot_locations.csv`
 - `data/processed/site_climate/site_pixel_map.parquet`, when present
 - `data/processed/site_climate/site_climate.parquet`, when present
 
@@ -605,7 +605,7 @@ This read-only QA script validates the site-climate extraction products without 
 ## Data Flow
 
 ```text
-FIA DataMart (50 state CSVs)          data/processed/site_climate/all_site_locations.csv
+FIA DataMart (50 state CSVs)          data/processed/site_climate/fia_stable_plot_locations.csv
          |                                      |
          v 01_download_fia.R                    |
 05_fia/data/raw/{STATE}/*.csv                   |

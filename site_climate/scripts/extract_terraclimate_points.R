@@ -72,7 +72,7 @@ tc_config <- config$raw$terraclimate
 # Input and output paths
 input_file <- arg_value(
   "input",
-  here("site_climate/input/all_site_locations.csv")
+  here("site_climate/input/pi_survey_point_locations.csv")
 )
 output_dir <- arg_value(
   "output-dir",

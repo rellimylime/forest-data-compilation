@@ -3,7 +3,7 @@
 # Build the FIA plot site list consumed by 02_extract_terraclimate.R.
 #
 # Reads the FIA cond extract, takes one row per distinct stable plot location,
-# and writes 05_fia/data/processed/site_climate/all_site_locations.csv with
+# and writes 05_fia/data/processed/site_climate/fia_stable_plot_locations.csv with
 # columns: site_id, latitude, longitude, source.
 #
 # site_id is set to stable_plot_id so that downstream products
@@ -13,8 +13,9 @@
 # Usage:
 #   Rscript 05_fia/scripts/site_climate/01_build_site_list.R
 #
-# Note: This will overwrite all_site_locations.csv. The previous file is
-# recoverable from git history. After regenerating, clear stale GEE checkpoints
+# Note: This will overwrite only the generated fia_stable_plot_locations.csv;
+# it never reads or writes the PI-supplied site_climate input. The previous file
+# is recoverable from git history. After regenerating, clear stale GEE checkpoints
 # at 05_fia/data/processed/site_climate/_gee_annual/ before re-running
 # 02_extract_terraclimate.R, since pixel ids depend on the input site set.
 # ==============================================================================
@@ -27,7 +28,7 @@ source(here("scripts/utils/load_config.R"))
 config <- load_config()
 
 cond_dir <- here(config$processed$fia$cond$output_dir)
-out_file <- here("05_fia/data/processed/site_climate/all_site_locations.csv")
+out_file <- here("05_fia/data/processed/site_climate/fia_stable_plot_locations.csv")
 
 cond_plots <- open_dataset(cond_dir, partitioning = "state") |>
   select(stable_plot_id, STATECD, LAT, LON) |>

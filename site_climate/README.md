@@ -2,7 +2,7 @@
 
 This folder contains a standalone point-based TerraClimate extraction that is separate from the numbered FIA, species-niche, and thermophilization workflows.
 
-The input table is [input/all_site_locations.csv](input/all_site_locations.csv). It has one row per site with:
+The input table is [input/pi_survey_point_locations.csv](input/pi_survey_point_locations.csv). It is a PI-supplied, immutable input—not an output of the repository's FIA workflow. Its receipt and integrity record is [input/pi_survey_point_locations.provenance.yaml](input/pi_survey_point_locations.provenance.yaml). It has one row per site with:
 
 | Column | Meaning |
 | --- | --- |

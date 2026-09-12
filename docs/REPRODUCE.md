@@ -75,7 +75,7 @@ The FIA workstream is independent of the IDS + climate workstream, except for th
 | 3 | [03_extract_trees.R](../05_fia/scripts/core/03_extract_trees.R) | Extract tree, condition, damage-agent, and harvest-flag tables | `05_fia/data/processed/{trees,cond,damage_agents,harvest_flags}/state={ST}/` | [05_fia/WORKFLOW.md](../05_fia/WORKFLOW.md) |
 | 4 | [04_extract_seedlings_mortality.R](../05_fia/scripts/core/04_extract_seedlings_mortality.R) | Extract seedling and mortality summaries by state | `05_fia/data/processed/{seedlings,mortality}/state={ST}/` | [05_fia/WORKFLOW.md](../05_fia/WORKFLOW.md) |
 | 5 | [05_build_fia_summaries.R](../05_fia/scripts/core/05_build_fia_summaries.R) | Build national plot-level summary parquets | `05_fia/data/processed/summaries/*.parquet` | [05_fia/WORKFLOW.md](../05_fia/WORKFLOW.md) |
-| Optional 1 | [01_build_site_list.R](../05_fia/scripts/site_climate/01_build_site_list.R) | Build the FIA site list for optional climate extraction | `05_fia/data/processed/site_climate/all_site_locations.csv` | [05_fia/WORKFLOW.md](../05_fia/WORKFLOW.md#optional-site-climate-extension) |
+| Optional 1 | [01_build_site_list.R](../05_fia/scripts/site_climate/01_build_site_list.R) | Build the FIA site list for optional climate extraction | `05_fia/data/processed/site_climate/fia_stable_plot_locations.csv` | [05_fia/WORKFLOW.md](../05_fia/WORKFLOW.md#optional-site-climate-extension) |
 | Optional 2 | [02_extract_terraclimate.R](../05_fia/scripts/site_climate/02_extract_terraclimate.R) | Extract TerraClimate for FIA site locations | `05_fia/data/processed/site_climate/` | [05_fia/WORKFLOW.md](../05_fia/WORKFLOW.md#optional-site-climate-extension) |
 
 Notes:
@@ -83,7 +83,7 @@ Notes:
 - `05_fia/scripts/core/` is the required FIA sequence. The other named script families are downstream branches and restart their numbering independently.
 - Build `scripts/foundations/01_build_plot_visit_context.R` before the current condition-history analysis. Build the forested-condition foundation only for workflows that consume it.
 - The site-climate extension is optional and requires Google Earth Engine.
-- The main FIA summary outputs, plus `all_site_locations.csv`, `site_pixel_map.parquet`, and `site_climate.parquet`, are reviewable in git.
+- The main FIA summary outputs, plus `fia_stable_plot_locations.csv`, `site_pixel_map.parquet`, and `site_climate.parquet`, are reviewable in git.
 
 ## Path 4: Species Climate Niches
 
