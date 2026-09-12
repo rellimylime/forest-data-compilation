@@ -115,6 +115,7 @@ logs/**
 tree.txt
 data_tree.txt
 site_climate_extract.log
+*.log
 
 # Generated repository inventories and data dictionaries. Their producer code
 # is the source of truth; regenerate these locally when needed.
