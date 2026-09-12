@@ -13,6 +13,12 @@ import pandas as pd
 import streamlit as st
 
 try:
+    import yaml
+    YAML_AVAILABLE = True
+except ImportError:
+    YAML_AVAILABLE = False
+
+try:
     import pyarrow.parquet as pq
     PYARROW_AVAILABLE = True
 except ImportError:
@@ -38,6 +44,81 @@ GITHUB_BLOB_BASE = "https://github.com/rellimylime/forest-data-compilation/blob/
 def repo_path(*parts) -> Path:
     """Return an absolute path relative to the repo root."""
     return REPO_ROOT.joinpath(*parts)
+
+
+@st.cache_data(show_spinner=False)
+def _load_product_catalog(
+    inventory_path: str,
+    inventory_mtime: float | None,
+    snapshot_path: str,
+    snapshot_mtime: float | None,
+    registry_path: str,
+    registry_mtime: float | None,
+) -> tuple[dict, str, str | None]:
+    """Load measured inventory when present, otherwise the curated registry."""
+    errors = []
+    if snapshot_mtime is not None:
+        try:
+            with open(snapshot_path, encoding="utf-8") as f:
+                return json.load(f), "committed repository snapshot", None
+        except (OSError, json.JSONDecodeError) as exc:
+            errors.append(f"Could not read committed catalog snapshot: {exc}")
+
+    if inventory_mtime is not None:
+        try:
+            with open(inventory_path, encoding="utf-8") as f:
+                return json.load(f), "generated inventory", " · ".join(errors) or None
+        except (OSError, json.JSONDecodeError) as exc:
+            errors.append(f"Could not read generated inventory: {exc}")
+
+    inventory_error = " · ".join(errors) or None
+
+    if not YAML_AVAILABLE:
+        return {}, "unavailable", (
+            "PyYAML is required when no generated inventory exists. Install the "
+            "dashboard requirements and reload."
+        )
+
+    try:
+        with open(registry_path, encoding="utf-8") as f:
+            registry = yaml.safe_load(f)
+    except (OSError, yaml.YAMLError) as exc:
+        return {}, "unavailable", f"Could not read product registry: {exc}"
+
+    products = []
+    for product in registry.get("products", []):
+        entry = dict(product)
+        entry["availability"] = "unmeasured"
+        entry["observed"] = {}
+        entry["key_check"] = {
+            "status": "not_checked",
+            "note": "Availability and key uniqueness have not been measured in this environment.",
+        }
+        products.append(entry)
+
+    catalog = {
+        "generated_at": None,
+        "environment_label": "registry only",
+        "registry_version": registry.get("registry_version"),
+        "families": registry.get("families", {}),
+        "grains": registry.get("grains", {}),
+        "products": products,
+    }
+    return catalog, "registry only", inventory_error
+
+
+def load_product_catalog() -> tuple[dict, str, str | None]:
+    """Return the best product catalog available in this checkout."""
+    inventory = repo_path("forest_explorer", "catalog", "generated", "inventory.json")
+    snapshot = repo_path("forest_explorer", "catalog", "snapshot", "catalog.json")
+    registry = repo_path("forest_explorer", "registry", "products.yaml")
+    inv_mtime = inventory.stat().st_mtime if inventory.is_file() else None
+    snapshot_mtime = snapshot.stat().st_mtime if snapshot.is_file() else None
+    reg_mtime = registry.stat().st_mtime if registry.is_file() else None
+    return _load_product_catalog(
+        str(inventory), inv_mtime, str(snapshot), snapshot_mtime,
+        str(registry), reg_mtime,
+    )
 
 
 def static_path(*parts) -> Path:

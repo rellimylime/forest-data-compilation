@@ -1,6 +1,6 @@
 # Forest Data Compilation
 
-**Navigation:** [Docs Hub](docs/README.md) | [Analysis](09_analysis/README.md) | [Setup](scripts/SETUP.md) | [Shared Scripts](scripts/README.md) | [Reproduce](docs/REPRODUCE.md) | [Pipeline Map](docs/PIPELINE_MAP.md) | [Data Products](docs/DATA_PRODUCTS.md) | [Dashboard](docs/dashboard/)
+**Navigation:** [Docs Hub](docs/README.md) | [Analysis](09_analysis/README.md) | [Setup](scripts/SETUP.md) | [Shared Scripts](scripts/README.md) | [Reproduce](docs/REPRODUCE.md) | [Pipeline Map](docs/PIPELINE_MAP.md) | [Find Data](docs/DATA_CATALOG.md) | [Data Products](docs/DATA_PRODUCTS.md) | [Dashboard](docs/dashboard/)
 
 Compiled and cleaned forest disturbance, climate, inventory, species-niche, and thermophilization datasets for analysis. The repository contains these active production paths:
 
@@ -16,12 +16,13 @@ Module-level `data/` directories keep `.gitkeep` placeholders where useful, but 
 
 If you are reviewing the repo, start with these pages:
 
-1. [Docs Hub](docs/README.md) for the full navigation map.
-2. [Reproduce](docs/REPRODUCE.md) for exact run order.
-3. [Pipeline Map](docs/PIPELINE_MAP.md) for visual orientation.
-4. [Data Products](docs/DATA_PRODUCTS.md) for output locations, server-aligned directories, and what is or is not tracked in git.
+1. [Searchable Data Catalog](docs/DATA_CATALOG.md) to find a product or variable, its row scale, path, and producer.
+2. [Docs Hub](docs/README.md) for the full navigation map.
+3. [Reproduce](docs/REPRODUCE.md) for exact run order.
+4. [Pipeline Map](docs/PIPELINE_MAP.md) for visual orientation.
+5. [Data Products](docs/DATA_PRODUCTS.md) for storage conventions and workflow context.
 
-If you are working locally and want the easiest visual overview, run `streamlit run docs/dashboard/app.py` and start on the `Architecture` page in the sidebar.
+If you are working locally and want the easiest visual overview, run `streamlit run docs/dashboard/app.py`. Use `Catalog` to search products and variables, or `Architecture` for the workflow map.
 
 If you want a specific workstream right away:
 
@@ -115,8 +116,8 @@ Shared helpers live under [scripts/](scripts/README.md). This includes setup, te
 | TerraClimate summaries | Complete | Final per-variable parquets live under `processed/climate/terraclimate/` |
 | PRISM summaries | Complete | CONUS only |
 | WorldClim summaries | Complete | Local GeoTIFF-based workflow |
-| FIA plot summaries | Complete | Reviewable summary parquets are tracked in git |
-| FIA site climate | Complete | Input template, pixel map, and long-format climate parquet are tracked |
+| FIA plot summaries | Complete | Generated locally by the FIA workflow; large Parquets are gitignored |
+| FIA site climate | Partial | The FIA-wide input template is tracked, but its pixel map and climate output are not built; a separate point-climate extraction exists locally |
 | Species niches | Active | BIEN range-map niche workflow with QA summaries and documented missing-data handling |
 | Thermophilization | Active | Plot-year CWM and repeated-survey change products consume the species niche table |
 

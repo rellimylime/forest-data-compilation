@@ -1,10 +1,10 @@
 # Data Products
 
-**Navigation:** [Repo Home](../README.md) | [Docs Hub](README.md) | [Setup](../scripts/SETUP.md) | [Reproduce](REPRODUCE.md) | [Pipeline Map](PIPELINE_MAP.md) | [Data Products](DATA_PRODUCTS.md)
+**Navigation:** [Repo Home](../README.md) | [Docs Hub](README.md) | [Setup](../scripts/SETUP.md) | [Reproduce](REPRODUCE.md) | [Pipeline Map](PIPELINE_MAP.md) | [Find Data](DATA_CATALOG.md) | [Data Products](DATA_PRODUCTS.md)
 
 This page summarizes the main data products in the repository: what each product represents, where it lives, whether it is tracked in git, and which scripts create or depend on it. Module README and WORKFLOW pages linked from the tables provide the fuller row-grain and column descriptions.
 
-> **Looking for row grains, keys, and what is actually built?** See the [Master Product Inventory](MASTER_PRODUCT_INVENTORY.md). It is regenerated from the data, so its row counts, sizes, and presence flags are measured rather than written down by hand. This page remains the guide to storage conventions, git tracking status, and which script produces what.
+> **Looking for a product or variable?** Search the committed [Data Catalog](DATA_CATALOG.md). It lists variables, row scales, keys, paths, and producers without requiring access to the data directories. This page remains the guide to storage conventions and workflow context.
 
 ## Status Labels
 

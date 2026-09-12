@@ -142,7 +142,7 @@ Rscript 08_disturbance_linkage/scripts/fia/02_build_forest_disturbance_measures.
 Rscript 08_disturbance_linkage/scripts/fia/03_prepare_damage_agent_evidence.R
 Rscript 08_disturbance_linkage/qa/scripts/fia/03_validate_damage_agent_preparation.R
 Rscript scripts/run_tests.R 05_fia 08_disturbance_linkage
-python forest_explorer/catalog/build_inventory.py
+python3 forest_explorer/catalog/build_inventory.py
 ```
 
 This writes corrected same-slot FIA fire timing and neutral tree/condition damage-agent evidence. It does not choose a primary insect-severity measure, plot-level community weighting, first/last visits, or a modeling cohort.

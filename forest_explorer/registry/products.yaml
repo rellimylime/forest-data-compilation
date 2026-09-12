@@ -59,7 +59,7 @@
 # notes         Anything else a maintainer needs.
 # ---------------------------------------------------------------------------
 
-registry_version: "0.1.0"
+registry_version: "0.2.0"
 generated_by_contract: "forest_explorer/catalog/build_inventory.py"
 
 families:
@@ -102,6 +102,11 @@ families:
     blurb: >-
       Planned association between FIA plots and external dated events (MTBS
       fire severity, IDS damage polygons).
+  analysis:
+    title: Condition-level analysis
+    blurb: >-
+      Stable-condition histories, cumulative mortality, site climatic water
+      deficit, climate-niche responses, and the current model-ready tables.
   climate_grids:
     title: Gridded climate workflows
     blurb: >-
@@ -261,6 +266,36 @@ grains:
     one_row_is: one stable plot, IDS survey year, and exact DCA code or nondetection state
     keys: [stable_plot_id, survey_year, dca_code]
     parent_grain_id: fia_stable_plot
+
+  analysis_condition_visit_layer:
+    one_row_is: one stable FIA condition in one plot visit, for one community life stage
+    keys: [PLT_CN, INVYR, CONDID, layer]
+    parent_grain_id: fia_condition_visit
+
+  analysis_condition_interval:
+    one_row_is: one stable FIA condition across one official consecutive-visit interval
+    keys: [stable_condition_interval_key]
+    parent_grain_id: fia_stable_plot
+
+  analysis_condition_interval_layer:
+    one_row_is: one stable FIA condition interval and community life stage
+    keys: [stable_condition_interval_key, layer]
+    parent_grain_id: analysis_condition_interval
+
+  analysis_condition_history:
+    one_row_is: one complete first-to-last stable FIA condition history
+    keys: [history_id]
+    parent_grain_id: fia_stable_plot
+
+  analysis_condition_history_layer:
+    one_row_is: one complete stable-condition history and community life stage
+    keys: [history_id, layer]
+    parent_grain_id: analysis_condition_history
+
+  analysis_condition_history_visit:
+    one_row_is: one visit within one complete stable FIA condition history
+    keys: [history_id, PLT_CN, INVYR, CONDID]
+    parent_grain_id: analysis_condition_history
 
   species:
     one_row_is: one source species code
@@ -1974,6 +2009,207 @@ products:
     facets: [state, pairing_class, date_status, pairing_usable]
     caveats:
       - Chronological fallback candidates remain labeled separately from structural links.
+
+  # =========================================================================
+  # Condition-level analysis
+  # =========================================================================
+  - id: analysis_fia_remeasurement_components
+    title: FIA remeasurement components
+    family: analysis
+    kind: intermediate
+    lifecycle: active
+    path: 09_analysis/data/processed/fia_remeasurement_components.parquet
+    format: parquet_file
+    one_row_is: one FIA plot visit assigned to its official remeasurement component
+    keys: [PLT_CN, INVYR]
+    grain_id: fia_plot_visit
+    derived_from: fia_plot_visit_context
+    producer: 09_analysis/scripts/00_build_remeasurement_components.R
+    intended_access_mode: prepared_download
+    access_mode: catalog_only
+    review_status: not_reviewed
+    facets: [state, INVYR, visit_link_status, is_sampled_plot]
+    caveats: []
+
+  - id: analysis_condition_visit_cwm
+    title: Condition-visit climate affinity by life stage
+    family: analysis
+    kind: analysis
+    lifecycle: active
+    path: 09_analysis/data/processed/condition_visit_cwm.parquet
+    format: parquet_file
+    one_row_is: one stable FIA condition in one plot visit, for one community life stage
+    keys: [PLT_CN, INVYR, CONDID, layer]
+    grain_id: analysis_condition_visit_layer
+    producer: 09_analysis/scripts/01_build_condition_histories_and_cwm.R
+    intended_access_mode: prepared_download
+    access_mode: catalog_only
+    review_status: not_reviewed
+    facets: [state, INVYR, layer, forest_type_group]
+    caveats: []
+
+  - id: analysis_stable_condition_intervals
+    title: Stable-condition survey intervals
+    family: analysis
+    kind: analysis
+    lifecycle: active
+    path: 09_analysis/data/processed/stable_condition_intervals.parquet
+    format: parquet_file
+    one_row_is: one stable FIA condition across one official consecutive-visit interval
+    keys: [stable_condition_interval_key]
+    grain_id: analysis_condition_interval
+    derived_from: analysis_fia_remeasurement_components
+    producer: 09_analysis/scripts/01_build_condition_histories_and_cwm.R
+    intended_access_mode: prepared_download
+    access_mode: catalog_only
+    review_status: not_reviewed
+    facets: [state, T1_INVYR, T2_INVYR]
+    caveats: []
+
+  - id: analysis_stable_condition_cwm_change
+    title: Stable-condition climate-affinity change
+    family: analysis
+    kind: analysis
+    lifecycle: active
+    path: 09_analysis/data/processed/stable_condition_cwm_change.parquet
+    format: parquet_file
+    one_row_is: one stable FIA condition interval and community life stage
+    keys: [stable_condition_interval_key, layer]
+    grain_id: analysis_condition_interval_layer
+    derived_from: analysis_stable_condition_intervals
+    producer: 09_analysis/scripts/01_build_condition_histories_and_cwm.R
+    intended_access_mode: prepared_download
+    access_mode: catalog_only
+    review_status: not_reviewed
+    facets: [state, layer, T1_INVYR, T2_INVYR]
+    caveats: []
+
+  - id: analysis_interval_agent_mortality
+    title: Interval agent-attributed mortality
+    family: analysis
+    kind: analysis
+    lifecycle: active
+    path: 09_analysis/data/processed/interval_agent_mortality.parquet
+    format: parquet_file
+    one_row_is: one stable FIA condition across one official consecutive-visit interval
+    keys: [stable_condition_interval_key]
+    grain_id: analysis_condition_interval
+    derived_from: analysis_stable_condition_intervals
+    producer: 09_analysis/scripts/02_build_interval_mortality.R
+    intended_access_mode: prepared_download
+    access_mode: catalog_only
+    review_status: not_reviewed
+    facets: [state, T1_INVYR, T2_INVYR, analysis_ready]
+    caveats: []
+
+  - id: analysis_history_cumulative_mortality
+    title: Cumulative mortality by condition history
+    family: analysis
+    kind: analysis
+    lifecycle: active
+    path: 09_analysis/data/processed/history_cumulative_mortality.parquet
+    format: parquet_file
+    one_row_is: one complete first-to-last stable FIA condition history
+    keys: [history_id]
+    grain_id: analysis_condition_history
+    derived_from: analysis_interval_agent_mortality
+    producer: 09_analysis/scripts/04_build_cumulative_mortality.R
+    intended_access_mode: prepared_download
+    access_mode: catalog_only
+    review_status: not_reviewed
+    facets: [state]
+    caveats: []
+
+  - id: analysis_lifestage_model_base
+    title: Life-stage model base
+    family: analysis
+    kind: intermediate
+    lifecycle: active
+    path: 09_analysis/data/processed/lifestage_model_base.parquet
+    format: parquet_file
+    one_row_is: one complete stable-condition history and community life stage
+    keys: [history_id, layer]
+    grain_id: analysis_condition_history_layer
+    derived_from: analysis_history_cumulative_mortality
+    producer: 09_analysis/scripts/04_build_cumulative_mortality.R
+    intended_access_mode: prepared_download
+    access_mode: catalog_only
+    review_status: not_reviewed
+    facets: [state, layer]
+    caveats: []
+
+  - id: analysis_history_site_cwd
+    title: Site CWD by condition history
+    family: analysis
+    kind: analysis
+    lifecycle: active
+    path: 09_analysis/data/processed/history_site_cwd.parquet
+    format: parquet_file
+    one_row_is: one complete first-to-last stable FIA condition history
+    keys: [history_id]
+    grain_id: analysis_condition_history
+    derived_from: analysis_stable_condition_intervals
+    producer: 09_analysis/scripts/06_add_cumulative_site_cwd.sql
+    intended_access_mode: prepared_download
+    access_mode: catalog_only
+    review_status: not_reviewed
+    facets: [state, cumulative_site_CWD_complete, cumulative_site_CWD_status]
+    caveats: []
+
+  - id: analysis_lifestage_model_data
+    title: Life-stage model data
+    family: analysis
+    kind: final
+    lifecycle: active
+    path: 09_analysis/data/processed/lifestage_model_data.parquet
+    format: parquet_file
+    one_row_is: one complete stable-condition history and community life stage
+    keys: [history_id, layer]
+    grain_id: analysis_condition_history_layer
+    derived_from: analysis_lifestage_model_base
+    producer: 09_analysis/scripts/06_add_cumulative_site_cwd.sql
+    intended_access_mode: prepared_download
+    access_mode: catalog_only
+    review_status: not_reviewed
+    facets: [state, layer, cumulative_site_CWD_complete]
+    caveats: []
+
+  - id: analysis_pooled_condition_visit_cwm
+    title: Pooled sapling-and-adult condition climate affinity
+    family: analysis
+    kind: analysis
+    lifecycle: active
+    path: 09_analysis/data/processed/pooled_condition_visit_cwm.parquet
+    format: parquet_file
+    one_row_is: one visit within one complete stable FIA condition history
+    keys: [history_id, PLT_CN, INVYR, CONDID]
+    grain_id: analysis_condition_history_visit
+    derived_from: analysis_condition_visit_cwm
+    producer: 09_analysis/scripts/07_build_pooled_community_cwm.sql
+    intended_access_mode: prepared_download
+    access_mode: catalog_only
+    review_status: not_reviewed
+    facets: [INVYR, n_life_stages_present]
+    caveats: []
+
+  - id: analysis_pooled_model_data
+    title: Pooled community model data
+    family: analysis
+    kind: final
+    lifecycle: active
+    path: 09_analysis/data/processed/pooled_model_data.parquet
+    format: parquet_file
+    one_row_is: one complete first-to-last stable FIA condition history
+    keys: [history_id]
+    grain_id: analysis_condition_history
+    derived_from: analysis_pooled_condition_visit_cwm
+    producer: 09_analysis/scripts/07_build_pooled_community_cwm.sql
+    intended_access_mode: prepared_download
+    access_mode: catalog_only
+    review_status: not_reviewed
+    facets: [state, cumulative_site_CWD_complete]
+    caveats:
+      - Seedlings are excluded; this response pools live saplings and adults.
 
   # =========================================================================
   # Gridded climate workflows

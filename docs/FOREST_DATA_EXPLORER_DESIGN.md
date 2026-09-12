@@ -63,7 +63,7 @@ The September release succeeds when the researcher can:
 
 ### Important locally observed FIA products
 
-**This table is superseded.** Row counts, sizes, and grain verification for every product now live in [Master Product Inventory](MASTER_PRODUCT_INVENTORY.md), which is regenerated from the data by `python forest_explorer/catalog/build_inventory.py`. Consult that rather than the figures below, which were hand-recorded and have already drifted — the FIA rebuild of 2026-07-21 changed several of them (`plot_seedling_species` went from 2,772,452 to 2,859,609 rows, `plot_tree_metrics` from 491,182 to 492,318, `plot_seedling_metrics` from 415,019 to 428,391). The design dispositions in the last column remain the record of intent.
+**This table is superseded.** Product locations, row scales, and variables now live in the committed [Searchable Data Catalog](DATA_CATALOG.md). A data-root-specific inventory with row counts and grain verification can be generated locally with `python3 forest_explorer/catalog/build_inventory.py`. Consult that rather than the figures below, which were hand-recorded and have already drifted — the FIA rebuild of 2026-07-21 changed several of them (`plot_seedling_species` went from 2,772,452 to 2,859,609 rows, `plot_tree_metrics` from 491,182 to 492,318, `plot_seedling_metrics` from 415,019 to 428,391). The design dispositions in the last column remain the record of intent.
 
 | Product | Local shape when this was written | Logical grain | Design disposition |
 |---|---:|---|---|

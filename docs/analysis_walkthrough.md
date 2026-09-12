@@ -176,7 +176,7 @@ Those need modeling scripts and their QA outputs, neither of which exists yet.
 
 ## Schema Reference
 
-Grains, columns, and caveats for every product are in the [module output reference](../07_thermophilization/README.md#output-reference). Machine-readable definitions, including keys and access rules, are in [`forest_explorer/registry/products.yaml`](../forest_explorer/registry/products.yaml) and rendered in the [Master Product Inventory](MASTER_PRODUCT_INVENTORY.md).
+Grains, columns, and caveats for every product are in the [module output reference](../07_thermophilization/README.md#output-reference). Machine-readable definitions, including keys and access rules, are in [`forest_explorer/registry/products.yaml`](../forest_explorer/registry/products.yaml) and rendered in the committed [Searchable Data Catalog](DATA_CATALOG.md).
 
 Two inputs from other modules that this analysis leans on:
 

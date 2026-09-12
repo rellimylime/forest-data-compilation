@@ -11,7 +11,8 @@ This is the main navigation page for the repository documentation. Use it to mov
 | Understand the repo at a glance | [Repo Home](../README.md) |
 | See the whole pipeline visually | [Pipeline Map](PIPELINE_MAP.md) |
 | Reproduce the active production pipelines | [Reproduce](REPRODUCE.md) |
-| Find outputs and file locations | [Data Products](DATA_PRODUCTS.md) |
+| Find a product or variable | [Searchable Data Catalog](DATA_CATALOG.md) |
+| Understand output and storage conventions | [Data Products](DATA_PRODUCTS.md) |
 | Understand shared climate architecture | [Architecture](ARCHITECTURE.md) |
 | Review QC and validation coverage | [Testing and QC](TESTING.md) |
 | Set up the environment | [Setup](../scripts/SETUP.md) |
@@ -27,6 +28,7 @@ This is the main navigation page for the repository documentation. Use it to mov
 
 - [Repo Home](../README.md)
 - [Pipeline Map](PIPELINE_MAP.md)
+- [Searchable Data Catalog](DATA_CATALOG.md)
 - [Data Products](DATA_PRODUCTS.md)
 
 ### Exact run order

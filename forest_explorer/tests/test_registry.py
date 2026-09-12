@@ -7,6 +7,7 @@ need any data present, so they run in a code-only checkout.
 """
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -14,6 +15,7 @@ import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 REGISTRY = REPO_ROOT / "forest_explorer" / "registry" / "products.yaml"
+SNAPSHOT = REPO_ROOT / "forest_explorer" / "catalog" / "snapshot" / "catalog.json"
 
 VALID_KINDS = {"raw", "intermediate", "final", "analysis", "qa", "lookup"}
 VALID_LIFECYCLE = {"active", "planned", "experimental", "deprecated", "retired"}
@@ -244,3 +246,26 @@ def test_facets_are_plain_column_names(products):
             assert isinstance(f, str) and f and " " not in f, (
                 f"{p['id']}: facet {f!r} is not a column name"
             )
+
+
+def test_committed_snapshot_matches_registry(registry, products, grains):
+    """The dashboard/GitHub snapshot must be refreshed with registry changes."""
+    with open(SNAPSHOT, encoding="utf-8") as f:
+        snapshot = json.load(f)
+
+    assert snapshot["registry_version"] == registry["registry_version"]
+    assert [p["id"] for p in snapshot["products"]] == [p["id"] for p in products]
+    assert set(snapshot["families"]) == set(registry["families"])
+    assert set(snapshot["grains"]) == set(grains)
+
+
+def test_committed_snapshot_has_searchable_fields(products):
+    with open(SNAPSHOT, encoding="utf-8") as f:
+        snapshot = json.load(f)
+
+    by_id = {p["id"]: p for p in snapshot["products"]}
+    for product in products:
+        entry = by_id[product["id"]]
+        assert entry.get("path")
+        assert entry.get("one_row_is")
+        assert "observed" in entry

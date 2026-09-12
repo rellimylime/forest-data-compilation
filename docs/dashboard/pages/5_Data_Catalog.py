@@ -1,18 +1,17 @@
 # ==============================================================================
 # pages/5_Data_Catalog.py
-# Data Catalog — every registered product, read from the product registry
+# Data Catalog — searchable products and variables from a committed snapshot
 # ==============================================================================
 #
-# This page holds no product list of its own. It renders the master inventory
-# built by forest_explorer/catalog/build_inventory.py from the curated registry
-# at forest_explorer/registry/products.yaml.
+# This page holds no product list of its own. It reads the portable catalog
+# snapshot committed under forest_explorer/catalog/snapshot/. The dashboard never
+# needs to crawl data directories; maintainers refresh the snapshot explicitly.
 #
 # The previous version kept its own hand-edited CATALOG dict. Nothing checked it
 # against the data, so it drifted: 35 of its 49 entries pointed at paths that no
 # longer existed, and 39 real products were missing entirely. Do not reintroduce
 # a literal product list here — add to the registry and rerun the generator.
 
-import json
 import sys
 from pathlib import Path
 
@@ -20,14 +19,15 @@ import pandas as pd
 import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from utils import apply_dark_css, color_status, render_top_nav, repo_path
+from utils import (
+    REPO_ROOT, apply_dark_css, color_status, load_product_catalog,
+    render_top_nav,
+)
 
 st.set_page_config(page_title="Data Catalog", page_icon="📋", layout="wide")
 apply_dark_css()
 render_top_nav()
 
-INVENTORY_PATH = repo_path("forest_explorer/catalog/generated/inventory.json")
-BUILD_CMD = "python forest_explorer/catalog/build_inventory.py"
 
 ACCESS_LABELS = {
     "catalog_only": "Catalog only",
@@ -47,14 +47,8 @@ AVAILABILITY_ICON = {
     "partial": "⚠️",
     "missing": "❌",
     "error": "🛑",
+    "unmeasured": "❔",
 }
-
-
-@st.cache_data(show_spinner=False)
-def load_inventory(path: str, mtime: float) -> dict:
-    """mtime is in the signature so the cache drops when the file is rebuilt."""
-    with open(path, encoding="utf-8") as f:
-        return json.load(f)
 
 
 def human_bytes(n) -> str:
@@ -76,12 +70,12 @@ def load_code(product: dict) -> tuple[str, str]:
     if fmt in ("parquet_file", "parquet_dataset"):
         r = (f'library(arrow)\n'
              f'ds <- open_dataset("{path}")\n'
-             f'# Filter before collecting — these products can be large\n'
-             f'df <- ds |> dplyr::collect()')
+             f'# Add select()/filter() before collecting for a real analysis\n'
+             f'preview <- ds |> head(1000) |> dplyr::collect()')
         py = (f'import pyarrow.dataset as ds\n'
               f'dataset = ds.dataset("{path}")\n'
-              f'# Project columns and push filters before to_pandas()\n'
-              f'df = dataset.to_table().to_pandas()')
+              f'# Pass columns= and filter= for a real analysis\n'
+              f'preview = dataset.head(1000).to_pandas()')
     elif fmt == "gpkg_layer":
         r = (f'library(sf)\n'
              f'# Filter at read time — do not load the whole layer\n'
@@ -91,8 +85,8 @@ def load_code(product: dict) -> tuple[str, str]:
               f'gdf = gpd.read_file("{path}",\n'
               f'    layer="{layer}", rows=1000)  # filter at read time')
     elif fmt == "csv":
-        r = f'df <- read.csv("{path}")'
-        py = f'df = pd.read_csv("{path}")'
+        r = f'preview <- read.csv("{path}", nrows = 1000)'
+        py = f'preview = pd.read_csv("{path}", nrows=1000)'
     else:
         r = f'# Collection of files under {path}'
         py = f'# Collection of files under {path}'
@@ -103,29 +97,30 @@ def load_code(product: dict) -> tuple[str, str]:
 # Load
 # ------------------------------------------------------------------------------
 
-st.title("📋 Data Catalog")
+st.title("📋 Find Repository Data")
 
-if not INVENTORY_PATH.is_file():
-    st.error(
-        "No product inventory found. This page renders "
-        "`forest_explorer/catalog/generated/inventory.json`, which is built from "
-        "the product registry."
-    )
-    st.code(BUILD_CMD, language="bash")
+inv, catalog_source, catalog_error = load_product_catalog()
+if not inv:
+    st.error(catalog_error or "Neither the product registry nor an inventory could be loaded.")
     st.stop()
 
-inv = load_inventory(str(INVENTORY_PATH), INVENTORY_PATH.stat().st_mtime)
+# The dashboard reads committed metadata only; it never scans data directories.
 products = inv["products"]
 families = inv["families"]
+grains = inv.get("grains", {})
 
 st.markdown(
-    "Every registered data product: what one row means, what identifies it, what "
-    "the explorer may do with it, and whether it is actually present."
+    "Search products and variables across the repository. Every result includes "
+    "its row scale, identifiers, path, producer, review state, and local status."
 )
+if inv.get("generated_at"):
+    source_detail = inv["generated_at"][:19].replace("T", " ") + " UTC"
+else:
+    source_detail = "availability not measured"
 st.caption(
-    f"Inventory generated {inv['generated_at'][:19].replace('T', ' ')} UTC · "
-    f"data root `{inv['environment_label']}` · registry v{inv['registry_version']} · "
-    f"rebuild with `{BUILD_CMD}`"
+    f"Source: {catalog_source} · {source_detail} · "
+    f"registry v{inv['registry_version']} · snapshot refresh: "
+    "`Rscript forest_explorer/catalog/build_snapshot.R`"
 )
 
 # ------------------------------------------------------------------------------
@@ -134,18 +129,21 @@ st.caption(
 
 counts = {k: sum(1 for p in products if p["availability"] == k)
           for k in AVAILABILITY_ICON}
-c1, c2, c3, c4 = st.columns(4)
+c1, c2, c3, c4, c5 = st.columns(5)
 c1.metric("Registered", len(products))
-c2.metric("Present", counts["available"])
-c3.metric("Grain unconfirmed", counts["partial"])
-c4.metric("Not built here", counts["missing"] + counts["error"])
+c2.metric("Present at snapshot", counts["available"])
+c3.metric("Unmeasured", counts["unmeasured"])
+c4.metric("Grain issue", counts["partial"])
+c5.metric("Missing at snapshot", counts["missing"] + counts["error"])
 
 # ------------------------------------------------------------------------------
 # Filters
 # ------------------------------------------------------------------------------
 
 search = st.text_input(
-    "🔍 Search products — name, path, row meaning, caveats", key="catalog_search"
+    "🔍 Search products and variables",
+    placeholder="Try SPCD, cumulative_site_CWD_mm, condition, mortality, or plot_tree_metrics",
+    key="catalog_search",
 )
 
 f1, f2, f3 = st.columns(3)
@@ -171,10 +169,14 @@ def matches(p: dict) -> bool:
     if not show_missing and p["availability"] in ("missing", "error"):
         return False
     if search:
+        observed_columns = " ".join(
+            str(col[0]) for col in (p.get("observed") or {}).get("columns", [])
+        )
         blob = " ".join([
             p["title"], p["id"], p["path"], p["one_row_is"],
             " ".join(p.get("caveats") or []), p.get("notes") or "",
-            " ".join(p.get("keys") or []),
+            " ".join(p.get("keys") or []), " ".join(p.get("facets") or []),
+            p.get("producer") or "", p.get("grain_id") or "", observed_columns,
         ]).lower()
         if search.lower() not in blob:
             return False
@@ -183,6 +185,48 @@ def matches(p: dict) -> bool:
 
 visible = [p for p in products if matches(p)]
 st.caption(f"Showing {len(visible)} of {len(products)} products")
+
+# ------------------------------------------------------------------------------
+# Variable index
+# ------------------------------------------------------------------------------
+
+variable_rows = []
+for p in visible:
+    observed = (p.get("observed") or {}).get("columns", [])
+    columns = observed or [
+        (name, "declared key/filter")
+        for name in dict.fromkeys((p.get("keys") or []) + (p.get("facets") or []))
+    ]
+    grain = grains.get(p.get("grain_id"), {})
+    for name, dtype in columns:
+        if search and search.lower() not in " ".join([
+            str(name), str(dtype), p["title"], p["id"], p["path"],
+            p["one_row_is"], p.get("producer") or "",
+        ]).lower():
+            continue
+        variable_rows.append({
+            "Variable": name,
+            "Type": dtype,
+            "Product": p["title"],
+            "Scale / one row": grain.get("one_row_is", p["one_row_is"]),
+            "Key": ", ".join(p.get("keys") or []),
+            "Status": AVAILABILITY_ICON[p["availability"]],
+            "Path": p["path"],
+        })
+
+st.subheader("Variable index")
+if variable_rows:
+    st.caption(f"{len(variable_rows):,} product-variable locations match the current filters.")
+    st.dataframe(
+        pd.DataFrame(variable_rows).style.map(color_status, subset=["Status"]),
+        use_container_width=True,
+        hide_index=True,
+        height=min(520, 36 * len(variable_rows) + 38),
+    )
+else:
+    st.info("No variable names match. Try a broader term or clear the family filters.")
+
+st.subheader("Product details")
 
 # ------------------------------------------------------------------------------
 # Product cards, grouped by family

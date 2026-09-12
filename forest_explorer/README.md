@@ -10,10 +10,11 @@ Questions 1 and 2 are curated by people. Question 3 is measured from the data. K
 
 ```
 forest_explorer/
-  registry/products.yaml          curated — meaning, keys, access rules, caveats
-  catalog/build_inventory.py      generator — measures a data root
-  catalog/generated/inventory.json  generated — machine-readable inventory
-  tests/test_registry.py          contract tests for the registry
+  registry/products.yaml            curated — meaning, keys, access rules, caveats
+  catalog/snapshot/catalog.json    committed — portable schemas for the dashboard
+  catalog/build_snapshot.R         generator — refreshes JSON and Markdown snapshots
+  catalog/build_inventory.py       local audit — measures a specific data root
+  tests/test_registry.py           contract tests for the registry
 ```
 
 ## Three things that are not the same
@@ -30,12 +31,20 @@ A `planned` product being absent is expected. An `active` one being absent is a 
 
 Grain and lineage are likewise separate. `grain_id` says which grain a row sits at, with the observation hierarchy declared once in the `grains:` block; `derived_from` says which product was used to build this one. Two products can share a grain without either being built from the other — `plot_condition_metadata` and `fia_condition_disturbance_flags` both sit at `fia_condition_visit`.
 
-The human-readable output is [`docs/MASTER_PRODUCT_INVENTORY.md`](../docs/MASTER_PRODUCT_INVENTORY.md).
+The committed, GitHub-searchable output is [`docs/DATA_CATALOG.md`](../docs/DATA_CATALOG.md). The dashboard reads the matching JSON snapshot and does not inspect data directories.
 
-## Rebuild the inventory
+## Refresh the portable catalog
 
 ```bash
-python forest_explorer/catalog/build_inventory.py
+Rscript forest_explorer/catalog/build_snapshot.R
+```
+
+This maintainer command refreshes both the committed dashboard JSON and the GitHub-searchable Markdown page. Researchers only need the committed files.
+
+## Audit a specific data root
+
+```bash
+python3 forest_explorer/catalog/build_inventory.py
 ```
 
 Add `--verify-all` to check declared keys on every product regardless of size. Without it, products above eight million rows are reported as `not checked` rather than assumed correct.
@@ -44,7 +53,7 @@ Point it at a different data root when code and data are separated:
 
 ```bash
 FOREST_DATA_ROOT=/path/to/products \
-  python forest_explorer/catalog/build_inventory.py --root-label ucsb-server
+  python3 forest_explorer/catalog/build_inventory.py --root-label ucsb-server
 ```
 
 The generator is read-only. It opens products for metadata and key columns only and writes nothing into any data directory.
@@ -52,7 +61,7 @@ The generator is read-only. It opens products for metadata and key columns only 
 ## Test the registry
 
 ```bash
-python -m pytest forest_explorer/tests/test_registry.py
+python3 -m pytest forest_explorer/tests/test_registry.py
 ```
 
 These need no data present, so they run in a code-only checkout. They enforce the rules that keep the registry safe to resolve — unique ids, resolvable references, relative paths with no machine-specific parts, a declared key on anything offered for extraction, and no unreviewed product being offered to a researcher.
@@ -62,7 +71,7 @@ These need no data present, so they run in a code-only checkout. They enforce th
 1. Add an entry to `registry/products.yaml`. Every field is described in the header of that file.
 2. Start it at `access_mode: catalog_only` and `review_status: not_reviewed`. The tests will reject any other combination until someone has checked it.
 3. Rerun the generator and read the grain check. If the declared key is not unique, that is a finding about the product — fix the producer or change the declared grain, but do not delete the key to make the check pass.
-4. Rerun the tests.
+4. Refresh the portable catalog snapshot, then rerun the tests.
 
 ## What this does not do yet
 

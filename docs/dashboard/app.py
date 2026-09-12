@@ -24,7 +24,7 @@ import streamlit as st
 from utils import (
     REPO_ROOT, apply_dark_css, metric_card, parquet_meta,
     file_status, repo_path, color_status, PLOTLY_AVAILABLE,
-    plot_source_link, render_top_nav, route_grid,
+    plot_source_link, render_top_nav, route_grid, load_product_catalog,
 )
 
 st.set_page_config(
@@ -40,18 +40,18 @@ render_top_nav()
 # Pipeline inventory — all expected outputs with metadata
 # ------------------------------------------------------------------------------
 
-PIPELINE_INVENTORY = repo_path("forest_explorer/catalog/generated/inventory.json")
-
-# Availability comes from the generated inventory, which distinguishes "present"
-# from "present but not the grain we claim". A plain file-existence check cannot.
+# Availability and schemas come from the committed repository snapshot. A local
+# measured inventory is only a fallback when the snapshot is unavailable.
 PIPELINE_STATE_ICON = {
     "available": "✅", "partial": "⚠️", "missing": "❌", "error": "🛑",
+    "unmeasured": "❔",
 }
 PIPELINE_STATE_LABEL = {
     "available": "ready",
     "partial": "present, grain unconfirmed",
     "missing": "not built here",
     "error": "unreadable",
+    "unmeasured": "availability not measured",
 }
 
 # Which workflow page covers each registry family.
@@ -65,44 +65,37 @@ FAMILY_ROUTES = {
     "thermophilization": "pages/6_Thermophilization.py",
     "ids": "pages/1_IDS_Survey.py",
     "disturbance_linkage": "pages/1_IDS_Survey.py",
+    "analysis": "pages/5_Data_Catalog.py",
 }
 
 
-@st.cache_data(show_spinner=False)
-def _load_pipeline(path: str, mtime: float) -> list[dict]:
-    """Pipeline status, read from the generated product inventory.
-
-    This used to be a literal list maintained by hand. Nothing checked it against
-    the data, so it drifted: 35 of its 49 entries pointed at paths that no longer
-    existed. It now comes from forest_explorer, where presence is measured.
-    Add products to forest_explorer/registry/products.yaml, not here.
-    """
-    with open(path, encoding="utf-8") as f:
-        inv = json.load(f)
-    fams = inv["families"]
-    out = []
-    for prod in inv["products"]:
+CATALOG, CATALOG_SOURCE, CATALOG_ERROR = load_product_catalog()
+if CATALOG:
+    fams = CATALOG["families"]
+    PIPELINE = []
+    for prod in CATALOG["products"]:
         obs = prod.get("observed") or {}
         bits = [prod["one_row_is"]]
         if obs.get("n_rows"):
             bits.append(f"{obs['n_rows']:,} rows")
-        out.append({
-            "id":           prod["id"],
-            "section":      fams[prod["family"]]["title"],
-            "family":       prod["family"],
-            "label":        prod["title"],
-            "path":         prod["path"],
-            "description":  " · ".join(bits),
+        PIPELINE.append({
+            "id": prod["id"],
+            "section": fams[prod["family"]]["title"],
+            "family": prod["family"],
+            "label": prod["title"],
+            "path": prod["path"],
+            "description": " · ".join(bits),
+            "search_terms": " ".join([
+                " ".join(prod.get("keys") or []),
+                " ".join(prod.get("facets") or []),
+                " ".join(str(column[0]) for column in obs.get("columns", [])),
+                prod.get("producer") or "",
+                prod.get("grain_id") or "",
+            ]),
             "availability": prod["availability"],
-            "n_rows":       obs.get("n_rows"),
-            "bytes":        obs.get("bytes"),
+            "n_rows": obs.get("n_rows"),
+            "bytes": obs.get("bytes"),
         })
-    return out
-
-
-if PIPELINE_INVENTORY.is_file():
-    PIPELINE = _load_pipeline(str(PIPELINE_INVENTORY),
-                              PIPELINE_INVENTORY.stat().st_mtime)
 else:
     PIPELINE = []
 
@@ -135,6 +128,11 @@ PAGE_SEARCH_INDEX = [
         "title": "Thermophilization",
         "page": "pages/6_Thermophilization.py",
         "body": "FIA recruitment thermophilization workflow: species climate affinity, seedling CWM, disturbed-control matching, deltas, and species-shift checks.",
+    },
+    {
+        "title": "Analysis",
+        "page": "pages/5_Data_Catalog.py",
+        "body": "Condition histories, cumulative mortality, site climatic water deficit, life-stage responses, pooled community responses, and model inputs.",
     },
     {
         "title": "Data Catalog",
@@ -185,6 +183,12 @@ SCRIPT_SEARCH_INDEX = [
         "path": "05_fia/scripts/site_climate/02_extract_terraclimate.R",
         "body": "Optionally extract TerraClimate monthly values for FIA plot locations.",
         "page": "pages/3_FIA_Forest.py",
+    },
+    {
+        "title": "Run condition-level analysis",
+        "path": "09_analysis/scripts/run_analysis_pipeline.R",
+        "body": "Build condition histories, mortality, site CWD, model inputs, preliminary models, robustness checks, and QA.",
+        "page": "pages/5_Data_Catalog.py",
     },
     {
         "title": "Build condition community climate",
@@ -267,7 +271,7 @@ def search_workflow(query: str) -> tuple[list[dict], list[dict]]:
 
     for prod in PIPELINE:
         if _matches(query, prod["section"], prod["label"], prod["path"],
-                    prod["description"]):
+                    prod["description"], prod.get("search_terms")):
             state = PIPELINE_STATE_LABEL.get(prod["availability"], prod["availability"])
             workflow_results.append(
                 {
@@ -414,7 +418,7 @@ search_cols[1].markdown(
     <div class="fd-card">
       <div class="fd-card-title">How results route</div>
       <div class="fd-card-body">
-        Dashboard outputs open the matching page. FIA source fields that are not dashboard outputs point to extraction code and the FIA navigator.
+        Products and variables come from the committed repository snapshot. Results route to the catalog; FIA source-only fields route to the navigator.
       </div>
     </div>
     """,
@@ -454,9 +458,9 @@ st.markdown("---")
 # ── Data inventory ────────────────────────────────────────────────────────────
 st.markdown('<div class="fd-section-label">Pipeline status</div>', unsafe_allow_html=True)
 st.caption(
-    "Every registered product and whether it is present, measured by "
-    "`python forest_explorer/catalog/build_inventory.py`. A warning sign means "
-    "the product is there but does not have the row grain declared for it."
+    "Every registered product from the committed catalog snapshot. Status is "
+    "the snapshot state, not a live scan; use Catalog to search variables, row "
+    "scales, paths, and producers."
 )
 
 rows = []

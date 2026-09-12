@@ -56,4 +56,4 @@ Launch the dashboard:
 streamlit run docs/dashboard/app.py
 ```
 
-The dashboard covers all datasets (IDS, TerraClimate, PRISM, WorldClim, FIA) with interactive schemas, pixel grid maps, and load code snippets.
+The dashboard covers all datasets and the active analysis products. Its Catalog searches the committed repository snapshot, so browsing products, variables, row scales, and paths does not require access to the data directories.
