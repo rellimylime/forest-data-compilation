@@ -841,25 +841,50 @@ if (length(missing_batches) > 0) {
   ))
 }
 
-species_range_climate <- open_dataset(existing_batches, format = "parquet") |>
-  collect() |>
-  left_join(species_metadata, by = "species_key") |>
-  select(
-    species_key,
-    any_of(c(
-      "source_code_system", "source_species_code", "scientific_name",
-      "common_name", "community_layers", "bien_query_name",
-      "niche_taxon_name", "niche_taxon_key"
-    )),
-    month, variable, metric, value,
-    climate_period, climate_source, range_source
-  ) |>
-  mutate(range_scope = range_scope) |>
-  arrange(species_key, month, variable, metric)
+batch_results <- open_dataset(existing_batches, format = "parquet") |>
+  collect()
+
+# A targeted retry can legitimately return no rows when every requested
+# polygon fails in Earth Engine. Preserve the existing full product in that
+# case; the failure table below records the unresolved species for QA.
+targeted_all_failed <- nrow(batch_results) == 0 &&
+  is_targeted_run && !is_smoke_run && file.exists(out_file)
+
+if (targeted_all_failed) {
+  cat("  No targeted rows were returned; preserving the existing full output.\n")
+  species_range_climate <- read_parquet(out_file) |>
+    mutate(species_key = as.character(species_key))
+
+  if (!"range_scope" %in% names(species_range_climate)) {
+    species_range_climate$range_scope <- range_scope
+  } else {
+    species_range_climate <- species_range_climate |>
+      mutate(range_scope = coalesce(range_scope, .env$range_scope))
+  }
+} else {
+  if (nrow(batch_results) == 0 || !"species_key" %in% names(batch_results)) {
+    stop("No valid range-climate rows were returned; refusing to write an empty final product.")
+  }
+
+  species_range_climate <- batch_results |>
+    left_join(species_metadata, by = "species_key") |>
+    select(
+      species_key,
+      any_of(c(
+        "source_code_system", "source_species_code", "scientific_name",
+        "common_name", "community_layers", "bien_query_name",
+        "niche_taxon_name", "niche_taxon_key"
+      )),
+      month, variable, metric, value,
+      climate_period, climate_source, range_source
+    ) |>
+    mutate(range_scope = range_scope) |>
+    arrange(species_key, month, variable, metric)
+}
 
 # A targeted production run refreshes only the requested species while
 # preserving every unaffected row in the existing full product.
-if (is_targeted_run && !is_smoke_run && file.exists(out_file)) {
+if (is_targeted_run && !is_smoke_run && file.exists(out_file) && !targeted_all_failed) {
   existing_output <- read_parquet(out_file) |>
     mutate(species_key = as.character(species_key)) |>
     filter(!species_key %in% target_species_keys)
