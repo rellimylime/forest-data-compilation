@@ -84,13 +84,14 @@ rsconnect/
 !05_fia/data/processed/**/
 !05_fia/data/processed/**/.gitkeep
 !05_fia/data/processed/site_climate/
-!05_fia/data/processed/site_climate/all_site_locations.csv
 # site_climate.parquet and site_pixel_map.parquet are intentionally NOT un-ignored:
 # the national extraction is 5.85 GB, well over GitHub's 100 MB hard limit.
 
 # Root processed outputs are legacy/local-only. Active modules keep their own
 # data directories and documented output locations.
 processed/
+!05_fia/data/processed/site_climate/
+!05_fia/data/processed/site_climate/fia_stable_plot_locations.csv
 
 # Scratch / session working files (agent scratchpads, ad-hoc analysis). Never commit.
 scratch_output/
