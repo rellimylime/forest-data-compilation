@@ -90,6 +90,7 @@ rsconnect/
 # Root processed outputs are legacy/local-only. Active modules keep their own
 # data directories and documented output locations.
 processed/
+!05_fia/data/processed/
 !05_fia/data/processed/site_climate/
 !05_fia/data/processed/site_climate/fia_stable_plot_locations.csv
 
