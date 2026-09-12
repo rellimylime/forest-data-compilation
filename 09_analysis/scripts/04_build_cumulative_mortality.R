@@ -225,7 +225,7 @@ for (state_name in sort(unique(risk_visits$state))) {
 
   # Map each verified death back to the lineage's original risk-set entry.
   deaths <- verified_deaths[state == state_name, .(
-    stable_condition_interval_key, PREV_PLT_CN, T1_TRE_CN,
+    state, stable_condition_interval_key, PREV_PLT_CN, T1_TRE_CN,
     current_TRE_CN, agent_family
   )]
   deaths <- merge(
