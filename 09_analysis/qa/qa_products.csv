@@ -7,6 +7,7 @@ stage,output_path,producer_script,required,description
 04_cumulative_mortality,09_analysis/qa/outputs/04_cumulative_mortality/cumulative_tree_flow_by_state.csv,09_analysis/scripts/04_build_cumulative_mortality.R,TRUE,Cumulative tree linkage flow by state
 04_cumulative_mortality,09_analysis/qa/outputs/04_cumulative_mortality/cumulative_model_flow.csv,09_analysis/scripts/04_build_cumulative_mortality.R,TRUE,Cumulative mortality model row flow
 04_cumulative_mortality,09_analysis/qa/outputs/04_cumulative_mortality/cumulative_mortality_bounds.csv,09_analysis/scripts/04_build_cumulative_mortality.R,TRUE,Cumulative mortality rate bounds
+05_site_cwd_extraction,09_analysis/qa/outputs/05_site_cwd_extraction/site_cwd_cache_contract.csv,09_analysis/scripts/05_validate_site_cwd_cache.R,TRUE,Declared climate window cache identity and history eligibility check
 05_site_cwd_extraction,09_analysis/qa/outputs/05_site_cwd_extraction/site_climate_missing_sites.csv,site_climate/scripts/extract_terraclimate_points.R,FALSE,FIA sites without extracted TerraClimate values
 06_cumulative_site_cwd,09_analysis/qa/outputs/06_cumulative_site_cwd/site_cwd_source.csv,09_analysis/scripts/06_add_cumulative_site_cwd.sql,TRUE,TerraClimate source units range and duplicate keys
 06_cumulative_site_cwd,09_analysis/qa/outputs/06_cumulative_site_cwd/site_cwd_summary.csv,09_analysis/scripts/06_add_cumulative_site_cwd.sql,TRUE,History CWD coverage and distribution
