@@ -2,7 +2,7 @@
 # 02_extract_terraclimate.R
 # Extract TerraClimate monthly data for FIA plot locations (1958-present).
 #
-# Reads 05_fia/data/processed/site_climate/all_site_locations.csv, maps each
+# Reads 05_fia/data/processed/site_climate/fia_stable_plot_locations.csv, maps each
 # site to its containing TerraClimate pixel at native resolution, then extracts
 # monthly climate values via Google Earth Engine for the full TerraClimate
 # record.
@@ -61,7 +61,7 @@ scale_factors <- vapply(
 # Site locations -> sf
 # ------------------------------------------------------------------------------
 
-site_file <- here("05_fia/data/processed/site_climate/all_site_locations.csv")
+site_file <- here("05_fia/data/processed/site_climate/fia_stable_plot_locations.csv")
 if (!file.exists(site_file)) {
   stop("Site list not found. Run 05_fia/scripts/site_climate/01_build_site_list.R first.")
 }

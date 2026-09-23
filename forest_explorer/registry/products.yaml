@@ -978,7 +978,7 @@ products:
     family: site_climate
     kind: intermediate
     lifecycle: active
-    path: site_climate/input/all_site_locations.csv
+    path: site_climate/input/pi_survey_point_locations.csv
     format: csv
     one_row_is: one point submitted to the climate extraction
     keys: [site_id]
@@ -1004,7 +1004,7 @@ products:
     family: site_climate
     kind: intermediate
     lifecycle: active
-    path: 05_fia/data/processed/site_climate/all_site_locations.csv
+    path: 05_fia/data/processed/site_climate/fia_stable_plot_locations.csv
     format: csv
     one_row_is: one stable FIA plot location
     keys: [site_id]
@@ -1018,7 +1018,7 @@ products:
         One representative public coordinate per plot. Public FIA coordinates are
         fuzzed and some private-land plots are swapped within a county.
     notes: >-
-      Not a duplicate of site_climate/input/all_site_locations.csv — the two share
+      Not a duplicate of site_climate/input/pi_survey_point_locations.csv — the two share
       no ids at all. This one has 408,040 rows keyed by stable_plot_id and is the
       input to the FIA-wide site-climate extraction, whose output is not built in
       this data root. The other has 6,956 rows and produced the climate product

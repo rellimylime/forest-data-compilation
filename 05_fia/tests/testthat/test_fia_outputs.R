@@ -67,8 +67,8 @@ test_that("05_fia national summary files exist with expected schema", {
 
 test_that("05_fia site pixel map preserves global TerraClimate pixel semantics", {
   sites_path <- qa_require_file(
-    qa_path("05_fia/data/processed/site_climate/all_site_locations.csv"),
-    "05_fia/data/processed/site_climate/all_site_locations.csv"
+    qa_path("05_fia/data/processed/site_climate/fia_stable_plot_locations.csv"),
+    "05_fia/data/processed/site_climate/fia_stable_plot_locations.csv"
   )
   pixel_map_path <- qa_require_file(
     qa_path("05_fia/data/processed/site_climate/site_pixel_map.parquet"),

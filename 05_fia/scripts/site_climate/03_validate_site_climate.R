@@ -3,7 +3,7 @@
 # Validate the FIA site-climate extraction products.
 #
 # This QA script does not modify the climate products. It checks:
-#   1. all_site_locations.csv has one valid coordinate row per site_id.
+#   1. fia_stable_plot_locations.csv has one valid coordinate row per site_id.
 #   2. site_pixel_map.parquet is internally consistent, when present.
 #   3. site_climate.parquet has expected year/month/variable coverage and
 #      plausible value ranges, when present.
@@ -39,7 +39,7 @@ arg_value <- function(name, default = NULL) {
 }
 
 site_dir <- here("05_fia/data/processed/site_climate")
-default_site_file <- file.path(site_dir, "all_site_locations.csv")
+default_site_file <- file.path(site_dir, "fia_stable_plot_locations.csv")
 site_file <- arg_value("site-file", default_site_file)
 pixel_map_file <- arg_value("pixel-map-file", file.path(site_dir, "site_pixel_map.parquet"))
 climate_file <- arg_value("climate-file", file.path(site_dir, "site_climate.parquet"))
