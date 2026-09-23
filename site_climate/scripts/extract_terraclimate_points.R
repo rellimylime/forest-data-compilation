@@ -25,7 +25,7 @@
 #   --output-dir=path/to/output_dir
 #   --qa-dir=path/to/qa_output_dir
 #   --start-year=1958
-#   --end-year=2024
+#   --end-year=2025
 #   --variables=tmmx,tmmn,pr,def,pet,aet
 #   --batch-size=2500
 #   --backend=gee|local-ncss
@@ -88,6 +88,9 @@ end_year <- as.integer(arg_value(
   "end-year",
   if (!is.null(tc_config$end_year)) as.character(tc_config$end_year) else format(Sys.Date(), "%Y")
 ))
+if (is.na(start_year) || is.na(end_year) || start_year > end_year) {
+  stop("--start-year and --end-year must define a valid ascending year range.")
+}
 years <- start_year:end_year
 
 # Variables and TerraClimate scale factors. The default is unchanged; the
@@ -110,6 +113,11 @@ backend <- arg_value("backend", "gee")
 if (!backend %in% c("gee", "local-ncss")) {
   stop("--backend must be either 'gee' or 'local-ncss'.")
 }
+ncss_source_id <- paste0(
+  "https://tds-proxy.nkn.uidaho.edu/thredds/ncss/grid/",
+  "TERRACLIMATE_ALL/data/TerraClimate_def_{year}.nc"
+)
+source_id <- if (backend == "gee") tc_config$gee_asset else ncss_source_id
 scale_factors <- vapply(
   tc_config$variables,
   function(v) v$scale,
@@ -120,6 +128,39 @@ scale_factors <- vapply(
 if (!file.exists(input_file)) {
   stop(sprintf("Input point CSV not found: %s", input_file))
 }
+if (!requireNamespace("digest", quietly = TRUE)) {
+  stop("The digest package is required to identify extraction inputs.")
+}
+
+checkpoint_manifest_file <- file.path(output_dir, "extraction_manifest.csv")
+requested_variables <- paste(sort(site_vars), collapse = ";")
+validate_checkpoint_manifest <- function() {
+  if (!file.exists(checkpoint_manifest_file)) {
+    return(invisible(TRUE))
+  }
+  prior <- read.csv(checkpoint_manifest_file, stringsAsFactors = FALSE)
+  required <- c(
+    "input_sha256", "backend", "source_id", "variables",
+    "start_year", "end_year"
+  )
+  if (nrow(prior) != 1L || !all(required %in% names(prior))) {
+    stop("Existing extraction_manifest.csv is invalid; use a fresh output directory.")
+  }
+  same_identity <- identical(prior$input_sha256[[1L]], input_sha256) &&
+    identical(prior$backend[[1L]], backend) &&
+    identical(prior$source_id[[1L]], source_id) &&
+    identical(prior$variables[[1L]], requested_variables) &&
+    identical(as.integer(prior$start_year[[1L]]), start_year) &&
+    identical(as.integer(prior$end_year[[1L]]), end_year)
+  if (!same_identity) {
+    stop(
+      "Existing annual checkpoints belong to different input coordinates, ",
+      "variables, backend, source, or years. Use a fresh output directory."
+    )
+  }
+  invisible(TRUE)
+}
+input_sha256 <- digest::digest(input_file, algo = "sha256", file = TRUE)
 
 # Required point-table columns
 sites <- read.csv(input_file, stringsAsFactors = FALSE)
@@ -184,6 +225,20 @@ pixel_map <- data.frame(
   coverage_fraction = 1.0
 )
 
+checkpoint_dir <- file.path(
+  output_dir, if (backend == "gee") "_gee_annual" else "_local_annual"
+)
+validate_checkpoint_manifest()
+
+# Authenticate before creating or rewriting any cache product. This keeps a
+# failed GEE login entirely read-only with respect to the extraction cache.
+ee <- NULL
+if (backend == "gee") {
+  ee <- init_gee()
+}
+
+dir_create(checkpoint_dir)
+
 pixel_map_file <- file.path(output_dir, "site_pixel_map.parquet")
 write_parquet(as_tibble(pixel_map), pixel_map_file, compression = "snappy")
 
@@ -204,11 +259,9 @@ pixel_coords <- pixel_map |>
 
 if (backend == "gee") {
   # Annual checkpoint directory
-  tmp_dir <- file.path(output_dir, "_gee_annual")
-  dir_create(tmp_dir)
+  tmp_dir <- checkpoint_dir
 
   # Write one GEE extraction parquet per year
-  ee <- init_gee()
   extract_climate_from_gee(
     pixel_coords = pixel_coords,
     gee_asset = tc_config$gee_asset,
@@ -231,11 +284,9 @@ if (backend == "gee") {
     stop("The local-ncss backend currently supports --variables=def only.")
   }
 
-  tmp_dir <- file.path(output_dir, "_local_annual")
+  tmp_dir <- checkpoint_dir
   netcdf_dir <- file.path(output_dir, "_netcdf_temp")
-  dir_create(tmp_dir)
   dir_create(netcdf_dir)
-
   fixed_regions <- data.frame(
     region = c("conus", "alaska", "hawaii"),
     west = c(-125, -155, -161),
@@ -255,10 +306,7 @@ if (backend == "gee") {
     stop(sprintf("%s mapped pixels fall outside the fixed NCSS regions.", nrow(outside)))
   }
 
-  ncss_base <- paste0(
-    "https://tds-proxy.nkn.uidaho.edu/thredds/ncss/grid/",
-    "TERRACLIMATE_ALL/data/TerraClimate_def_%d.nc"
-  )
+  ncss_base <- gsub("{year}", "%d", ncss_source_id, fixed = TRUE)
 
   for (year in years) {
     annual_file <- file.path(tmp_dir, sprintf("sites_%d.parquet", year))
@@ -355,18 +403,18 @@ if (backend == "gee") {
 }
 
 # Completed annual files
-annual_files <- list.files(
-  tmp_dir,
-  pattern = "^sites_\\d{4}\\.parquet$",
-  full.names = TRUE
-)
-annual_files <- annual_files[vapply(
-  annual_files,
-  function(f) nrow(read_parquet(f)) > 0,
-  logical(1)
-)]
-if (length(annual_files) == 0) {
-  stop("No non-empty annual TerraClimate parquet files found.")
+annual_files <- file.path(tmp_dir, sprintf("sites_%d.parquet", years))
+missing_annual <- annual_files[!file.exists(annual_files)]
+if (length(missing_annual)) {
+  stop(
+    "Missing requested annual TerraClimate checkpoint(s): ",
+    paste(basename(missing_annual), collapse = ", ")
+  )
+}
+empty_annual <- vapply(annual_files, function(f) nrow(read_parquet(f)) == 0, logical(1))
+if (any(empty_annual)) {
+  stop("Empty requested annual TerraClimate checkpoint(s): ",
+       paste(basename(annual_files[empty_annual]), collapse = ", "))
 }
 
 cat(sprintf("Consolidating %s annual files...\n", length(annual_files)))
@@ -379,8 +427,27 @@ long_chunks <- vector("list", length(annual_files))
 
 # Convert annual wide files to long site x month x variable rows
 for (i in seq_along(annual_files)) {
-  long_chunks[[i]] <- read_parquet(annual_files[i]) |>
-    distinct(pixel_id, month, .keep_all = TRUE) |>
+  annual_data <- read_parquet(annual_files[i])
+  missing_columns <- setdiff(
+    c("pixel_id", "year", "month", site_vars),
+    names(annual_data)
+  )
+  if (nrow(annual_data) == 0 || length(missing_columns)) {
+    stop("Invalid annual checkpoint schema: ", basename(annual_files[i]))
+  }
+  if (!identical(sort(unique(as.integer(annual_data$year))), years[[i]])) {
+    stop("Annual checkpoint contains the wrong year: ", basename(annual_files[i]))
+  }
+  if (!setequal(as.integer(unique(annual_data$month)), 1:12)) {
+    stop("Annual checkpoint does not contain all 12 months: ", basename(annual_files[i]))
+  }
+  if (anyDuplicated(annual_data[c("pixel_id", "month")])) {
+    stop("Annual checkpoint has duplicate pixel-month keys: ", basename(annual_files[i]))
+  }
+  if (any(!annual_data$pixel_id %in% pixel_coords$pixel_id)) {
+    stop("Annual checkpoint contains pixels absent from the current input: ", basename(annual_files[i]))
+  }
+  long_chunks[[i]] <- annual_data |>
     inner_join(pm_slim, by = "pixel_id", relationship = "many-to-many") |>
     select(site_id, site_order, year, month, all_of(site_vars)) |>
     pivot_longer(all_of(site_vars), names_to = "variable", values_to = "value")
@@ -411,13 +478,32 @@ missing_sites <- sites |>
   filter(!site_id %in% unique(site_climate$site_id)) |>
   left_join(pixel_map, by = "site_id")
 
-if (nrow(missing_sites) > 0) {
-  write.csv(
-    missing_sites,
-    file.path(qa_dir, "site_climate_missing_sites.csv"),
-    row.names = FALSE
-  )
-}
+write.csv(
+  missing_sites,
+  file.path(qa_dir, "site_climate_missing_sites.csv"),
+  row.names = FALSE
+)
+
+extraction_manifest <- data.frame(
+  input_file = input_file,
+  input_sha256 = input_sha256,
+  backend = backend,
+  source_id = source_id,
+  variables = requested_variables,
+  start_year = start_year,
+  end_year = end_year,
+  annual_checkpoints = length(annual_files),
+  checkpoint_directory = basename(tmp_dir),
+  input_sites = nrow(sites),
+  input_pixels = n_pixels,
+  output_sites = n_distinct(site_climate$site_id),
+  missing_sites = nrow(missing_sites),
+  output_rows = nrow(site_climate),
+  expected_months_per_site_variable = length(years) * 12L,
+  generated_at_utc = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
+  stringsAsFactors = FALSE
+)
+write.csv(extraction_manifest, checkpoint_manifest_file, row.names = FALSE)
 
 # Run summary
 cat("\nDone.\n")

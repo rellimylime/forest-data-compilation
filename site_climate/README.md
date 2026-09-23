@@ -23,7 +23,8 @@ Main outputs are written to `site_climate/data/processed/`:
 | --- | --- |
 | `site_pixel_map.parquet` | One row per input site, recording the TerraClimate pixel used for extraction |
 | `site_climate.parquet` | One row per site x year x month x variable |
+| `extraction_manifest.csv` | Input SHA-256, backend, variables, requested years, checkpoint directory, and output counts |
 
-The extraction uses TerraClimate through Google Earth Engine and snaps points to the global 1/24 degree TerraClimate grid before sampling. It extracts monthly `tmmx`, `tmmn`, `pr`, `def`, `pet`, and `aet` from 1958 through the configured end year.
+The extractor supports Google Earth Engine for the general six-variable workflow and the official University of Idaho THREDDS NCSS for `def`-only point extraction. Both routes snap points to the global 1/24 degree TerraClimate grid before sampling. The active `09_analysis` contract fixes the NCSS source, `def`, and 1997-2025 in `09_analysis/config/analysis_window.csv`. Existing checkpoints are rejected when their recorded input hash, backend, source, variables, or years differ.
 
-Some points can snap to TerraClimate pixels that return no land climate values, usually because the coordinate falls on an ocean or otherwise masked pixel. Those sites are listed in `site_climate/qa/outputs/site_climate_missing_sites.csv` when present.
+Some points can snap to TerraClimate pixels that return no land climate values, usually because the coordinate falls on an ocean or otherwise masked pixel. Those sites are listed in `site_climate/qa/outputs/site_climate_missing_sites.csv`; a header-only table means none are missing.
