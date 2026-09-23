@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-11 20:43:11 UTC",
+  "generated_at": "2026-09-23 17:25:25 UTC",
   "environment_label": "committed repository snapshot",
   "registry_version": "0.2.0",
   "snapshot_kind": "portable_catalog",
@@ -3225,7 +3225,7 @@
       "notes": "Not a duplicate of site_climate/input/all_site_locations.csv — the two share no ids at all. This one has 408,040 rows keyed by stable_plot_id and is the input to the FIA-wide site-climate extraction, whose output is not built in this data root. The other has 6,956 rows and produced the climate product that does exist. Both are registered because they are different things.",
       "availability": "available",
       "observed": {
-        "bytes": 17253288,
+        "bytes": 17253280,
         "n_columns": 4,
         "columns": {
           "site_id": [
@@ -6128,7 +6128,7 @@
       "availability": "available",
       "observed": {
         "n_columns": 15,
-        "bytes": 45751468,
+        "bytes": 45769630,
         "n_files": 1,
         "columns": [
           [
@@ -6350,7 +6350,7 @@
       "availability": "available",
       "observed": {
         "n_columns": 20,
-        "bytes": 70449248,
+        "bytes": 70446557,
         "n_files": 1,
         "columns": [
           [
@@ -6461,7 +6461,7 @@
       "availability": "available",
       "observed": {
         "n_columns": 42,
-        "bytes": 20204229,
+        "bytes": 20204552,
         "n_files": 1,
         "columns": [
           [
@@ -6660,7 +6660,7 @@
       "availability": "available",
       "observed": {
         "n_columns": 21,
-        "bytes": 4403761,
+        "bytes": 4399364,
         "n_files": 1,
         "columns": [
           [
@@ -6775,7 +6775,7 @@
       "availability": "available",
       "observed": {
         "n_columns": 38,
-        "bytes": 21566091,
+        "bytes": 21558434,
         "n_files": 1,
         "columns": [
           [
@@ -6958,7 +6958,7 @@
       "availability": "available",
       "observed": {
         "n_columns": 24,
-        "bytes": 4619781,
+        "bytes": 4641295,
         "n_files": 1,
         "columns": [
           [
@@ -7085,7 +7085,7 @@
       "availability": "available",
       "observed": {
         "n_columns": 23,
-        "bytes": 8546240,
+        "bytes": 8553566,
         "n_files": 1,
         "columns": [
           [
@@ -7208,7 +7208,7 @@
       "availability": "available",
       "observed": {
         "n_columns": 25,
-        "bytes": 13091575,
+        "bytes": 13114767,
         "n_files": 1,
         "columns": [
           [
@@ -7339,7 +7339,7 @@
       "availability": "available",
       "observed": {
         "n_columns": 42,
-        "bytes": 9964121,
+        "bytes": 9979513,
         "n_files": 1,
         "columns": [
           [

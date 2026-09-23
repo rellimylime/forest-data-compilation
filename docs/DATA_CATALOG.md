@@ -1,7 +1,7 @@
 # Searchable Data Catalog
 
-**Snapshot generated:** 2026-09-11 20:43:11 UTC  
-**Registry version:** 0.2.0  
+**Snapshot generated:** 2026-09-23 17:25:25 UTC
+**Registry version:** 0.2.0
 **Purpose:** find a product or variable without access to the data directories.
 
 Use your browser's Find command to search this page by variable, product, subject, path, or producer. The Streamlit dashboard reads the same committed snapshot. Availability is what was present when this snapshot was generated; it is not a live server check.
