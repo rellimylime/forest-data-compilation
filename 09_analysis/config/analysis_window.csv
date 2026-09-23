@@ -1,0 +1,2 @@
+climate_variable,climate_start_year,climate_end_year,last_eligible_history_month,climate_backend,climate_source_id
+def,1997,2025,2025-12-01,local-ncss,https://tds-proxy.nkn.uidaho.edu/thredds/ncss/grid/TERRACLIMATE_ALL/data/TerraClimate_def_{year}.nc
