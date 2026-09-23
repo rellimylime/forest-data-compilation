@@ -12,6 +12,7 @@ suppressPackageStartupMessages({
 source(here("scripts/utils/load_config.R"))
 source(here("scripts/utils/parquet_atomic.R"))
 source(here("09_analysis/scripts/utils/mortality.R"))
+source(here("09_analysis/scripts/utils/deterministic_numeric.R"))
 
 cfg <- load_config()
 raw_dir <- here(cfg$raw$fia$local_dir)
@@ -33,9 +34,7 @@ metric_map <- c(
 
 # Calculate an abundance-weighted mean only from usable values and weights.
 weighted_mean_or_na <- function(value, weight) {
-  usable <- !is.na(value) & !is.na(weight) & weight > 0
-  if (!any(usable)) return(NA_real_)
-  weighted.mean(value[usable], weight[usable])
+  deterministic_weighted_mean(value, weight)
 }
 
 # Load one niche value per FIA species.
@@ -96,8 +95,8 @@ for (layer_name in names(layer_specs)) {
   community[, species_key := paste0("fia_spcd:", as.integer(SPCD))]
 
   species <- community[, .(
-    raw_weight = sum(get(spec$raw), na.rm = TRUE),
-    abundance_weight = sum(get(spec$abundance), na.rm = TRUE),
+    raw_weight = deterministic_sum(get(spec$raw), na.rm = TRUE),
+    abundance_weight = deterministic_sum(get(spec$abundance), na.rm = TRUE),
     state = first(state),
     forest_type_group = first(forest_type_group),
     CONDPROP_UNADJ = first(CONDPROP_UNADJ)
@@ -109,14 +108,14 @@ for (layer_name in names(layer_specs)) {
     forest_type_group = first(forest_type_group),
     CONDPROP_UNADJ = first(CONDPROP_UNADJ),
     n_species = uniqueN(species_key[abundance_weight > 0]),
-    total_individual_abundance = sum(abundance_weight, na.rm = TRUE),
-    temperature_niche_abundance = sum(
+    total_individual_abundance = deterministic_sum(abundance_weight, na.rm = TRUE),
+    temperature_niche_abundance = deterministic_sum(
       abundance_weight[!is.na(tmean_annual_mean)], na.rm = TRUE
     ),
-    precipitation_niche_abundance = sum(
+    precipitation_niche_abundance = deterministic_sum(
       abundance_weight[!is.na(pr_annual_sum)], na.rm = TRUE
     ),
-    CWD_niche_abundance = sum(
+    CWD_niche_abundance = deterministic_sum(
       abundance_weight[!is.na(cwd_annual_sum)], na.rm = TRUE
     ),
     temperature = weighted_mean_or_na(tmean_annual_mean, abundance_weight),

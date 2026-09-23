@@ -13,6 +13,7 @@ suppressPackageStartupMessages({
 })
 
 source(here("scripts/utils/parquet_atomic.R"))
+source(here("09_analysis/scripts/utils/deterministic_numeric.R"))
 
 edge_path <- file.path(
   "09_analysis", "data", "intermediate", "complete_history_edges.parquet"
@@ -213,12 +214,16 @@ for (state_name in sort(unique(risk_visits$state))) {
   # Sum each unique lineage once to form the cumulative abundance denominator.
   denominator <- entries[, .(
     cumulative_population_records = .N,
-    cumulative_population_abundance = sum(entry_weight),
+    cumulative_population_abundance = deterministic_sum(entry_weight),
     invalid_entry_weight_records = sum(!valid_weight | is.na(entry_weight)),
     baseline_live_records = sum(entry_visit_number == 1L),
-    baseline_live_abundance = sum(entry_weight[entry_visit_number == 1L]),
+    baseline_live_abundance = deterministic_sum(
+      entry_weight[entry_visit_number == 1L]
+    ),
     intermediate_entry_records = sum(entry_visit_number > 1L),
-    intermediate_entry_abundance = sum(entry_weight[entry_visit_number > 1L])
+    intermediate_entry_abundance = deterministic_sum(
+      entry_weight[entry_visit_number > 1L]
+    )
   ), by = .(
     history_id, stable_plot_id, remeasurement_component_id, state, CONDID
   )]
@@ -267,7 +272,7 @@ for (state_name in sort(unique(risk_visits$state))) {
 
   death_summary <- modeled_deaths[!is.na(entry_weight), .(
     death_records = .N,
-    death_abundance = sum(entry_weight)
+    death_abundance = deterministic_sum(entry_weight)
   ), by = .(
     history_id, stable_plot_id, remeasurement_component_id, state, CONDID,
     agent_family

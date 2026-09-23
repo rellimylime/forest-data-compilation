@@ -12,6 +12,7 @@ suppressPackageStartupMessages({
 source(here("scripts/utils/load_config.R"))
 source(here("scripts/utils/parquet_atomic.R"))
 source(here("09_analysis/scripts/utils/mortality.R"))
+source(here("09_analysis/scripts/utils/deterministic_numeric.R"))
 
 cfg <- load_config()
 raw_dir <- here(cfg$raw$fia$local_dir)
@@ -29,7 +30,7 @@ as_id <- function(x) {
   value
 }
 
-sum_or_zero <- function(x) sum(x, na.rm = TRUE)
+sum_or_zero <- function(x) deterministic_sum(x, na.rm = TRUE)
 
 # Express an interval mortality fraction as percentage points per year.
 annual_rate <- function(numerator, denominator, years) {
