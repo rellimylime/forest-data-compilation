@@ -148,8 +148,8 @@ escape_md <- function(x) {
 lines <- c(
   "# Searchable Data Catalog",
   "",
-  paste0("**Snapshot generated:** ", snapshot_time, "  "),
-  paste0("**Registry version:** ", registry$registry_version, "  "),
+  paste0("**Snapshot generated:** ", snapshot_time),
+  paste0("**Registry version:** ", registry$registry_version),
   "**Purpose:** find a product or variable without access to the data directories.",
   "",
   "Use your browser's Find command to search this page by variable, product, subject, path, or producer. The Streamlit dashboard reads the same committed snapshot. Availability is what was present when this snapshot was generated; it is not a live server check.",
