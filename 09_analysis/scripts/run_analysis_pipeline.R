@@ -17,15 +17,43 @@ skip_extraction <- "--skip-extraction" %in% args
 skip_models <- "--skip-models" %in% args
 from_stage <- arg_value("from", "00")
 through_stage <- arg_value("through", "10")
-run_id <- arg_value(
-  "run-id",
-  "20260905_cumulative_mortality_site_cwd_no_seedlings_v01"
-)
-climate_backend <- arg_value("climate-backend", "gee")
-
+run_id <- "20260905_cumulative_mortality_site_cwd_no_seedlings_v01"
+requested_run_id <- arg_value("run-id", run_id)
+if (!identical(requested_run_id, run_id)) {
+  stop("The tracked runner updates one authoritative run directory: ", run_id)
+}
 # Anchor every relative input and output path at the repository root.
 repo_root <- normalizePath(here::here(), winslash = "/", mustWork = TRUE)
 setwd(repo_root)
+
+# The tracked one-row window is the sole authority for the site-CWD extraction.
+analysis_window <- read.csv(
+  file.path("09_analysis", "config", "analysis_window.csv"),
+  stringsAsFactors = FALSE
+)
+required_window_fields <- c(
+  "climate_variable", "climate_start_year", "climate_end_year",
+  "last_eligible_history_month", "climate_backend", "climate_source_id"
+)
+if (
+  nrow(analysis_window) != 1L ||
+  !all(required_window_fields %in% names(analysis_window))
+) {
+  stop(
+    "09_analysis/config/analysis_window.csv must contain exactly one row ",
+    "and every documented field."
+  )
+}
+climate_backend <- arg_value(
+  "climate-backend", analysis_window$climate_backend[[1L]]
+)
+if (!identical(climate_backend, analysis_window$climate_backend[[1L]])) {
+  stop(
+    "The tracked analysis backend is ",
+    analysis_window$climate_backend[[1L]],
+    "; alternate backends require a separate output directory and validation."
+  )
+}
 
 qa_dirs <- c(
   "00_remeasurement_components",
@@ -116,12 +144,15 @@ stages <- list(
         "--input=09_analysis/data/intermediate/model_site_locations.csv",
         "--output-dir=09_analysis/data/cache/terraclimate_site_cwd",
         "--qa-dir=09_analysis/qa/outputs/05_site_cwd_extraction",
-        "--variables=def",
-        "--start-year=1958",
-        "--end-year=2024",
+        paste0("--variables=", analysis_window$climate_variable),
+        paste0("--start-year=", analysis_window$climate_start_year),
+        paste0("--end-year=", analysis_window$climate_end_year),
         paste0("--backend=", climate_backend)
       )
     )
+  }),
+  list(id = "05_validate", run = function() {
+    run_r("09_analysis/scripts/05_validate_site_cwd_cache.R")
   }),
   list(id = "06", run = function() {
     run_sql("09_analysis/scripts/06_add_cumulative_site_cwd.sql")
