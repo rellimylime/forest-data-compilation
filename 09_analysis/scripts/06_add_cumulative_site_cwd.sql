@@ -5,7 +5,19 @@
 -- Mortality, history, and CWM response fields are passed through unchanged.
 
 SET preserve_insertion_order = false;
-SET threads = 4;
+SET threads = 1;
+
+-- One tracked row defines the climate cache and latest eligible history month.
+CREATE OR REPLACE TEMP VIEW analysis_window AS
+SELECT
+  climate_variable,
+  CAST(climate_start_year AS INTEGER) AS climate_start_year,
+  CAST(climate_end_year AS INTEGER) AS climate_end_year,
+  CAST(last_eligible_history_month AS DATE) AS last_eligible_history_month
+FROM read_csv_auto(
+  '09_analysis/config/analysis_window.csv',
+  header = true
+);
 
 -- 1. Normalize first and last measurement dates for each retained history.
 CREATE OR REPLACE TEMP VIEW history_dates AS
@@ -29,16 +41,17 @@ SELECT
   CAST(value AS DOUBLE) AS site_CWD_mm
 FROM read_parquet(
   '09_analysis/data/cache/terraclimate_site_cwd/site_climate.parquet'
-)
-WHERE variable = 'def';
+) AS c
+INNER JOIN analysis_window AS w
+  ON c.variable = w.climate_variable;
 
 -- 3. Sum only months whose month-start falls inside the history date range.
 CREATE OR REPLACE TEMP VIEW history_cwd_sums AS
 SELECT
   h.history_id,
   COUNT(c.climate_month) AS observed_CWD_months,
-  SUM(c.site_CWD_mm) AS cumulative_site_CWD_mm,
-  AVG(c.site_CWD_mm) AS mean_monthly_site_CWD_mm,
+  SUM(c.site_CWD_mm ORDER BY c.climate_month) AS cumulative_site_CWD_mm,
+  AVG(c.site_CWD_mm ORDER BY c.climate_month) AS mean_monthly_site_CWD_mm,
   MIN(c.site_CWD_mm) AS min_monthly_site_CWD_mm,
   MAX(c.site_CWD_mm) AS max_monthly_site_CWD_mm
 FROM history_dates AS h
@@ -59,10 +72,13 @@ SELECT
   s.mean_monthly_site_CWD_mm,
   s.min_monthly_site_CWD_mm,
   s.max_monthly_site_CWD_mm,
-  s.observed_CWD_months =
-    date_diff('month', h.first_included_month, h.last_included_month) + 1
+  h.last_included_month <= w.last_eligible_history_month
+    AND s.observed_CWD_months =
+      date_diff('month', h.first_included_month, h.last_included_month) + 1
       AS cumulative_site_CWD_complete,
   CASE
+    WHEN h.last_included_month > w.last_eligible_history_month
+      THEN 'outside_analysis_window'
     WHEN s.observed_CWD_months = 0 THEN 'no_site_climate'
     WHEN s.observed_CWD_months <
       date_diff('month', h.first_included_month, h.last_included_month) + 1
@@ -70,7 +86,8 @@ SELECT
     ELSE 'complete'
   END AS cumulative_site_CWD_status
 FROM history_dates AS h
-INNER JOIN history_cwd_sums AS s USING (history_id);
+INNER JOIN history_cwd_sums AS s USING (history_id)
+CROSS JOIN analysis_window AS w;
 
 -- 5. Write the model table and QA products used to validate units and coverage.
 COPY (
@@ -133,7 +150,11 @@ COPY (
     'mm per month' AS source_units,
     0.1 AS netcdf_scale_factor,
     'month timestamp (first day) within exact FIA measurement dates'
-      AS history_inclusion_rule
+      AS history_inclusion_rule,
+    (SELECT climate_start_year FROM analysis_window) AS configured_start_year,
+    (SELECT climate_end_year FROM analysis_window) AS configured_end_year,
+    (SELECT last_eligible_history_month FROM analysis_window)
+      AS last_eligible_history_month
   FROM monthly_def
 ) TO '09_analysis/qa/outputs/06_cumulative_site_cwd/site_cwd_source.csv'
   (HEADER, DELIMITER ',');
@@ -148,6 +169,9 @@ COPY (
     COUNT(*) FILTER (
       WHERE cumulative_site_CWD_status = 'no_site_climate'
     ) AS histories_no_site_climate,
+    COUNT(*) FILTER (
+      WHERE cumulative_site_CWD_status = 'outside_analysis_window'
+    ) AS histories_outside_analysis_window,
     100.0 * COUNT(*) FILTER (WHERE cumulative_site_CWD_complete) / COUNT(*)
       AS coverage_pct,
     MIN(cumulative_site_CWD_mm) AS min_mm,

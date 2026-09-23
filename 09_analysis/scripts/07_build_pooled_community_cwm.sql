@@ -12,7 +12,7 @@
 -- from saplings by the FIA summary producer.
 
 SET preserve_insertion_order = false;
-SET threads = 4;
+SET threads = 1;
 
 -- 1. Select one record per modeled stable-condition history.
 CREATE OR REPLACE TEMP VIEW model_histories AS
@@ -177,11 +177,11 @@ CREATE OR REPLACE TEMP VIEW community_species AS
 SELECT
   history_id,
   PLT_CN,
-  any_value(INVYR) AS INVYR,
+  min(INVYR) AS INVYR,
   CONDID,
   SPCD,
-  sum(abundance_unadjusted) AS abundance_unadjusted,
-  sum(abundance_adjusted) AS abundance_adjusted,
+  sum(abundance_unadjusted ORDER BY life_stage) AS abundance_unadjusted,
+  sum(abundance_adjusted ORDER BY life_stage) AS abundance_adjusted,
   string_agg(DISTINCT life_stage, ',' ORDER BY life_stage) AS life_stages,
   bool_or(used_generic_prop) AS any_generic_prop
 FROM community_rows
@@ -238,9 +238,11 @@ SELECT
   history_id,
   PLT_CN,
   CONDID,
-  sum(abundance_adjusted) FILTER (WHERE life_stage = 'saplings')
+  sum(abundance_adjusted ORDER BY life_stage, SPCD)
+    FILTER (WHERE life_stage = 'saplings')
     AS sapling_abundance,
-  sum(abundance_adjusted) FILTER (WHERE life_stage = 'trees')
+  sum(abundance_adjusted ORDER BY life_stage, SPCD)
+    FILTER (WHERE life_stage = 'trees')
     AS tree_abundance,
   count(DISTINCT life_stage) AS n_life_stages_present,
   count(*) FILTER (WHERE sampling_element = 'macroplot') AS macroplot_groups,
@@ -253,28 +255,31 @@ CREATE OR REPLACE TEMP VIEW community_cwm AS
 SELECT
   j.history_id,
   j.PLT_CN,
-  any_value(j.INVYR) AS INVYR,
+  min(j.INVYR) AS INVYR,
   j.CONDID,
-  sum(j.abundance_adjusted) AS total_individual_abundance,
-  sum(j.abundance_adjusted) FILTER (WHERE j.tmean_annual_mean IS NOT NULL)
+  sum(j.abundance_adjusted ORDER BY j.SPCD) AS total_individual_abundance,
+  sum(j.abundance_adjusted ORDER BY j.SPCD)
+    FILTER (WHERE j.tmean_annual_mean IS NOT NULL)
     AS abundance_with_temperature_niche,
-  sum(j.abundance_adjusted) FILTER (WHERE j.pr_annual_sum IS NOT NULL)
+  sum(j.abundance_adjusted ORDER BY j.SPCD)
+    FILTER (WHERE j.pr_annual_sum IS NOT NULL)
     AS abundance_with_precipitation_niche,
-  sum(j.abundance_adjusted) FILTER (WHERE j.cwd_annual_sum IS NOT NULL)
+  sum(j.abundance_adjusted ORDER BY j.SPCD)
+    FILTER (WHERE j.cwd_annual_sum IS NOT NULL)
     AS abundance_with_CWD_niche,
-  sum(j.tmean_annual_mean * j.abundance_adjusted)
+  sum(j.tmean_annual_mean * j.abundance_adjusted ORDER BY j.SPCD)
     FILTER (WHERE j.tmean_annual_mean IS NOT NULL) /
-    nullif(sum(j.abundance_adjusted)
+    nullif(sum(j.abundance_adjusted ORDER BY j.SPCD)
       FILTER (WHERE j.tmean_annual_mean IS NOT NULL), 0)
       AS temperature,
-  sum(j.pr_annual_sum * j.abundance_adjusted)
+  sum(j.pr_annual_sum * j.abundance_adjusted ORDER BY j.SPCD)
     FILTER (WHERE j.pr_annual_sum IS NOT NULL) /
-    nullif(sum(j.abundance_adjusted)
+    nullif(sum(j.abundance_adjusted ORDER BY j.SPCD)
       FILTER (WHERE j.pr_annual_sum IS NOT NULL), 0)
       AS precipitation,
-  sum(j.cwd_annual_sum * j.abundance_adjusted)
+  sum(j.cwd_annual_sum * j.abundance_adjusted ORDER BY j.SPCD)
     FILTER (WHERE j.cwd_annual_sum IS NOT NULL) /
-    nullif(sum(j.abundance_adjusted)
+    nullif(sum(j.abundance_adjusted ORDER BY j.SPCD)
       FILTER (WHERE j.cwd_annual_sum IS NOT NULL), 0)
       AS CWD,
   count(*) AS n_species,
@@ -374,9 +379,11 @@ COPY (
     count(*) FILTER (
       WHERE first_life_stages_present = 2 AND last_life_stages_present = 2
     ) AS histories_both_stages_at_both_endpoints,
-    avg(first_sapling_abundance_share) AS mean_first_sapling_share,
+    avg(first_sapling_abundance_share ORDER BY history_id)
+      AS mean_first_sapling_share,
     median(first_sapling_abundance_share) AS median_first_sapling_share,
-    avg(last_sapling_abundance_share) AS mean_last_sapling_share,
+    avg(last_sapling_abundance_share ORDER BY history_id)
+      AS mean_last_sapling_share,
     median(last_sapling_abundance_share) AS median_last_sapling_share,
     min(first_temperature_niche_coverage) AS min_first_niche_weight_coverage,
     median(first_temperature_niche_coverage) AS median_first_niche_weight_coverage,
@@ -392,8 +399,10 @@ COPY (
     sampling_element,
     count(*) AS source_groups,
     count(*) FILTER (WHERE used_generic_prop) AS generic_prop_groups,
-    sum(abundance_unadjusted) AS total_unadjusted_abundance,
-    sum(abundance_adjusted) AS total_adjusted_abundance
+    sum(abundance_unadjusted ORDER BY history_id, PLT_CN, CONDID, SPCD)
+      AS total_unadjusted_abundance,
+    sum(abundance_adjusted ORDER BY history_id, PLT_CN, CONDID, SPCD)
+      AS total_adjusted_abundance
   FROM community_rows
   GROUP BY life_stage, sampling_element
   ORDER BY life_stage, sampling_element

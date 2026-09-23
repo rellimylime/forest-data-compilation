@@ -4,7 +4,7 @@
 -- every linked visit; CONDID never creates the visit link.
 
 SET preserve_insertion_order = false;
-SET threads = 4;
+SET threads = 1;
 
 -- 1. Identify stable-condition histories that pass every interval eligibility rule.
 CREATE OR REPLACE TEMP VIEW eligible_edges AS
@@ -20,7 +20,8 @@ SELECT
   CONDID,
   n_visits_in_component AS n_visits,
   count(*) AS n_intervals,
-  sum(interval_years) AS full_survey_period_years,
+  sum(interval_years ORDER BY t2_visit_number, stable_condition_interval_key)
+    AS full_survey_period_years,
   min(T1_INVYR) AS first_inventory_year,
   max(T2_INVYR) AS last_inventory_year,
   max(CASE WHEN t2_visit_number = 2 THEN PREV_PLT_CN END) AS first_PLT_CN,
