@@ -117,6 +117,50 @@ vcov_plot_hc1 <- function(x, ...) {
 # Read the stage-specific and combined model inputs.
 stage_data <- as.data.table(read_parquet(stage_input))
 community_data <- as.data.table(read_parquet(community_input))
+
+# Make cross-machine comparisons possible without retaining duplicate runs.
+analysis_window_path <- file.path(
+  "09_analysis", "config", "analysis_window.csv"
+)
+provenance_paths <- c(
+  stage_input,
+  community_input,
+  "09_analysis/data/intermediate/model_site_locations.csv",
+  "09_analysis/data/cache/terraclimate_site_cwd/site_pixel_map.parquet",
+  "09_analysis/data/cache/terraclimate_site_cwd/site_climate.parquet",
+  "09_analysis/data/cache/terraclimate_site_cwd/extraction_manifest.csv",
+  "09_analysis/qa/outputs/05_site_cwd_extraction/site_cwd_cache_contract.csv",
+  analysis_window_path,
+  "renv.lock"
+)
+stopifnot(
+  all(file.exists(provenance_paths)),
+  requireNamespace("digest", quietly = TRUE)
+)
+analysis_window <- read.csv(analysis_window_path, stringsAsFactors = FALSE)
+provenance_info <- file.info(provenance_paths)
+input_manifest <- data.table(
+  path = provenance_paths,
+  size_bytes = provenance_info$size,
+  modified_at_utc = format(
+    provenance_info$mtime,
+    "%Y-%m-%dT%H:%M:%SZ",
+    tz = "UTC"
+  ),
+  sha256 = vapply(
+    provenance_paths,
+    digest::digest,
+    character(1),
+    algo = "sha256",
+    file = TRUE
+  ),
+  rows = c(
+    nrow(stage_data), nrow(community_data), NA, NA, NA, 1L, 1L,
+    nrow(analysis_window), NA
+  )
+)
+fwrite(input_manifest, file.path(run_dir, "input_manifest.csv"))
+git_commit <- system2("git", c("rev-parse", "HEAD"), stdout = TRUE)[[1L]]
 source_data <- list(
   saplings = stage_data[layer == "saplings"],
   trees = stage_data[layer == "trees"],
@@ -653,6 +697,14 @@ report_manifest <- data.table(
   ),
   generated_at_utc = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
   n_models = length(models),
+  git_commit = git_commit,
+  r_version = R.version.string,
+  climate_variable = analysis_window$climate_variable,
+  climate_backend = analysis_window$climate_backend,
+  climate_source_id = analysis_window$climate_source_id,
+  climate_start_year = analysis_window$climate_start_year,
+  climate_end_year = analysis_window$climate_end_year,
+  last_eligible_history_month = analysis_window$last_eligible_history_month,
   n_model_tables = nrow(table_manifest),
   n_raw_figures = figure_manifest[section == "raw_relationship", .N],
   n_marginal_effect_figures = figure_manifest[section == "marginal_effect", .N],
@@ -688,6 +740,7 @@ writeLines(c(
   "- `model_fit.csv`: sample sizes and R-squared values",
   "- `sample_flow.csv`: complete-case counts",
   "- `tables/`: sjPlot model tables",
+  "- `input_manifest.csv`: SHA-256 identities for model inputs, window, and renv lock",
   "- `figures/`: raw relationships and ggeffects marginal predictions",
   "- `robustness/robustness_results.html`: retained model checks"
 ), file.path(run_dir, "README.md"))

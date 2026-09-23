@@ -11,6 +11,10 @@ suppressPackageStartupMessages({
   library(sandwich)
 })
 
+source(file.path(
+  "09_analysis", "scripts", "utils", "model_samples.R"
+))
+
 run_id <- Sys.getenv(
   "ANALYSIS_RUN_ID",
   unset = "20260905_cumulative_mortality_site_cwd_no_seedlings_v01"
@@ -155,12 +159,10 @@ common_history_summary <- list()
 for (response in responses) {
   outcome <- paste0("delta_", response)
   complete_stage <- stage_data[
-    cumulative_site_CWD_complete %in% TRUE &
+    layer %in% stage_groups & cumulative_site_CWD_complete %in% TRUE &
       complete.cases(stage_data[, c(outcome, baseline_predictors), with = FALSE])
   ]
-  common_ids <- complete_stage[, .(n_stages = uniqueN(layer)), by = history_id][
-    n_stages == length(stage_groups), history_id
-  ]
+  common_ids <- complete_history_ids_for_layers(complete_stage, stage_groups)
   common_history_ids[[response]] <- common_ids
   common_history_summary[[response]] <- data.table(
     response,
