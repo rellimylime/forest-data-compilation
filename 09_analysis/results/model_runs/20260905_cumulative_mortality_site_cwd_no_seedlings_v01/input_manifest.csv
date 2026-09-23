@@ -1,0 +1,10 @@
+path,size_bytes,modified_at_utc,sha256,rows
+09_analysis/data/processed/lifestage_model_data.parquet,8553566,2026-09-22T00:21:57Z,42bfc9666a384bf54f7fe6f32e3682769eae466217bd9d846ac75db6ec2984cb,197210
+09_analysis/data/processed/pooled_model_data.parquet,9979513,2026-09-22T00:25:00Z,49782d1c9a71e90699e2e2895303e757bf74ea5b49fd0018af0b13e389bc4faf,76791
+09_analysis/data/intermediate/model_site_locations.csv,2956422,2026-09-22T00:20:40Z,f83df541dcab2436f8d094a35188f38492d8b61a7d9e0173bf46456a28c6353a,
+09_analysis/data/cache/terraclimate_site_cwd/site_pixel_map.parquet,1230881,2026-09-15T13:42:38Z,e505a36dcb3320a01d47daf63b02ad6c18ce3b4c39e3e704ba865634c5365d48,
+09_analysis/data/cache/terraclimate_site_cwd/site_climate.parquet,176635980,2026-09-15T13:47:00Z,c15e02ce840a83ec4ad55560ae3acb4909e8086d3e9c40dad91522a071b83f10,
+09_analysis/data/cache/terraclimate_site_cwd/extraction_manifest.csv,475,2026-09-15T13:47:03Z,237b463318d2038378160a1caf0ce686441fa3791bae58a56b4e55c4056fab76,1
+09_analysis/qa/outputs/05_site_cwd_extraction/site_cwd_cache_contract.csv,865,2026-09-22T00:21:05Z,bc2c37a4b102aa946ebbb47e3f9ca35eefd14bb0f2203bd75b17fe0fc6840a1b,1
+09_analysis/config/analysis_window.csv,251,2026-09-21T23:16:23Z,cc7f92db7e96465937a33715c5b5274f8a5c1e4e275988635cac03706691d776,1
+renv.lock,400661,2026-09-03T15:51:55Z,51c059fa8909759145ea41cf5829344f5541502eb7fd2bfe50cb188892d43833,
