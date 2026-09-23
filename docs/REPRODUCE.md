@@ -163,11 +163,10 @@ Rscript 05_fia/scripts/site_climate/01_build_site_list.R
 Then run the tracked analysis orchestrator from the repository root:
 
 ```bash
-Rscript 09_analysis/scripts/run_analysis_pipeline.R \
-  --run-id=20260905_cumulative_mortality_site_cwd_no_seedlings_v01
+Rscript 09_analysis/scripts/run_analysis_pipeline.R
 ```
 
-The runner executes the official PREV histories, stable-condition CWM products, interval and cumulative mortality, TerraClimate site CWD extraction, pooled community response, preliminary models, robustness checks, and final QA provenance validation. Every compact QA result is registered in `09_analysis/qa/qa_products.csv` and written beneath a folder named for its producer. See [the analysis README](../09_analysis/README.md) for restart and cache-reuse options.
+The runner executes the official PREV histories, stable-condition CWM products, interval and cumulative mortality, the declared University of Idaho NCSS TerraClimate `def` extraction for 1997-2025 and its cache preflight, pooled community response, preliminary models, robustness checks, and final QA provenance validation. It updates the one authoritative model directory; prior versions remain available through Git. Every compact QA result is registered in `09_analysis/qa/qa_products.csv` and written beneath a folder named for its producer. See [the analysis README](../09_analysis/README.md) for restart and cache-reuse options.
 
 Before transferring to a new server, run the read-only repository audit:
 

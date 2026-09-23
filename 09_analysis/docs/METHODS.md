@@ -29,6 +29,8 @@ Sampling-element condition proportions are used with TPA expansion: microplot fo
 
 Site CWD is TerraClimate `def`, in millimetres per month. Monthly values whose month timestamp falls within the actual first-to-last FIA measurement period are summed. This is cumulative climatic exposure, not the community CWM-CWD response.
 
+The tracked source is the official University of Idaho TerraClimate THREDDS NCSS endpoint. The tracked analysis window is 1997-2025, which covers every eligible history from its first included month through December 2025. Histories ending after December 2025 are labeled `outside_analysis_window` and excluded from models. Species BIEN ranges and niche values are static covariates rather than annual observations, so their availability does not set this temporal cutoff. The preflight rejects a cache with a different location hash, backend, source, variable, year window, missing years, partial represented sites, or duplicate keys. Persisted floating-point sums and weighted means use canonical ordering and compensated addition in R, or ordered single-thread aggregates in DuckDB, so identical inputs produce identical numeric products across machines.
+
 ## Preliminary models
 
 For each of three responses and three vegetation groups, the current model is:

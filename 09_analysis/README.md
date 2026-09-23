@@ -11,16 +11,16 @@ The active scripts are numbered in execution order:
 5. `04_build_cumulative_mortality.R` - cumulative lineage risk sets and deaths
 6. `05_prepare_site_cwd_inputs.sql` - dates and FIA site locations
 7. TerraClimate extraction - monthly `def` for the selected sites
-8. `06_add_cumulative_site_cwd.sql` - cumulative site CWD and model input
-9. `07_build_pooled_community_cwm.sql` - combined sapling-and-adult response
-10. `08_fit_preliminary_models_and_report.R` - all nine models and one report
-11. `09_run_preliminary_robustness_checks.R` - focused robustness checks
+8. `05_validate_site_cwd_cache.R` - enforce the declared cache window
+9. `06_add_cumulative_site_cwd.sql` - cumulative site CWD and model input
+10. `07_build_pooled_community_cwm.sql` - combined sapling-and-adult response
+11. `08_fit_preliminary_models_and_report.R` - all nine models and one report
+12. `09_run_preliminary_robustness_checks.R` - focused robustness checks
 
 The complete analysis can be rebuilt with one tracked runner:
 
 ```powershell
-Rscript 09_analysis/scripts/run_analysis_pipeline.R `
-  --run-id=20260905_cumulative_mortality_site_cwd_no_seedlings_v01
+Rscript 09_analysis/scripts/run_analysis_pipeline.R
 ```
 
 Use `--dry-run` to print the execution order, `--from=<stage>` and `--through=<stage>` to resume a partial build, `--skip-extraction` to reuse an already complete TerraClimate cache, and `--skip-models` to build only the model inputs.
@@ -30,7 +30,7 @@ The required upstream products are:
 - FIA raw state tables plus the summary products from `05_fia` scripts 01-05;
 - `plot_visit_context.parquet` from `05_fia/scripts/foundations/01_build_plot_visit_context.R`;
 - the US study-area species niches from `06_species_niches` scripts 01-05; and
-- a configured TerraClimate extraction backend.
+- the official University of Idaho TerraClimate NCSS endpoint declared in `config/analysis_window.csv`.
 
 The repository-wide order from raw data through this analysis is documented in `docs/REPRODUCE.md`.
 
@@ -41,11 +41,12 @@ Rscript site_climate/scripts/extract_terraclimate_points.R `
   --input=09_analysis/data/intermediate/model_site_locations.csv `
   --output-dir=09_analysis/data/cache/terraclimate_site_cwd `
   --qa-dir=09_analysis/qa/outputs/05_site_cwd_extraction `
-  --variables=def --start-year=1958 --end-year=2024
+  --variables=def --start-year=1997 --end-year=2025 `
+  --backend=local-ncss
 ```
 
-The R scripts use the repository `renv` library. The runner executes the SQL files through the tracked R DuckDB dependency and must be started from within the repository checkout.
+Persisted floating-point summaries use canonical reduction order so row order, operating system, and DuckDB thread scheduling do not change derived values. The R scripts use the repository `renv` library. The runner executes the SQL files through the tracked R DuckDB dependency and must be started from within the repository checkout.
 
-See [methods](docs/METHODS.md), [data products](docs/PRODUCTS.md), and [future work](docs/FUTURE_WORK.md). Model runs are indexed in [results/model_runs/README.md](results/model_runs/README.md).
+See [methods](docs/METHODS.md), [data products](docs/PRODUCTS.md), and [future work](docs/FUTURE_WORK.md). The authoritative model output and its Git-backed version history are documented in [results/model_runs/README.md](results/model_runs/README.md).
 
 `qa/outputs/` contains small validation summaries grouped by the numbered script that creates them. `qa/qa_products.csv` is the machine-readable map from each QA result to its tracked producer. Separate live-plus-dead severity remains undefined and is not implemented here.

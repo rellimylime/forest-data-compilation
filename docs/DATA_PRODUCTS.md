@@ -193,7 +193,7 @@ Until a producer exists, treat these as inputs to preserve, not as products the 
 | Cumulative history mortality | `09_analysis/data/processed/history_cumulative_mortality.parquet` | Local/scripted | `09_analysis/scripts/04_build_cumulative_mortality.R` | Complete first-to-last history; baseline plus intermediate lineage entries; not annualized |
 | Life-stage model input | `09_analysis/data/processed/lifestage_model_data.parquet` | Local/scripted | `09_analysis/scripts/06_add_cumulative_site_cwd.sql` | Compact input with cumulative TerraClimate site CWD |
 | Combined-community model input | `09_analysis/data/processed/pooled_model_data.parquet` | Local/scripted | `09_analysis/scripts/07_build_pooled_community_cwm.sql` | Live saplings and adults combined with individual-abundance expansions; seedlings excluded |
-| Preliminary model run | `09_analysis/results/model_runs/20260905_cumulative_mortality_site_cwd_no_seedlings_v01/` | Local/scripted | `09_analysis/scripts/08_fit_preliminary_models_and_report.R` | Nine models, sjPlot tables, raw plots, ggeffects plots, and one HTML report |
+| Authoritative preliminary model run | `09_analysis/results/model_runs/20260905_cumulative_mortality_site_cwd_no_seedlings_v01/` | Local/scripted | `09_analysis/scripts/08_fit_preliminary_models_and_report.R` | The only retained run directory; nine models, input hashes, tables, plots, and one HTML report; prior versions remain in Git |
 
 See the current [methods](../09_analysis/docs/METHODS.md) and complete [product guide](../09_analysis/docs/PRODUCTS.md).
 

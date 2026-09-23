@@ -24,4 +24,4 @@ QA summaries live in `qa/outputs/<producer>/`, where `<producer>` begins with th
 
 ## Model runs
 
-Each run has one directory under `results/model_runs/`. A run directory contains its manifest, formulas, coefficients, fit statistics, sample flow, sjPlot model tables, figures, and self-contained HTML report. The run index explains the model count and variables without requiring the directory name to be decoded.
+The repository retains one authoritative directory under `results/model_runs/`. It contains the manifest, input SHA-256 identities, formulas, coefficients, fit statistics, sample flow, sjPlot model tables, figures, and self-contained HTML report. Earlier states are recovered from the Git commits listed in the run index rather than copied into additional result directories.
