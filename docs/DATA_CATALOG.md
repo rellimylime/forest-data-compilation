@@ -1,6 +1,6 @@
 # Searchable Data Catalog
 
-**Snapshot generated:** 2026-09-23 17:25:25 UTC
+**Snapshot generated:** 2026-09-23 22:14:00 UTC
 **Registry version:** 0.2.0
 **Purpose:** find a product or variable without access to the data directories.
 
@@ -35,8 +35,8 @@ Use your browser's Find command to search this page by variable, product, subjec
 | FIA reference tables | FIA forest type reference | one FIA forest type code | `VALUE` | `05_fia/lookups/ref_forest_type.parquet` | `05_fia/scripts/core/02_inspect_fia.R` |
 | Site climate | Monthly climate at survey point locations | one site, year, month, and climate variable | `site_id, year, month, variable` | `site_climate/data/recheck/site_climate.parquet` | `site_climate/scripts/extract_terraclimate_points.R` |
 | Site climate | Survey point to climate grid cell map | one site and the climate grid cell used for it | `site_id` | `site_climate/data/recheck/site_pixel_map.parquet` | `site_climate/scripts/extract_terraclimate_points.R` |
-| Site climate | Survey point location list (climate extraction input) | one point submitted to the climate extraction | `site_id` | `site_climate/input/all_site_locations.csv` | `supplied input — not written by a script in this repository` |
-| Site climate | FIA stable plot location list | one stable FIA plot location | `site_id` | `05_fia/data/processed/site_climate/all_site_locations.csv` | `05_fia/scripts/site_climate/01_build_site_list.R` |
+| Site climate | Survey point location list (climate extraction input) | one point submitted to the climate extraction | `site_id` | `site_climate/input/pi_survey_point_locations.csv` | `supplied input — not written by a script in this repository` |
+| Site climate | FIA stable plot location list | one stable FIA plot location | `site_id` | `05_fia/data/processed/site_climate/fia_stable_plot_locations.csv` | `05_fia/scripts/site_climate/01_build_site_list.R` |
 | Species climate niches | Species universe | one source species code seen in the project's community products | `species_key` | `06_species_niches/data/processed/species_universe.parquet` | `06_species_niches/scripts/01_build_species_universe.R` |
 | Species climate niches | Species taxon crosswalk | one source species code with its resolved biological taxon | `species_key` | `06_species_niches/data/processed/species_niche_taxon_crosswalk.parquet` | `06_species_niches/qa/scripts/09_build_species_taxon_crosswalk.R` |
 | Species climate niches | Species range lookup audit | one species needing a niche, with the result of the range lookup | `species_key` | `06_species_niches/data/processed/bien_range_availability.parquet` | `06_species_niches/scripts/02_check_bien_ranges.R` |
@@ -647,14 +647,14 @@ A variable appears once for every product that contains it. This is intentional:
 | `variable` | declared key/filter | Monthly climate at survey point locations | one site, year, month, and climate variable | `site_id, year, month, variable` | `site_climate/data/recheck/site_climate.parquet` |
 | `water_year` | declared key/filter | Monthly climate at survey point locations | one site, year, month, and climate variable | `site_id, year, month, variable` | `site_climate/data/recheck/site_climate.parquet` |
 | `site_id` | declared key/filter | Survey point to climate grid cell map | one site and the climate grid cell used for it | `site_id` | `site_climate/data/recheck/site_pixel_map.parquet` |
-| `site_id` | numeric | Survey point location list (climate extraction input) | one point submitted to the climate extraction | `site_id` | `site_climate/input/all_site_locations.csv` |
-| `latitude` | numeric | Survey point location list (climate extraction input) | one point submitted to the climate extraction | `site_id` | `site_climate/input/all_site_locations.csv` |
-| `longitude` | numeric | Survey point location list (climate extraction input) | one point submitted to the climate extraction | `site_id` | `site_climate/input/all_site_locations.csv` |
-| `source` | character | Survey point location list (climate extraction input) | one point submitted to the climate extraction | `site_id` | `site_climate/input/all_site_locations.csv` |
-| `site_id` | character | FIA stable plot location list | one stable FIA plot location | `site_id` | `05_fia/data/processed/site_climate/all_site_locations.csv` |
-| `latitude` | numeric | FIA stable plot location list | one stable FIA plot location | `site_id` | `05_fia/data/processed/site_climate/all_site_locations.csv` |
-| `longitude` | numeric | FIA stable plot location list | one stable FIA plot location | `site_id` | `05_fia/data/processed/site_climate/all_site_locations.csv` |
-| `source` | character | FIA stable plot location list | one stable FIA plot location | `site_id` | `05_fia/data/processed/site_climate/all_site_locations.csv` |
+| `site_id` | numeric | Survey point location list (climate extraction input) | one point submitted to the climate extraction | `site_id` | `site_climate/input/pi_survey_point_locations.csv` |
+| `latitude` | numeric | Survey point location list (climate extraction input) | one point submitted to the climate extraction | `site_id` | `site_climate/input/pi_survey_point_locations.csv` |
+| `longitude` | numeric | Survey point location list (climate extraction input) | one point submitted to the climate extraction | `site_id` | `site_climate/input/pi_survey_point_locations.csv` |
+| `source` | character | Survey point location list (climate extraction input) | one point submitted to the climate extraction | `site_id` | `site_climate/input/pi_survey_point_locations.csv` |
+| `site_id` | character | FIA stable plot location list | one stable FIA plot location | `site_id` | `05_fia/data/processed/site_climate/fia_stable_plot_locations.csv` |
+| `latitude` | numeric | FIA stable plot location list | one stable FIA plot location | `site_id` | `05_fia/data/processed/site_climate/fia_stable_plot_locations.csv` |
+| `longitude` | numeric | FIA stable plot location list | one stable FIA plot location | `site_id` | `05_fia/data/processed/site_climate/fia_stable_plot_locations.csv` |
+| `source` | character | FIA stable plot location list | one stable FIA plot location | `site_id` | `05_fia/data/processed/site_climate/fia_stable_plot_locations.csv` |
 | `species_key` | string | Species universe | one source species code seen in the project's community products | `species_key` | `06_species_niches/data/processed/species_universe.parquet` |
 | `source_code_system` | string | Species universe | one source species code seen in the project's community products | `species_key` | `06_species_niches/data/processed/species_universe.parquet` |
 | `source_species_code` | string | Species universe | one source species code seen in the project's community products | `species_key` | `06_species_niches/data/processed/species_universe.parquet` |
