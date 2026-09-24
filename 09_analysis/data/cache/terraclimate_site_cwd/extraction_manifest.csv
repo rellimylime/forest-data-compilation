@@ -1,0 +1,2 @@
+"input_file","input_sha256","backend","variables","start_year","end_year","annual_checkpoints","checkpoint_directory","input_sites","input_pixels","output_sites","missing_sites","output_rows","expected_months_per_site_variable","generated_at_utc"
+"09_analysis/data/intermediate/model_site_locations.csv","f83df541dcab2436f8d094a35188f38492d8b61a7d9e0173bf46456a28c6353a","local-ncss","def",1997,2025,29,"_local_annual",77266,68385,77262,4,26887176,348,"2026-09-15T13:47:03Z"
