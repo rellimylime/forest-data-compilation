@@ -23,7 +23,7 @@ This page summarizes the main data products in the repository: what each product
 | `NN_name/data/processed/` | Workstream-specific intermediates such as pixel maps, yearly extracts, and partitioned parquets |
 | `processed/` | Cross-workstream derived products built from upstream workstream outputs |
 | `output/` | Demo figures and CSV summaries |
-| `logs/` | Demo and exploratory run logs |
+| `logs/` | Saved console output from pipeline, demo, and setup runs (gitignored) |
 
 ## IDS Outputs
 
@@ -180,7 +180,7 @@ Until a producer exists, treat these as inputs to preserve, not as products the 
 | FIA site-climate demo | `output/demo_03_site_climate/` | Local/scripted | [scripts/demos/demo_03_site_climate.R](../scripts/demos/demo_03_site_climate.R) | Figures and CSV summaries |
 | Cross-dataset comparison demo | `output/demo_mpb_comparison/` | Local/scripted | [scripts/demos/demo_04_compare_climate_datasets.R](../scripts/demos/demo_04_compare_climate_datasets.R) | Comparison figures |
 | Historical server demo outputs | `output/demo_mpb_{terraclimate,prism,worldclim}/` | Server mirror | Shared server tree | Older demo naming present in the provided server snapshot |
-| Logs | `logs/*.log` | Git-tracked | Saved run logs | Includes `demo_prism.log`, `demo_terraclimate.log`, and `demo_worldclim.log` |
+| Run logs | `logs/<workstream>/*.log` | Local/scripted | Console output redirected from script runs | Gitignored by `logs/**` and `*.log`; kept locally as run records, grouped as `05_fia/`, `06_species_niches/`, `09_analysis/`, and `setup/`. Save new runs with `Rscript script.R > logs/<workstream>/<run>.log 2>&1` |
 | Dashboard app | `docs/dashboard/` | Git-tracked | Streamlit code | Review UI for data products and architecture |
 
 ## Condition-Level Analysis Products
