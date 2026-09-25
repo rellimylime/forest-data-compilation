@@ -58,7 +58,7 @@ probe_product <- function(product) {
       observed <- list(
         bytes = unname(file.info(path)$size),
         n_columns = ncol(frame),
-        columns = Map(function(name, value) list(name, class(value)[1]), names(frame), frame)
+        columns = unname(Map(function(name, value) list(name, class(value)[1]), names(frame), frame))
       )
       availability <- "available"
       reason <- NULL
@@ -103,7 +103,7 @@ probe_product <- function(product) {
         n_rows = as.numeric(count),
         n_columns = nrow(info),
         bytes = unname(file.info(path)$size),
-        columns = Map(function(name, type) list(name, type), info$name, info$type)
+        columns = unname(Map(function(name, type) list(name, type), info$name, info$type))
       )
       availability <- "available"
       reason <- NULL
@@ -126,14 +126,23 @@ message("Reading ", length(registry$products), " registered products...")
 products <- lapply(registry$products, probe_product)
 snapshot_time <- format(Sys.time(), tz = "UTC", usetz = TRUE)
 
+# auto_unbox writes one-element vectors as scalars. Protect the registry's
+# list fields so a single key, facet, or caveat is still a JSON array.
+as_json_arrays <- function(entry, fields) {
+  for (field in intersect(fields, names(entry))) {
+    entry[[field]] <- I(as.character(unlist(entry[[field]])))
+  }
+  entry
+}
+
 snapshot <- list(
   generated_at = snapshot_time,
   environment_label = "committed repository snapshot",
   registry_version = registry$registry_version,
   snapshot_kind = "portable_catalog",
   families = registry$families,
-  grains = registry$grains,
-  products = products
+  grains = lapply(registry$grains, as_json_arrays, fields = "keys"),
+  products = lapply(products, as_json_arrays, fields = c("keys", "facets", "caveats"))
 )
 
 dir.create(dirname(json_out), recursive = TRUE, showWarnings = FALSE)

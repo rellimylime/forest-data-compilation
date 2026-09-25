@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-23 22:14:00 UTC",
+  "generated_at": "2026-09-25 00:00:19 UTC",
   "environment_label": "committed repository snapshot",
   "registry_version": "0.2.0",
   "snapshot_kind": "portable_catalog",
@@ -122,7 +122,7 @@
     },
     "fia_stable_plot": {
       "one_row_is": "one FIA plot location followed through time",
-      "keys": "stable_plot_id"
+      "keys": ["stable_plot_id"]
     },
     "fia_stable_plot_life_stage": {
       "one_row_is": "one stable FIA plot and community life stage",
@@ -136,11 +136,11 @@
     },
     "fia_visit_pairing_audit": {
       "one_row_is": "one current FIA plot record with its audited predecessor relationship",
-      "keys": "current_PLT_CN"
+      "keys": ["current_PLT_CN"]
     },
     "fia_survey_interval": {
       "one_row_is": "one resolved previous/current FIA survey relationship",
-      "keys": "interval_id",
+      "keys": ["interval_id"],
       "parent_grain_id": "fia_stable_plot"
     },
     "fia_condition_damage_agent": {
@@ -160,7 +160,7 @@
     },
     "fia_damage_agent_code": {
       "one_row_is": "one official FIA damage-agent code",
-      "keys": "DAMAGE_AGENT_CD"
+      "keys": ["DAMAGE_AGENT_CD"]
     },
     "fia_stable_plot_year_severity": {
       "one_row_is": "one plot, year, and burn-severity class",
@@ -194,7 +194,7 @@
     },
     "analysis_condition_interval": {
       "one_row_is": "one stable FIA condition across one official consecutive-visit interval",
-      "keys": "stable_condition_interval_key",
+      "keys": ["stable_condition_interval_key"],
       "parent_grain_id": "fia_stable_plot"
     },
     "analysis_condition_interval_layer": {
@@ -204,7 +204,7 @@
     },
     "analysis_condition_history": {
       "one_row_is": "one complete first-to-last stable FIA condition history",
-      "keys": "history_id",
+      "keys": ["history_id"],
       "parent_grain_id": "fia_stable_plot"
     },
     "analysis_condition_history_layer": {
@@ -219,7 +219,7 @@
     },
     "species": {
       "one_row_is": "one source species code",
-      "keys": "species_key"
+      "keys": ["species_key"]
     },
     "species_month_variable_metric": {
       "one_row_is": "one species, month, climate variable, and summary statistic",
@@ -228,15 +228,15 @@
     },
     "fia_species_code": {
       "one_row_is": "one FIA species code",
-      "keys": "SPCD"
+      "keys": ["SPCD"]
     },
     "fia_forest_type_code": {
       "one_row_is": "one FIA forest type code",
-      "keys": "VALUE"
+      "keys": ["VALUE"]
     },
     "climate_site": {
       "one_row_is": "one point location used for climate extraction",
-      "keys": "site_id"
+      "keys": ["site_id"]
     },
     "climate_site_month_variable": {
       "one_row_is": "one site, year, month, and climate variable",
@@ -249,11 +249,11 @@
     },
     "ids_observation": {
       "one_row_is": "one aerial survey observation in one survey year",
-      "keys": "OBSERVATION_ID"
+      "keys": ["OBSERVATION_ID"]
     },
     "ids_surveyed_area": {
       "one_row_is": "one area flown in one survey year",
-      "keys": "SURVEY_FEATURE_ID"
+      "keys": ["SURVEY_FEATURE_ID"]
     },
     "ids_damage_area_variable_month": {
       "one_row_is": "one damage polygon, climate variable, and calendar month",
@@ -262,7 +262,7 @@
     },
     "climate_pixel": {
       "one_row_is": "one climate grid cell",
-      "keys": "pixel_id"
+      "keys": ["pixel_id"]
     }
   },
   "products": [
@@ -538,7 +538,7 @@
       "access_mode": "catalog_only",
       "review_status": "domain_review_required",
       "facets": ["state", "INVYR", "SPCD"],
-      "caveats": "Older field manuals recorded or calculated \"six or more seedlings\" differently. Counts are not automatically comparable across decades.",
+      "caveats": ["Older field manuals recorded or calculated \"six or more seedlings\" differently. Counts are not automatically comparable across decades."],
       "availability": "available",
       "observed": {
         "n_columns": 23,
@@ -721,7 +721,7 @@
       "access_mode": "catalog_only",
       "review_status": "constrained",
       "facets": ["state", "INVYR", "SPCD", "DAMAGE_AGENT_CD"],
-      "caveats": "Damage on a living tree. This is a different observation from condition disturbance and from cause of death; do not merge the three.",
+      "caveats": ["Damage on a living tree. This is a different observation from condition disturbance and from cause of death; do not merge the three."],
       "availability": "available",
       "observed": {
         "n_columns": 9,
@@ -786,7 +786,7 @@
       "access_mode": "catalog_only",
       "review_status": "certified",
       "facets": ["state", "INVYR"],
-      "caveats": "Only positive flags are stored. A plot visit missing from this table had no such code in the processed tree records.",
+      "caveats": ["Only positive flags are stored. A plot visit missing from this table had no such code in the processed tree records."],
       "availability": "available",
       "observed": {
         "n_columns": 4,
@@ -1327,7 +1327,7 @@
       "access_mode": "filtered_extract",
       "review_status": "constrained",
       "facets": ["state", "STATECD", "INVYR", "COND_STATUS_CD", "FORTYPCD"],
-      "caveats": "Raw codes without labels. For joins use plot_condition_metadata instead.",
+      "caveats": ["Raw codes without labels. For joins use plot_condition_metadata instead."],
       "availability": "available",
       "observed": {
         "n_columns": 28,
@@ -1965,7 +1965,7 @@
       "access_mode": "filtered_extract",
       "review_status": "constrained",
       "facets": ["state", "INVYR", "SPCD", "DAMAGE_AGENT_CD", "agent_category"],
-      "caveats": "Damage seen on a living tree. Different from condition disturbance and from cause of death. agent_label is blank for codes with no label.",
+      "caveats": ["Damage seen on a living tree. Different from condition disturbance and from cause of death. agent_label is blank for codes with no label."],
       "availability": "available",
       "observed": {
         "n_columns": 11,
@@ -2285,7 +2285,7 @@
       "access_mode": "catalog_only",
       "review_status": "domain_review_required",
       "facets": ["state", "INVYR", "SPCD", "AGENTCD", "component_type"],
-      "caveats": "Carries FIA growth/removal/mortality time-period meaning that this repository has not yet worked through. Not safe as a plain per-visit count.",
+      "caveats": ["Carries FIA growth/removal/mortality time-period meaning that this repository has not yet worked through. Not safe as a plain per-visit count."],
       "availability": "available",
       "observed": {
         "n_columns": 8,
@@ -2992,7 +2992,7 @@
       "path": "05_fia/lookups/ref_species.parquet",
       "format": "parquet_file",
       "one_row_is": "one FIA species code",
-      "keys": "SPCD",
+      "keys": ["SPCD"],
       "grain_id": "fia_species_code",
       "producer": "05_fia/scripts/core/02_inspect_fia.R",
       "intended_access_mode": "prepared_download",
@@ -3059,14 +3059,14 @@
       "path": "05_fia/lookups/ref_forest_type.parquet",
       "format": "parquet_file",
       "one_row_is": "one FIA forest type code",
-      "keys": "VALUE",
+      "keys": ["VALUE"],
       "grain_id": "fia_forest_type_code",
       "producer": "05_fia/scripts/core/02_inspect_fia.R",
       "intended_access_mode": "prepared_download",
       "access_mode": "catalog_only",
       "review_status": "constrained",
-      "facets": "TYPGRPCD",
-      "caveats": "MANUAL_START and MANUAL_END mean a code was valid only for certain field manual versions. Labels are not constant across all years.",
+      "facets": ["TYPGRPCD"],
+      "caveats": ["MANUAL_START and MANUAL_END mean a code was valid only for certain field manual versions. Labels are not constant across all years."],
       "availability": "available",
       "observed": {
         "n_columns": 8,
@@ -3146,13 +3146,13 @@
       "path": "site_climate/data/recheck/site_pixel_map.parquet",
       "format": "parquet_file",
       "one_row_is": "one site and the climate grid cell used for it",
-      "keys": "site_id",
+      "keys": ["site_id"],
       "grain_id": "climate_site",
       "producer": "site_climate/scripts/extract_terraclimate_points.R",
       "access_mode": "prepared_download",
       "review_status": "certified",
       "facets": [],
-      "caveats": "Several sites can share one climate grid cell.",
+      "caveats": ["Several sites can share one climate grid cell."],
       "availability": "missing",
       "reason": "path does not exist",
       "observed": [],
@@ -3170,36 +3170,36 @@
       "path": "site_climate/input/pi_survey_point_locations.csv",
       "format": "csv",
       "one_row_is": "one point submitted to the climate extraction",
-      "keys": "site_id",
+      "keys": ["site_id"],
       "grain_id": "climate_site",
       "producer": "supplied input — not written by a script in this repository",
       "access_mode": "catalog_only",
       "review_status": "constrained",
-      "facets": "source",
+      "facets": ["source"],
       "caveats": ["Mixed sources. `source` is ITRDB for 4,886 rows and FIA for 2,070. The two id schemes are unrelated; always filter on `source` first.", "FIA rows carry a PLT_CN. ITRDB rows carry a tree-ring site code such as `CANA169`. Neither is this repository's stable_plot_id."],
       "notes": "This is the file the built climate product actually came from: all 6,956 site_pixel_map ids match it exactly. Confirmed by the project owner as the intended input to the point extraction.",
       "availability": "available",
       "observed": {
         "bytes": 213436,
         "n_columns": 4,
-        "columns": {
-          "site_id": [
+        "columns": [
+          [
             "site_id",
             "numeric"
           ],
-          "latitude": [
+          [
             "latitude",
             "numeric"
           ],
-          "longitude": [
+          [
             "longitude",
             "numeric"
           ],
-          "source": [
+          [
             "source",
             "character"
           ]
-        }
+        ]
       },
       "key_check": {
         "status": "not_checked",
@@ -3215,36 +3215,36 @@
       "path": "05_fia/data/processed/site_climate/fia_stable_plot_locations.csv",
       "format": "csv",
       "one_row_is": "one stable FIA plot location",
-      "keys": "site_id",
+      "keys": ["site_id"],
       "grain_id": "climate_site",
       "producer": "05_fia/scripts/site_climate/01_build_site_list.R",
       "access_mode": "catalog_only",
       "review_status": "constrained",
       "facets": [],
-      "caveats": "One representative public coordinate per plot. Public FIA coordinates are fuzzed and some private-land plots are swapped within a county.",
+      "caveats": ["One representative public coordinate per plot. Public FIA coordinates are fuzzed and some private-land plots are swapped within a county."],
       "notes": "Not a duplicate of site_climate/input/pi_survey_point_locations.csv — the two share no ids at all. This one has 408,040 rows keyed by stable_plot_id and is the input to the FIA-wide site-climate extraction, whose output is not built in this data root. The other has 6,956 rows and produced the climate product that does exist. Both are registered because they are different things.",
       "availability": "available",
       "observed": {
         "bytes": 17253280,
         "n_columns": 4,
-        "columns": {
-          "site_id": [
+        "columns": [
+          [
             "site_id",
             "character"
           ],
-          "latitude": [
+          [
             "latitude",
             "numeric"
           ],
-          "longitude": [
+          [
             "longitude",
             "numeric"
           ],
-          "source": [
+          [
             "source",
             "character"
           ]
-        }
+        ]
       },
       "key_check": {
         "status": "not_checked",
@@ -3260,7 +3260,7 @@
       "path": "06_species_niches/data/processed/species_universe.parquet",
       "format": "parquet_file",
       "one_row_is": "one source species code seen in the project's community products",
-      "keys": "species_key",
+      "keys": ["species_key"],
       "grain_id": "species",
       "producer": "06_species_niches/scripts/01_build_species_universe.R",
       "access_mode": "prepared_download",
@@ -3393,7 +3393,7 @@
       "path": "06_species_niches/data/processed/species_niche_taxon_crosswalk.parquet",
       "format": "parquet_file",
       "one_row_is": "one source species code with its resolved biological taxon",
-      "keys": "species_key",
+      "keys": ["species_key"],
       "grain_id": "species",
       "derived_from": "species_universe",
       "producer": "06_species_niches/qa/scripts/09_build_species_taxon_crosswalk.R",
@@ -3418,14 +3418,14 @@
       "path": "06_species_niches/data/processed/bien_range_availability.parquet",
       "format": "parquet_file",
       "one_row_is": "one species needing a niche, with the result of the range lookup",
-      "keys": "species_key",
+      "keys": ["species_key"],
       "grain_id": "species",
       "derived_from": "species_universe",
       "producer": "06_species_niches/scripts/02_check_bien_ranges.R",
       "access_mode": "prepared_download",
       "review_status": "certified",
       "facets": ["bien_range_available", "range_lookup_status", "needs_range_review"],
-      "caveats": "Records what name was sent to BIEN and whether a map came back. It says nothing about whether the map is ecologically right.",
+      "caveats": ["Records what name was sent to BIEN and whether a map came back. It says nothing about whether the map is ecologically right."],
       "availability": "available",
       "observed": {
         "n_columns": 45,
@@ -3629,7 +3629,7 @@
       "format": "gpkg_layer",
       "gpkg_layer": "species_range_polygons",
       "one_row_is": "one range polygon for one source species code",
-      "keys": "species_key",
+      "keys": ["species_key"],
       "grain_id": "species",
       "derived_from": "species_universe",
       "producer": "06_species_niches/scripts/03_download_bien_ranges.R",
@@ -3643,96 +3643,96 @@
         "n_rows": 4219,
         "n_columns": 22,
         "bytes": 291741696,
-        "columns": {
-          "fid": [
+        "columns": [
+          [
             "fid",
             "INTEGER"
           ],
-          "geom": [
+          [
             "geom",
             "MULTIPOLYGON"
           ],
-          "species": [
+          [
             "species",
             "TEXT"
           ],
-          "gid": [
+          [
             "gid",
             "MEDIUMINT"
           ],
-          "species_key": [
+          [
             "species_key",
             "TEXT"
           ],
-          "bien_query_name": [
+          [
             "bien_query_name",
             "TEXT"
           ],
-          "download_status": [
+          [
             "download_status",
             "TEXT"
           ],
-          "download_error": [
+          [
             "download_error",
             "TEXT"
           ],
-          "niche_taxon_name": [
+          [
             "niche_taxon_name",
             "TEXT"
           ],
-          "niche_taxon_key": [
+          [
             "niche_taxon_key",
             "TEXT"
           ],
-          "geometry_is_empty": [
+          [
             "geometry_is_empty",
             "BOOLEAN"
           ],
-          "geometry_is_valid": [
+          [
             "geometry_is_valid",
             "BOOLEAN"
           ],
-          "range_area_geodesic_km2_qa": [
+          [
             "range_area_geodesic_km2_qa",
             "REAL"
           ],
-          "range_area_global_equal_km2_qa": [
+          [
             "range_area_global_equal_km2_qa",
             "REAL"
           ],
-          "range_area_km2_qa": [
+          [
             "range_area_km2_qa",
             "REAL"
           ],
-          "range_xmin": [
+          [
             "range_xmin",
             "REAL"
           ],
-          "range_ymin": [
+          [
             "range_ymin",
             "REAL"
           ],
-          "range_xmax": [
+          [
             "range_xmax",
             "REAL"
           ],
-          "range_ymax": [
+          [
             "range_ymax",
             "REAL"
           ],
-          "range_longitude_span": [
+          [
             "range_longitude_span",
             "REAL"
           ],
-          "range_latitude_span": [
+          [
             "range_latitude_span",
             "REAL"
           ],
-          "range_extent_review": [
+          [
             "range_extent_review",
             "BOOLEAN"
           ]
-        }
+        ]
       },
       "key_check": {
         "status": "not_checked",
@@ -3755,7 +3755,7 @@
       "access_mode": "filtered_extract",
       "review_status": "constrained",
       "facets": ["month", "variable", "metric", "climate_period"],
-      "caveats": "Long format: one species has many rows. Filter on variable and metric before reading anything as \"the\" value for a species.",
+      "caveats": ["Long format: one species has many rows. Filter on variable and metric before reading anything as \"the\" value for a species."],
       "availability": "available",
       "observed": {
         "n_columns": 17,
@@ -3853,7 +3853,7 @@
       "access_mode": "filtered_extract",
       "review_status": "constrained",
       "facets": ["month", "variable", "metric", "climate_period", "range_scope"],
-      "caveats": "Ranges are clipped to the US study area first, so a species whose range is mostly outside the US is summarised from a fragment of it.",
+      "caveats": ["Ranges are clipped to the US study area first, so a species whose range is mostly outside the US is summarised from a fragment of it."],
       "availability": "available",
       "observed": {
         "n_columns": 17,
@@ -3944,7 +3944,7 @@
       "path": "06_species_niches/data/processed/species_climate_niches.parquet",
       "format": "parquet_file",
       "one_row_is": "one species",
-      "keys": "species_key",
+      "keys": ["species_key"],
       "grain_id": "species",
       "derived_from": "species_universe",
       "producer": "06_species_niches/scripts/05_build_species_climate_niches.R",
@@ -4079,7 +4079,7 @@
       "path": "06_species_niches/data/processed/species_climate_niches_us_study_area.parquet",
       "format": "parquet_file",
       "one_row_is": "one species",
-      "keys": "species_key",
+      "keys": ["species_key"],
       "grain_id": "species",
       "derived_from": "species_universe",
       "producer": "06_species_niches/scripts/05_build_species_climate_niches.R",
@@ -4220,7 +4220,7 @@
       "access_mode": "prepared_download",
       "review_status": "certified",
       "facets": [],
-      "caveats": "Diagnostics for review, not analysis inputs.",
+      "caveats": ["Diagnostics for review, not analysis inputs."],
       "notes": "Start with species_niche_validation_decision.csv, species_niche_gap_summary.csv, and study_area_climate_gap_summary.csv.",
       "availability": "available",
       "observed": {
@@ -5078,13 +5078,13 @@
       "path": "07_thermophilization/qa/outputs/disturbance_survey_coverage_by_plot.parquet",
       "format": "parquet_file",
       "one_row_is": "one stable plot",
-      "keys": "stable_plot_id",
+      "keys": ["stable_plot_id"],
       "grain_id": "fia_stable_plot",
       "producer": "07_thermophilization/qa/scripts/02_disturbance_survey_coverage.R",
       "access_mode": "prepared_download",
       "review_status": "certified",
       "facets": ["any_disturbance_before_after", "fire_before_after", "insect_before_after"],
-      "caveats": "Answers \"do we have a survey before and after the event\". It does not say the event affected the plot.",
+      "caveats": ["Answers \"do we have a survey before and after the event\". It does not say the event affected the plot."],
       "availability": "missing",
       "reason": "path does not exist",
       "observed": [],
@@ -5108,7 +5108,7 @@
       "access_mode": "prepared_download",
       "review_status": "certified",
       "facets": [],
-      "caveats": "Diagnostics for review, not analysis inputs.",
+      "caveats": ["Diagnostics for review, not analysis inputs."],
       "notes": "thermophilization_validation_checks.csv is the structural check list; the coverage and missing-species files explain niche gaps.",
       "availability": "missing",
       "reason": "no CSV files",
@@ -5154,7 +5154,7 @@
       "format": "gpkg_layer",
       "gpkg_layer": "damage_points",
       "one_row_is": "one mapped damage point in one survey year",
-      "keys": "OBSERVATION_ID",
+      "keys": ["OBSERVATION_ID"],
       "grain_id": "ids_observation",
       "producer": "01_ids/scripts/03_clean_ids.R",
       "access_mode": "catalog_only",
@@ -5179,7 +5179,7 @@
       "format": "gpkg_layer",
       "gpkg_layer": "surveyed_areas",
       "one_row_is": "one area flown in one survey year",
-      "keys": "SURVEY_FEATURE_ID",
+      "keys": ["SURVEY_FEATURE_ID"],
       "grain_id": "ids_surveyed_area",
       "producer": "01_ids/scripts/03_clean_ids.R",
       "access_mode": "catalog_only",
@@ -5290,7 +5290,7 @@
       "path": "processed/ids/damage_area_to_surveyed_area.parquet",
       "format": "parquet_file",
       "one_row_is": "one damage polygon and the surveyed area it falls in",
-      "keys": "OBSERVATION_ID",
+      "keys": ["OBSERVATION_ID"],
       "grain_id": "ids_observation",
       "producer": "01_ids/scripts/04_assign_surveyed_areas.R",
       "access_mode": "catalog_only",
@@ -5315,7 +5315,7 @@
       "path": "processed/ids/damage_area_area_metrics.parquet",
       "format": "parquet_file",
       "one_row_is": "one damage polygon with its computed area measures",
-      "keys": "OBSERVATION_ID",
+      "keys": ["OBSERVATION_ID"],
       "grain_id": "ids_observation",
       "producer": "01_ids/scripts/05_compute_area_metrics.R",
       "access_mode": "catalog_only",
@@ -5341,7 +5341,7 @@
       "format": "gpkg_layer",
       "gpkg_layer": "plot_footprints",
       "one_row_is": "one stable plot, buffered around its public coordinate",
-      "keys": "stable_plot_id",
+      "keys": ["stable_plot_id"],
       "grain_id": "fia_stable_plot",
       "producer": "08_disturbance_linkage/scripts/spatial/01_build_plot_footprints.R",
       "access_mode": "catalog_only",
@@ -5465,13 +5465,13 @@
       "path": "07_thermophilization/data/processed/forest_first_last_change.parquet",
       "format": "parquet_file",
       "one_row_is": "one stable plot",
-      "keys": "stable_plot_id",
+      "keys": ["stable_plot_id"],
       "grain_id": "fia_stable_plot",
       "derived_from": "forest_plot_visit_cwm_trees",
       "producer": "07_thermophilization/scripts/05_build_first_last_change.R",
       "access_mode": "prepared_download",
       "review_status": "constrained",
-      "facets": "STATECD",
+      "facets": ["STATECD"],
       "caveats": ["Restricted to visits where seedlings, saplings, and trees all have a usable value, so all three stages span the same interval.", "One long change per plot. It cannot say when during the interval the change happened; use the consecutive-interval product for that.", "Endpoints are ordered by recorded measurement date. Plots measured only once are absent.", "Check survey_pairing_classes_observed. Rows carrying a chronological fallback rest on a weaker visit link than a structural match."],
       "availability": "missing",
       "reason": "path does not exist",
@@ -5496,7 +5496,7 @@
       "producer": "07_thermophilization/scripts/05_build_first_last_change.R",
       "access_mode": "prepared_download",
       "review_status": "constrained",
-      "facets": "life_stage",
+      "facets": ["life_stage"],
       "caveats": ["Each life stage uses its own first and last usable visit, so stages on the same plot can span different intervals. Do not difference stages against each other here; use forest_first_last_change for that.", "Endpoints are ordered by recorded measurement date."],
       "availability": "missing",
       "reason": "path does not exist",
@@ -5515,7 +5515,7 @@
       "path": "05_fia/lookups/fia_damage_agent_lookup.csv",
       "format": "csv",
       "one_row_is": "one official FIA damage-agent code",
-      "keys": "DAMAGE_AGENT_CD",
+      "keys": ["DAMAGE_AGENT_CD"],
       "grain_id": "fia_damage_agent_code",
       "producer": "05_fia/scripts/reference/01_build_damage_agent_lookup.py",
       "access_mode": "prepared_download",
@@ -5526,64 +5526,64 @@
       "observed": {
         "bytes": 288518,
         "n_columns": 14,
-        "columns": {
-          "DAMAGE_AGENT_CD": [
+        "columns": [
+          [
             "DAMAGE_AGENT_CD",
             "integer"
           ],
-          "official_label": [
+          [
             "official_label",
             "character"
           ],
-          "scientific_name_or_other": [
+          [
             "scientific_name_or_other",
             "character"
           ],
-          "official_group_code": [
+          [
             "official_group_code",
             "integer"
           ],
-          "agent_group": [
+          [
             "agent_group",
             "character"
           ],
-          "is_insect_agent": [
+          [
             "is_insect_agent",
             "logical"
           ],
-          "threshold": [
+          [
             "threshold",
             "character"
           ],
-          "region": [
+          [
             "region",
             "character"
           ],
-          "source": [
+          [
             "source",
             "character"
           ],
-          "source_pdf_page": [
+          [
             "source_pdf_page",
             "integer"
           ],
-          "definition_source_version": [
+          [
             "definition_source_version",
             "character"
           ],
-          "manual_version_applicability": [
+          [
             "manual_version_applicability",
             "character"
           ],
-          "code_status": [
+          [
             "code_status",
             "character"
           ],
-          "review_status": [
+          [
             "review_status",
             "character"
           ]
-        }
+        ]
       },
       "key_check": {
         "status": "not_checked",
@@ -5803,7 +5803,7 @@
       "access_mode": "catalog_only",
       "review_status": "constrained",
       "facets": ["state", "INVYR"],
-      "caveats": "Includes nonsampled visits and visits outside the analysis window for link auditing.",
+      "caveats": ["Includes nonsampled visits and visits outside the analysis window for link auditing."],
       "availability": "available",
       "observed": {
         "n_columns": 34,
@@ -5962,7 +5962,7 @@
       "path": "08_disturbance_linkage/data/processed/fia_visit_pairing_audit.parquet",
       "format": "parquet_file",
       "one_row_is": "one current FIA visit and its audited predecessor relationship",
-      "keys": "current_PLT_CN",
+      "keys": ["current_PLT_CN"],
       "grain_id": "fia_visit_pairing_audit",
       "producer": "08_disturbance_linkage/scripts/fia/01_build_survey_intervals.R",
       "access_mode": "prepared_download",
@@ -5986,13 +5986,13 @@
       "path": "08_disturbance_linkage/data/processed/fia_survey_intervals.parquet",
       "format": "parquet_file",
       "one_row_is": "one resolved previous/current FIA survey relationship",
-      "keys": "interval_id",
+      "keys": ["interval_id"],
       "grain_id": "fia_survey_interval",
       "producer": "08_disturbance_linkage/scripts/fia/01_build_survey_intervals.R",
       "access_mode": "prepared_download",
       "review_status": "certified",
       "facets": ["state", "pairing_class", "date_status", "pairing_usable"],
-      "caveats": "Chronological fallback candidates remain labeled separately from structural links.",
+      "caveats": ["Chronological fallback candidates remain labeled separately from structural links."],
       "availability": "missing",
       "reason": "path does not exist",
       "observed": [],
@@ -6207,7 +6207,7 @@
       "path": "09_analysis/data/processed/stable_condition_intervals.parquet",
       "format": "parquet_file",
       "one_row_is": "one stable FIA condition across one official consecutive-visit interval",
-      "keys": "stable_condition_interval_key",
+      "keys": ["stable_condition_interval_key"],
       "grain_id": "analysis_condition_interval",
       "derived_from": "analysis_fia_remeasurement_components",
       "producer": "09_analysis/scripts/01_build_condition_histories_and_cwm.R",
@@ -6449,7 +6449,7 @@
       "path": "09_analysis/data/processed/interval_agent_mortality.parquet",
       "format": "parquet_file",
       "one_row_is": "one stable FIA condition across one official consecutive-visit interval",
-      "keys": "stable_condition_interval_key",
+      "keys": ["stable_condition_interval_key"],
       "grain_id": "analysis_condition_interval",
       "derived_from": "analysis_stable_condition_intervals",
       "producer": "09_analysis/scripts/02_build_interval_mortality.R",
@@ -6648,14 +6648,14 @@
       "path": "09_analysis/data/processed/history_cumulative_mortality.parquet",
       "format": "parquet_file",
       "one_row_is": "one complete first-to-last stable FIA condition history",
-      "keys": "history_id",
+      "keys": ["history_id"],
       "grain_id": "analysis_condition_history",
       "derived_from": "analysis_interval_agent_mortality",
       "producer": "09_analysis/scripts/04_build_cumulative_mortality.R",
       "intended_access_mode": "prepared_download",
       "access_mode": "catalog_only",
       "review_status": "not_reviewed",
-      "facets": "state",
+      "facets": ["state"],
       "caveats": [],
       "availability": "available",
       "observed": {
@@ -6946,7 +6946,7 @@
       "path": "09_analysis/data/processed/history_site_cwd.parquet",
       "format": "parquet_file",
       "one_row_is": "one complete first-to-last stable FIA condition history",
-      "keys": "history_id",
+      "keys": ["history_id"],
       "grain_id": "analysis_condition_history",
       "derived_from": "analysis_stable_condition_intervals",
       "producer": "09_analysis/scripts/06_add_cumulative_site_cwd.sql",
@@ -7327,7 +7327,7 @@
       "path": "09_analysis/data/processed/pooled_model_data.parquet",
       "format": "parquet_file",
       "one_row_is": "one complete first-to-last stable FIA condition history",
-      "keys": "history_id",
+      "keys": ["history_id"],
       "grain_id": "analysis_condition_history",
       "derived_from": "analysis_pooled_condition_visit_cwm",
       "producer": "09_analysis/scripts/07_build_pooled_community_cwm.sql",
@@ -7335,7 +7335,7 @@
       "access_mode": "catalog_only",
       "review_status": "not_reviewed",
       "facets": ["state", "cumulative_site_CWD_complete"],
-      "caveats": "Seedlings are excluded; this response pools live saplings and adults.",
+      "caveats": ["Seedlings are excluded; this response pools live saplings and adults."],
       "availability": "available",
       "observed": {
         "n_columns": 42,
@@ -7557,7 +7557,7 @@
       "access_mode": "catalog_only",
       "review_status": "not_reviewed",
       "facets": [],
-      "caveats": "PRISM covers the lower 48 states only.",
+      "caveats": ["PRISM covers the lower 48 states only."],
       "notes": "Pipeline exists; no output built in this data root.",
       "availability": "missing",
       "reason": "path does not exist",
@@ -7601,7 +7601,7 @@
       "path": "02_terraclimate/lookups/damage_areas_pixel_centroids.parquet",
       "format": "parquet_file",
       "one_row_is": "one climate grid cell touched by an IDS damage polygon",
-      "keys": "pixel_id",
+      "keys": ["pixel_id"],
       "grain_id": "climate_pixel",
       "producer": "02_terraclimate/scripts/01_build_pixel_maps.R",
       "access_mode": "catalog_only",

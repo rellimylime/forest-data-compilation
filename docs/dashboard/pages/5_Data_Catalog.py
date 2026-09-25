@@ -351,7 +351,10 @@ table = pd.DataFrame([{
     "Path": p["path"],
 } for p in visible])
 
-st.dataframe(
-    table.style.map(color_status, subset=["Status"]),
-    use_container_width=True, hide_index=True,
-)
+if table.empty:
+    st.info("No products match the current search and filters.")
+else:
+    st.dataframe(
+        table.style.map(color_status, subset=["Status"]),
+        use_container_width=True, hide_index=True,
+    )

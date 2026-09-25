@@ -1,6 +1,6 @@
 # Searchable Data Catalog
 
-**Snapshot generated:** 2026-09-23 22:14:00 UTC
+**Snapshot generated:** 2026-09-25 00:00:19 UTC
 **Registry version:** 0.2.0
 **Purpose:** find a product or variable without access to the data directories.
 
