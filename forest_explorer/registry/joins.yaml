@@ -1,0 +1,215 @@
+join_registry_version: "1.0.0"
+updated: "2026-09-24"
+summary: >-
+  Curated one-hop joins for the repository query planner. A join is listed only
+  when its keys and row-expansion behavior can be stated explicitly. This file
+  does not change or replace the canonical product registry.
+
+relationship_definitions:
+  one_to_one: At most one right row is expected for each left row.
+  many_to_one: Multiple left rows may share one right row; left row count is preserved.
+  one_to_many: A left row may match multiple right rows; the result expands.
+
+status_definitions:
+  certified: Join keys and interpretation are reviewed for general use.
+  constrained: Join is usable when its warning is followed.
+  review_required: Join is reproducible, but the underlying product still needs scientific review.
+
+joins:
+  - id: condition_metadata__disturbance_flags
+    title: Add condition disturbance and treatment flags
+    left_product_id: plot_condition_metadata
+    right_product_id: fia_condition_disturbance_flags
+    left_on: [PLT_CN, INVYR, CONDID]
+    right_on: [PLT_CN, INVYR, CONDID]
+    relationship: one_to_one
+    result_grain_id: fia_condition_visit
+    status: constrained
+    warning: Absence of a recorded disturbance is not proof that no event occurred.
+
+  - id: condition_metadata__tree_metrics
+    title: Add plot-level tree structure
+    left_product_id: plot_condition_metadata
+    right_product_id: plot_tree_metrics
+    left_on: [PLT_CN, INVYR]
+    right_on: [PLT_CN, INVYR]
+    relationship: many_to_one
+    result_grain_id: fia_condition_visit
+    status: constrained
+    warning: Plot values repeat across conditions and must never be summed across joined rows.
+
+  - id: condition_metadata__seedling_metrics
+    title: Add plot-level seedling totals
+    left_product_id: plot_condition_metadata
+    right_product_id: plot_seedling_metrics
+    left_on: [PLT_CN, INVYR]
+    right_on: [PLT_CN, INVYR]
+    relationship: many_to_one
+    result_grain_id: fia_condition_visit
+    status: constrained
+    warning: Plot values repeat across conditions and must never be summed across joined rows.
+
+  - id: condition_metadata__understory_structure
+    title: Add understory structure records
+    left_product_id: plot_condition_metadata
+    right_product_id: fia_understory_structure_partitions
+    left_on: [PLT_CN, INVYR, CONDID]
+    right_on: [PLT_CN, INVYR, CONDID]
+    relationship: one_to_many
+    result_grain_id: fia_condition_subplot_growth_habit
+    status: review_required
+    warning: This expands each condition to subplot, growth-habit, and canopy-layer rows; protocol comparability through time still needs review.
+
+  - id: condition_metadata__understory_plants
+    title: Add understory plant records
+    left_product_id: plot_condition_metadata
+    right_product_id: fia_understory_veg_partitions
+    left_on: [PLT_CN, INVYR, CONDID]
+    right_on: [PLT_CN, INVYR, CONDID]
+    relationship: one_to_many
+    result_grain_id: fia_condition_subplot_plant
+    status: review_required
+    warning: This expands each condition to individual plant records; PLANTS symbols do not directly join to FIA SPCD.
+
+  - id: condition_metadata__damage_agents
+    title: Add exact live-tree damage agents
+    left_product_id: plot_condition_metadata
+    right_product_id: plot_damage_agents
+    left_on: [PLT_CN, INVYR, CONDID]
+    right_on: [PLT_CN, INVYR, CONDID]
+    relationship: one_to_many
+    result_grain_id: fia_condition_species_damage_agent
+    status: constrained
+    warning: This expands conditions to species-agent rows; damage on a living tree is not the same as disturbance or cause of death.
+
+  - id: damage_agents__labels
+    title: Add official damage-agent names
+    left_product_id: plot_damage_agents
+    right_product_id: fia_damage_agent_lookup
+    left_on: [DAMAGE_AGENT_CD]
+    right_on: [DAMAGE_AGENT_CD]
+    relationship: many_to_one
+    result_grain_id: fia_condition_species_damage_agent
+    status: constrained
+    warning: The lookup names agents but does not yet classify native versus non-native status.
+
+  - id: remeasurement__tree_metrics
+    title: Add tree structure to remeasurement visits
+    left_product_id: analysis_fia_remeasurement_components
+    right_product_id: plot_tree_metrics
+    left_on: [PLT_CN, INVYR]
+    right_on: [PLT_CN, INVYR]
+    relationship: one_to_one
+    result_grain_id: fia_plot_visit
+    status: review_required
+    warning: The remeasurement component product remains under scientific review.
+
+  - id: remeasurement__seedling_metrics
+    title: Add seedling totals to remeasurement visits
+    left_product_id: analysis_fia_remeasurement_components
+    right_product_id: plot_seedling_metrics
+    left_on: [PLT_CN, INVYR]
+    right_on: [PLT_CN, INVYR]
+    relationship: one_to_one
+    result_grain_id: fia_plot_visit
+    status: review_required
+    warning: The remeasurement component product remains under scientific review.
+
+  - id: remeasurement__condition_metadata
+    title: Expand remeasurement visits to conditions
+    left_product_id: analysis_fia_remeasurement_components
+    right_product_id: plot_condition_metadata
+    left_on: [PLT_CN, INVYR]
+    right_on: [PLT_CN, INVYR]
+    relationship: one_to_many
+    result_grain_id: fia_condition_visit
+    status: review_required
+    warning: This expands each plot visit to its mapped conditions; CONDID is not stable through time.
+
+  - id: remeasurement__condition_cwm
+    title: Expand remeasurement visits to condition life-stage CWM
+    left_product_id: analysis_fia_remeasurement_components
+    right_product_id: analysis_condition_visit_cwm
+    left_on: [PLT_CN, INVYR]
+    right_on: [PLT_CN, INVYR]
+    relationship: one_to_many
+    result_grain_id: analysis_condition_visit_layer
+    status: review_required
+    warning: This expands plot visits by condition and life stage; CWM meaning still needs scientific review.
+
+  - id: condition_cwm__disturbance_flags
+    title: Add condition disturbance context to CWM visits
+    left_product_id: analysis_condition_visit_cwm
+    right_product_id: fia_condition_disturbance_flags
+    left_on: [PLT_CN, INVYR, CONDID]
+    right_on: [PLT_CN, INVYR, CONDID]
+    relationship: many_to_one
+    result_grain_id: analysis_condition_visit_layer
+    status: review_required
+    warning: Flags repeat across life stages; absence of a recorded disturbance is not proof of absence.
+
+  - id: condition_cwm__tree_metrics
+    title: Add plot tree structure to CWM visits
+    left_product_id: analysis_condition_visit_cwm
+    right_product_id: plot_tree_metrics
+    left_on: [PLT_CN, INVYR]
+    right_on: [PLT_CN, INVYR]
+    relationship: many_to_one
+    result_grain_id: analysis_condition_visit_layer
+    status: review_required
+    warning: Plot metrics repeat across conditions and life stages and must never be summed.
+
+  - id: condition_cwm__seedling_metrics
+    title: Add plot seedling totals to CWM visits
+    left_product_id: analysis_condition_visit_cwm
+    right_product_id: plot_seedling_metrics
+    left_on: [PLT_CN, INVYR]
+    right_on: [PLT_CN, INVYR]
+    relationship: many_to_one
+    result_grain_id: analysis_condition_visit_layer
+    status: review_required
+    warning: Plot metrics repeat across conditions and life stages and must never be summed.
+
+  - id: stable_intervals__cwm_change
+    title: Add life-stage CWM change to stable-condition intervals
+    left_product_id: analysis_stable_condition_intervals
+    right_product_id: analysis_stable_condition_cwm_change
+    left_on: [stable_condition_interval_key]
+    right_on: [stable_condition_interval_key]
+    relationship: one_to_many
+    result_grain_id: analysis_condition_interval_layer
+    status: review_required
+    warning: This expands each interval to one row per available community life stage.
+
+  - id: stable_intervals__mortality
+    title: Add agent mortality to stable-condition intervals
+    left_product_id: analysis_stable_condition_intervals
+    right_product_id: analysis_interval_agent_mortality
+    left_on: [stable_condition_interval_key]
+    right_on: [stable_condition_interval_key]
+    relationship: one_to_one
+    result_grain_id: analysis_condition_interval
+    status: review_required
+    warning: Mortality is an interval outcome, not an instantaneous visit value.
+
+  - id: cwm_change__mortality
+    title: Add interval mortality to life-stage CWM change
+    left_product_id: analysis_stable_condition_cwm_change
+    right_product_id: analysis_interval_agent_mortality
+    left_on: [stable_condition_interval_key]
+    right_on: [stable_condition_interval_key]
+    relationship: many_to_one
+    result_grain_id: analysis_condition_interval_layer
+    status: review_required
+    warning: Mortality repeats across life-stage rows and must never be summed across layers.
+
+  - id: history_mortality__site_cwd
+    title: Add site climatic water deficit to condition histories
+    left_product_id: analysis_history_cumulative_mortality
+    right_product_id: analysis_history_site_cwd
+    left_on: [history_id]
+    right_on: [history_id]
+    relationship: one_to_one
+    result_grain_id: analysis_condition_history
+    status: review_required
+    warning: Filter or explicitly retain cumulative_site_CWD_complete before modeling.

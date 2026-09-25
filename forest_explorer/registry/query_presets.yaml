@@ -1,0 +1,139 @@
+preset_registry_version: "1.0.0"
+updated: "2026-09-24"
+title: Research dataset recipes
+summary: >-
+  Searchable starting points for common research requests. Presets select from
+  existing products and documented joins; they do not create a second product
+  hierarchy or claim that missing methods have been resolved.
+
+presets:
+  - id: boss_baseline_export
+    title: Baseline research table
+    description: >-
+      A wide condition-by-visit-by-life-stage table that brings together current
+      community climate affinity, condition disturbance, and plot structure.
+      This is the closest current reproducible answer to the requested giant
+      baseline file without replacing the canonical products.
+    request_tags: [baseline, giant file, panel, time series, mortality, CWM, density, diversity, topography]
+    anchor_product_id: analysis_condition_visit_cwm
+    join_ids:
+      - condition_cwm__disturbance_flags
+      - condition_cwm__tree_metrics
+      - condition_cwm__seedling_metrics
+    columns:
+      analysis_condition_visit_cwm: [PLT_CN, INVYR, CONDID, layer, n_species, total_individual_abundance, temperature, precipitation, CWD]
+      fia_condition_disturbance_flags: [stable_plot_id, state, ELEV, forest_type_group, disturbance_class, disturbance_year_latest, has_any_recorded_disturbance, has_any_treatment]
+      plot_tree_metrics: [ba_live_total, n_trees_live, n_species_live, shannon_h_ba]
+      plot_seedling_metrics: [seedlings_tpa, n_species_seedling, shannon_h_count]
+    cautions:
+      - Plot structure values repeat across condition and life-stage rows and must not be summed.
+      - Mortality is not included here because the current mortality product is interval-grain, not visit-grain.
+      - Slope and aspect are not yet extracted; elevation is available.
+      - Native/non-native agent status is not yet classified.
+    missing_capabilities:
+      - Condition-matched understory change through time
+      - A visit/interval panel that explicitly aligns mortality with the ending visit
+      - Slope and aspect
+      - Reviewed native/non-native insect and pathogen classification
+
+  - id: condition_cwm_disturbance
+    title: Condition CWM with disturbance context
+    description: >-
+      Community-weighted temperature, precipitation, and CWD affinity at every
+      condition visit and life stage, with condition-specific disturbance flags.
+    request_tags: [CWM, survey, time series, disturbance, condition, life stage]
+    anchor_product_id: analysis_condition_visit_cwm
+    join_ids: [condition_cwm__disturbance_flags]
+    columns:
+      analysis_condition_visit_cwm: [PLT_CN, INVYR, CONDID, layer, n_species, total_individual_abundance, temperature, precipitation, CWD]
+      fia_condition_disturbance_flags: [stable_plot_id, state, ELEV, forest_type_group, disturbance_class, disturbance_year_latest, has_any_recorded_disturbance, has_any_treatment]
+    cautions:
+      - Disturbance flags repeat across life stages.
+      - This is visit-level CWM context; it is not yet a panel containing interval mortality.
+    missing_capabilities:
+      - Explicit alignment of interval mortality to the ending visit
+
+  - id: understory_condition_records
+    title: Condition-matched understory records
+    description: >-
+      Join mapped condition metadata to understory structure observations as a
+      starting point for inspecting repeat support and defining change metrics.
+    request_tags: [understory, P2VEG, cover, vegetation, disturbance, condition]
+    anchor_product_id: plot_condition_metadata
+    join_ids: [condition_metadata__understory_structure, condition_metadata__disturbance_flags]
+    columns:
+      plot_condition_metadata: [PLT_CN, INVYR, CONDID, stable_plot_id, state, CONDPROP_UNADJ, ELEV, forest_type_group]
+      fia_understory_structure_partitions: [SUBP, GROWTH_HABIT_CD, growth_habit, community_layer, LAYER, layer_label, cover_pct, cover_pct_subpcond]
+      fia_condition_disturbance_flags: [disturbance_class, disturbance_year_latest, has_any_recorded_disturbance, has_any_treatment]
+    cautions:
+      - This expands one condition to multiple subplot, growth-habit, and canopy-layer records.
+      - It exposes existing observations only; comparable change metrics and protocol rules remain a methods decision.
+    missing_capabilities:
+      - Reviewed condition-interval understory change outcomes
+
+  - id: plot_structure_time_series
+    title: Plot structure and diversity visits
+    description: >-
+      Attach tree and seedling density, richness, and diversity summaries to the
+      official remeasurement components used to order plot visits through time.
+    request_tags: [density, richness, diversity, Shannon, time series, panel, tree, seedling]
+    anchor_product_id: analysis_fia_remeasurement_components
+    join_ids: [remeasurement__tree_metrics, remeasurement__seedling_metrics]
+    columns:
+      analysis_fia_remeasurement_components: [stable_plot_id, PLT_CN, PREV_PLT_CN, INVYR, visit_number_in_component, n_visits_in_component, measurement_date_lower, state]
+      plot_tree_metrics: [ba_live_total, n_trees_live, n_species_live, shannon_h_ba]
+      plot_seedling_metrics: [seedlings_tpa, n_species_seedling, shannon_h_count]
+    cautions:
+      - Values are visit summaries; interval deltas and annualized rates are not calculated by this recipe.
+      - The remeasurement component product is reproducible but still marked not reviewed.
+    missing_capabilities:
+      - Reviewed interval change and annualized change fields
+
+  - id: exact_damage_agent_names
+    title: Exact FIA damage-agent names
+    description: >-
+      Live-tree damage observations with official/common agent labels and any
+      available scientific name retained from the FIA lookup.
+    request_tags: [insect, pathogen, disease, damage, agent, scientific name, non-native, invasive]
+    anchor_product_id: plot_damage_agents
+    join_ids: [damage_agents__labels]
+    columns:
+      plot_damage_agents: [PLT_CN, INVYR, CONDID, SPCD, DAMAGE_AGENT_CD, agent_label, agent_category, ba_per_acre, n_trees_tpa, state]
+      fia_damage_agent_lookup: [official_label, scientific_name_or_other, agent_group, is_insect_agent, region, definition_source_version, code_status]
+    cautions:
+      - Damage on a living tree is not the same observation as a condition disturbance or a cause of death.
+      - The lookup does not currently include a reviewed native/non-native classification.
+    missing_capabilities:
+      - Cited, geography-aware native/non-native status
+
+  - id: interval_cwm_mortality
+    title: Life-stage CWM change with interval mortality
+    description: >-
+      Stable-condition change in climate affinity by life stage, with cumulative
+      interval mortality predictors attached at the matching interval.
+    request_tags: [panel, interval, mortality, CWM, change, sapling, adult]
+    anchor_product_id: analysis_stable_condition_cwm_change
+    join_ids: [cwm_change__mortality]
+    columns:
+      analysis_stable_condition_cwm_change: [stable_condition_interval_key, stable_plot_id, state, CONDID, layer, T1_INVYR, T2_INVYR, interval_years, delta_temperature, delta_precipitation, delta_CWD]
+      analysis_interval_agent_mortality: [analysis_ready, fire_annual_mortality_pct, insect_annual_mortality_pct, disease_annual_mortality_pct]
+    cautions:
+      - Mortality values repeat across life-stage rows and must not be summed across layers.
+      - These analysis products remain marked not reviewed in the product registry.
+    missing_capabilities: []
+
+  - id: history_mortality_climate
+    title: Condition-history mortality with site CWD
+    description: >-
+      One row per complete stable-condition history, combining cumulative agent
+      mortality with cumulative site climatic water deficit.
+    request_tags: [history, mortality, CWD, drought, model input]
+    anchor_product_id: analysis_history_cumulative_mortality
+    join_ids: [history_mortality__site_cwd]
+    columns:
+      analysis_history_cumulative_mortality: [history_id, stable_plot_id, state, CONDID, fire_cumulative_mortality_pct, insect_cumulative_mortality_pct, disease_cumulative_mortality_pct]
+      analysis_history_site_cwd: [first_measurement_date, last_measurement_date, cumulative_site_CWD_mm, cumulative_site_CWD_complete, cumulative_site_CWD_status]
+    cautions:
+      - Keep the CWD completeness flag or explicitly filter it before modeling.
+      - This is first-to-last history grain, not a visit-level panel.
+    missing_capabilities: []

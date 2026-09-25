@@ -221,5 +221,10 @@ lines <- c(
 )
 writeLines(lines, md_out, useBytes = TRUE)
 
+source(
+  file.path(root, "forest_explorer", "catalog", "build_navigation_snapshot.R"),
+  local = environment()
+)
+
 message("Wrote ", json_out)
 message("Wrote ", md_out)
