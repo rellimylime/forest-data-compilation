@@ -1,6 +1,6 @@
 # Documentation Hub
 
-**Navigation:** [Repo Home](../README.md) | [Docs Hub](README.md) | [Setup](../scripts/SETUP.md) | [Shared Scripts](../scripts/README.md) | [Reproduce](REPRODUCE.md) | [Pipeline Map](PIPELINE_MAP.md) | [Data Products](DATA_PRODUCTS.md)
+**Navigation:** [Repo Home](../README.md) | [Docs Hub](README.md) | [Setup](../scripts/SETUP.md) | [Shared Scripts](../scripts/README.md) | [Reproduce](REPRODUCE.md) | [Pipeline Map](PIPELINE_MAP.md) | [Find Data](DATA_CATALOG.md) | [Join & Query Guide](QUERY_GUIDE.md) | [Data Products](DATA_PRODUCTS.md)
 
 This is the main navigation page for the repository documentation. Use it to move between the high-level overview, exact reproduction steps, technical workflow references, and the code that implements each workstream. The companion [Data Products](DATA_PRODUCTS.md) page also documents the minimal server-aligned directory skeleton that is now tracked with `.gitkeep` placeholders where needed.
 
@@ -12,6 +12,7 @@ This is the main navigation page for the repository documentation. Use it to mov
 | See the whole pipeline visually | [Pipeline Map](PIPELINE_MAP.md) |
 | Reproduce the active production pipelines | [Reproduce](REPRODUCE.md) |
 | Find a product or variable | [Searchable Data Catalog](DATA_CATALOG.md) |
+| See how products join or build a dataset | [Dataset Query Guide](QUERY_GUIDE.md) |
 | Understand output and storage conventions | [Data Products](DATA_PRODUCTS.md) |
 | Understand shared climate architecture | [Architecture](ARCHITECTURE.md) |
 | Review QC and validation coverage | [Testing and QC](TESTING.md) |
@@ -20,7 +21,7 @@ This is the main navigation page for the repository documentation. Use it to mov
 | Understand FIA plot design visually | [FIA visual explainer](fia-explorer.html) |
 | Review the forest data explorer design | [Forest Data Explorer Design](FOREST_DATA_EXPLORER_DESIGN.md) |
 | Review the current condition-level analysis method | [Current analysis methods](../09_analysis/docs/METHODS.md) |
-| Use the main visual guide while working locally | [Dashboard entrypoint](dashboard/app.py) |
+| Use the searchable local dashboard | [Dashboard guide](dashboard/README.md) |
 
 ## Reviewer Paths
 
@@ -29,6 +30,7 @@ This is the main navigation page for the repository documentation. Use it to mov
 - [Repo Home](../README.md)
 - [Pipeline Map](PIPELINE_MAP.md)
 - [Searchable Data Catalog](DATA_CATALOG.md)
+- [Dataset Query Guide](QUERY_GUIDE.md)
 - [Data Products](DATA_PRODUCTS.md)
 
 ### Exact run order
@@ -70,6 +72,7 @@ This is the main navigation page for the repository documentation. Use it to mov
 
 - [Data Products](DATA_PRODUCTS.md)
 - [Dashboard](dashboard/)
+- [Dataset Query Guide](QUERY_GUIDE.md)
 
 ### QC and validation
 
@@ -98,6 +101,7 @@ This is the main navigation page for the repository documentation. Use it to mov
 |---|---|
 | [Reproduce](REPRODUCE.md) | Exact production run order, grouped by workstream |
 | [Pipeline Map](PIPELINE_MAP.md) | GitHub-renderable diagram plus links to the dashboard and HTML companion |
+| [Dataset Query Guide](QUERY_GUIDE.md) | Safe joins, row expansion, and ready-made query recipes |
 | [Data Products](DATA_PRODUCTS.md) | Main outputs, tracked review files, local-only artifacts, and server-aligned directory paths |
 | [Architecture](ARCHITECTURE.md) | Shared climate extraction concepts and data model |
 | [Testing and QC](TESTING.md) | Optional diagnostics, validation steps, and known QC gaps |
@@ -116,11 +120,11 @@ This is the main navigation page for the repository documentation. Use it to mov
 | Production | [07_thermophilization/scripts/](../07_thermophilization/scripts/) | Community climate-affinity, disturbance severity, and repeated-survey change scripts |
 | Shared | [scripts/](../scripts/README.md) | Setup helper, shared climate summary builder, reusable utilities, demos, and test runner |
 | Archived | [archive/05_era5/scripts/](../archive/05_era5/scripts/) | ERA5 reference implementation retained outside the active run path |
-| Dashboard | [docs/dashboard/](dashboard/) | Streamlit app and pages |
+| Dashboard | [docs/dashboard/](dashboard/) | Streamlit app, Query Builder, and launch guide |
 
 ## Visuals
 
-- [Dashboard entrypoint](dashboard/app.py) for the main guided visual experience when working locally.
+- [Dashboard guide](dashboard/README.md) for launching the searchable catalog and Query Builder locally.
 - [Pipeline Map](PIPELINE_MAP.md) for the GitHub-friendly Markdown summary.
 - [pipeline_diagram.html](pipeline_diagram.html) for a short static HTML companion.
 

@@ -1,6 +1,6 @@
 # Forest Data Compilation
 
-**Navigation:** [Docs Hub](docs/README.md) | [Analysis](09_analysis/README.md) | [Setup](scripts/SETUP.md) | [Shared Scripts](scripts/README.md) | [Reproduce](docs/REPRODUCE.md) | [Pipeline Map](docs/PIPELINE_MAP.md) | [Find Data](docs/DATA_CATALOG.md) | [Data Products](docs/DATA_PRODUCTS.md) | [Dashboard](docs/dashboard/)
+**Navigation:** [Docs Hub](docs/README.md) | [Analysis](09_analysis/README.md) | [Setup](scripts/SETUP.md) | [Shared Scripts](scripts/README.md) | [Reproduce](docs/REPRODUCE.md) | [Pipeline Map](docs/PIPELINE_MAP.md) | [Find Data](docs/DATA_CATALOG.md) | [Join & Query Guide](docs/QUERY_GUIDE.md) | [Data Products](docs/DATA_PRODUCTS.md) | [Dashboard](docs/dashboard/)
 
 Compiled and cleaned forest disturbance, climate, inventory, species-niche, and thermophilization datasets for analysis. The repository contains these active production paths:
 
@@ -17,12 +17,13 @@ Module-level `data/` directories keep `.gitkeep` placeholders where useful, but 
 If you are reviewing the repo, start with these pages:
 
 1. [Searchable Data Catalog](docs/DATA_CATALOG.md) to find a product or variable, its row scale, path, and producer.
-2. [Docs Hub](docs/README.md) for the full navigation map.
-3. [Reproduce](docs/REPRODUCE.md) for exact run order.
-4. [Pipeline Map](docs/PIPELINE_MAP.md) for visual orientation.
-5. [Data Products](docs/DATA_PRODUCTS.md) for storage conventions and workflow context.
+2. [Dataset Query Guide](docs/QUERY_GUIDE.md) to see compatible joins and ready-made research recipes.
+3. [Docs Hub](docs/README.md) for the full navigation map.
+4. [Reproduce](docs/REPRODUCE.md) for exact run order.
+5. [Pipeline Map](docs/PIPELINE_MAP.md) for visual orientation.
+6. [Data Products](docs/DATA_PRODUCTS.md) for storage conventions and workflow context.
 
-If you are working locally and want the easiest visual overview, run `streamlit run docs/dashboard/app.py`. Use `Catalog` to search products and variables, or `Architecture` for the workflow map.
+If you are working locally and want the easiest visual overview, run `streamlit run docs/dashboard/app.py`. Use `Catalog` to search products and variables, `Build Data` to inspect joins and generate an export query, or `Architecture` for the workflow map.
 
 If you want a specific workstream right away:
 
@@ -95,6 +96,8 @@ flowchart LR
 |---|---|
 | [docs/README.md](docs/README.md) | Central documentation hub and navigation page |
 | [docs/REPRODUCE.md](docs/REPRODUCE.md) | Exact run order for all active production pipelines |
+| [docs/DATA_CATALOG.md](docs/DATA_CATALOG.md) | Searchable products, variables, paths, row scales, and producers |
+| [docs/QUERY_GUIDE.md](docs/QUERY_GUIDE.md) | Curated joins, row-expansion warnings, and research query recipes |
 | [docs/PIPELINE_MAP.md](docs/PIPELINE_MAP.md) | GitHub-renderable pipeline diagrams and links |
 | [docs/DATA_PRODUCTS.md](docs/DATA_PRODUCTS.md) | Output inventory, storage locations, server-aligned skeleton, and producer scripts |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Shared climate extraction architecture |

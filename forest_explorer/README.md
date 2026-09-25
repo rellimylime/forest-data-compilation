@@ -12,6 +12,10 @@ Questions 1 and 2 are curated by people. Question 3 is measured from the data. K
 forest_explorer/
   registry/products.yaml            curated — meaning, keys, access rules, caveats
   catalog/snapshot/catalog.json    committed — portable schemas for the dashboard
+  registry/joins.yaml               curated — join keys, cardinality, warnings
+  registry/query_presets.yaml       curated — reusable research recipes
+  catalog/snapshot/joins.json      committed — portable compatibility graph
+  catalog/snapshot/query_presets.json committed — portable recipes
   catalog/build_snapshot.R         generator — refreshes JSON and Markdown snapshots
   catalog/build_inventory.py       local audit — measures a specific data root
   tests/test_registry.py           contract tests for the registry
@@ -31,7 +35,7 @@ A `planned` product being absent is expected. An `active` one being absent is a 
 
 Grain and lineage are likewise separate. `grain_id` says which grain a row sits at, with the observation hierarchy declared once in the `grains:` block; `derived_from` says which product was used to build this one. Two products can share a grain without either being built from the other — `plot_condition_metadata` and `fia_condition_disturbance_flags` both sit at `fia_condition_visit`.
 
-The committed, GitHub-searchable output is [`docs/DATA_CATALOG.md`](../docs/DATA_CATALOG.md). The dashboard reads the matching JSON snapshot and does not inspect data directories.
+The committed, GitHub-searchable outputs are [`docs/DATA_CATALOG.md`](../docs/DATA_CATALOG.md) and [`docs/QUERY_GUIDE.md`](../docs/QUERY_GUIDE.md). The dashboard reads matching JSON snapshots and does not inspect data directories.
 
 ## Refresh the portable catalog
 
@@ -39,7 +43,7 @@ The committed, GitHub-searchable output is [`docs/DATA_CATALOG.md`](../docs/DATA
 Rscript forest_explorer/catalog/build_snapshot.R
 ```
 
-This maintainer command refreshes both the committed dashboard JSON and the GitHub-searchable Markdown page. Researchers only need the committed files.
+This maintainer command refreshes the product catalog, join graph, research recipes, and both GitHub-searchable Markdown pages. Researchers only need the committed files.
 
 ## Audit a specific data root
 
@@ -73,6 +77,10 @@ These need no data present, so they run in a code-only checkout. They enforce th
 3. Rerun the generator and read the grain check. If the declared key is not unique, that is a finding about the product — fix the producer or change the declared grain, but do not delete the key to make the check pass.
 4. Refresh the portable catalog snapshot, then rerun the tests.
 
-## What this does not do yet
+## Query planning
 
-The registry describes products one at a time. It does not yet declare the relationships between them — which joins are safe, at what cardinality, with what match rate. That is the compatibility graph, and it is the next piece.
+`registry/joins.yaml` is the compatibility graph: every listed join records its keys, cardinality, resulting grain, review state, and warning. `registry/query_presets.yaml` turns recurring research requests into editable recipes, including a wide baseline export, without creating duplicate canonical data.
+
+The dashboard Query Builder uses those snapshots to generate DuckDB SQL. It allows only one `1:many` join per query so two independent detail tables cannot silently form a cross-product. It generates queries but never executes them.
+
+Match-rate measurements are not yet stored in the portable snapshot. Validate match rates against the intended data root before certifying a new join.

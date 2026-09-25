@@ -56,4 +56,6 @@ Launch the dashboard:
 streamlit run docs/dashboard/app.py
 ```
 
-The dashboard covers all datasets and the active analysis products. Its Catalog searches the committed repository snapshot, so browsing products, variables, row scales, and paths does not require access to the data directories.
+The dashboard covers all datasets and active analysis products. Its Catalog and Query Builder search committed snapshots, so browsing variables, seeing compatible joins, and generating an export query do not require access to the data directories. See [`docs/dashboard/README.md`](../docs/dashboard/README.md) for usage and troubleshooting.
+
+The generated SQL expects DuckDB when you choose to execute it. DuckDB is not required merely to browse or generate a query.
