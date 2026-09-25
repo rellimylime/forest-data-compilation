@@ -121,6 +121,23 @@ def load_product_catalog() -> tuple[dict, str, str | None]:
     )
 
 
+@st.cache_data(show_spinner=False)
+def load_query_navigation() -> tuple[dict, dict]:
+    """Load committed join and query-preset snapshots without scanning data."""
+    snapshot_dir = repo_path("forest_explorer", "catalog", "snapshot")
+
+    def read_json(name: str) -> dict:
+        path = snapshot_dir / name
+        if not path.is_file():
+            return {}
+        try:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return {}
+
+    return read_json("joins.json"), read_json("query_presets.json")
+
+
 def static_path(*parts) -> Path:
     """Return an absolute path relative to docs/dashboard/static."""
     return STATIC_DIR.joinpath(*parts)
@@ -748,7 +765,7 @@ def _safe_page_link(container, page: str, label: str) -> None:
 
 def render_top_nav() -> None:
     """Render the shared top navigation for the multipage dashboard."""
-    cols = st.columns([1.35, 0.58, 0.98, 0.68, 0.75, 0.88, 0.68, 0.72, 1.05])
+    cols = st.columns([1.25, 0.52, 0.84, 0.55, 0.62, 0.76, 0.58, 0.62, 0.82, 0.92])
     cols[0].markdown('<div class="fd-navbar-brand">Forest Data Explorer</div>', unsafe_allow_html=True)
     _safe_page_link(cols[1], "app.py", "Home")
     _safe_page_link(cols[2], "pages/4_Architecture.py", "Architecture")
@@ -757,7 +774,8 @@ def render_top_nav() -> None:
     _safe_page_link(cols[5], "pages/3_FIA_Forest.py", "FIA Forest")
     _safe_page_link(cols[6], "pages/6_Thermophilization.py", "Thermo")
     _safe_page_link(cols[7], "pages/5_Data_Catalog.py", "Catalog")
-    _safe_page_link(cols[8], "pages/7_FIA_Navigator.py", "FIA Navigator")
+    _safe_page_link(cols[8], "pages/8_Query_Builder.py", "Build Data")
+    _safe_page_link(cols[9], "pages/7_FIA_Navigator.py", "FIA Navigator")
     st.markdown('<div class="fd-navbar-rule"></div>', unsafe_allow_html=True)
 
 

@@ -139,6 +139,11 @@ PAGE_SEARCH_INDEX = [
         "page": "pages/5_Data_Catalog.py",
         "body": "All repository outputs, file paths, row counts, schemas, and load examples.",
     },
+    {
+        "title": "Query Builder",
+        "page": "pages/8_Query_Builder.py",
+        "body": "Search fields and recipes, inspect join keys and row expansion, and generate DuckDB SQL for a reproducible dataset export.",
+    },
 ]
 
 SCRIPT_SEARCH_INDEX = [
@@ -366,7 +371,8 @@ st.markdown(
       Start with <code>Architecture</code> for the workflow map, then open <code>Climate</code>
       for gridding and matching, <code>FIA Forest</code> for inventory outputs, or
       <code>Thermophilization</code> for the recruitment analysis layer. Use
-      <code>Data Catalog</code> when you need exact paths, schemas, and load examples.
+      <code>Data Catalog</code> for exact paths and schemas, or <code>Build Data</code>
+      to choose fields, review joins, and generate an export query.
     </div>
     """,
     unsafe_allow_html=True,
@@ -400,6 +406,11 @@ st.markdown(
                 "title": "Data Catalog",
                 "body": "Exact output paths, current file status, row counts, schemas, and load snippets.",
                 "pills": ["paths", "schemas"],
+            },
+            {
+                "title": "Build a dataset",
+                "body": "Choose a recipe or fields, see exactly how products join, and generate a reproducible DuckDB export.",
+                "pills": ["joins", "SQL", "recipes"],
             },
         ]
     ),
