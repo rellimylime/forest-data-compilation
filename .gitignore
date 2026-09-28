@@ -93,6 +93,10 @@ processed/
 !05_fia/data/processed/
 !05_fia/data/processed/site_climate/
 !05_fia/data/processed/site_climate/fia_stable_plot_locations.csv
+!06_species_niches/data/processed/
+!06_species_niches/data/processed/species_climate_niches.parquet
+!06_species_niches/data/processed/species_climate_niches_us_study_area.parquet
+!06_species_niches/data/processed/species_niche_manifest.csv
 
 # Scratch / session working files (agent scratchpads, ad-hoc analysis). Never commit.
 scratch_output/

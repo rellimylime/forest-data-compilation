@@ -81,6 +81,10 @@ run_r <- function(script, script_args = character(), env = character()) {
   if (!identical(status, 0L)) stop("Stage failed: ", script)
 }
 
+# This input contract applies to every stage slice, including runs that begin
+# after stage 01 or reuse the existing TerraClimate cache.
+run_r("06_species_niches/qa/scripts/validate_species_niche_inputs.R")
+
 # Run a SQL stage with the DuckDB CLI or the project R packages.
 run_sql <- function(script) {
   cat("DuckDB ", script, "\n", sep = "")
