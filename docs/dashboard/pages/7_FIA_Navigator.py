@@ -10,23 +10,26 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from utils import apply_dark_css, render_top_nav, repo_path
+from utils import apply_dark_css, page_intro, repo_path
 
 
-st.set_page_config(page_title="FIA Navigator", page_icon="🌲", layout="wide")
+st.set_page_config(page_title="FIA field guide", page_icon="🌲", layout="wide")
 apply_dark_css()
-render_top_nav()
 
 HTML_PATH = repo_path("docs", "fia-explorer.html")
 
 st.markdown(
     """
-    <div class="fd-page-title">FIA Navigator</div>
-    <div class="fd-page-lead">
-      Static visual guide to FIA plot design, sampling grain, and FIADB tables.
-    </div>
+    <div class="fd-page-title">FIA field guide</div>
     """,
     unsafe_allow_html=True,
+)
+page_intro(
+    "A visual guide to FIA plot design, sampling grain, and FIADB tables. Use it to understand "
+    "a raw FIA field before asking for it to be extracted.",
+    "tool",
+    [("pages/3_FIA_Forest.py", "Processed FIA data"), ("pages/5_Data_Catalog.py", "Find data"),
+     ("pages/6_Analysis.py", "Analysis")],
 )
 
 if not HTML_PATH.is_file():

@@ -12,14 +12,13 @@ import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from utils import (
+    page_intro,
     apply_dark_css, metric_card, dark_fig, scatter_geo_usa,
     load_parquet, parquet_meta, load_csv, repo_path, plot_source_link,
-    render_top_nav,
 )
 
-st.set_page_config(page_title="IDS Survey", page_icon="🗺️", layout="wide")
+st.set_page_config(page_title="IDS survey", page_icon="🗺️", layout="wide")
 apply_dark_css()
-render_top_nav()
 
 try:
     import plotly.express as px
@@ -32,6 +31,13 @@ st.markdown(
     "USDA Forest Service **Insect and Disease Detection Survey** (IDS) — "
     "annual aerial detection surveys covering 1997–2024 across 10 National Forest regions. "
     "Source: [USDA Forest Health Protection](https://www.fs.usda.gov/science-technology/data-tools-products/fhp-mapping-reporting/detection-surveys)"
+)
+page_intro(
+    "Aerial insect and disease survey polygons and their codes. This is a separate workstream: "
+    "the current analysis measures disturbance from FIA tree mortality, not from IDS.",
+    "other",
+    [("pages/6_Analysis.py", "Analysis"), ("pages/2_Climate.py", "Climate datasets"),
+     ("pages/4_Architecture.py", "Repository map")],
 )
 
 # ------------------------------------------------------------------------------
@@ -146,7 +152,7 @@ with tab_dca:
             display_df = dca_df
 
         st.caption(f"{len(display_df):,} of {len(dca_df):,} records shown")
-        st.dataframe(display_df, use_container_width=True, hide_index=True)
+        st.dataframe(display_df, width="stretch", hide_index=True)
 
         # Category breakdown if column exists
         cat_col = next((c for c in dca_df.columns
@@ -161,7 +167,7 @@ with tab_dca:
                 color_discrete_sequence=["#4e79a7"],
             )
             from utils import dark_fig as _dark_fig
-            st.plotly_chart(_dark_fig(fig), use_container_width=True)
+            st.plotly_chart(_dark_fig(fig), width="stretch")
             plot_source_link("docs/dashboard/pages/1_IDS_Survey.py", line=158)
 
 # ==============================================================================
@@ -192,7 +198,7 @@ with tab_host:
             display_h = host_df
 
         st.caption(f"{len(display_h):,} of {len(host_df):,} records shown")
-        st.dataframe(display_h, use_container_width=True, hide_index=True)
+        st.dataframe(display_h, width="stretch", hide_index=True)
 
 # ==============================================================================
 # TAB 4 — SCHEMA
@@ -237,7 +243,7 @@ with tab_schema:
     layer_sel = st.selectbox("Layer", list(LAYER_SCHEMA.keys()), key="ids_layer_sel")
     cols_data = LAYER_SCHEMA[layer_sel]
     schema_df = pd.DataFrame(cols_data, columns=["Column", "Description", "Type"])
-    st.dataframe(schema_df, use_container_width=True, hide_index=True)
+    st.dataframe(schema_df, width="stretch", hide_index=True)
 
     st.markdown("---")
     st.markdown("**Load in R:**")
@@ -301,7 +307,7 @@ with tab_map:
                     hover_data={"n_damage_areas": True, "log_n": False,
                                 "x": False, "y": False},
                     labels={"log_n": "log(n+1)", "n_damage_areas": "Damage areas"},
-                    map_style="carto-darkmatter",
+                    map_style="carto-positron",
                     zoom=3, center={"lat": 44, "lon": -105},
                     opacity=0.7,
                 )
@@ -313,24 +319,24 @@ with tab_map:
                     hover_data={"n_damage_areas": True, "log_n": False,
                                 "x": False, "y": False},
                     labels={"log_n": "log(n+1)", "n_damage_areas": "Damage areas"},
-                    mapbox_style="carto-darkmatter",
+                    mapbox_style="carto-positron",
                     zoom=3, center={"lat": 44, "lon": -105},
                     opacity=0.7,
                 )
 
             fig.update_traces(marker_size=3)
             fig.update_layout(
-                paper_bgcolor="#0e1117",
-                font_color="#ddd",
+                paper_bgcolor="#fffefa",
+                font_color="#495149",
                 margin=dict(l=0, r=0, t=10, b=0),
                 coloraxis_colorbar=dict(
                     title="Damage areas<br>(log scale)",
-                    bgcolor="#161b22",
-                    tickcolor="#ddd",
-                    title_font_color="#ddd",
+                    bgcolor="#f5f3ec",
+                    tickcolor="#495149",
+                    title_font_color="#495149",
                 ),
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
             plot_source_link("docs/dashboard/pages/1_IDS_Survey.py", line=297)
             st.caption(
                 "Each dot = one unique 4km TerraClimate pixel overlapping at least one "

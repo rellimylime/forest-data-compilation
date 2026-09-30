@@ -39,6 +39,10 @@ DASHBOARD_DIR = Path(__file__).parent
 STATIC_DIR = DASHBOARD_DIR / "static"
 REPO_ROOT = DASHBOARD_DIR.parent.parent
 GITHUB_BLOB_BASE = "https://github.com/rellimylime/forest-data-compilation/blob/main"
+DASHBOARD_HIDDEN_CATALOG_FAMILIES = {
+    # Standalone point-extraction work supplied for a separate request.
+    "site_climate",
+}
 
 
 def repo_path(*parts) -> Path:
@@ -115,10 +119,21 @@ def load_product_catalog() -> tuple[dict, str, str | None]:
     inv_mtime = inventory.stat().st_mtime if inventory.is_file() else None
     snapshot_mtime = snapshot.stat().st_mtime if snapshot.is_file() else None
     reg_mtime = registry.stat().st_mtime if registry.is_file() else None
-    return _load_product_catalog(
+    catalog, source, error = _load_product_catalog(
         str(inventory), inv_mtime, str(snapshot), snapshot_mtime,
         str(registry), reg_mtime,
     )
+    if catalog:
+        catalog = dict(catalog)
+        catalog["families"] = {
+            key: value for key, value in catalog.get("families", {}).items()
+            if key not in DASHBOARD_HIDDEN_CATALOG_FAMILIES
+        }
+        catalog["products"] = [
+            product for product in catalog.get("products", [])
+            if product.get("family") not in DASHBOARD_HIDDEN_CATALOG_FAMILIES
+        ]
+    return catalog, source, error
 
 
 @st.cache_data(show_spinner=False)
@@ -173,10 +188,10 @@ def load_static_data_csv(name: str, subdir: str = "fia"):
 
 
 # ------------------------------------------------------------------------------
-# Dark-theme CSS (apply once in app.py)
+# Shared dashboard visual system
 # ------------------------------------------------------------------------------
 
-DARK_CSS = """
+BASE_CSS = """
 <style>
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=DM+Mono:wght@300;400;500&display=swap');
 
@@ -211,12 +226,13 @@ DARK_CSS = """
   }
 
   [data-testid="stHeader"] {
-    display: none !important;
+    background: var(--fd-bg);
+    border-bottom: 1px solid var(--fd-border);
   }
 
   .block-container {
     max-width: 1120px;
-    padding-top: 3.25rem;
+    padding-top: 4.75rem;
     padding-bottom: 4rem;
   }
 
@@ -322,18 +338,20 @@ DARK_CSS = """
     margin: 1.7rem 0 0.7rem;
   }
 
-  .fd-navbar-brand {
-    color: var(--fd-text);
-    font-size: 0.95rem;
-    font-weight: 600;
-    line-height: 2.35rem;
-    white-space: nowrap;
+  .fd-intro {
+    align-items: baseline;
+    border-left: 3px solid var(--fd-accent);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin: 0 0 0.35rem;
+    padding: 0.2rem 0 0.2rem 0.8rem;
   }
 
-  .fd-navbar-rule {
-    border-bottom: 1px solid var(--fd-border);
-    margin: 0 0 1.35rem;
-    padding-bottom: 0.45rem;
+  .fd-intro-text {
+    color: var(--fd-text2);
+    flex: 1 1 28rem;
+    line-height: 1.55;
   }
 
   [data-testid="stPageLink"] {
@@ -354,19 +372,6 @@ DARK_CSS = """
     color: var(--fd-accent2) !important;
   }
 
-  .fd-nav-link {
-    color: var(--fd-text2) !important;
-    display: inline-flex;
-    font-size: 0.86rem;
-    font-weight: 500;
-    line-height: 2.35rem;
-    text-decoration: none !important;
-    white-space: normal;
-  }
-
-  .fd-nav-link:hover {
-    color: var(--fd-accent2) !important;
-  }
 
   .metric-card {
     background: var(--fd-bg2);
@@ -748,52 +753,286 @@ DARK_CSS = """
 """
 
 
+EDITORIAL_CSS = """
+<style>
+  :root {
+    --fd-bg: #f5f3ec;
+    --fd-bg2: #fffefa;
+    --fd-bg3: #ece9df;
+    --fd-bg4: #e4e0d5;
+    --fd-border: #d7d2c5;
+    --fd-border2: #bdb7a9;
+    --fd-text: #20251f;
+    --fd-text2: #495149;
+    --fd-text3: #6e756d;
+    --fd-accent: #315c43;
+    --fd-accent2: #244a35;
+    --fd-amber: #8a6426;
+    --fd-red: #a4423c;
+    --fd-blue: #315e78;
+    --fd-radius: 3px;
+    --fd-radius-lg: 4px;
+    --fd-font: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --fd-display: Georgia, "Times New Roman", serif;
+    --fd-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  }
+
+  html, body, [class*="css"] { font-family: var(--fd-font); }
+
+  .stApp {
+    background: var(--fd-bg);
+    color: var(--fd-text);
+  }
+
+  [data-testid="stHeader"] {
+    background: rgba(255, 254, 250, 0.97);
+    border-bottom-color: var(--fd-border);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    color: var(--fd-text);
+    font-family: var(--fd-display);
+    letter-spacing: -0.012em;
+  }
+
+  p, li, .stMarkdown, [data-testid="stCaptionContainer"] { color: var(--fd-text2); }
+
+  a {
+    color: var(--fd-accent) !important;
+    text-decoration: underline;
+    text-decoration-color: rgba(49, 92, 67, 0.35);
+    text-underline-offset: 0.16em;
+  }
+
+  code {
+    background: #ebe7dc;
+    color: #304437;
+    border-radius: 2px;
+  }
+
+  pre, pre code {
+    background: #292d29 !important;
+    color: #f3f0e7 !important;
+  }
+
+  .fd-page-title {
+    color: var(--fd-text);
+    font-family: var(--fd-display);
+    font-size: clamp(2rem, 4vw, 3.15rem);
+    font-weight: 400;
+    letter-spacing: -0.035em;
+    line-height: 1.08;
+    margin-bottom: 0.65rem;
+  }
+
+  .fd-page-lead {
+    color: var(--fd-text2);
+    font-size: 1.04rem;
+    line-height: 1.7;
+    margin-bottom: 1.65rem;
+    max-width: 800px;
+  }
+
+  .fd-section-label {
+    border-bottom: 1px solid var(--fd-border);
+    color: var(--fd-text);
+    font-family: var(--fd-display);
+    font-size: 1.12rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin: 2.15rem 0 0.9rem;
+    padding-bottom: 0.42rem;
+    text-transform: none;
+  }
+
+  .fd-kicker {
+    background: transparent;
+    border: 0;
+    border-left: 2px solid var(--fd-accent);
+    border-radius: 0;
+    color: var(--fd-accent2);
+    letter-spacing: 0.07em;
+    margin-bottom: 0.9rem;
+    padding: 1px 0 1px 9px;
+  }
+
+  .fd-intro {
+    align-items: center;
+    border: 0;
+    border-bottom: 1px solid var(--fd-border);
+    border-top: 1px solid var(--fd-border);
+    margin: 0.2rem 0 0.65rem;
+    padding: 0.65rem 0;
+  }
+
+  .metric-card,
+  [data-testid="stMetric"] {
+    background: var(--fd-bg2);
+    border: 1px solid var(--fd-border);
+    border-radius: var(--fd-radius);
+    border-top: 3px solid var(--fd-accent);
+    padding: 16px 17px 14px;
+  }
+
+  .metric-card .label,
+  [data-testid="stMetricLabel"] p {
+    color: var(--fd-text3);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    text-transform: none;
+  }
+
+  .metric-card .value,
+  [data-testid="stMetricValue"] {
+    color: var(--fd-text);
+    font-family: var(--fd-display);
+    font-size: 27px;
+    font-weight: 400;
+  }
+
+  .fd-card,
+  .fd-step-card,
+  .fd-route-card,
+  [data-testid="stExpander"],
+  [data-testid="stVerticalBlockBorderWrapper"] {
+    background: var(--fd-bg2);
+    border-color: var(--fd-border) !important;
+    border-radius: var(--fd-radius) !important;
+  }
+
+  .fd-card-title,
+  .fd-step-title,
+  .fd-route-title {
+    color: var(--fd-text);
+    font-family: var(--fd-display);
+  }
+
+  .fd-step-card::before { content: none; }
+
+  .fd-step-label {
+    color: var(--fd-accent);
+    font-family: var(--fd-font);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+
+  .fd-route-card:hover { border-color: var(--fd-accent); }
+
+  .fd-pill {
+    background: transparent;
+    border: 1px solid var(--fd-border2);
+    border-radius: 2px;
+    color: var(--fd-text2);
+    font-family: var(--fd-font);
+  }
+
+  .fd-pill-green { background: #e5ede6; border-color: #adc1b2; color: #294f39; }
+  .fd-pill-blue { background: #e7eef1; border-color: #b2c4cc; color: #315e78; }
+  .fd-pill-amber { background: #f2ead9; border-color: #d4c095; color: #73541f; }
+
+  .fd-callout {
+    background: #edf2f3;
+    border: 1px solid #b8c7cc;
+    border-left: 3px solid var(--fd-blue);
+    color: #2f5264;
+  }
+
+  .fd-progress-fill { background: var(--fd-accent); }
+  .file-ok { color: #2f6847; }
+  .file-miss { color: #a4423c; }
+  .stTabs [aria-selected="true"] { color: var(--fd-accent) !important; }
+
+  div[data-baseweb="select"] > div,
+  div[data-baseweb="input"] > div,
+  textarea,
+  input { background: #ffffff !important; }
+
+  .stButton button,
+  .stDownloadButton button {
+    background: var(--fd-bg2);
+    color: var(--fd-text2);
+  }
+
+  .stButton button:hover,
+  .stDownloadButton button:hover {
+    border-color: var(--fd-accent);
+    color: var(--fd-accent);
+  }
+
+  [data-testid="stDataFrame"],
+  [data-testid="stTable"] { background: var(--fd-bg2); }
+
+  @media (max-width: 700px) {
+    .block-container {
+      padding-left: 1rem;
+      padding-right: 1rem;
+      padding-top: 4.2rem;
+    }
+    .fd-page-title { font-size: 2.15rem; }
+  }
+</style>
+"""
+
+
 def apply_dark_css():
-    st.markdown(DARK_CSS, unsafe_allow_html=True)
+    """Apply the shared editorial dashboard theme."""
+    st.markdown(BASE_CSS + EDITORIAL_CSS, unsafe_allow_html=True)
 
 
-def _safe_page_link(container, page: str, label: str) -> None:
-    """Render Streamlit page links, with a direct-run fallback for page QA."""
-    try:
-        container.page_link(page, label=label)
-    except KeyError:
-        container.markdown(
-            f'<a class="fd-nav-link" href="{html.escape(page)}">{html.escape(label)}</a>',
-            unsafe_allow_html=True,
-        )
+def latest_model_run() -> Path | None:
+    """Return the authoritative 09_analysis model-run directory (the repo keeps exactly one)."""
+    root = repo_path("09_analysis", "results", "model_runs")
+    if not root.is_dir():
+        return None
+    runs = sorted(d for d in root.iterdir() if (d / "coefficients.csv").is_file())
+    return runs[-1] if runs else None
 
 
-def render_top_nav() -> None:
-    """Render the shared top navigation for the multipage dashboard."""
-    cols = st.columns([1.25, 0.52, 0.84, 0.55, 0.62, 0.76, 0.58, 0.62, 0.82, 0.92])
-    cols[0].markdown('<div class="fd-navbar-brand">Forest Data Explorer</div>', unsafe_allow_html=True)
-    _safe_page_link(cols[1], "app.py", "Home")
-    _safe_page_link(cols[2], "pages/4_Architecture.py", "Architecture")
-    _safe_page_link(cols[3], "pages/1_IDS_Survey.py", "IDS")
-    _safe_page_link(cols[4], "pages/2_Climate.py", "Climate")
-    _safe_page_link(cols[5], "pages/3_FIA_Forest.py", "FIA Forest")
-    _safe_page_link(cols[6], "pages/6_Thermophilization.py", "Thermo")
-    _safe_page_link(cols[7], "pages/5_Data_Catalog.py", "Catalog")
-    _safe_page_link(cols[8], "pages/8_Query_Builder.py", "Build Data")
-    _safe_page_link(cols[9], "pages/7_FIA_Navigator.py", "FIA Navigator")
-    st.markdown('<div class="fd-navbar-rule"></div>', unsafe_allow_html=True)
+PAGE_ROLES = {
+    "core": ("Core analysis", "fd-pill-green"),
+    "input": ("Analysis input", "fd-pill-green"),
+    "tool": ("Data tool", "fd-pill-blue"),
+    "reference": ("Reference", ""),
+    "other": ("Not used by the current analysis", "fd-pill-amber"),
+}
+
+
+def page_intro(purpose: str, role: str, links=()) -> None:
+    """State what a page is for, how it relates to the analysis, and where to go next.
+
+    `links` is a sequence of (page path relative to app.py, label) pairs.
+    """
+    label, pill_class = PAGE_ROLES[role]
+    st.markdown(
+        f'<div class="fd-intro"><span class="fd-pill {pill_class}">{html.escape(label)}</span>'
+        f'<span class="fd-intro-text">{html.escape(purpose)}</span></div>',
+        unsafe_allow_html=True,
+    )
+    if links:
+        cols = st.columns(max(len(links), 4))
+        for col, (page, link_label) in zip(cols, links):
+            col.page_link(page, label=link_label, icon=":material/arrow_forward:")
 
 
 # ------------------------------------------------------------------------------
-# Plotly dark theme helpers
+# Plotly theme helpers
 # ------------------------------------------------------------------------------
 
-PLOTLY_DARK = dict(
-    plot_bgcolor="#0d1a12",
-    paper_bgcolor="#0d1a12",
-    font_color="#d4e8da",
-    xaxis=dict(gridcolor="#1e3024", linecolor="#2a4035"),
-    yaxis=dict(gridcolor="#1e3024", linecolor="#2a4035"),
+PLOTLY_THEME = dict(
+    plot_bgcolor="#fffefa",
+    paper_bgcolor="#fffefa",
+    font_color="#20251f",
+    font=dict(family='Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'),
+    xaxis=dict(gridcolor="#e4e0d5", linecolor="#bdb7a9", zerolinecolor="#d7d2c5"),
+    yaxis=dict(gridcolor="#e4e0d5", linecolor="#bdb7a9", zerolinecolor="#d7d2c5"),
 )
 
 
 def dark_fig(fig):
-    fig.update_layout(**PLOTLY_DARK, margin=dict(l=40, r=20, t=30, b=40))
+    """Apply the shared Plotly theme (name retained for page compatibility)."""
+    fig.update_layout(**PLOTLY_THEME, margin=dict(l=40, r=20, t=30, b=40))
     return fig
 
 
@@ -809,14 +1048,14 @@ def scatter_geo_usa(df, lat_col, lon_col, color_col, color_map=None,
     fig.update_traces(marker_size=size)
     fig.update_layout(
         height=560,
-        paper_bgcolor="#0d1a12",
-        plot_bgcolor="#0d1a12",
-        geo=dict(bgcolor="#0d1a12", landcolor="#162219",
-                 lakecolor="#0d1a12", coastlinecolor="#2a4035",
+        paper_bgcolor="#fffefa",
+        plot_bgcolor="#fffefa",
+        geo=dict(bgcolor="#fffefa", landcolor="#ece9df",
+                 lakecolor="#f5f3ec", coastlinecolor="#bdb7a9",
                  showland=True, showlakes=True, showcoastlines=True),
-        font_color="#d4e8da",
+        font_color="#20251f",
         margin=dict(l=0, r=0, t=30, b=0),
-        legend=dict(bgcolor="#111f17", bordercolor="#1e3024", borderwidth=1),
+        legend=dict(bgcolor="#fffefa", bordercolor="#d7d2c5", borderwidth=1),
     )
     return fig
 
@@ -883,6 +1122,17 @@ def github_code_url(path: str, line: int | None = None, end_line: int | None = N
     if line:
         return f"{url}#L{line}"
     return url
+
+
+def repo_link(path: str, label: str | None = None, anchor: str = "") -> str:
+    """Markdown link to a repository file on GitHub, labelled with its path by default."""
+    url = github_code_url(path) + (f"#{anchor}" if anchor else "")
+    return f"[`{label or path}`]({url})"
+
+
+def repo_link_html(path: str, label: str | None = None) -> str:
+    """HTML version of repo_link for content rendered with unsafe_allow_html."""
+    return f'<a href="{html.escape(github_code_url(path))}"><code>{html.escape(label or path)}</code></a>'
 
 
 def plot_source_link(

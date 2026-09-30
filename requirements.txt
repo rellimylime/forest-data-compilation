@@ -1,4 +1,6 @@
-streamlit>=1.30
+streamlit>=1.46
+# Newer NumPy wheels can require x86-64-v2; the UCSB QEMU host exposes SSE2 only.
+numpy>=1.24,<2.3
 pandas>=2.0
 plotly>=5.17
 pyarrow>=14.0

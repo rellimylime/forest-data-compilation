@@ -20,13 +20,12 @@ import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from utils import (
+    page_intro,
     REPO_ROOT, apply_dark_css, color_status, load_product_catalog,
-    render_top_nav,
 )
 
-st.set_page_config(page_title="Data Catalog", page_icon="📋", layout="wide")
+st.set_page_config(page_title="Find data", page_icon="📋", layout="wide")
 apply_dark_css()
-render_top_nav()
 
 
 ACCESS_LABELS = {
@@ -97,7 +96,15 @@ def load_code(product: dict) -> tuple[str, str]:
 # Load
 # ------------------------------------------------------------------------------
 
-st.title("📋 Find Repository Data")
+st.title("📋 Find data")
+page_intro(
+    "Search every table and variable in the repository: what one row is, where it lives, "
+    "which script makes it, and whether it exists on this machine. Tables the analysis "
+    "builds are in the Condition-level analysis family.",
+    "tool",
+    [("pages/6_Analysis.py", "Analysis"), ("pages/8_Query_Builder.py", "Build a dataset"),
+     ("pages/7_FIA_Navigator.py", "FIA field guide")],
+)
 
 inv, catalog_source, catalog_error = load_product_catalog()
 if not inv:
@@ -158,7 +165,15 @@ with f2:
         format_func=lambda k: ACCESS_LABELS[k],
     )
 with f3:
-    show_missing = st.checkbox("Include products not built here", value=True)
+    show_missing = st.checkbox(
+        "Include unbuilt pipeline products",
+        value=False,
+        help=(
+            "Show registered outputs that are not present in this catalog "
+            "snapshot. Useful for pipeline maintenance; leave off when "
+            "looking for data you can use now."
+        ),
+    )
 
 
 def matches(p: dict) -> bool:
@@ -219,7 +234,7 @@ if variable_rows:
     st.caption(f"{len(variable_rows):,} product-variable locations match the current filters.")
     st.dataframe(
         pd.DataFrame(variable_rows).style.map(color_status, subset=["Status"]),
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
         height=min(520, 36 * len(variable_rows) + 38),
     )
@@ -254,7 +269,12 @@ for fam_id, fam in families.items():
 
             m1, m2, m3 = st.columns(3)
             access = ACCESS_LABELS[p["access_mode"]]
-            if p.get("intended_access_mode"):
+            if p["availability"] in ("missing", "error"):
+                access = (
+                    "Unavailable here  \n"
+                    f"_intended as {ACCESS_LABELS[p['access_mode']]}_"
+                )
+            elif p.get("intended_access_mode"):
                 access += (f"  \n_held back pending review; intended as "
                            f"{ACCESS_LABELS[p['intended_access_mode']]}_")
             m1.markdown(f"**Access**  \n{access}")
@@ -317,7 +337,7 @@ for fam_id, fam in families.items():
                 st.markdown(f"**Schema** — {len(obs['columns'])} columns")
                 st.dataframe(
                     pd.DataFrame(obs["columns"], columns=["Column", "Type"]),
-                    use_container_width=True, hide_index=True,
+                    width="stretch", hide_index=True,
                     height=min(400, 35 * len(obs["columns"]) + 40),
                 )
 
@@ -356,5 +376,5 @@ if table.empty:
 else:
     st.dataframe(
         table.style.map(color_status, subset=["Status"]),
-        use_container_width=True, hide_index=True,
+        width="stretch", hide_index=True,
     )

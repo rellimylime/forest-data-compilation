@@ -12,14 +12,14 @@ import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from utils import (
+    page_intro,
     apply_dark_css, metric_card, dark_fig, parquet_meta,
-    load_parquet, repo_path, plot_source_link, render_top_nav,
+    load_parquet, repo_path, plot_source_link,
     route_grid, workflow_grid,
 )
 
-st.set_page_config(page_title="Climate Data", page_icon="🌡️", layout="wide")
+st.set_page_config(page_title="Climate datasets", page_icon="🌡️", layout="wide")
 apply_dark_css()
-render_top_nav()
 
 try:
     import plotly.express as px
@@ -30,7 +30,15 @@ except ImportError:
 st.title("🌡️ Climate Datasets")
 st.markdown(
     "Three gridded climate datasets are extracted for every IDS damage area using the "
-    "**pixel decomposition** pattern — see the Architecture page for how it works."
+    "**pixel decomposition** pattern — see the Repository map page for how it works."
+)
+page_intro(
+    "TerraClimate, PRISM, and WorldClim values extracted at IDS survey locations. The current "
+    "analysis does not use these outputs; its separate cumulative-CWD cache is documented "
+    "on the Analysis page.",
+    "other",
+    [("pages/6_Analysis.py", "Analysis"), ("pages/1_IDS_Survey.py", "IDS survey"),
+     ("pages/4_Architecture.py", "Repository map")],
 )
 
 st.markdown(
@@ -40,11 +48,6 @@ st.markdown(
                 "title": "IDS polygons",
                 "body": "Damage areas are decomposed into every overlapping raster pixel and summarized with coverage fractions.",
                 "pills": ["DAMAGE_AREA_ID", "coverage_fraction"],
-            },
-            {
-                "title": "FIA points",
-                "body": "Stable FIA plot locations snap to one TerraClimate pixel, then receive a complete monthly site-climate history.",
-                "pills": ["site_id", "pixel_id"],
             },
             {
                 "title": "Shared summary pattern",
@@ -181,12 +184,12 @@ with workflow_tab:
                 {
                     "label": "1",
                     "title": "Choose observation geometry",
-                    "body": "IDS uses damage polygons and points; FIA uses stable plot point locations.",
+                    "body": "IDS uses damage polygons and damage-point observations.",
                 },
                 {
                     "label": "2",
                     "title": "Build a pixel map",
-                    "body": "Polygons keep coverage fractions. Points receive the containing climate pixel.",
+                    "body": "Polygons keep coverage fractions; damage points receive the containing climate pixel.",
                 },
                 {
                     "label": "3",
@@ -196,7 +199,7 @@ with workflow_tab:
                 {
                     "label": "4",
                     "title": "Join and summarize",
-                    "body": "IDS polygons get area-weighted summaries. FIA points get direct site histories.",
+                    "body": "IDS polygons get area-weighted summaries; damage points use direct pixel values where enabled.",
                 },
             ]
         ),
@@ -209,7 +212,6 @@ with workflow_tab:
         "|---|---|---|---|\n"
         "| IDS damage areas | Polygon | Many pixels with `coverage_fraction` weights | `processed/climate/<dataset>/damage_areas_summaries/<variable>.parquet` |\n"
         "| IDS damage points | Point | One containing pixel | point pixel maps / values where enabled |\n"
-        "| FIA plot sites | Point | One TerraClimate pixel per `site_id` | `05_fia/data/processed/site_climate/site_climate.parquet` |\n"
     )
 
     st.info(
@@ -224,7 +226,7 @@ with workflow_tab:
 # ==============================================================================
 with match_tab:
     st.subheader("How to connect climate to other repo outputs")
-    ids_col, fia_col = st.columns(2)
+    ids_col = st.container()
     with ids_col:
         st.markdown("#### IDS example: climate at damage polygons")
         st.markdown(
@@ -249,26 +251,6 @@ with match_tab:
             language="r",
         )
 
-    with fia_col:
-        st.markdown("#### FIA example: baseline climate at plot sites")
-        st.markdown(
-            "FIA site climate is keyed by `site_id`, which matches `stable_plot_id` in "
-            "condition metadata and disturbance-classification outputs."
-        )
-        st.code(
-            'library(arrow)\n'
-            'library(dplyr)\n\n'
-            'clim <- open_dataset("05_fia/data/processed/site_climate/site_climate.parquet")\n'
-            'dist <- read_parquet("05_fia/data/processed/summaries/fia_condition_disturbance_flags.parquet")\n\n'
-            'baseline <- clim |>\n'
-            '  filter(year >= 1981, year <= 2010, variable %in% c("tmmx", "tmmn", "pr", "def")) |>\n'
-            '  collect() |>\n'
-            '  group_by(site_id, variable) |>\n'
-            '  summarise(value_1981_2010 = mean(value, na.rm = TRUE), .groups = "drop")\n\n'
-            'dist_with_climate <- dist |>\n'
-            '  left_join(baseline, by = c("stable_plot_id" = "site_id"))',
-            language="r",
-        )
 
     st.markdown("#### Output checklist after workflows run")
     st.markdown(
@@ -277,7 +259,6 @@ with match_tab:
         "| IDS foundation | cleaned GeoPackage layers and lookups | damage/host filtering, survey geometry, map joins |\n"
         "| IDS + climate | pixel maps, yearly pixel values, per-variable damage-area summaries | outbreak climate histories and lag analyses |\n"
         "| FIA summaries | tree, seedling, mortality, disturbance, treatment, condition, and damage-agent parquets | plot-level forest structure and disturbance questions |\n"
-        "| FIA site climate | site pixel map and long monthly TerraClimate table | baseline climate, climate matching, thermophilization inputs |\n"
     )
 
 # ==============================================================================
@@ -300,7 +281,7 @@ with tc_tab:
     st.markdown("---")
     st.subheader("Variable Catalog")
     vc_df = pd.DataFrame(TC_VARS, columns=["Variable", "Description", "Units", "GEE Scale"])
-    st.dataframe(vc_df, use_container_width=True, hide_index=True)
+    st.dataframe(vc_df, width="stretch", hide_index=True)
 
     st.markdown("---")
     st.subheader("Output File Inventory")
@@ -313,7 +294,7 @@ with tc_tab:
     from utils import color_status
     st.dataframe(
         inv.style.map(color_status, subset=["Status"]),
-        use_container_width=True, hide_index=True,
+        width="stretch", hide_index=True,
     )
 
     # Pixel map stats
@@ -367,7 +348,7 @@ with prism_tab:
     st.markdown("---")
     st.subheader("Variable Catalog")
     vc_df = pd.DataFrame(PRISM_VARS, columns=["Variable", "Description", "Units", "Scale"])
-    st.dataframe(vc_df, use_container_width=True, hide_index=True)
+    st.dataframe(vc_df, width="stretch", hide_index=True)
 
     st.markdown("---")
     st.subheader("Output File Inventory")
@@ -375,7 +356,7 @@ with prism_tab:
     inv = file_inventory_table(PRISM_VARS, _prism_summary_files())
     st.dataframe(
         inv.style.map(color_status, subset=["Status"]),
-        use_container_width=True, hide_index=True,
+        width="stretch", hide_index=True,
     )
 
     pm_path = str(repo_path("03_prism", "data", "processed",
@@ -412,7 +393,7 @@ with wc_tab:
     st.markdown("---")
     st.subheader("Variable Catalog")
     vc_df = pd.DataFrame(WC_VARS, columns=["Variable", "Description", "Units", "Scale"])
-    st.dataframe(vc_df, use_container_width=True, hide_index=True)
+    st.dataframe(vc_df, width="stretch", hide_index=True)
 
     st.markdown("---")
     st.subheader("Output File Inventory")
@@ -420,7 +401,7 @@ with wc_tab:
     inv = file_inventory_table(WC_VARS, _wc_summary_files())
     st.dataframe(
         inv.style.map(color_status, subset=["Status"]),
-        use_container_width=True, hide_index=True,
+        width="stretch", hide_index=True,
     )
 
     pm_path = str(repo_path("04_worldclim", "data", "processed",
@@ -443,28 +424,20 @@ with wc_tab:
 with grid_tab:
     st.subheader("Pixel Grid Visualization")
     st.markdown(
-        "Each dataset decomposes IDS damage areas (polygons) or FIA sites (points) into the "
-        "underlying raster pixels they overlap. This tab visualises pixel centroids to show "
-        "what the grid structure looks like on a map."
+        "Each climate dataset decomposes IDS damage areas into the raster pixels they "
+        "overlap. This tab visualizes pixel centroids to show the grid structure on a map."
     )
 
     # Dataset selector
     grid_dataset = st.radio(
         "Show pixel map for",
-        ["FIA sites (TerraClimate 4km, 6,956 points — loads instantly)",
-         "IDS damage areas — TerraClimate (sampled 30k)",
+        ["IDS damage areas — TerraClimate (sampled 30k)",
          "IDS damage areas — PRISM (sampled 30k)",
          "IDS damage areas — WorldClim (sampled 30k)"],
         key="grid_dataset_sel",
     )
 
-    if grid_dataset.startswith("FIA"):
-        pm_path = str(repo_path("05_fia", "data", "processed", "site_climate",
-                                 "site_pixel_map.parquet"))
-        color_seq = ["#4e79a7"]
-        title_suffix = "FIA site pixel centroids (TerraClimate 4km grid)"
-        sample_n = None
-    elif "TerraClimate" in grid_dataset:
+    if "TerraClimate" in grid_dataset:
         pm_path = str(repo_path("02_terraclimate", "data", "processed",
                                  "pixel_maps", "damage_areas_pixel_map.parquet"))
         color_seq = ["#e15759"]
@@ -537,18 +510,16 @@ with grid_tab:
                     )
                 fig.update_traces(marker_size=4)
                 fig.update_layout(
-                    paper_bgcolor="#0e1117", font_color="#ddd",
+                    paper_bgcolor="#fffefa", font_color="#495149",
                     margin=dict(l=0, r=0, t=30, b=0),
                 )
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch")
                 plot_source_link("docs/dashboard/pages/2_Climate.py", line=377)
 
                 st.caption(
                     "Each dot is one unique raster pixel. "
                     "The grid pattern reflects the underlying dataset resolution: "
                     "~4km (TerraClimate / WorldClim) or ~800m (PRISM). "
-                    "FIA sites use the same TerraClimate grid but for point locations "
-                    "rather than area decomposition — see the Architecture page."
                 )
 
     st.markdown("---")
@@ -558,7 +529,7 @@ with grid_tab:
         "one row per **damage area × month** with area-weighted climate values."
     )
     schema_df = pd.DataFrame(SUMMARY_SCHEMA, columns=["Column", "Type", "Description"])
-    st.dataframe(schema_df, use_container_width=True, hide_index=True)
+    st.dataframe(schema_df, width="stretch", hide_index=True)
 
     st.markdown("---")
     st.subheader("Dataset Comparison")
@@ -567,4 +538,4 @@ with grid_tab:
         ["PRISM",        "Web service (nacse.org)",          "800 m",  "1997–2024", "7",  "CONUS",  "~135 GB"],
         ["WorldClim",    "Direct download (GeoTIFF)",        "~4.5 km","1950–2024", "3",  "Global", "~31 GB"],
     ], columns=["Dataset", "Access", "Resolution", "Period", "Variables", "Coverage", "Summary Size"])
-    st.dataframe(comp_df, use_container_width=True, hide_index=True)
+    st.dataframe(comp_df, width="stretch", hide_index=True)

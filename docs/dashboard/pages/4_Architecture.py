@@ -11,12 +11,11 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from utils import apply_dark_css, metric_card, render_top_nav
+from utils import apply_dark_css, metric_card, page_intro, repo_link, repo_link_html
 
 
-st.set_page_config(page_title="Architecture", page_icon="🧭", layout="wide")
+st.set_page_config(page_title="Repository map", page_icon="🧭", layout="wide")
 apply_dark_css()
-render_top_nav()
 
 
 PAGE_CSS = """
@@ -231,7 +230,14 @@ CLIMATE_OPTIONS = {
 }
 
 
-st.title("Architecture Explorer")
+st.title("Repository map")
+page_intro(
+    "How every module fits together, including the workstreams the current analysis does not "
+    "use. For the analysis itself, start on the Analysis page.",
+    "reference",
+    [("pages/6_Analysis.py", "Analysis"), ("pages/5_Data_Catalog.py", "Find data"),
+     ("home.py", "Home")],
+)
 st.markdown(
     """
     <div class="arch-intro">
@@ -255,10 +261,10 @@ with c2:
 with c3:
     st.markdown(metric_card("Shared climate step", "1", "build_climate_summaries.R"), unsafe_allow_html=True)
 with c4:
-    st.markdown(metric_card("Downstream layers", "3", "demos, dashboard, thermophilization"), unsafe_allow_html=True)
+    st.markdown(metric_card("Downstream layers", "3", "demos, dashboard, analysis"), unsafe_allow_html=True)
 
 st.markdown(
-    """
+    f"""
     <div class="arch-nav-grid">
       <div class="arch-nav-card">
         <h4>Start here</h4>
@@ -266,15 +272,15 @@ st.markdown(
       </div>
       <div class="arch-nav-card">
         <h4>Then choose a data page</h4>
-        <p>Use the top navigation to open <code>IDS Survey</code>, <code>Climate</code>, <code>FIA Forest</code>, or <code>Thermophilization</code>.</p>
+        <p>Use the top navigation to open <code>Analysis</code>, <code>Processed FIA data</code>, or, under Other workstreams, <code>IDS survey</code> and <code>Climate datasets</code>.</p>
       </div>
       <div class="arch-nav-card">
         <h4>Need exact file paths</h4>
-        <p>Open <code>Data Catalog</code> for output locations, schemas, and load examples.</p>
+        <p>Open <code>Find data</code> for output locations, schemas, and load examples.</p>
       </div>
       <div class="arch-nav-card">
         <h4>Need deeper docs</h4>
-        <p>Use <code>README.md</code>, <code>docs/REPRODUCE.md</code>, and the workstream <code>WORKFLOW.md</code> files only when you want more detail.</p>
+        <p>Use {repo_link_html("README.md")}, {repo_link_html("docs/REPRODUCE.md")}, and the workstream <code>WORKFLOW.md</code> files only when you want more detail.</p>
       </div>
     </div>
     """,
@@ -282,8 +288,8 @@ st.markdown(
 )
 
 
-tab_overview, tab_ids, tab_fia, tab_thermo, tab_shared, tab_outputs = st.tabs(
-    ["Overview", "IDS + Climate", "FIA", "Thermophilization", "Shared Pieces", "Outputs"]
+tab_overview, tab_ids, tab_fia, tab_analysis, tab_shared, tab_outputs = st.tabs(
+    ["Overview", "IDS + Climate", "FIA", "Analysis", "Shared Pieces", "Outputs"]
 )
 
 
@@ -293,7 +299,7 @@ with tab_overview:
         "The repository has two main production paths. **IDS** starts with survey polygons and "
         "joins them to gridded climate through a pixel map. **FIA** starts with inventory tables, "
         "builds plot and condition summaries, and optionally joins plot locations to the same "
-        "climate layer for downstream thermophilization work."
+        "climate layer for the downstream condition-level analysis."
     )
     st.markdown(
         flow_block(
@@ -355,13 +361,6 @@ with tab_overview:
                     "tone": "green",
                     "pill": "05_fia/scripts/05",
                 },
-                {
-                    "step": "Climate",
-                    "title": "Site climate bridge",
-                    "body": "Map FIA plot locations to TerraClimate pixels and extract long-term monthly climate for trait and thermophilization workflows.",
-                    "tone": "purple",
-                    "pill": "05_fia/scripts/06",
-                },
             ]
         ),
         unsafe_allow_html=True,
@@ -383,7 +382,6 @@ with tab_overview:
             """
             - IDS starts with polygon survey data; FIA starts with plot tables.
             - PRISM is CONUS-only, while TerraClimate and WorldClim are global.
-            - FIA site climate is optional and uses point locations instead of polygons.
             """
         )
 
@@ -538,13 +536,13 @@ with tab_ids:
         ],
         columns=["Idea", "Meaning"],
     )
-    st.dataframe(compare_df, use_container_width=True, hide_index=True)
+    st.dataframe(compare_df, width="stretch", hide_index=True)
 
 
 with tab_fia:
     st.subheader("FIA pipeline")
     st.markdown(
-        '<div class="arch-note">The core FIA path is straightforward: download tables, build state-level parquet extracts, then aggregate to national plot summaries. The site-climate branch is optional.</div>',
+        '<div class="arch-note">The core FIA path is straightforward: download source tables, build state-level Parquet extracts, then aggregate those extracts into repository summaries.</div>',
         unsafe_allow_html=True,
     )
 
@@ -604,53 +602,22 @@ with tab_fia:
             language="text",
         )
     with right:
-        st.markdown("#### Optional site-climate branch")
+        st.markdown("#### Source versus derived data")
         st.markdown(
             """
-            If you need climate at FIA plot locations:
-
-            - compile site coordinates
-            - map each site to one TerraClimate pixel
-            - extract monthly TerraClimate values
-            - write `site_pixel_map.parquet` and `site_climate.parquet`
+            - FIA DataMart tables are the raw source.
+            - State-partitioned Parquet files are repository extracts.
+            - Files in `processed/summaries` are repository-built aggregations.
+            - Dashboard JSON and CSV files are compact display aggregates derived from those summaries.
             """
         )
-        st.code("05_fia/scripts/site_climate/02_extract_terraclimate.R", language="text")
-
-    with st.expander("Site-climate branch — step-by-step detail"):
-        fia_steps = [
-            ("Step 1", "Compile FIA site locations",
-             "408,040 stable FIA plot locations with valid public coordinates are compiled from "
-             "the condition extracts. Each row is a plot location, not an inventory visit.",
-             "05_fia/scripts/site_climate/01_build_site_list.R"),
-            ("Step 2", "Build site pixel map",
-             "Map each FIA plot to its containing TerraClimate grid cell. The 408,040 sites "
-             "currently map to 338,219 unique climate pixels.",
-             "05_fia/scripts/site_climate/02_extract_terraclimate.R"),
-            ("Step 3", "Authenticate Google Earth Engine (one-time)",
-             "Browser authentication writes credentials to `~/.config/earthengine/`; subsequent runs "
-             "initialize automatically.",
-             "Manual step, once per machine"),
-            ("Step 4", "Extract TerraClimate 1958–2024 via GEE",
-             "For each year, build a stacked GEE image (6 variables × 12 months) and sample at the "
-             "unique site-pixel centroids. Annual outputs land in `_gee_annual/sites_{year}.parquet`.",
-             "05_fia/scripts/site_climate/02_extract_terraclimate.R"),
-            ("Step 5", "Consolidate to final parquet",
-             "Join annual pixel values back to the site pixel map. Point locations mean "
-             "`coverage_fraction = 1.0` everywhere, so a direct pixel join is enough. "
-             "The current national output has about 1.95 billion rows and is approximately 5.85 GB.",
-             "05_fia/scripts/site_climate/02_extract_terraclimate.R"),
-        ]
-        for step, title, description, script in fia_steps:
-            st.markdown(f"**{step} · {title}**")
-            st.markdown(description)
-            st.caption(f"Script: `{script}`")
 
 
-with tab_thermo:
-    st.subheader("Thermophilization layer")
+
+with tab_analysis:
+    st.subheader("Core analysis")
     st.markdown(
-        '<div class="arch-note">This is the downstream analysis path that turns FIA seedlings and species climate niches into a matched disturbed-versus-control recruitment signal.</div>',
+        '<div class="arch-note">The end-to-end path that produces the model data and results: FIA inventory, species climate niches, then the condition-level analysis in 09_analysis. Open the Analysis page for its tables and the committed model results.</div>',
         unsafe_allow_html=True,
     )
     st.markdown(
@@ -658,56 +625,51 @@ with tab_thermo:
             [
                 {
                     "step": "1",
-                    "title": "FIA site climate",
-                    "body": "TerraClimate histories at stable FIA plot locations provide the baseline climate space.",
+                    "title": "FIA inventory",
+                    "body": "Core FIA extraction and summaries, the plot-visit context, and the stable-plot site list.",
                     "tone": "purple",
-                    "pill": "site_climate.parquet",
+                    "pill": "05_fia/scripts/core/01-05",
                 },
                 {
                     "step": "2",
-                    "title": "Species climate affinity",
-                    "body": "The species-niche module supplies each FIA species' realized temperature, precipitation, and moisture envelope.",
+                    "title": "Species climate niches",
+                    "body": "Each species' realized temperature, precipitation, and moisture envelope from its BIEN range map.",
                     "tone": "green",
-                    "pill": "species_climate_niches.parquet",
+                    "pill": "06_species_niches/scripts/01-05",
                 },
                 {
                     "step": "3",
-                    "title": "Condition CWM",
-                    "body": "Species abundance weights those niche values into one climate-affinity score per FIA condition.",
+                    "title": "Condition histories and CWM change",
+                    "body": "Stable FIA conditions followed through official remeasurement links, with first-to-last CWM change for saplings, adults, and both combined.",
                     "tone": "green",
-                    "pill": "plot_community_climate_<layer>.parquet",
+                    "pill": "09_analysis stages 00-03",
                 },
                 {
                     "step": "4",
-                    "title": "Forest plot visit",
-                    "body": "Forested conditions combine into one score per plot visit, weighted by each one's share of the visit's forested area.",
+                    "title": "Mortality and site CWD",
+                    "body": "Cumulative fire, insect, and disease mortality per history, plus cumulative TerraClimate site CWD.",
                     "tone": "green",
-                    "pill": "forest_plot_visit_cwm_<layer>.parquet",
+                    "pill": "09_analysis stages 04-07",
                 },
                 {
                     "step": "5",
-                    "title": "Change between surveys",
-                    "body": "Repeated surveys of the same plot are compared, either consecutively or first-to-last. Modeling happens outside this repository.",
+                    "title": "Models and results",
+                    "body": "Nine preliminary models, robustness checks, and QA validation, committed under 09_analysis/results/.",
                     "tone": "gold",
-                    "pill": "07_thermophilization/scripts/04-05",
+                    "pill": "09_analysis stages 08-10",
                 },
             ]
         ),
         unsafe_allow_html=True,
     )
 
-    st.markdown("#### Main products")
+    st.markdown("#### Related work, not used by the current models")
     st.markdown(
-        "| Product | Why it matters |\n"
+        "| Module | What it holds |\n"
         "|---|---|\n"
-        "| `fia_condition_disturbance_flags.parquet` | defines control and disturbed candidate pools |\n"
-        "| `species_climate_niches.parquet` | gives each species a realized climate fingerprint |\n"
-        "| `plot_community_climate_<layer>.parquet` | one climate-affinity score per FIA condition |\n"
-        "| `forest_plot_visit_cwm_<layer>.parquet` | the analysis response: forested conditions only, area-weighted |\n"
-        "| `forest_visit_interval_change_<layer>.parquet` | change between consecutive surveys, with annualized rates |\n"
-        "| `forest_first_last_change.parquet` | change from a plot's earliest survey to its latest |\n"
+        "| `07_thermophilization/` | An alternative plot-visit community-climate method with consecutive and first-to-last change |\n"
+        "| `08_disturbance_linkage/` | Prepared FIA, MTBS, and IDS disturbance evidence, kept separate by source |\n"
     )
-
 
 with tab_shared:
     st.subheader("Shared pieces")
@@ -731,14 +693,14 @@ with tab_shared:
         )
     with b:
         st.markdown(
-            """
+            f"""
             <div class="arch-mini-card">
               <h4>Shared documentation spine</h4>
               <ul>
-                <li><code>README.md</code> is the front door.</li>
-                <li><code>docs/README.md</code> is the docs hub.</li>
-                <li><code>docs/REPRODUCE.md</code> gives exact run order.</li>
-                <li><code>docs/DATA_PRODUCTS.md</code> maps outputs to scripts.</li>
+                <li>{repo_link_html("README.md")} is the front door.</li>
+                <li>{repo_link_html("docs/README.md")} is the docs hub.</li>
+                <li>{repo_link_html("docs/REPRODUCE.md")} gives exact run order.</li>
+                <li>{repo_link_html("docs/DATA_PRODUCTS.md")} maps outputs to scripts.</li>
               </ul>
             </div>
             """,
@@ -746,17 +708,15 @@ with tab_shared:
         )
 
     st.markdown("#### If you want to read the repo in a calm order")
-    read_order = pd.DataFrame(
-        [
-            ["1", "README.md", "Understand the two main workstreams and where to go next."],
-            ["2", "docs/REPRODUCE.md", "See the production run order without digging into code."],
-            ["3", "01_ids/README.md or 05_fia/README.md", "Choose the workstream you care about."],
-            ["4", "WORKFLOW.md in that directory", "Read the technical detail only after the overview makes sense."],
-            ["5", "scripts/ and docs/dashboard/", "Inspect implementation and outputs when you are ready."],
-        ],
-        columns=["Step", "Read", "Why"],
+    st.markdown(
+        "| Step | Read | Why |\n"
+        "|---|---|---|\n"
+        f"| 1 | {repo_link('README.md')} | The core pipeline and the role of every module. |\n"
+        f"| 2 | {repo_link('docs/REPRODUCE.md')} | The exact run order, without digging into code. |\n"
+        f"| 3 | {repo_link('09_analysis/README.md')}, or the README of the module you care about | What that module builds and why. |\n"
+        "| 4 | `WORKFLOW.md` in that module | Technical detail, once the overview makes sense. |\n"
+        f"| 5 | {repo_link('scripts/README.md', 'scripts/')} and {repo_link('docs/dashboard/README.md', 'docs/dashboard/')} | Implementation and outputs, when you are ready. |\n"
     )
-    st.dataframe(read_order, use_container_width=True, hide_index=True)
 
 
 with tab_outputs:
@@ -782,7 +742,7 @@ with tab_outputs:
                 {
                     "step": "Finished",
                     "title": "FIA outputs",
-                    "body": "Tracked plot-level summary parquets and optional site climate.",
+                    "body": "Tracked plot- and condition-level summary Parquet products.",
                     "tone": "green",
                     "pill": "05_fia/data/processed/",
                 },

@@ -1,6 +1,6 @@
 # ==============================================================================
 # pages/3_FIA_Forest.py
-# FIA Forest Inventory — interactive data explorer.
+# Repository-processed FIA data — interactive data explorer.
 #
 # Rendering priority:
 #   1. Compact JSON/CSV aggregates from docs/dashboard/static/data/fia/
@@ -20,15 +20,15 @@ import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from utils import (
+    page_intro,
     apply_dark_css, metric_card, dark_fig,
     load_parquet, load_static_data_csv, load_static_data_json,
     parquet_meta, repo_path, color_status, PLOTLY_AVAILABLE,
-    plot_source_link, render_top_nav,
+    plot_source_link,
 )
 
-st.set_page_config(page_title="FIA Forest", page_icon="🌲", layout="wide")
+st.set_page_config(page_title="Processed FIA data", page_icon="🌲", layout="wide")
 apply_dark_css()
-render_top_nav()
 
 if PLOTLY_AVAILABLE:
     import plotly.express as px
@@ -39,16 +39,15 @@ if PLOTLY_AVAILABLE:
 # ------------------------------------------------------------------------------
 
 SUMM_DIR   = repo_path("05_fia", "data", "processed", "summaries")
-CLIM_DIR   = repo_path("05_fia", "data", "processed", "site_climate")
 STATIC_FIA_FIG_DIR = repo_path("docs", "dashboard", "static", "figures", "fia")
 STATIC_FIA_FIG_SCRIPT = "docs/dashboard/scripts/build_static_figures.py"
 
-APP_BG = "#0d1a12"
-APP_PANEL = "#111f17"
-APP_LAND = "#162219"
-APP_BORDER = "#2a4035"
-APP_TEXT = "#d4e8da"
-APP_MUTED = "#8aab94"
+APP_BG = "#fffefa"
+APP_PANEL = "#f5f3ec"
+APP_LAND = "#ece9df"
+APP_BORDER = "#bdb7a9"
+APP_TEXT = "#20251f"
+APP_MUTED = "#6e756d"
 
 DIST_COLORS = {
     "fire": "#e15759", "insects": "#59a14f", "disease": "#f28e2b",
@@ -67,7 +66,6 @@ AGENT_COLORS = {
 
 
 def sp(fname): return str(SUMM_DIR / fname)
-def cp(fname): return str(CLIM_DIR / fname)
 
 
 def chart_with_source(fig, *, source_line: int | None = None,
@@ -75,7 +73,7 @@ def chart_with_source(fig, *, source_line: int | None = None,
                       source_path: str = "docs/dashboard/pages/3_FIA_Forest.py",
                       data_source: str | None = None,
                       **kwargs) -> None:
-    st.plotly_chart(fig, use_container_width=True, **kwargs)
+    st.plotly_chart(fig, width="stretch", **kwargs)
     plot_source_link(source_path, label=source_label, line=source_line)
     if data_source:
         plot_source_link(STATIC_FIA_FIG_SCRIPT, label=f"Aggregate ({data_source})")
@@ -85,7 +83,7 @@ def static_image_fallback(file_name: str, caption: str) -> bool:
     path = STATIC_FIA_FIG_DIR / file_name
     if not path.is_file():
         return False
-    st.image(str(path), caption=caption, use_container_width=True)
+    st.image(str(path), caption=caption, width="stretch")
     plot_source_link(STATIC_FIA_FIG_SCRIPT, label="Static figure script")
     return True
 
@@ -138,8 +136,8 @@ def style_bar(fig, height: int | None = None):
     if height:
         layout["height"] = height
     fig.update_layout(**layout)
-    fig.update_xaxes(gridcolor="#1e3024", linecolor=APP_BORDER, zerolinecolor=APP_BORDER)
-    fig.update_yaxes(gridcolor="#1e3024", linecolor=APP_BORDER, zerolinecolor=APP_BORDER)
+    fig.update_xaxes(gridcolor="#e4e0d5", linecolor=APP_BORDER, zerolinecolor=APP_BORDER)
+    fig.update_yaxes(gridcolor="#e4e0d5", linecolor=APP_BORDER, zerolinecolor=APP_BORDER)
     return fig
 
 
@@ -238,12 +236,27 @@ def state_order_present(values) -> list:
 # Title
 # ------------------------------------------------------------------------------
 
-st.title("🌲 FIA Forest Inventory")
+st.title("🌲 FIA processed inventory")
 st.markdown(
-    "USDA Forest Inventory and Analysis — processed summaries for all 50 US states. "
-        "Source tables from `05_fia/scripts/core/05_build_fia_summaries.R`. "
-    "Charts here are interactive: most are rendered from compact aggregates that ship with "
-    "the dashboard repository, so they work even without the underlying parquet files."
+    "Repository-built extracts and summaries derived from USDA Forest Inventory and "
+    "Analysis (FIA) source tables for all 50 states."
+)
+st.info(
+    "**Scope:** this page does not display raw FIA database tables. The pipeline downloads "
+    "FIA source tables, writes state-partitioned Parquet extracts, and then builds the "
+    "plot- and condition-level summary files shown here. Field names such as `PLT_CN`, "
+    "`INVYR`, and `DSTRBCD` originate with FIA; row counts, filters, joins, and derived "
+    "metrics refer to this repository's processed products unless explicitly labeled "
+    "as an FIA source field."
+)
+page_intro(
+    "The processed FIA products available to this repository. The analysis builds its "
+    "condition histories and agent-attributed mortality from these extracts. Disturbance, "
+    "Damage Agents, and Treatment History summarize additional repository products that "
+    "the current models do not use.",
+    "input",
+    [("pages/6_Analysis.py", "Analysis"), ("pages/5_Data_Catalog.py", "Find data"),
+     ("pages/7_FIA_Navigator.py", "FIA field guide")],
 )
 
 with st.spinner("Loading FIA summaries…"):
@@ -260,7 +273,7 @@ with st.spinner("Loading FIA summaries…"):
 # ------------------------------------------------------------------------------
 
 (tab_overview, tab_filters, tab_forests, tab_disturb,
- tab_agents, tab_mort, tab_treatments, tab_climate) = st.tabs([
+ tab_agents, tab_mort, tab_treatments) = st.tabs([
     "📂 Overview",
     "🚩 Plot Filters",
     "🌲 Tree Metrics",
@@ -268,7 +281,6 @@ with st.spinner("Loading FIA summaries…"):
     "🪲 Damage Agents",
     "💀 Mortality & Regeneration",
     "🪚 Treatment History",
-    "🌡️ Site Climate",
 ])
 
 # ==============================================================================
@@ -306,12 +318,10 @@ with tab_overview:
         ("plot_condition_metadata.parquet",   None,       "Stable plot IDs, coordinates, forest type groups, condition area"),
         ("plot_seedling_species.parquet",     None,       "Species-level seedling counts for recruitment and CWM workflows"),
         ("fia_condition_disturbance_flags.parquet", None, "Control/disturbed eligibility and natural disturbance classes"),
-        ("site_climate.parquet",          None,    "Point climate — FIA plots + ITRDB sites (TerraClimate 1958–2024)"),
     ]
     rows = []
     for fname, df, desc in files_info:
-        is_summ = fname != "site_climate.parquet"
-        fpath = sp(fname) if is_summ else cp(fname)
+        fpath = sp(fname)
         exists = os.path.isfile(fpath)
         size_mb = os.path.getsize(fpath) / 1e6 if exists else None
         if df is not None:
@@ -329,11 +339,15 @@ with tab_overview:
         })
     st.dataframe(
         pd.DataFrame(rows).style.map(color_status, subset=["Status"]),
-        use_container_width=True, hide_index=True,
+        width="stretch", hide_index=True,
     )
 
     st.markdown("---")
-    st.markdown("### How datasets connect")
+    st.markdown("### How repository products connect")
+    st.caption(
+        "These are joins among processed outputs under `05_fia/data/processed`; "
+        "they are not a diagram of the raw FIA database schema."
+    )
     st.markdown(
         "All datasets share **`PLT_CN`** (plot control number) as the primary identifier.\n\n"
         "| Dataset | Grain | Join key |\n"
@@ -345,14 +359,13 @@ with tab_overview:
         "| `plot_damage_agents` | 1+ rows per plot × year | `PLT_CN, INVYR, CONDID` |\n"
         "| `plot_mortality_metrics` | 1+ rows per plot × year | `PLT_CN, INVYR` |\n"
         "| `plot_treatment_history` | 1+ rows per condition × treatment slot | `PLT_CN, INVYR` |\n"
-        "| `site_climate` | 1 row per site × year × month × variable | `site_id` (numeric = FIA, alphanumeric = ITRDB) |\n"
     )
 
     st.markdown(
-        "Thermophilization-facing FIA products add a condition-grain layer:\n\n"
+        "Analysis-facing processed products add a condition-grain layer:\n\n"
         "| Dataset | Grain | Join key |\n"
         "|---------|-------|----------|\n"
-        "| `plot_condition_metadata` | 1 row per condition visit | `PLT_CN, INVYR, CONDID`; `stable_plot_id` joins to site climate |\n"
+        "| `plot_condition_metadata` | 1 row per condition visit | `PLT_CN, INVYR, CONDID` |\n"
         "| `plot_seedling_species` | 1+ rows per condition, subplot, and species | `PLT_CN, INVYR, CONDID, SPCD` |\n"
         "| `fia_condition_disturbance_flags` | 1 row per condition visit | `PLT_CN, INVYR, CONDID` |\n"
     )
@@ -362,8 +375,9 @@ with tab_overview:
 # ==============================================================================
 with tab_filters:
     st.markdown(
-        "**`plot_exclusion_flags.parquet`** — one row per plot × inventory year. "
-        "Join on `PLT_CN + INVYR`. Produced by Step 7 of `05_build_fia_summaries.R`."
+        "**Repository summary:** `plot_exclusion_flags.parquet` — one row per processed "
+        "plot visit (`PLT_CN × INVYR`). Built from FIA condition, disturbance, treatment, "
+        "and tree fields by `05_build_fia_summaries.R`; it is not a raw FIA table."
     )
 
     flag_rows = load_static_data_json("flag_rates")
@@ -406,22 +420,32 @@ with tab_filters:
                               data_source="flag_rates.json")
         with col_r:
             st.subheader("What each flag means")
-            st.markdown(
-                "| Flag | Source | Meaning |\n"
-                "|------|--------|---------|\n"
-                "| `exclude_nonforest` | `COND_STATUS_CD = 5` | Nonsampled portion of a forest land plot (denied access, hazard, etc.) — flag name is a misnomer; code 5 IS forest land |\n"
-                "| `exclude_human_dist` | `DSTRBCD = 80` | Human-induced disturbance: logging, clearing, development |\n"
-                "| `exclude_harvest` | `TRTCD = 10` | Cutting treatment recorded on condition |\n"
-                "| `exclude_harvest_agent` | `AGENTCD 80–89` | Tree-level harvest cause-of-death (more sensitive) |\n"
-                "| `exclude_any` | OR of all four | Convenience — standard clean-plot filter |\n"
-                "| `has_fire` | `DSTRBCD 30/31/32` | Fire disturbance — **positive filter** |\n"
-                "| `has_insect` | `DSTRBCD 10/11/12` | Insect damage — **positive filter** |\n"
-                "| `pct_forested` | `CONDPROP_UNADJ` | Fraction of plot in forested conditions (0–1) |\n"
+            flag_definitions = pd.DataFrame([
+                ("exclude_nonforest", "COND_STATUS_CD = 5", "Nonsampled part of a forest-land plot. The legacy flag name is a misnomer: code 5 is forest land."),
+                ("exclude_human_dist", "DSTRBCD = 80", "Human-induced disturbance such as logging, clearing, or development."),
+                ("exclude_harvest", "TRTCD = 10", "Cutting treatment recorded on a condition."),
+                ("exclude_harvest_agent", "AGENTCD 80–89", "Tree-level harvest cause of death; more sensitive than the condition treatment field."),
+                ("exclude_any", "OR of four exclusions", "Repository convenience flag for the standard clean-plot filter."),
+                ("has_fire", "DSTRBCD 30/31/32", "Positive filter for a fire disturbance code."),
+                ("has_insect", "DSTRBCD 10/11/12", "Positive filter for an insect disturbance code."),
+                ("pct_forested", "CONDPROP_UNADJ", "Repository-derived fraction of the plot in forested conditions, from 0 to 1."),
+            ], columns=["Derived flag", "FIA source field/code", "Meaning in this repository"])
+            st.dataframe(
+                flag_definitions,
+                width="stretch",
+                hide_index=True,
+                height=420,
+                column_config={
+                    "Derived flag": st.column_config.TextColumn(width="medium"),
+                    "FIA source field/code": st.column_config.TextColumn(width="medium"),
+                    "Meaning in this repository": st.column_config.TextColumn(width="large"),
+                },
             )
-            st.info(
-                "**FIA samples ALL US land.** Roughly 59% of plot×year rows have `pct_forested = 0`. "
-                "Always filter `pct_forested >= 0.5` as the **primary gate** before using any flags."
-            )
+        st.info(
+            "**FIA samples all U.S. land.** In this processed summary, roughly 59% of "
+            "plot-visit rows have `pct_forested = 0`. Apply `pct_forested >= 0.5` as "
+            "the primary analysis gate before using the repository's derived flags."
+        )
     elif not PLOTLY_AVAILABLE:
         st.info("Install `plotly` for interactive charts.")
     else:
@@ -496,6 +520,10 @@ with tab_filters:
 # TAB 3 — TREE METRICS
 # ==============================================================================
 with tab_forests:
+    st.caption(
+        "Charts use repository summary `plot_tree_metrics.parquet` and compact dashboard "
+        "aggregates derived from it—not raw FIA TREE rows."
+    )
     st.subheader("Plot locations")
     tree_pts = load_static_data_csv("plot_tree_points")
     if tree_pts is not None and PLOTLY_AVAILABLE:
@@ -592,6 +620,10 @@ with tab_forests:
 # TAB 4 — DISTURBANCE
 # ==============================================================================
 with tab_disturb:
+    st.caption(
+        "Charts summarize `plot_disturbance_history.parquet`, a repository product built "
+        "from FIA condition disturbance slots—not the raw FIA COND table."
+    )
     cat_data = load_static_data_json("disturbance_category_counts")
     fire_data = load_static_data_json("fire_type_breakdown")
 
@@ -728,6 +760,10 @@ with tab_disturb:
 # TAB 5 — DAMAGE AGENTS
 # ==============================================================================
 with tab_agents:
+    st.caption(
+        "Charts summarize `plot_damage_agents.parquet`, a repository aggregation of FIA "
+        "tree damage-agent fields—not raw FIA TREE records."
+    )
     top_agents = load_static_data_json("damage_agent_top20")
     cat_ba = load_static_data_json("agent_category_ba")
 
@@ -759,7 +795,7 @@ with tab_agents:
                 labels={"ba_per_acre": "Affected BA (sum)", "category": ""},
             )
             fig.update_layout(showlegend=False)
-            chart_with_source(style_bar(fig, height=420), source_line=672,
+            chart_with_source(style_bar(fig, height=620), source_line=672,
                               data_source="agent_category_ba.json")
         else:
             static_image_fallback("agent_category_ba.png",
@@ -811,6 +847,10 @@ with tab_agents:
 # TAB 6 — MORTALITY & REGENERATION
 # ==============================================================================
 with tab_mort:
+    st.caption(
+        "Mortality and regeneration views use repository plot summaries derived from FIA "
+        "TREE, MORTALITY, and SEEDLING fields—not the raw source tables."
+    )
     mort_col, seed_col = st.columns(2)
     with mort_col:
         st.subheader("Mortality by agent")
@@ -871,6 +911,10 @@ with tab_mort:
 # TAB 7 — TREATMENT HISTORY
 # ==============================================================================
 with tab_treatments:
+    st.caption(
+        "Charts summarize `plot_treatment_history.parquet`, built from FIA condition "
+        "treatment slots; record counts refer to the processed repository product."
+    )
     treat_labels = load_static_data_csv("treatment_label_counts")
     state_treat = load_static_data_csv("state_treatments")
     year_treat = load_static_data_csv("treatment_year_counts")
@@ -902,7 +946,7 @@ with tab_treatments:
                         "treatment_category": "Category"},
             )
             fig.update_layout(yaxis=dict(autorange="reversed"))
-            chart_with_source(style_bar(fig, height=320), source_line=815,
+            chart_with_source(style_bar(fig, height=520), source_line=815,
                               data_source="treatment_label_counts.csv")
         with col2:
             st.subheader("By state")
@@ -955,58 +999,3 @@ with tab_treatments:
         "| 40 | Natural regeneration | regeneration |\n"
         "| 50 | Other silvicultural treatment | other_silv |\n"
     )
-
-# ==============================================================================
-# TAB 8 — SITE CLIMATE
-# ==============================================================================
-with tab_climate:
-    st.markdown(
-        "Point-based TerraClimate extraction for **6,956 site locations** — "
-        "2,070 FIA plots and 4,886 ITRDB chronology sites — via Google Earth Engine. "
-        "6 variables, 1958–2024. This is a secondary/example product separate from "
-        "the main FIA forest inventory analysis above."
-    )
-
-    clim_path = cp("site_climate.parquet")
-    clim_exists = os.path.isfile(clim_path)
-
-    if not clim_exists:
-        st.info(
-            "`site_climate.parquet` not found.  \n"
-            "Generate with `Rscript 05_fia/scripts/site_climate/02_extract_terraclimate.R`."
-        )
-    else:
-        clim_meta = parquet_meta(clim_path)
-        n_rows = f"{clim_meta['rows']:,}" if clim_meta.get("rows") else "23,468,680"
-
-        c1, c2, c3, c4 = st.columns(4)
-        c1.markdown(metric_card("Rows",   n_rows,    "site×yr×month×variable"), unsafe_allow_html=True)
-        c2.markdown(metric_card("Sites",  "6,956",   "2,070 FIA + 4,886 ITRDB"), unsafe_allow_html=True)
-        c3.markdown(metric_card("Period", "1958–2024", "calendar years"),        unsafe_allow_html=True)
-        c4.markdown(metric_card("Vars",   "6",       "tmmx tmmn pr def pet aet"), unsafe_allow_html=True)
-
-        if clim_meta.get("columns"):
-            st.markdown("**Schema:**")
-            schema_df = pd.DataFrame({
-                "Column": clim_meta["columns"],
-                "Type":   clim_meta.get("dtypes", ["—"] * len(clim_meta["columns"])),
-            })
-            st.dataframe(schema_df, use_container_width=True, hide_index=True,
-                         height=min(300, 35 * len(clim_meta["columns"]) + 40))
-
-        st.info(
-            "ℹ️ File is 23.5M rows — not loaded in the dashboard. "
-            "Use `demo_03_site_climate.R` or the R/Python snippets below for analysis."
-        )
-
-        st.markdown("---")
-        st.subheader("Load in R")
-        st.code(
-            'library(arrow); library(dplyr)\n'
-            'clim <- read_parquet("05_fia/data/processed/site_climate/site_climate.parquet")\n\n'
-            '# Annual water-year precipitation per site\n'
-            'clim |> filter(variable == "pr") |>\n'
-            '  group_by(site_id, water_year) |>\n'
-            '  summarise(precip_mm = sum(value, na.rm = TRUE))',
-            language="r",
-        )

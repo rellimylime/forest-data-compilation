@@ -4,28 +4,50 @@ The Streamlit dashboard is the easiest local interface for navigating this repos
 
 ## Start the dashboard
 
-From the repository root:
+On the UCSB host, use the launcher from any directory:
 
 ```bash
-pip install -r requirements.txt
-streamlit run docs/dashboard/app.py
+cd /home/tippingPoint/ermiller/forest-data-compilation && \
+  docs/dashboard/run_dashboard.sh
+```
+
+The launcher creates a disposable environment under `/tmp`, installs the
+CPU-compatible versions declared in `docs/dashboard/requirements.txt`, loads
+the dashboard-specific Streamlit theme, starts port 8501, and prints the
+Open OnDemand proxy URL. On node `hpc-13`, that URL is
+`https://hpc.grit.ucsb.edu/rnode/hpc-13/8501/`. Override the defaults with
+`DASHBOARD_PORT`, `DASHBOARD_HOST`, `DASHBOARD_ENV_DIR`, or `UV_BIN`.
+
+For a normal local Python environment:
+
+```bash
+python -m pip install -r docs/dashboard/requirements.txt
+cd docs/dashboard
+python -m streamlit run app.py
 ```
 
 Streamlit prints a local URL, normally `http://localhost:8501`. Keep that terminal open while using the app.
 
 ## Which page to use
 
-| Need | Page |
-|---|---|
-| Understand the overall workflow | Architecture |
-| Find an existing product or variable | Catalog |
-| See safe joins or build a custom export | Query Builder / Build Data |
-| Find a raw FIADB table or field not yet extracted | FIA Navigator |
-| Inspect a workstream visually | IDS, Climate, FIA Forest, or Thermophilization |
+The top menu groups pages by how they relate to the current analysis. Every page opens with a line saying what it is for, whether the analysis uses it, and where to go next.
+
+| Need | Menu | Page |
+|---|---|---|
+| Orientation, current results at a glance, and search | — | Home |
+| Follow the core pipeline and see current model results | — | Analysis |
+| Find an existing table or variable | Data | Find data |
+| See safe joins or build a custom export | Data | Build a dataset |
+| Inspect the repository's processed FIA products | Data | Processed FIA data |
+| Find a raw FIADB table or field not yet extracted | Data | FIA field guide |
+| Workstreams the current analysis does not use | Other workstreams | IDS survey, Climate datasets |
+| See how every module fits together | Other workstreams | Repository map |
+
+The navigation lives in `app.py`; the Home page is `home.py`, and every other page is in `pages/`. The grouped top menu needs Streamlit 1.46 or newer.
 
 ## Build a dataset
 
-The Query Builder does four things without opening repository data:
+**Build a dataset** (the Query Builder) does four things without opening repository data:
 
 1. Searches products, observed variables, documented joins, and research recipes.
 2. Starts from an anchor product whose row scale controls the result.
