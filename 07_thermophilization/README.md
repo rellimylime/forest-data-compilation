@@ -4,11 +4,14 @@
 
 This directory builds the FIA tables needed to ask whether forest plant communities are shifting toward species associated with warmer or drier climates, and whether those shifts are related to disturbance.
 
-> **Current status:** The downstream CWM and change products in this directory
-> were rebuilt on 2026-08-06 from the refreshed forested-condition foundation,
-> so they now reflect the August 2026 Florida, Kentucky, and Texas FIA raw
-> refresh. The weighting and cohort questions described below are still open,
-> so treat these numbers as current but not final.
+> **Status: related method, not part of the core pipeline.** The current models
+> come from the condition-level analysis in [`09_analysis/`](../09_analysis/README.md),
+> which builds its own condition CWMs and does not read anything from this
+> directory. This module is kept as a documented alternative: it measures
+> community climate per plot visit, weights trees by basal area, and builds both
+> consecutive and first-to-last change. Its products were last rebuilt on
+> 2026-08-06 and are not built on the current server. Rerun the pipeline below
+> to regenerate them.
 
 In this workflow, a **community climate-affinity metric** means: take the species present in a FIA plot visit, join each species to its climate niche, and summarize those niche values as a weighted mean or weighted median. A warmer community-weighted mean does not mean the plot's climate is warmer; it means the species present are associated with warmer parts of their ranges.
 
@@ -24,7 +27,7 @@ Main inputs:
 - BIEN/TerraClimate species climate niches from [`06_species_niches/`](../06_species_niches/README.md).
 - The FIA forested-condition foundation from `05_fia/scripts/foundations/02_build_forested_condition_foundation.R`.
 
-Open weighting, cohort, and severity choices are tracked in [`docs/METHOD_DECISIONS_NEEDED.md`](../docs/METHOD_DECISIONS_NEEDED.md). Producer scripts preserve the information needed to make those choices; they do not make them.
+Producer scripts preserve the information needed for weighting, cohort, and severity choices; they do not make them. The condition-level analysis settled its own versions of these choices; see [`09_analysis/docs/METHODS.md`](../09_analysis/docs/METHODS.md).
 
 ## Pipeline
 
@@ -57,7 +60,7 @@ A plot surveyed in 2002, 2012, and 2022 can be summarized two ways:
 - **Consecutive intervals** (script `04`): 2002→2012 and 2012→2022. Two rows. More data points, and a change can be lined up against a disturbance dated to a specific interval. Repeat rows from one plot are correlated, which any model has to account for.
 - **First to last** (script `05`): 2002→2022. One row. One long, clean change per plot, but it cannot say when during the twenty years the change happened.
 
-Neither is the designated primary design. Choosing between them is open decision #2 in [`METHOD_DECISIONS_NEEDED.md`](../docs/METHOD_DECISIONS_NEEDED.md), so both are built from the same forest-only CWM and ordered by the same measurement dates.
+Neither is designated primary here, so both are built from the same forest-only CWM and ordered by the same measurement dates. The condition-level analysis in `09_analysis/` uses first-to-last change over complete condition histories.
 
 ## Run Order
 
@@ -333,5 +336,5 @@ Non-strict skips checks whose products are absent; strict fails on them.
 ## See Also
 
 - [Data Products](../docs/DATA_PRODUCTS.md#thermophilization-outputs) — cross-repo output inventory.
-- [Method decisions still needed](../docs/METHOD_DECISIONS_NEEDED.md) — open choices these products deliberately leave open.
+- [Condition-level analysis](../09_analysis/README.md) — the core pipeline that produces the current models.
 - [Archive notes](docs/archive_notes.md) — fields and approaches removed from this module, and why.

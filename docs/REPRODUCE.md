@@ -4,6 +4,8 @@
 
 This page gives the exact active production run order for the repository. It is intentionally practical: what to run, in what order, and where to look for more detail. Archived reference workflows are listed separately at the end.
 
+**Core pipeline:** Paths 3, 4, and 7 produce the current model data and results, in that order. Paths 1 and 2 are the independent IDS + climate workstream, Path 5 is a related plot-visit method, and Path 6 prepares disturbance evidence; the current models use none of them.
+
 ## Before You Run Anything
 
 1. Complete [environment setup](../scripts/SETUP.md).
@@ -102,7 +104,7 @@ Script `04` requires Google Earth Engine. Run the validation and gap scripts lis
 
 ## Path 5: Thermophilization Products
 
-Requires the FIA plot-visit context and forested-condition foundation from Path 2.
+Related method; not required by the core analysis in Path 7. Requires the FIA plot-visit context and forested-condition foundation from Path 3.
 
 | Step | Script | What it does | Main outputs | Details |
 |---|---|---|---|---|
@@ -113,7 +115,7 @@ Requires the FIA plot-visit context and forested-condition foundation from Path 
 | 5 | [05_build_first_last_change.R](../07_thermophilization/scripts/05_build_first_last_change.R) | Change between a plot's earliest and latest survey | `forest_first_last_change.parquet` | [Output guide](../07_thermophilization/README.md#forest_first_last_changeparquet) |
 | QA gate | [01_validate_thermophilization_products.R](../07_thermophilization/qa/scripts/01_validate_thermophilization_products.R) | Validate row grains, required columns, proportions, coverage fields, link status, and rate arithmetic | `thermophilization_validation_*.csv` | [QA guide](../07_thermophilization/README.md#qa-csvs) |
 
-Steps 4 and 5 build the two change designs. Both are kept because choosing between them is an open decision; see [METHOD_DECISIONS_NEEDED.md](METHOD_DECISIONS_NEEDED.md).
+Steps 4 and 5 build the two change designs. Both are kept because this module does not choose between them; the core analysis in Path 7 uses first-to-last change over complete condition histories.
 
 Run scripts `01` and `04` once per layer:
 
@@ -133,7 +135,7 @@ Rscript 07_thermophilization/qa/scripts/02_disturbance_survey_coverage.R
 
 ## Path 6: Forest Disturbance Data Preparation
 
-Run this after the FIA condition foundation and plot-visit context exist.
+Not required by the core analysis in Path 7. Run this after the FIA condition foundation and plot-visit context exist.
 
 ```bash
 python 05_fia/scripts/reference/01_build_damage_agent_lookup.py

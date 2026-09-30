@@ -6,6 +6,8 @@
 
 This walkthrough explains *why* each step of the thermophilization pipeline exists and what its numbers mean. For column lists, grains, and run commands, see the [thermophilization module README](../07_thermophilization/README.md) — those are documented once, there.
 
+> **Status: related method.** This document describes the plot-visit design in `07_thermophilization/`. The current models come from the condition-level analysis; see [09_analysis/README.md](../09_analysis/README.md) and [09_analysis/docs/METHODS.md](../09_analysis/docs/METHODS.md).
+
 The question behind the whole pipeline:
 
 > Are forest communities shifting toward species associated with warmer or drier climates, and is disturbance part of why?
@@ -127,15 +129,15 @@ Two producers, two designs, both built:
 | `04_build_visit_interval_change.R` | Each survey with the one before it | one per interval |
 | `05_build_first_last_change.R` | Earliest survey with latest | one |
 
-**Why both.** Consecutive intervals give more observations and let a change be lined up against a disturbance dated to a particular interval — but repeat rows from one plot are correlated, and a model has to account for that. First-to-last gives one clean long-run change per plot but cannot say when in twenty years the change happened. Which is right depends on the question being asked, so the choice is left to the analyst (open decision #2 in [METHOD_DECISIONS_NEEDED.md](METHOD_DECISIONS_NEEDED.md)).
+**Why both.** Consecutive intervals give more observations and let a change be lined up against a disturbance dated to a particular interval — but repeat rows from one plot are correlated, and a model has to account for that. First-to-last gives one clean long-run change per plot but cannot say when in twenty years the change happened. Which is right depends on the question being asked, so this design leaves the choice to the analyst. The condition-level analysis uses first-to-last change.
 
 **How visits are paired.** A change value is only computed when FIA's own `PREV_PLT_CN` remeasurement link agrees with the chronologically previous visit. This matters more than it sounds: plots that were replaced or re-established at a reused location carry a null or different `PREV_PLT_CN`, and treating them as remeasurements would invent change that never happened. Excluded counts are reported in the linkage QA rather than dropped silently.
 
-## Downstream Analysis (Out of Scope Here)
+## Downstream Analysis (Out of Scope for This Design)
 
 How to define disturbed versus control, whether to match controls, how to group results, which responses to estimate — these depend on the specific analysis and belong to whoever runs it. This repository's job is to provide clean, documented, flagged inputs so those choices are easy to apply. It does not make them.
 
-Open questions: [METHOD_DECISIONS_NEEDED.md](METHOD_DECISIONS_NEEDED.md). Cohort rules and their costs: [thermophilization_plan.md](thermophilization_plan.md).
+The condition-level analysis settled its own versions of these choices: [09_analysis/docs/METHODS.md](../09_analysis/docs/METHODS.md). Cohort rules and their costs for the plot-visit design: [thermophilization_plan.md](thermophilization_plan.md).
 
 ## QA Files To Read First
 

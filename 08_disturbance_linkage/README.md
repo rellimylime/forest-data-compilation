@@ -2,6 +2,8 @@
 
 This module prepares disturbance evidence without choosing an analysis model. FIA condition disturbance, FIA tree damage agents, MTBS fire events, and IDS aerial detections remain separate because they measure different things.
 
+> **Status: resource, not part of the core pipeline.** The current models in [`09_analysis/`](../09_analysis/README.md) measure disturbance as agent-attributed tree mortality from FIA records and do not read these products. They are kept as prepared, auditable evidence for future work.
+
 ## Current preparation products
 
 | Product | Grain | Purpose |

@@ -2,7 +2,7 @@
 
 **Navigation:** [Repo Home](../README.md) | [Docs Hub](README.md) | [Setup](../scripts/SETUP.md) | [Reproduce](REPRODUCE.md) | [Pipeline Map](PIPELINE_MAP.md) | [Data Products](DATA_PRODUCTS.md)
 
-This page provides the Markdown-first version of the repository pipeline. If you are working locally and want the most guided visual walkthrough, run `streamlit run docs/dashboard/app.py` and open the `Architecture` page. The [HTML companion](pipeline_diagram.html) is a short static summary, not a separate full explainer.
+This page provides the Markdown-first version of the repository pipeline. If you are working locally and want the most guided visual walkthrough, run `streamlit run docs/dashboard/app.py` and open `Repository map` under Other workstreams, or `Analysis` for the core pipeline. The [HTML companion](pipeline_diagram.html) is a short static summary, not a separate full explainer.
 
 ## High-Level Flow
 

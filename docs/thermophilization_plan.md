@@ -1,8 +1,10 @@
 # Thermophilization Analysis Plan
 
-**Navigation:** [Repo Home](../README.md) | [Docs Hub](README.md) | [Thermophilization Module](../07_thermophilization/README.md) | [Species Niches](../06_species_niches/README.md) | [Disturbance Linkage](../08_disturbance_linkage/README.md) | [Method Decisions](METHOD_DECISIONS_NEEDED.md)
+**Navigation:** [Repo Home](../README.md) | [Docs Hub](README.md) | [Thermophilization Module](../07_thermophilization/README.md) | [Species Niches](../06_species_niches/README.md) | [Disturbance Linkage](../08_disturbance_linkage/README.md) | [Condition-Level Analysis](../09_analysis/README.md)
 
 This is the analysis plan: the question, the cohort rules, and the decisions still open. For how the tables are built, column by column, see the [thermophilization module README](../07_thermophilization/README.md). Pipeline mechanics are documented once, there.
+
+> **Status: related method.** This document describes the plot-visit design in `07_thermophilization/`. The current models come from the condition-level analysis; see [09_analysis/README.md](../09_analysis/README.md) and [09_analysis/docs/METHODS.md](../09_analysis/docs/METHODS.md).
 
 ## The Question
 
@@ -96,7 +98,7 @@ Harvest and human-disturbance flags are retained rather than dropped, so they ca
 
 ## Open Decisions
 
-The numbered decisions in [METHOD_DECISIONS_NEEDED.md](METHOD_DECISIONS_NEEDED.md) are the authoritative list. The two that most shape this analysis:
+The two open decisions that most shape this plot-visit design:
 
 1. **Consecutive intervals or first-to-last?** Both products are built. Consecutive intervals give more observations and let a change be lined up against a dated event, at the cost of correlated repeat rows from one plot. First-to-last gives one clean long-run change per plot but cannot locate when the change happened.
 2. **Which insect severity measure?** The preparation product retains `tree_record_fraction`, `tpa_unadj_fraction`, and `basal_area_fraction` side by side; none is designated primary.

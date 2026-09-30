@@ -9,6 +9,8 @@ This is the main navigation page for the repository documentation. Use it to mov
 | Goal | Go to... |
 |---|---|
 | Understand the repo at a glance | [Repo Home](../README.md) |
+| Run the core pipeline to model results | [Core pipeline](../README.md#core-pipeline-raw-data-to-model-results) |
+| See the current model results | [Model runs](../09_analysis/results/model_runs/README.md) |
 | See the whole pipeline visually | [Pipeline Map](PIPELINE_MAP.md) |
 | Reproduce the active production pipelines | [Reproduce](REPRODUCE.md) |
 | Find a product or variable | [Searchable Data Catalog](DATA_CATALOG.md) |
@@ -52,7 +54,7 @@ This is the main navigation page for the repository documentation. Use it to mov
 - [Species niche technical workflow](../06_species_niches/WORKFLOW.md)
 - [Species niche methods](../06_species_niches/docs/methods_species_niches.md)
 - [Species niche QA guide](../06_species_niches/qa/README.md)
-- [Thermophilization overview](../07_thermophilization/README.md)
+- [Thermophilization overview](../07_thermophilization/README.md) (related plot-visit method; not used by the current models)
 
 ### Climate extraction
 
@@ -90,9 +92,9 @@ This is the main navigation page for the repository documentation. Use it to mov
 | `04_worldclim/` | WorldClim local GeoTIFF extraction for IDS locations | [README](../04_worldclim/README.md) | [WORKFLOW](../04_worldclim/WORKFLOW.md) | [scripts/](../04_worldclim/scripts/) |
 | `05_fia/` | FIA plot summaries, disturbance, treatment, and site climate | [README](../05_fia/README.md) | [WORKFLOW](../05_fia/WORKFLOW.md) | [scripts/](../05_fia/scripts/) |
 | `06_species_niches/` | BIEN range-map and TerraClimate species niches | [README](../06_species_niches/README.md) | [WORKFLOW](../06_species_niches/WORKFLOW.md) | [scripts/](../06_species_niches/scripts/) |
-| `07_thermophilization/` | Forest community climate affinity per plot visit, change between repeated surveys, and disturbance extent | [README](../07_thermophilization/README.md) | [Output guide](../07_thermophilization/README.md#output-reference) | [scripts/](../07_thermophilization/scripts/) |
-| `08_disturbance_linkage/` | Links FIA plots to MTBS fire severity and IDS insect agents (scaffold) | [README](../08_disturbance_linkage/README.md) | [WORKFLOW](../08_disturbance_linkage/WORKFLOW.md) | [scripts/](../08_disturbance_linkage/scripts/) |
-| `09_analysis/` | Stable-condition cumulative mortality, climate-niche responses, site CWD, and preliminary models; separate severity pending | [README](../09_analysis/README.md) | [Methods](../09_analysis/docs/METHODS.md) | [Scripts](../09_analysis/scripts/) |
+| `07_thermophilization/` | Related method: forest community climate affinity per plot visit, change between repeated surveys, and disturbance extent; not used by the current models | [README](../07_thermophilization/README.md) | [Output guide](../07_thermophilization/README.md#output-reference) | [scripts/](../07_thermophilization/scripts/) |
+| `08_disturbance_linkage/` | Resource: prepared FIA, MTBS, and IDS disturbance evidence; not used by the current models | [README](../08_disturbance_linkage/README.md) | [WORKFLOW](../08_disturbance_linkage/WORKFLOW.md) | [scripts/](../08_disturbance_linkage/scripts/) |
+| `09_analysis/` | Core analysis: stable-condition cumulative mortality, climate-niche responses, site CWD, and preliminary models; separate severity pending | [README](../09_analysis/README.md) | [Methods](../09_analysis/docs/METHODS.md) | [Scripts](../09_analysis/scripts/) |
 | `archive/05_era5/` | Archived ERA5 extraction reference and directory layout | [README](../archive/05_era5/README.md) | [WORKFLOW](../archive/05_era5/WORKFLOW.md) | [scripts/](../archive/05_era5/scripts/) |
 
 ## Core Documentation
@@ -117,7 +119,7 @@ This is the main navigation page for the repository documentation. Use it to mov
 | Production | [04_worldclim/scripts/](../04_worldclim/scripts/) | WorldClim production scripts |
 | Production | [05_fia/scripts/](../05_fia/scripts/) | FIA production scripts |
 | Production | [06_species_niches/scripts/](../06_species_niches/scripts/) | Species climate-niche production scripts |
-| Production | [07_thermophilization/scripts/](../07_thermophilization/scripts/) | Community climate-affinity, disturbance severity, and repeated-survey change scripts |
+| Related method | [07_thermophilization/scripts/](../07_thermophilization/scripts/) | Community climate-affinity, disturbance severity, and repeated-survey change scripts |
 | Shared | [scripts/](../scripts/README.md) | Setup helper, shared climate summary builder, reusable utilities, demos, and test runner |
 | Archived | [archive/05_era5/scripts/](../archive/05_era5/scripts/) | ERA5 reference implementation retained outside the active run path |
 | Dashboard | [docs/dashboard/](dashboard/) | Streamlit app, Query Builder, and launch guide |
