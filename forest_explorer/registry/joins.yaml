@@ -1,5 +1,5 @@
-join_registry_version: "1.0.0"
-updated: "2026-09-24"
+join_registry_version: "1.1.0"
+updated: "2026-09-25"
 summary: >-
   Curated one-hop joins for the repository query planner. A join is listed only
   when its keys and row-expansion behavior can be stated explicitly. This file
@@ -48,6 +48,17 @@ joins:
     result_grain_id: fia_condition_visit
     status: constrained
     warning: Plot values repeat across conditions and must never be summed across joined rows.
+
+  - id: condition_metadata__topography
+    title: Add condition slope, aspect, and physiographic class
+    left_product_id: plot_condition_metadata
+    right_product_id: fia_condition_topography
+    left_on: [PLT_CN, INVYR, CONDID]
+    right_on: [PLT_CN, INVYR, CONDID]
+    relationship: one_to_one
+    result_grain_id: fia_condition_visit
+    status: constrained
+    warning: ASPECT 0 means no aspect (slope under 5 percent), not north; filter on has_aspect first.
 
   - id: condition_metadata__understory_structure
     title: Add understory structure records
@@ -147,6 +158,28 @@ joins:
     result_grain_id: analysis_condition_visit_layer
     status: review_required
     warning: Flags repeat across life stages; absence of a recorded disturbance is not proof of absence.
+
+  - id: condition_cwm__interval_mortality
+    title: Add mortality over the interval ending at each CWM visit
+    left_product_id: analysis_condition_visit_cwm
+    right_product_id: analysis_interval_agent_mortality
+    left_on: [PLT_CN, INVYR, CONDID]
+    right_on: [T2_PLT_CN, T2_INVYR, CONDID]
+    relationship: many_to_one
+    result_grain_id: analysis_condition_visit_layer
+    status: review_required
+    warning: Mortality describes the interval that ends at this visit and repeats across life stages; a condition's first visit has no preceding interval, so its mortality is empty.
+
+  - id: condition_cwm__topography
+    title: Add condition slope, aspect, and physiographic class to CWM visits
+    left_product_id: analysis_condition_visit_cwm
+    right_product_id: fia_condition_topography
+    left_on: [PLT_CN, INVYR, CONDID]
+    right_on: [PLT_CN, INVYR, CONDID]
+    relationship: many_to_one
+    result_grain_id: analysis_condition_visit_layer
+    status: constrained
+    warning: Topography repeats across life stages. ASPECT 0 means no aspect, not north; filter on has_aspect first.
 
   - id: condition_cwm__tree_metrics
     title: Add plot tree structure to CWM visits

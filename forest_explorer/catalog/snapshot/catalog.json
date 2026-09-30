@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-25 00:00:19 UTC",
+  "generated_at": "2026-09-25 19:26:54 UTC",
   "environment_label": "committed repository snapshot",
   "registry_version": "0.2.0",
   "snapshot_kind": "portable_catalog",
@@ -5944,6 +5944,71 @@
           ],
           [
             "SUBCYCLE",
+            "int32"
+          ]
+        ]
+      },
+      "key_check": {
+        "status": "not_checked",
+        "note": "The repository snapshot records schemas and locations; run build_inventory.py to verify keys against a data root."
+      }
+    },
+    {
+      "id": "fia_condition_topography",
+      "title": "FIA condition slope, aspect, and physiographic class",
+      "family": "fia_summaries",
+      "kind": "intermediate",
+      "lifecycle": "active",
+      "path": "05_fia/data/processed/summaries/condition_topography.parquet",
+      "format": "parquet_file",
+      "one_row_is": "one raw FIA COND record (condition within a plot visit)",
+      "keys": ["PLT_CN", "INVYR", "CONDID"],
+      "grain_id": "fia_condition_visit",
+      "producer": "05_fia/scripts/foundations/03_build_condition_topography.R",
+      "access_mode": "catalog_only",
+      "review_status": "constrained",
+      "facets": ["state", "INVYR", "has_aspect"],
+      "caveats": ["ASPECT is in degrees with north recorded as 360; 0 means no aspect (slope under 5 percent), never north. Use has_aspect before treating ASPECT as a direction, and use sine/cosine rather than raw degrees in models.", "On annual plots SLOPE and ASPECT come from the subplot covering the largest share of the condition, not a condition-wide measurement.", "Covers every raw condition, so nonforest and nonsampled conditions are present with mostly empty SLOPE and ASPECT. Elevation is a plot attribute carried by the condition summaries."],
+      "availability": "available",
+      "observed": {
+        "n_columns": 9,
+        "bytes": 16896056,
+        "n_files": 1,
+        "columns": [
+          [
+            "PLT_CN",
+            "int64"
+          ],
+          [
+            "INVYR",
+            "int32"
+          ],
+          [
+            "CONDID",
+            "int32"
+          ],
+          [
+            "STATECD",
+            "int32"
+          ],
+          [
+            "state",
+            "string"
+          ],
+          [
+            "SLOPE",
+            "int32"
+          ],
+          [
+            "ASPECT",
+            "int32"
+          ],
+          [
+            "has_aspect",
+            "bool"
+          ],
+          [
+            "PHYSCLCD",
             "int32"
           ]
         ]

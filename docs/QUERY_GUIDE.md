@@ -1,8 +1,8 @@
 # Dataset Query Guide
 
-**Snapshot generated:** 2026-09-25 00:00:19 UTC
-**Join registry:** 1.0.0
-**Preset registry:** 1.0.0
+**Snapshot generated:** 2026-09-25 19:26:54 UTC
+**Join registry:** 1.1.0
+**Preset registry:** 1.1.0
 
 **Navigation:** [Repository home](../README.md) | [Documentation hub](README.md) | [Searchable data catalog](DATA_CATALOG.md) | [Dashboard guide](dashboard/README.md)
 
@@ -14,7 +14,7 @@ This guide shows how existing products connect. It does not replace the product 
 streamlit run docs/dashboard/app.py
 ```
 
-Open **Build Data** (the Query Builder page), choose a recipe or anchor product, select fields, review row-expansion warnings, and copy or download the generated SQL. See the [dashboard guide](dashboard/README.md) for running an export.
+Open **Data → Build a dataset** in the dashboard menu, choose a recipe or anchor product, select fields, review row-expansion warnings, and copy or download the generated SQL. See the [dashboard guide](dashboard/README.md) for running an export.
 
 ## Curated joins
 
@@ -23,6 +23,7 @@ Open **Build Data** (the Query Builder page), choose a recipe or anchor product,
 | FIA condition metadata | FIA condition disturbance and treatment flags | `PLT_CN, INVYR, CONDID = PLT_CN, INVYR, CONDID` | 1:1 — preserves rows | Constrained | Absence of a recorded disturbance is not proof that no event occurred. |
 | FIA condition metadata | FIA plot tree structure | `PLT_CN, INVYR = PLT_CN, INVYR` | many:1 — preserves left rows | Constrained | Plot values repeat across conditions and must never be summed across joined rows. |
 | FIA condition metadata | FIA plot seedling totals | `PLT_CN, INVYR = PLT_CN, INVYR` | many:1 — preserves left rows | Constrained | Plot values repeat across conditions and must never be summed across joined rows. |
+| FIA condition metadata | FIA condition slope, aspect, and physiographic class | `PLT_CN, INVYR, CONDID = PLT_CN, INVYR, CONDID` | 1:1 — preserves rows | Constrained | ASPECT 0 means no aspect (slope under 5 percent), not north; filter on has_aspect first. |
 | FIA condition metadata | FIA understory structure (state extracts) | `PLT_CN, INVYR, CONDID = PLT_CN, INVYR, CONDID` | 1:many — expands rows | Scientific review required | This expands each condition to subplot, growth-habit, and canopy-layer rows; protocol comparability through time still needs review. |
 | FIA condition metadata | FIA understory species cover (state extracts) | `PLT_CN, INVYR, CONDID = PLT_CN, INVYR, CONDID` | 1:many — expands rows | Scientific review required | This expands each condition to individual plant records; PLANTS symbols do not directly join to FIA SPCD. |
 | FIA condition metadata | FIA live-tree damage agents (labelled) | `PLT_CN, INVYR, CONDID = PLT_CN, INVYR, CONDID` | 1:many — expands rows | Constrained | This expands conditions to species-agent rows; damage on a living tree is not the same as disturbance or cause of death. |
@@ -32,6 +33,8 @@ Open **Build Data** (the Query Builder page), choose a recipe or anchor product,
 | FIA remeasurement components | FIA condition metadata | `PLT_CN, INVYR = PLT_CN, INVYR` | 1:many — expands rows | Scientific review required | This expands each plot visit to its mapped conditions; CONDID is not stable through time. |
 | FIA remeasurement components | Condition-visit climate affinity by life stage | `PLT_CN, INVYR = PLT_CN, INVYR` | 1:many — expands rows | Scientific review required | This expands plot visits by condition and life stage; CWM meaning still needs scientific review. |
 | Condition-visit climate affinity by life stage | FIA condition disturbance and treatment flags | `PLT_CN, INVYR, CONDID = PLT_CN, INVYR, CONDID` | many:1 — preserves left rows | Scientific review required | Flags repeat across life stages; absence of a recorded disturbance is not proof of absence. |
+| Condition-visit climate affinity by life stage | Interval agent-attributed mortality | `PLT_CN, INVYR, CONDID = T2_PLT_CN, T2_INVYR, CONDID` | many:1 — preserves left rows | Scientific review required | Mortality describes the interval that ends at this visit and repeats across life stages; a condition's first visit has no preceding interval, so its mortality is empty. |
+| Condition-visit climate affinity by life stage | FIA condition slope, aspect, and physiographic class | `PLT_CN, INVYR, CONDID = PLT_CN, INVYR, CONDID` | many:1 — preserves left rows | Constrained | Topography repeats across life stages. ASPECT 0 means no aspect, not north; filter on has_aspect first. |
 | Condition-visit climate affinity by life stage | FIA plot tree structure | `PLT_CN, INVYR = PLT_CN, INVYR` | many:1 — preserves left rows | Scientific review required | Plot metrics repeat across conditions and life stages and must never be summed. |
 | Condition-visit climate affinity by life stage | FIA plot seedling totals | `PLT_CN, INVYR = PLT_CN, INVYR` | many:1 — preserves left rows | Scientific review required | Plot metrics repeat across conditions and life stages and must never be summed. |
 | Stable-condition survey intervals | Stable-condition climate-affinity change | `stable_condition_interval_key = stable_condition_interval_key` | 1:many — expands rows | Scientific review required | This expands each interval to one row per available community life stage. |
@@ -45,20 +48,18 @@ The baseline-table recipe is deliberately a query, not a new canonical product. 
 
 ### Baseline research table
 
-A wide condition-by-visit-by-life-stage table that brings together current community climate affinity, condition disturbance, and plot structure. This is the closest current reproducible answer to the requested giant baseline file without replacing the canonical products.
+A condition-by-visit-by-life-stage panel: community climate affinity at every survey, fire/insect/disease mortality over the interval ending at that survey, condition disturbance, elevation, slope, aspect, and plot structure. It is assembled from the canonical products, not a copy of them.
 
 - **Anchor:** Condition-visit climate affinity by life stage
-- **Joins:** 3
-- **Search terms:** baseline, giant file, panel, time series, mortality, CWM, density, diversity, topography
+- **Joins:** 5
+- **Search terms:** baseline, giant file, panel, time series, mortality, CWM, density, diversity, topography, slope, aspect, elevation
 - **Cautions:**
-  - Plot structure values repeat across condition and life-stage rows and must not be summed.
-  - Mortality is not included here because the current mortality product is interval-grain, not visit-grain.
-  - Slope and aspect are not yet extracted; elevation is available.
+  - Plot structure, mortality, and topography repeat across condition and life-stage rows and must not be summed.
+  - Mortality describes the interval ending at each visit; a condition's first visit has no preceding interval, so its mortality is empty.
+  - ASPECT 0 means no aspect (slope under 5 percent), not north; use has_aspect.
   - Native/non-native agent status is not yet classified.
 - **Still missing:**
   - Condition-matched understory change through time
-  - A visit/interval panel that explicitly aligns mortality with the ending visit
-  - Slope and aspect
   - Reviewed native/non-native insect and pathogen classification
 
 ### Condition CWM with disturbance context
@@ -70,9 +71,7 @@ Community-weighted temperature, precipitation, and CWD affinity at every conditi
 - **Search terms:** CWM, survey, time series, disturbance, condition, life stage
 - **Cautions:**
   - Disturbance flags repeat across life stages.
-  - This is visit-level CWM context; it is not yet a panel containing interval mortality.
-- **Still missing:**
-  - Explicit alignment of interval mortality to the ending visit
+  - For the panel version with mortality over each preceding interval, use the Baseline research table recipe.
 
 ### Condition-matched understory records
 

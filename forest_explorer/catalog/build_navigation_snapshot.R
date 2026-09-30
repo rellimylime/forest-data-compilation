@@ -129,7 +129,7 @@ guide <- c(
   "streamlit run docs/dashboard/app.py",
   "```",
   "",
-  "Open **Build Data** (the Query Builder page), choose a recipe or anchor product, select fields, review row-expansion warnings, and copy or download the generated SQL. See the [dashboard guide](dashboard/README.md) for running an export.",
+  "Open **Data → Build a dataset** in the dashboard menu, choose a recipe or anchor product, select fields, review row-expansion warnings, and copy or download the generated SQL. See the [dashboard guide](dashboard/README.md) for running an export.",
   "",
   "## Curated joins",
   "",

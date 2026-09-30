@@ -5,6 +5,7 @@ Validation code lives in `qa/scripts/`; generated checks live in `qa/outputs/`. 
 | Producer | Generated QA results |
 |---|---|
 | `scripts/foundations/02_build_forested_condition_foundation.R` | `forested_condition_*.csv` |
+| `scripts/foundations/03_build_condition_topography.R` | Console summary: coverage, ranges, and an `ASPECT` range warning |
 | `scripts/reference/02_audit_tree_cn.py` | `fia_tree_cn_*.csv` |
 | `qa/scripts/validate_disturbance_classification.R` | Console validation |
 | `qa/scripts/validate_seedling_products.R` | Console validation |

@@ -1,5 +1,5 @@
-preset_registry_version: "1.0.0"
-updated: "2026-09-24"
+preset_registry_version: "1.1.0"
+updated: "2026-09-25"
 title: Research dataset recipes
 summary: >-
   Searchable starting points for common research requests. Presets select from
@@ -10,30 +10,32 @@ presets:
   - id: boss_baseline_export
     title: Baseline research table
     description: >-
-      A wide condition-by-visit-by-life-stage table that brings together current
-      community climate affinity, condition disturbance, and plot structure.
-      This is the closest current reproducible answer to the requested giant
-      baseline file without replacing the canonical products.
-    request_tags: [baseline, giant file, panel, time series, mortality, CWM, density, diversity, topography]
+      A condition-by-visit-by-life-stage panel: community climate affinity at
+      every survey, fire/insect/disease mortality over the interval ending at
+      that survey, condition disturbance, elevation, slope, aspect, and plot
+      structure. It is assembled from the canonical products, not a copy of them.
+    request_tags: [baseline, giant file, panel, time series, mortality, CWM, density, diversity, topography, slope, aspect, elevation]
     anchor_product_id: analysis_condition_visit_cwm
     join_ids:
       - condition_cwm__disturbance_flags
+      - condition_cwm__interval_mortality
+      - condition_cwm__topography
       - condition_cwm__tree_metrics
       - condition_cwm__seedling_metrics
     columns:
       analysis_condition_visit_cwm: [PLT_CN, INVYR, CONDID, layer, n_species, total_individual_abundance, temperature, precipitation, CWD]
-      fia_condition_disturbance_flags: [stable_plot_id, state, ELEV, forest_type_group, disturbance_class, disturbance_year_latest, has_any_recorded_disturbance, has_any_treatment]
+      fia_condition_disturbance_flags: [stable_plot_id, PREV_PLT_CN, state, ELEV, forest_type_group, disturbance_class, disturbance_year_latest, has_any_recorded_disturbance, has_any_treatment]
+      analysis_interval_agent_mortality: [stable_condition_interval_key, T1_INVYR, interval_years, analysis_ready, fire_annual_mortality_pct, insect_annual_mortality_pct, disease_annual_mortality_pct]
+      fia_condition_topography: [SLOPE, ASPECT, has_aspect, PHYSCLCD]
       plot_tree_metrics: [ba_live_total, n_trees_live, n_species_live, shannon_h_ba]
       plot_seedling_metrics: [seedlings_tpa, n_species_seedling, shannon_h_count]
     cautions:
-      - Plot structure values repeat across condition and life-stage rows and must not be summed.
-      - Mortality is not included here because the current mortality product is interval-grain, not visit-grain.
-      - Slope and aspect are not yet extracted; elevation is available.
+      - Plot structure, mortality, and topography repeat across condition and life-stage rows and must not be summed.
+      - Mortality describes the interval ending at each visit; a condition's first visit has no preceding interval, so its mortality is empty.
+      - ASPECT 0 means no aspect (slope under 5 percent), not north; use has_aspect.
       - Native/non-native agent status is not yet classified.
     missing_capabilities:
       - Condition-matched understory change through time
-      - A visit/interval panel that explicitly aligns mortality with the ending visit
-      - Slope and aspect
       - Reviewed native/non-native insect and pathogen classification
 
   - id: condition_cwm_disturbance
@@ -49,9 +51,8 @@ presets:
       fia_condition_disturbance_flags: [stable_plot_id, state, ELEV, forest_type_group, disturbance_class, disturbance_year_latest, has_any_recorded_disturbance, has_any_treatment]
     cautions:
       - Disturbance flags repeat across life stages.
-      - This is visit-level CWM context; it is not yet a panel containing interval mortality.
-    missing_capabilities:
-      - Explicit alignment of interval mortality to the ending visit
+      - For the panel version with mortality over each preceding interval, use the Baseline research table recipe.
+    missing_capabilities: []
 
   - id: understory_condition_records
     title: Condition-matched understory records

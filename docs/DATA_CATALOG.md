@@ -1,6 +1,6 @@
 # Searchable Data Catalog
 
-**Snapshot generated:** 2026-09-25 00:00:19 UTC
+**Snapshot generated:** 2026-09-25 19:26:54 UTC
 **Registry version:** 0.2.0
 **Purpose:** find a product or variable without access to the data directories.
 
@@ -78,6 +78,7 @@ Use your browser's Find command to search this page by variable, product, subjec
 | FIA-to-external disturbance linkage | MTBS fire history evidence | one stable FIA plot and associated MTBS fire event | `stable_plot_id, mtbs_event_id` | `08_disturbance_linkage/data/processed/mtbs_fire_history_evidence.parquet` | `08_disturbance_linkage/scripts/mtbs/02_extract_fire_history.R` |
 | FIA-to-external disturbance linkage | IDS annual exact-agent history | one stable FIA plot, IDS survey year, and exact DCA code or explicit nondetection state | `stable_plot_id, survey_year, dca_code` | `08_disturbance_linkage/data/processed/ids_annual_agent_history.parquet` | `08_disturbance_linkage/scripts/ids/01_extract_annual_agent_history.R` |
 | FIA national summaries | FIA raw plot-visit context | one raw FIA PLOT record | `PLT_CN, INVYR` | `05_fia/data/processed/summaries/plot_visit_context.parquet` | `05_fia/scripts/foundations/01_build_plot_visit_context.R` |
+| FIA national summaries | FIA condition slope, aspect, and physiographic class | one raw FIA COND record (condition within a plot visit) | `PLT_CN, INVYR, CONDID` | `05_fia/data/processed/summaries/condition_topography.parquet` | `05_fia/scripts/foundations/03_build_condition_topography.R` |
 | FIA-to-external disturbance linkage | FIA visit-pairing audit | one current FIA visit and its audited predecessor relationship | `current_PLT_CN` | `08_disturbance_linkage/data/processed/fia_visit_pairing_audit.parquet` | `08_disturbance_linkage/scripts/fia/01_build_survey_intervals.R` |
 | FIA-to-external disturbance linkage | FIA resolved survey intervals | one resolved previous/current FIA survey relationship | `interval_id` | `08_disturbance_linkage/data/processed/fia_survey_intervals.parquet` | `08_disturbance_linkage/scripts/fia/01_build_survey_intervals.R` |
 | Condition-level analysis | FIA remeasurement components | one FIA plot visit assigned to its official remeasurement component | `PLT_CN, INVYR` | `09_analysis/data/processed/fia_remeasurement_components.parquet` | `09_analysis/scripts/00_build_remeasurement_components.R` |
@@ -1202,6 +1203,15 @@ A variable appears once for every product that contains it. This is intentional:
 | `SAMP_METHOD_CD` | int32 | FIA raw plot-visit context | one raw FIA PLOT record | `PLT_CN, INVYR` | `05_fia/data/processed/summaries/plot_visit_context.parquet` |
 | `CYCLE` | int32 | FIA raw plot-visit context | one raw FIA PLOT record | `PLT_CN, INVYR` | `05_fia/data/processed/summaries/plot_visit_context.parquet` |
 | `SUBCYCLE` | int32 | FIA raw plot-visit context | one raw FIA PLOT record | `PLT_CN, INVYR` | `05_fia/data/processed/summaries/plot_visit_context.parquet` |
+| `PLT_CN` | int64 | FIA condition slope, aspect, and physiographic class | one raw FIA COND record (condition within a plot visit) | `PLT_CN, INVYR, CONDID` | `05_fia/data/processed/summaries/condition_topography.parquet` |
+| `INVYR` | int32 | FIA condition slope, aspect, and physiographic class | one raw FIA COND record (condition within a plot visit) | `PLT_CN, INVYR, CONDID` | `05_fia/data/processed/summaries/condition_topography.parquet` |
+| `CONDID` | int32 | FIA condition slope, aspect, and physiographic class | one raw FIA COND record (condition within a plot visit) | `PLT_CN, INVYR, CONDID` | `05_fia/data/processed/summaries/condition_topography.parquet` |
+| `STATECD` | int32 | FIA condition slope, aspect, and physiographic class | one raw FIA COND record (condition within a plot visit) | `PLT_CN, INVYR, CONDID` | `05_fia/data/processed/summaries/condition_topography.parquet` |
+| `state` | string | FIA condition slope, aspect, and physiographic class | one raw FIA COND record (condition within a plot visit) | `PLT_CN, INVYR, CONDID` | `05_fia/data/processed/summaries/condition_topography.parquet` |
+| `SLOPE` | int32 | FIA condition slope, aspect, and physiographic class | one raw FIA COND record (condition within a plot visit) | `PLT_CN, INVYR, CONDID` | `05_fia/data/processed/summaries/condition_topography.parquet` |
+| `ASPECT` | int32 | FIA condition slope, aspect, and physiographic class | one raw FIA COND record (condition within a plot visit) | `PLT_CN, INVYR, CONDID` | `05_fia/data/processed/summaries/condition_topography.parquet` |
+| `has_aspect` | bool | FIA condition slope, aspect, and physiographic class | one raw FIA COND record (condition within a plot visit) | `PLT_CN, INVYR, CONDID` | `05_fia/data/processed/summaries/condition_topography.parquet` |
+| `PHYSCLCD` | int32 | FIA condition slope, aspect, and physiographic class | one raw FIA COND record (condition within a plot visit) | `PLT_CN, INVYR, CONDID` | `05_fia/data/processed/summaries/condition_topography.parquet` |
 | `current_PLT_CN` | declared key/filter | FIA visit-pairing audit | one current FIA visit and its audited predecessor relationship | `current_PLT_CN` | `08_disturbance_linkage/data/processed/fia_visit_pairing_audit.parquet` |
 | `state` | declared key/filter | FIA visit-pairing audit | one current FIA visit and its audited predecessor relationship | `current_PLT_CN` | `08_disturbance_linkage/data/processed/fia_visit_pairing_audit.parquet` |
 | `current_INVYR` | declared key/filter | FIA visit-pairing audit | one current FIA visit and its audited predecessor relationship | `current_PLT_CN` | `08_disturbance_linkage/data/processed/fia_visit_pairing_audit.parquet` |

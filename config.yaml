@@ -454,6 +454,7 @@ processed:
         plot_damage_agents: "plot_damage_agents.parquet"
         plot_visit_context: "plot_visit_context.parquet"
         forested_condition_foundation: "forested_condition_foundation.parquet"
+        condition_topography: "condition_topography.parquet"
 
   species_niches:
     local_dir: "06_species_niches/data/processed"
