@@ -84,3 +84,13 @@ These need no data present, so they run in a code-only checkout. They enforce th
 The dashboard Query Builder uses those snapshots to generate DuckDB SQL. It allows only one `1:many` join per query so two independent detail tables cannot silently form a cross-product. It generates queries but never executes them.
 
 Match-rate measurements are not yet stored in the portable snapshot. Validate match rates against the intended data root before certifying a new join.
+
+## Research bundle
+
+`registry/research_bundle.yaml` names the tables a collaborator needs for a set of research questions, which tables answer which question, how to link them, and a few convenience views. The builder copies those products, unchanged, into one DuckDB file with a generated README:
+
+```bash
+Rscript forest_explorer/export/build_research_bundle.R
+```
+
+The default output is `scratch_output/research_bundle/forest_research_bundle.duckdb`, which is gitignored. Pass `--output=<path>` to write elsewhere and `--overwrite` to replace an existing bundle. The bundle is an export; the registered products stay authoritative, and `bundle_info` records the commit it was built from.

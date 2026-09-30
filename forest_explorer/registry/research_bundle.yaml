@@ -1,0 +1,111 @@
+bundle_registry_version: "1.0.0"
+updated: "2026-09-25"
+title: Forest research bundle
+summary: >-
+  One DuckDB database holding the tables needed for the requested research
+  questions, at their natural grains and linked by shared FIA keys. It is an
+  export assembled from the canonical products; the products remain the
+  authoritative copies. Tables keep their catalog product ids as names.
+
+# Each table is copied unchanged from its registered product.
+tables:
+  - product_id: fia_condition_disturbance_flags
+    role: Condition visits with stable plot id, location, elevation, forest type, and FIA disturbance and treatment codes
+  - product_id: fia_condition_topography
+    role: Condition slope, aspect, and physiographic class
+  - product_id: analysis_fia_remeasurement_components
+    role: Official order and measurement dates of each plot's visits
+  - product_id: analysis_stable_condition_intervals
+    role: The same condition at two consecutive visits (T1 = PREV_PLT_CN, T2 = T2_PLT_CN)
+  - product_id: analysis_condition_visit_cwm
+    role: Community climate affinity at each condition visit and life stage
+  - product_id: analysis_interval_agent_mortality
+    role: Fire, insect, and disease mortality over each consecutive interval, keyed to its ending visit
+  - product_id: plot_tree_species
+    role: Live trees (5 in and larger) by species, subplot, and condition
+  - product_id: plot_sapling_species
+    role: Live saplings (1.0-4.9 in) by species, subplot, and condition
+  - product_id: plot_seedling_species
+    role: Seedlings (under 1 in) by species, subplot, and condition
+  - product_id: plot_tree_metrics
+    role: Ready-made plot-visit tree density, richness, and Shannon diversity
+  - product_id: plot_seedling_metrics
+    role: Ready-made plot-visit seedling density, richness, and Shannon diversity
+  - product_id: fia_understory_structure_partitions
+    role: Understory cover by growth habit and canopy layer, per subplot and condition
+  - product_id: fia_understory_veg_partitions
+    role: Understory plant species cover per subplot and condition, with US nativity
+  - product_id: plot_damage_agents
+    role: Live-tree damage by exact FIA agent code, species, and condition
+  - product_id: fia_damage_agent_lookup
+    role: Official agent names and scientific names for every damage-agent code
+
+# The research requests, and which tables supply the data for each.
+questions:
+  - id: understory_change
+    request: Estimate understory change, with disturbance matched to the understory by condition
+    tables: [fia_understory_structure_partitions, fia_understory_veg_partitions, analysis_stable_condition_intervals, fia_condition_disturbance_flags]
+    how: >-
+      Take a stable interval and join understory rows at its start (PLT_CN =
+      PREV_PLT_CN, same CONDID) and end (PLT_CN = T2_PLT_CN, same CONDID). About
+      53,600 of 294,028 stable intervals have understory at both visits. Join
+      fia_condition_disturbance_flags on the same condition for disturbance.
+      Understory protocols changed over time, so check comparability before
+      differencing cover.
+  - id: cwm_mortality_panel
+    request: For every survey, community-weighted means and mortality, for a panel model
+    tables: [analysis_condition_visit_cwm, analysis_interval_agent_mortality]
+    how: >-
+      Use the view visit_cwm_with_mortality. Each condition visit and life stage
+      carries its CWM and the mortality over the interval that ends at that
+      visit. A condition's first visit has no preceding interval.
+  - id: density_richness_change
+    request: Tree density change and species richness and diversity change at every survey period
+    tables: [plot_tree_species, plot_sapling_species, plot_seedling_species, plot_tree_metrics, plot_seedling_metrics, analysis_fia_remeasurement_components, analysis_stable_condition_intervals]
+    how: >-
+      Sum n_trees_tpa (density) and count species (richness) from the species
+      tables by condition or plot visit, then difference consecutive visits
+      ordered by analysis_fia_remeasurement_components, or pair conditions with
+      analysis_stable_condition_intervals. plot_tree_metrics and
+      plot_seedling_metrics already hold plot-visit density, richness, and
+      Shannon diversity.
+  - id: agent_names
+    request: Classify non-native insects and pathogens (at least a dataset with names)
+    tables: [plot_damage_agents, fia_damage_agent_lookup]
+    how: >-
+      Use the view damage_agents_named. The lookup gives official and scientific
+      names; it does not yet classify native versus non-native status.
+  - id: topography
+    request: Plot elevation, slope, and aspect
+    tables: [fia_condition_disturbance_flags, fia_condition_topography]
+    how: >-
+      Use the view condition_visits_with_topography. ELEV is a plot attribute;
+      SLOPE and ASPECT are condition-level. ASPECT 0 means no aspect (slope
+      under 5 percent), not north; use has_aspect.
+
+# Convenience views. They only reference bundle tables, so they cost no space.
+views:
+  - name: visit_cwm_with_mortality
+    description: CWM at each condition visit and life stage, with mortality over the interval ending at that visit
+    sql: >-
+      SELECT c.*, m.stable_condition_interval_key, m.T1_INVYR AS interval_start_INVYR,
+             m.interval_years, m.analysis_ready,
+             m.fire_annual_mortality_pct, m.insect_annual_mortality_pct,
+             m.disease_annual_mortality_pct
+      FROM analysis_condition_visit_cwm AS c
+      LEFT JOIN analysis_interval_agent_mortality AS m
+        ON m.T2_PLT_CN = c.PLT_CN AND m.T2_INVYR = c.INVYR AND m.CONDID = c.CONDID
+  - name: condition_visits_with_topography
+    description: Condition visits with elevation, slope, aspect, and physiographic class
+    sql: >-
+      SELECT f.*, t.SLOPE, t.ASPECT, t.has_aspect, t.PHYSCLCD
+      FROM fia_condition_disturbance_flags AS f
+      LEFT JOIN fia_condition_topography AS t
+        ON t.PLT_CN = f.PLT_CN AND t.INVYR = f.INVYR AND t.CONDID = f.CONDID
+  - name: damage_agents_named
+    description: Live-tree damage records with official and scientific agent names
+    sql: >-
+      SELECT d.*, l.official_label, l.scientific_name_or_other, l.agent_group,
+             l.is_insect_agent, l.code_status
+      FROM plot_damage_agents AS d
+      LEFT JOIN fia_damage_agent_lookup AS l ON l.DAMAGE_AGENT_CD = d.DAMAGE_AGENT_CD
