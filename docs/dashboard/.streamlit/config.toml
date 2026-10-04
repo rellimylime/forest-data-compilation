@@ -8,5 +8,13 @@ font = "sans serif"
 
 [server]
 enableXsrfProtection = false
-corsAllowedOrigins = ["https://hpc.grit.ucsb.edu"]
-allowedHosts = ["hpc.grit.ucsb.edu", "hpc-13", "hpc-13.grit.ucsb.edu"]
+corsAllowedOrigins = [
+  "https://hpc.grit.ucsb.edu",
+  "https://forest-data-compilation-dashboard.streamlit.app",
+]
+allowedHosts = [
+  "hpc.grit.ucsb.edu",
+  "hpc-13",
+  "hpc-13.grit.ucsb.edu",
+  "forest-data-compilation-dashboard.streamlit.app",
+]
