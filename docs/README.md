@@ -22,7 +22,9 @@ This is the main navigation page for the repository documentation. Use it to mov
 | Understand root-level helper scripts | [Shared Scripts](../scripts/README.md) |
 | Understand FIA plot design visually | [FIA visual explainer](fia-explorer.html) |
 | Review the forest data explorer design | [Forest Data Explorer Design](FOREST_DATA_EXPLORER_DESIGN.md) |
-| Review the current condition-level analysis method | [Current analysis methods](../09_analysis/docs/METHODS.md) |
+| Review the manuscript-facing consolidated methods | [Supplemental methods working draft](SUPPLEMENTAL_METHODS.md) |
+| Review the concise current condition-level definitions | [Current analysis methods](../09_analysis/docs/METHODS.md) |
+| Find the tree-weighting and understory CWM sensitivities | [CWM sensitivity products](../09_analysis/docs/SENSITIVITIES.md) |
 | Use the searchable local dashboard | [Dashboard guide](dashboard/README.md) |
 
 ## Reviewer Paths
@@ -106,6 +108,8 @@ This is the main navigation page for the repository documentation. Use it to mov
 | [Dataset Query Guide](QUERY_GUIDE.md) | Safe joins, row expansion, and ready-made query recipes |
 | [Data Products](DATA_PRODUCTS.md) | Main outputs, tracked review files, local-only artifacts, and server-aligned directory paths |
 | [Architecture](ARCHITECTURE.md) | Shared climate extraction concepts and data model |
+| [Supplemental methods working draft](SUPPLEMENTAL_METHODS.md) | Manuscript-facing synthesis of FIA, niches, CWMs, mortality, climate, models, and sensitivities |
+| [CWM sensitivity products](../09_analysis/docs/SENSITIVITIES.md) | Commands, outputs, and interpretation for tree weighting and understory diagnostics |
 | [Testing and QC](TESTING.md) | Optional diagnostics, validation steps, and known QC gaps |
 | [FIA visual explainer](fia-explorer.html) | Static visual guide to FIA plot design, sampling grain, and FIADB tables |
 
