@@ -247,6 +247,13 @@ catalog, _, catalog_error = load_product_catalog()
 analysis_products = catalog_products(catalog or {}, "analysis")
 run_dir = latest_model_run()
 model_fit, _ = load_csv(str(run_dir / "model_fit.csv")) if run_dir else (None, None)
+weighting_dir = repo_path("09_analysis/data/sensitivity/tree_weighting")
+weighting_comparison, weighting_error = load_csv(
+    str(weighting_dir / "tree_weighting_model_comparison.csv")
+)
+weighting_fit, _ = load_csv(
+    str(weighting_dir / "tree_weighting_model_fit.csv")
+)
 
 st.markdown(
     page_header(
@@ -330,7 +337,7 @@ with tab_pipeline:
     plot_source_link("09_analysis/scripts/run_analysis_pipeline.R", label="Runner")
     st.markdown('<div class="fd-section-label">Method definitions</div>', unsafe_allow_html=True)
     st.markdown(
-        "- CWMs use individual-abundance weights at condition-visit grain; basal area is not used.\n"
+        "- Primary CWMs use individual-abundance weights at condition-visit grain; an adult-tree basal-area sensitivity is shown under Results.\n"
         "- Saplings and adults are kept separate, plus one combined sapling-and-adult community. "
         "Seedlings are excluded because their microplot sampling does not align with condition-level disturbance.\n"
         "- Mortality is verified FIA deaths attributed to fire, insects, or disease by `AGENTCD`, "
@@ -354,7 +361,8 @@ with tab_tables:
             st.markdown('<div class="fd-section-label">Preview a table</div>', unsafe_allow_html=True)
             titles = [p["title"] for p in built]
             chosen = built[titles.index(st.selectbox("Table", titles))]
-            df, err = load_parquet(str(repo_path(chosen["path"])))
+            loader = load_csv if chosen["format"] == "csv" else load_parquet
+            df, err = loader(str(repo_path(chosen["path"])))
             if err or df is None:
                 st.warning(err or f"Could not load `{chosen['path']}`.")
             else:
@@ -414,6 +422,66 @@ with tab_results:
                 width="stretch", hide_index=True,
             )
             st.caption("Uncertainty is HC1, clustered by stable plot. Preliminary models; see the report for context.")
+        st.markdown(
+            '<div class="fd-section-label">Adult-tree CWM weighting sensitivity</div>',
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            "**Tree weighting** is how species are combined into one adult-tree "
+            "community climate mean. The primary analysis weights species by expanded "
+            "stem abundance (trees per acre); this sensitivity weights them by basal "
+            "area, so large stems contribute more. Both models use the same histories "
+            "and predictors."
+        )
+        if weighting_comparison is None:
+            st.warning(weighting_error or "The tree-weighting comparison is not built.")
+        else:
+            sensitivity = weighting_comparison[
+                weighting_comparison["term"] != "(Intercept)"
+            ].copy()
+            st.dataframe(
+                sensitivity[[
+                    "response", "term", "estimate_abundance",
+                    "estimate_basal_area",
+                    "estimate_basal_area_minus_abundance",
+                    "estimate_direction_agrees",
+                    "p_value_abundance", "p_value_basal_area",
+                ]].rename(columns={
+                    "response": "Response",
+                    "term": "Term",
+                    "estimate_abundance": "Abundance estimate",
+                    "estimate_basal_area": "Basal-area estimate",
+                    "estimate_basal_area_minus_abundance": "Basal − abundance",
+                    "estimate_direction_agrees": "Same direction",
+                    "p_value_abundance": "Abundance p",
+                    "p_value_basal_area": "Basal-area p",
+                }),
+                width="stretch", hide_index=True,
+            )
+            st.caption(
+                "Adult trees only; 73,981 common complete histories per response. "
+                "Uncertainty is HC1, clustered by stable plot."
+            )
+            if weighting_fit is not None:
+                with st.expander("Weighting-sensitivity model fit"):
+                    st.dataframe(
+                        weighting_fit[[
+                            "response", "weighting_basis", "n", "stable_plots",
+                            "r_squared", "adjusted_r_squared",
+                        ]].rename(columns={
+                            "response": "Response",
+                            "weighting_basis": "Weighting",
+                            "n": "Conditions",
+                            "stable_plots": "Stable plots",
+                            "r_squared": "R²",
+                            "adjusted_r_squared": "Adjusted R²",
+                        }),
+                        width="stretch", hide_index=True,
+                    )
+            st.caption(
+                "Files and full schemas are searchable under Find data; search "
+                "for “basal area” or “tree weighting.”"
+            )
 
         manifest, _ = load_csv(str(run_dir / "figures" / "figure_manifest.csv"))
         if manifest is not None and not manifest.empty:

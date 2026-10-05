@@ -297,6 +297,23 @@ grains:
     keys: [history_id, PLT_CN, INVYR, CONDID]
     parent_grain_id: analysis_condition_history
 
+  analysis_weighting_model:
+    one_row_is: one fitted adult-tree CWM weighting model
+    keys: [model_id]
+
+  analysis_weighting_model_term:
+    one_row_is: one coefficient term from one adult-tree CWM weighting model
+    keys: [model_id, term]
+    parent_grain_id: analysis_weighting_model
+
+  analysis_weighting_response:
+    one_row_is: one adult-tree climate response in the paired weighting analysis
+    keys: [response]
+
+  analysis_weighting_response_term:
+    one_row_is: one coefficient term comparison for one adult-tree climate response
+    keys: [response, term]
+    parent_grain_id: analysis_weighting_response
   species:
     one_row_is: one source species code
     keys: [species_key]
@@ -2230,6 +2247,137 @@ products:
     caveats:
       - Seedlings are excluded; this response pools live saplings and adults.
 
+  - id: analysis_tree_condition_visit_cwm_basal_area
+    title: Basal-area-weighted adult-tree climate affinity
+    family: analysis
+    kind: analysis
+    lifecycle: active
+    path: 09_analysis/data/sensitivity/tree_weighting/tree_condition_visit_cwm_basal_area.parquet
+    format: parquet_file
+    one_row_is: one eligible FIA condition visit with basal-area-weighted adult-tree CWMs
+    keys: [PLT_CN, INVYR, CONDID]
+    grain_id: fia_condition_visit
+    derived_from: analysis_condition_visit_cwm
+    producer: 09_analysis/scripts/sensitivities/01_build_tree_weighting_cwm.R
+    intended_access_mode: prepared_download
+    access_mode: catalog_only
+    review_status: not_reviewed
+    facets: [state, INVYR, forest_type_group]
+    caveats:
+      - Sensitivity product; it does not replace the abundance-weighted canonical CWM.
+
+  - id: analysis_tree_stable_condition_cwm_change_basal_area
+    title: Basal-area-weighted adult-tree climate-affinity change
+    family: analysis
+    kind: analysis
+    lifecycle: active
+    path: 09_analysis/data/sensitivity/tree_weighting/tree_stable_condition_cwm_change_basal_area.parquet
+    format: parquet_file
+    one_row_is: one stable FIA condition interval with basal-area-weighted adult-tree CWM change
+    keys: [stable_condition_interval_key]
+    grain_id: analysis_condition_interval
+    derived_from: analysis_tree_condition_visit_cwm_basal_area
+    producer: 09_analysis/scripts/sensitivities/01_build_tree_weighting_cwm.R
+    intended_access_mode: prepared_download
+    access_mode: catalog_only
+    review_status: not_reviewed
+    facets: [state, T1_INVYR, T2_INVYR]
+    caveats:
+      - Consecutive-interval sensitivity product; the model-ready table uses complete first-to-last histories.
+
+  - id: analysis_tree_weighting_history_model_data
+    title: Adult-tree CWM weighting model data
+    family: analysis
+    kind: final
+    lifecycle: active
+    path: 09_analysis/data/sensitivity/tree_weighting/tree_weighting_history_model_data.parquet
+    format: parquet_file
+    one_row_is: one complete adult-tree condition history with both CWM weighting responses
+    keys: [history_id]
+    grain_id: analysis_condition_history
+    derived_from: analysis_lifestage_model_data
+    producer: 09_analysis/scripts/sensitivities/03_fit_tree_weighting_models.R
+    intended_access_mode: prepared_download
+    access_mode: catalog_only
+    review_status: not_reviewed
+    facets: [state, cumulative_site_CWD_complete]
+    caveats:
+      - Holds abundance and basal-area response definitions on the same histories.
+
+  - id: analysis_tree_weighting_model_coefficients
+    title: Adult-tree CWM weighting model coefficients
+    family: analysis
+    kind: analysis
+    lifecycle: active
+    path: 09_analysis/data/sensitivity/tree_weighting/tree_weighting_model_coefficients.csv
+    format: csv
+    one_row_is: one coefficient term from one response and weighting model
+    keys: [model_id, term]
+    grain_id: analysis_weighting_model_term
+    derived_from: analysis_tree_weighting_history_model_data
+    producer: 09_analysis/scripts/sensitivities/03_fit_tree_weighting_models.R
+    intended_access_mode: prepared_download
+    access_mode: catalog_only
+    review_status: not_reviewed
+    facets: [response, weighting_basis, term]
+    caveats:
+      - Uses HC1 standard errors clustered by stable plot and common complete-case samples.
+
+  - id: analysis_tree_weighting_model_fit
+    title: Adult-tree CWM weighting model fit
+    family: analysis
+    kind: analysis
+    lifecycle: active
+    path: 09_analysis/data/sensitivity/tree_weighting/tree_weighting_model_fit.csv
+    format: csv
+    one_row_is: one fitted climate-response and CWM-weighting model
+    keys: [model_id]
+    grain_id: analysis_weighting_model
+    derived_from: analysis_tree_weighting_history_model_data
+    producer: 09_analysis/scripts/sensitivities/03_fit_tree_weighting_models.R
+    intended_access_mode: prepared_download
+    access_mode: catalog_only
+    review_status: not_reviewed
+    facets: [response, weighting_basis]
+    caveats:
+      - Fit statistics are descriptive for preliminary associational models.
+
+  - id: analysis_tree_weighting_model_sample_flow
+    title: Adult-tree CWM weighting model sample flow
+    family: analysis
+    kind: qa
+    lifecycle: active
+    path: 09_analysis/data/sensitivity/tree_weighting/tree_weighting_model_sample_flow.csv
+    format: csv
+    one_row_is: one climate response in the paired weighting-model sample
+    keys: [response]
+    grain_id: analysis_weighting_response
+    derived_from: analysis_tree_weighting_history_model_data
+    producer: 09_analysis/scripts/sensitivities/03_fit_tree_weighting_models.R
+    intended_access_mode: prepared_download
+    access_mode: catalog_only
+    review_status: not_reviewed
+    facets: [response]
+    caveats: []
+
+  - id: analysis_tree_weighting_model_comparison
+    title: Adult-tree CWM weighting coefficient comparison
+    family: analysis
+    kind: analysis
+    lifecycle: active
+    path: 09_analysis/data/sensitivity/tree_weighting/tree_weighting_model_comparison.csv
+    format: csv
+    one_row_is: one coefficient term compared between abundance and basal-area weighting
+    keys: [response, term]
+    grain_id: analysis_weighting_response_term
+    derived_from: analysis_tree_weighting_model_coefficients
+    producer: 09_analysis/scripts/sensitivities/03_fit_tree_weighting_models.R
+    intended_access_mode: prepared_download
+    access_mode: catalog_only
+    review_status: not_reviewed
+    facets: [response, term]
+    caveats:
+      - Estimate differences are basal-area minus abundance on identical samples.
   # =========================================================================
   # Gridded climate workflows
   # =========================================================================

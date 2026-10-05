@@ -1,5 +1,5 @@
-bundle_registry_version: "1.0.0"
-updated: "2026-09-25"
+bundle_registry_version: "1.1.0"
+updated: "2026-10-04"
 title: Forest research bundle
 summary: >-
   One DuckDB database holding the tables needed for the requested research
@@ -39,6 +39,20 @@ tables:
     role: Live-tree damage by exact FIA agent code, species, and condition
   - product_id: fia_damage_agent_lookup
     role: Official agent names and scientific names for every damage-agent code
+  - product_id: analysis_tree_condition_visit_cwm_basal_area
+    role: Adult-tree basal-area-weighted CWM at each eligible condition visit
+  - product_id: analysis_tree_stable_condition_cwm_change_basal_area
+    role: Consecutive-interval adult-tree basal-area-weighted CWM change
+  - product_id: analysis_tree_weighting_history_model_data
+    role: Complete adult-tree histories with abundance and basal-area CWM responses plus shared predictors
+  - product_id: analysis_tree_weighting_model_coefficients
+    role: Coefficients and plot-clustered HC1 uncertainty for both weighting bases
+  - product_id: analysis_tree_weighting_model_fit
+    role: Sample sizes and fit statistics for all six adult-tree weighting models
+  - product_id: analysis_tree_weighting_model_sample_flow
+    role: Common complete-case model sample counts by climate response
+  - product_id: analysis_tree_weighting_model_comparison
+    role: Direct coefficient comparison between basal-area and abundance weighting
 
 # The research requests, and which tables supply the data for each.
 questions:
@@ -59,6 +73,17 @@ questions:
       Use the view visit_cwm_with_mortality. Each condition visit and life stage
       carries its CWM and the mortality over the interval that ends at that
       visit. A condition's first visit has no preceding interval.
+  - id: tree_cwm_weighting
+    request: Compare abundance- and basal-area-weighted adult-tree CWMs in the mortality models
+    tables: [analysis_tree_condition_visit_cwm_basal_area, analysis_tree_stable_condition_cwm_change_basal_area, analysis_tree_weighting_history_model_data, analysis_tree_weighting_model_coefficients, analysis_tree_weighting_model_fit, analysis_tree_weighting_model_sample_flow, analysis_tree_weighting_model_comparison]
+    how: >-
+      Use analysis_tree_weighting_model_comparison for the shortest direct
+      coefficient comparison and analysis_tree_weighting_model_coefficients for
+      complete estimates, clustered uncertainty, and p-values. Both weighting
+      models use the same 73,981 complete adult-tree histories for each climate
+      response. The model-ready history table contains both response definitions
+      and all shared predictors; the condition and interval tables provide the
+      basal-area-weighted CWM values before modeling.
   - id: density_richness_change
     request: Tree density change and species richness and diversity change at every survey period
     tables: [plot_tree_species, plot_sapling_species, plot_seedling_species, plot_tree_metrics, plot_seedling_metrics, analysis_fia_remeasurement_components, analysis_stable_condition_intervals]

@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-25 19:26:54 UTC",
+  "generated_at": "2026-10-04 23:51:20 UTC",
   "environment_label": "committed repository snapshot",
   "registry_version": "0.2.0",
   "snapshot_kind": "portable_catalog",
@@ -216,6 +216,24 @@
       "one_row_is": "one visit within one complete stable FIA condition history",
       "keys": ["history_id", "PLT_CN", "INVYR", "CONDID"],
       "parent_grain_id": "analysis_condition_history"
+    },
+    "analysis_weighting_model": {
+      "one_row_is": "one fitted adult-tree CWM weighting model",
+      "keys": ["model_id"]
+    },
+    "analysis_weighting_model_term": {
+      "one_row_is": "one coefficient term from one adult-tree CWM weighting model",
+      "keys": ["model_id", "term"],
+      "parent_grain_id": "analysis_weighting_model"
+    },
+    "analysis_weighting_response": {
+      "one_row_is": "one adult-tree climate response in the paired weighting analysis",
+      "keys": ["response"]
+    },
+    "analysis_weighting_response_term": {
+      "one_row_is": "one coefficient term comparison for one adult-tree climate response",
+      "keys": ["response", "term"],
+      "parent_grain_id": "analysis_weighting_response"
     },
     "species": {
       "one_row_is": "one source species code",
@@ -7574,6 +7592,915 @@
           [
             "last_CWD_niche_coverage",
             "double"
+          ]
+        ]
+      },
+      "key_check": {
+        "status": "not_checked",
+        "note": "The repository snapshot records schemas and locations; run build_inventory.py to verify keys against a data root."
+      }
+    },
+    {
+      "id": "analysis_tree_condition_visit_cwm_basal_area",
+      "title": "Basal-area-weighted adult-tree climate affinity",
+      "family": "analysis",
+      "kind": "analysis",
+      "lifecycle": "active",
+      "path": "09_analysis/data/sensitivity/tree_weighting/tree_condition_visit_cwm_basal_area.parquet",
+      "format": "parquet_file",
+      "one_row_is": "one eligible FIA condition visit with basal-area-weighted adult-tree CWMs",
+      "keys": ["PLT_CN", "INVYR", "CONDID"],
+      "grain_id": "fia_condition_visit",
+      "derived_from": "analysis_condition_visit_cwm",
+      "producer": "09_analysis/scripts/sensitivities/01_build_tree_weighting_cwm.R",
+      "intended_access_mode": "prepared_download",
+      "access_mode": "catalog_only",
+      "review_status": "not_reviewed",
+      "facets": ["state", "INVYR", "forest_type_group"],
+      "caveats": ["Sensitivity product; it does not replace the abundance-weighted canonical CWM."],
+      "availability": "available",
+      "observed": {
+        "n_columns": 23,
+        "bytes": 42850608,
+        "n_files": 1,
+        "columns": [
+          [
+            "PLT_CN",
+            "int64"
+          ],
+          [
+            "INVYR",
+            "int32"
+          ],
+          [
+            "CONDID",
+            "int32"
+          ],
+          [
+            "state",
+            "string"
+          ],
+          [
+            "forest_type_group",
+            "int32"
+          ],
+          [
+            "CONDPROP_UNADJ",
+            "double"
+          ],
+          [
+            "weighting_basis",
+            "string"
+          ],
+          [
+            "weight_column",
+            "string"
+          ],
+          [
+            "weight_unit",
+            "string"
+          ],
+          [
+            "n_species",
+            "int32"
+          ],
+          [
+            "community_weight_total",
+            "double"
+          ],
+          [
+            "temperature_weighted_sum",
+            "double"
+          ],
+          [
+            "temperature_weight_with_niche",
+            "double"
+          ],
+          [
+            "temperature_weight_coverage",
+            "double"
+          ],
+          [
+            "temperature",
+            "double"
+          ],
+          [
+            "precipitation_weighted_sum",
+            "double"
+          ],
+          [
+            "precipitation_weight_with_niche",
+            "double"
+          ],
+          [
+            "precipitation_weight_coverage",
+            "double"
+          ],
+          [
+            "precipitation",
+            "double"
+          ],
+          [
+            "CWD_weighted_sum",
+            "double"
+          ],
+          [
+            "CWD_weight_with_niche",
+            "double"
+          ],
+          [
+            "CWD_weight_coverage",
+            "double"
+          ],
+          [
+            "CWD",
+            "double"
+          ]
+        ]
+      },
+      "key_check": {
+        "status": "not_checked",
+        "note": "The repository snapshot records schemas and locations; run build_inventory.py to verify keys against a data root."
+      }
+    },
+    {
+      "id": "analysis_tree_stable_condition_cwm_change_basal_area",
+      "title": "Basal-area-weighted adult-tree climate-affinity change",
+      "family": "analysis",
+      "kind": "analysis",
+      "lifecycle": "active",
+      "path": "09_analysis/data/sensitivity/tree_weighting/tree_stable_condition_cwm_change_basal_area.parquet",
+      "format": "parquet_file",
+      "one_row_is": "one stable FIA condition interval with basal-area-weighted adult-tree CWM change",
+      "keys": ["stable_condition_interval_key"],
+      "grain_id": "analysis_condition_interval",
+      "derived_from": "analysis_tree_condition_visit_cwm_basal_area",
+      "producer": "09_analysis/scripts/sensitivities/01_build_tree_weighting_cwm.R",
+      "intended_access_mode": "prepared_download",
+      "access_mode": "catalog_only",
+      "review_status": "not_reviewed",
+      "facets": ["state", "T1_INVYR", "T2_INVYR"],
+      "caveats": ["Consecutive-interval sensitivity product; the model-ready table uses complete first-to-last histories."],
+      "availability": "available",
+      "observed": {
+        "n_columns": 59,
+        "bytes": 71462365,
+        "n_files": 1,
+        "columns": [
+          [
+            "T2_PLT_CN",
+            "int64"
+          ],
+          [
+            "CONDID",
+            "int32"
+          ],
+          [
+            "PREV_PLT_CN",
+            "int64"
+          ],
+          [
+            "stable_condition_interval_key",
+            "string"
+          ],
+          [
+            "stable_plot_id",
+            "string"
+          ],
+          [
+            "remeasurement_component_id",
+            "string"
+          ],
+          [
+            "state",
+            "string"
+          ],
+          [
+            "t1_visit_number",
+            "int32"
+          ],
+          [
+            "t2_visit_number",
+            "int32"
+          ],
+          [
+            "n_visits_in_component",
+            "int32"
+          ],
+          [
+            "T1_INVYR",
+            "int32"
+          ],
+          [
+            "T2_INVYR",
+            "int32"
+          ],
+          [
+            "T1_measurement_date",
+            "date32[day]"
+          ],
+          [
+            "T2_measurement_date",
+            "date32[day]"
+          ],
+          [
+            "interval_years",
+            "double"
+          ],
+          [
+            "T1_CONDPROP_UNADJ",
+            "double"
+          ],
+          [
+            "T1_MICRPROP_UNADJ",
+            "double"
+          ],
+          [
+            "T1_SUBPPROP_UNADJ",
+            "double"
+          ],
+          [
+            "T1_MACRPROP_UNADJ",
+            "double"
+          ],
+          [
+            "T2_CONDPROP_UNADJ",
+            "double"
+          ],
+          [
+            "T2_MICRPROP_UNADJ",
+            "double"
+          ],
+          [
+            "T2_SUBPPROP_UNADJ",
+            "double"
+          ],
+          [
+            "T2_MACRPROP_UNADJ",
+            "double"
+          ],
+          [
+            "T1_forest_type_group",
+            "int32"
+          ],
+          [
+            "T2_forest_type_group",
+            "int32"
+          ],
+          [
+            "T1_n_species",
+            "int32"
+          ],
+          [
+            "T1_community_weight_total",
+            "double"
+          ],
+          [
+            "T1_temperature",
+            "double"
+          ],
+          [
+            "T1_temperature_weighted_sum",
+            "double"
+          ],
+          [
+            "T1_temperature_weight_with_niche",
+            "double"
+          ],
+          [
+            "T1_temperature_weight_coverage",
+            "double"
+          ],
+          [
+            "T1_precipitation",
+            "double"
+          ],
+          [
+            "T1_precipitation_weighted_sum",
+            "double"
+          ],
+          [
+            "T1_precipitation_weight_with_niche",
+            "double"
+          ],
+          [
+            "T1_precipitation_weight_coverage",
+            "double"
+          ],
+          [
+            "T1_CWD",
+            "double"
+          ],
+          [
+            "T1_CWD_weighted_sum",
+            "double"
+          ],
+          [
+            "T1_CWD_weight_with_niche",
+            "double"
+          ],
+          [
+            "T1_CWD_weight_coverage",
+            "double"
+          ],
+          [
+            "T2_n_species",
+            "int32"
+          ],
+          [
+            "T2_community_weight_total",
+            "double"
+          ],
+          [
+            "T2_temperature",
+            "double"
+          ],
+          [
+            "T2_temperature_weighted_sum",
+            "double"
+          ],
+          [
+            "T2_temperature_weight_with_niche",
+            "double"
+          ],
+          [
+            "T2_temperature_weight_coverage",
+            "double"
+          ],
+          [
+            "T2_precipitation",
+            "double"
+          ],
+          [
+            "T2_precipitation_weighted_sum",
+            "double"
+          ],
+          [
+            "T2_precipitation_weight_with_niche",
+            "double"
+          ],
+          [
+            "T2_precipitation_weight_coverage",
+            "double"
+          ],
+          [
+            "T2_CWD",
+            "double"
+          ],
+          [
+            "T2_CWD_weighted_sum",
+            "double"
+          ],
+          [
+            "T2_CWD_weight_with_niche",
+            "double"
+          ],
+          [
+            "T2_CWD_weight_coverage",
+            "double"
+          ],
+          [
+            "delta_temperature",
+            "double"
+          ],
+          [
+            "delta_precipitation",
+            "double"
+          ],
+          [
+            "delta_CWD",
+            "double"
+          ],
+          [
+            "weighting_basis",
+            "string"
+          ],
+          [
+            "weight_column",
+            "string"
+          ],
+          [
+            "weight_unit",
+            "string"
+          ]
+        ]
+      },
+      "key_check": {
+        "status": "not_checked",
+        "note": "The repository snapshot records schemas and locations; run build_inventory.py to verify keys against a data root."
+      }
+    },
+    {
+      "id": "analysis_tree_weighting_history_model_data",
+      "title": "Adult-tree CWM weighting model data",
+      "family": "analysis",
+      "kind": "final",
+      "lifecycle": "active",
+      "path": "09_analysis/data/sensitivity/tree_weighting/tree_weighting_history_model_data.parquet",
+      "format": "parquet_file",
+      "one_row_is": "one complete adult-tree condition history with both CWM weighting responses",
+      "keys": ["history_id"],
+      "grain_id": "analysis_condition_history",
+      "derived_from": "analysis_lifestage_model_data",
+      "producer": "09_analysis/scripts/sensitivities/03_fit_tree_weighting_models.R",
+      "intended_access_mode": "prepared_download",
+      "access_mode": "catalog_only",
+      "review_status": "not_reviewed",
+      "facets": ["state", "cumulative_site_CWD_complete"],
+      "caveats": ["Holds abundance and basal-area response definitions on the same histories."],
+      "availability": "available",
+      "observed": {
+        "n_columns": 42,
+        "bytes": 15036356,
+        "n_files": 1,
+        "columns": [
+          [
+            "last_PLT_CN",
+            "string"
+          ],
+          [
+            "CONDID",
+            "int32"
+          ],
+          [
+            "first_PLT_CN",
+            "string"
+          ],
+          [
+            "history_id",
+            "string"
+          ],
+          [
+            "stable_plot_id",
+            "string"
+          ],
+          [
+            "remeasurement_component_id",
+            "string"
+          ],
+          [
+            "state",
+            "string"
+          ],
+          [
+            "layer",
+            "string"
+          ],
+          [
+            "first_inventory_year",
+            "int32"
+          ],
+          [
+            "last_inventory_year",
+            "int32"
+          ],
+          [
+            "n_visits",
+            "int32"
+          ],
+          [
+            "n_intervals",
+            "int32"
+          ],
+          [
+            "full_survey_period_years",
+            "double"
+          ],
+          [
+            "delta_temperature_abundance",
+            "double"
+          ],
+          [
+            "delta_precipitation_abundance",
+            "double"
+          ],
+          [
+            "delta_CWD_abundance",
+            "double"
+          ],
+          [
+            "fire_cumulative_mortality_pct",
+            "double"
+          ],
+          [
+            "insect_cumulative_mortality_pct",
+            "double"
+          ],
+          [
+            "disease_cumulative_mortality_pct",
+            "double"
+          ],
+          [
+            "first_measurement_date",
+            "date32[day]"
+          ],
+          [
+            "last_measurement_date",
+            "date32[day]"
+          ],
+          [
+            "cumulative_site_CWD_mm",
+            "double"
+          ],
+          [
+            "cumulative_site_CWD_complete",
+            "bool"
+          ],
+          [
+            "first_basal_area_n_species",
+            "int32"
+          ],
+          [
+            "first_basal_area_community_weight_total",
+            "double"
+          ],
+          [
+            "first_basal_area_temperature",
+            "double"
+          ],
+          [
+            "first_basal_area_temperature_weight_coverage",
+            "double"
+          ],
+          [
+            "first_basal_area_precipitation",
+            "double"
+          ],
+          [
+            "first_basal_area_precipitation_weight_coverage",
+            "double"
+          ],
+          [
+            "first_basal_area_CWD",
+            "double"
+          ],
+          [
+            "first_basal_area_CWD_weight_coverage",
+            "double"
+          ],
+          [
+            "last_basal_area_n_species",
+            "int32"
+          ],
+          [
+            "last_basal_area_community_weight_total",
+            "double"
+          ],
+          [
+            "last_basal_area_temperature",
+            "double"
+          ],
+          [
+            "last_basal_area_temperature_weight_coverage",
+            "double"
+          ],
+          [
+            "last_basal_area_precipitation",
+            "double"
+          ],
+          [
+            "last_basal_area_precipitation_weight_coverage",
+            "double"
+          ],
+          [
+            "last_basal_area_CWD",
+            "double"
+          ],
+          [
+            "last_basal_area_CWD_weight_coverage",
+            "double"
+          ],
+          [
+            "delta_temperature_basal_area",
+            "double"
+          ],
+          [
+            "delta_precipitation_basal_area",
+            "double"
+          ],
+          [
+            "delta_CWD_basal_area",
+            "double"
+          ]
+        ]
+      },
+      "key_check": {
+        "status": "not_checked",
+        "note": "The repository snapshot records schemas and locations; run build_inventory.py to verify keys against a data root."
+      }
+    },
+    {
+      "id": "analysis_tree_weighting_model_coefficients",
+      "title": "Adult-tree CWM weighting model coefficients",
+      "family": "analysis",
+      "kind": "analysis",
+      "lifecycle": "active",
+      "path": "09_analysis/data/sensitivity/tree_weighting/tree_weighting_model_coefficients.csv",
+      "format": "csv",
+      "one_row_is": "one coefficient term from one response and weighting model",
+      "keys": ["model_id", "term"],
+      "grain_id": "analysis_weighting_model_term",
+      "derived_from": "analysis_tree_weighting_history_model_data",
+      "producer": "09_analysis/scripts/sensitivities/03_fit_tree_weighting_models.R",
+      "intended_access_mode": "prepared_download",
+      "access_mode": "catalog_only",
+      "review_status": "not_reviewed",
+      "facets": ["response", "weighting_basis", "term"],
+      "caveats": ["Uses HC1 standard errors clustered by stable plot and common complete-case samples."],
+      "availability": "available",
+      "observed": {
+        "bytes": 10513,
+        "n_columns": 15,
+        "columns": [
+          [
+            "model_id",
+            "character"
+          ],
+          [
+            "group",
+            "character"
+          ],
+          [
+            "response",
+            "character"
+          ],
+          [
+            "weighting_basis",
+            "character"
+          ],
+          [
+            "term",
+            "character"
+          ],
+          [
+            "estimate",
+            "numeric"
+          ],
+          [
+            "std_error",
+            "numeric"
+          ],
+          [
+            "statistic",
+            "numeric"
+          ],
+          [
+            "p_value",
+            "numeric"
+          ],
+          [
+            "conf_low",
+            "numeric"
+          ],
+          [
+            "conf_high",
+            "numeric"
+          ],
+          [
+            "n",
+            "integer"
+          ],
+          [
+            "stable_plots",
+            "integer"
+          ],
+          [
+            "covariance",
+            "character"
+          ],
+          [
+            "sample_definition",
+            "character"
+          ]
+        ]
+      },
+      "key_check": {
+        "status": "not_checked",
+        "note": "The repository snapshot records schemas and locations; run build_inventory.py to verify keys against a data root."
+      }
+    },
+    {
+      "id": "analysis_tree_weighting_model_fit",
+      "title": "Adult-tree CWM weighting model fit",
+      "family": "analysis",
+      "kind": "analysis",
+      "lifecycle": "active",
+      "path": "09_analysis/data/sensitivity/tree_weighting/tree_weighting_model_fit.csv",
+      "format": "csv",
+      "one_row_is": "one fitted climate-response and CWM-weighting model",
+      "keys": ["model_id"],
+      "grain_id": "analysis_weighting_model",
+      "derived_from": "analysis_tree_weighting_history_model_data",
+      "producer": "09_analysis/scripts/sensitivities/03_fit_tree_weighting_models.R",
+      "intended_access_mode": "prepared_download",
+      "access_mode": "catalog_only",
+      "review_status": "not_reviewed",
+      "facets": ["response", "weighting_basis"],
+      "caveats": ["Fit statistics are descriptive for preliminary associational models."],
+      "availability": "available",
+      "observed": {
+        "bytes": 1354,
+        "n_columns": 11,
+        "columns": [
+          [
+            "model_id",
+            "character"
+          ],
+          [
+            "group",
+            "character"
+          ],
+          [
+            "response",
+            "character"
+          ],
+          [
+            "weighting_basis",
+            "character"
+          ],
+          [
+            "n",
+            "integer"
+          ],
+          [
+            "stable_plots",
+            "integer"
+          ],
+          [
+            "r_squared",
+            "numeric"
+          ],
+          [
+            "adjusted_r_squared",
+            "numeric"
+          ],
+          [
+            "residual_standard_error",
+            "numeric"
+          ],
+          [
+            "covariance",
+            "character"
+          ],
+          [
+            "sample_definition",
+            "character"
+          ]
+        ]
+      },
+      "key_check": {
+        "status": "not_checked",
+        "note": "The repository snapshot records schemas and locations; run build_inventory.py to verify keys against a data root."
+      }
+    },
+    {
+      "id": "analysis_tree_weighting_model_sample_flow",
+      "title": "Adult-tree CWM weighting model sample flow",
+      "family": "analysis",
+      "kind": "qa",
+      "lifecycle": "active",
+      "path": "09_analysis/data/sensitivity/tree_weighting/tree_weighting_model_sample_flow.csv",
+      "format": "csv",
+      "one_row_is": "one climate response in the paired weighting-model sample",
+      "keys": ["response"],
+      "grain_id": "analysis_weighting_response",
+      "derived_from": "analysis_tree_weighting_history_model_data",
+      "producer": "09_analysis/scripts/sensitivities/03_fit_tree_weighting_models.R",
+      "intended_access_mode": "prepared_download",
+      "access_mode": "catalog_only",
+      "review_status": "not_reviewed",
+      "facets": ["response"],
+      "caveats": [],
+      "availability": "available",
+      "observed": {
+        "bytes": 290,
+        "n_columns": 8,
+        "columns": [
+          [
+            "response",
+            "character"
+          ],
+          [
+            "available_adult_histories",
+            "integer"
+          ],
+          [
+            "common_complete_histories",
+            "integer"
+          ],
+          [
+            "excluded_histories",
+            "integer"
+          ],
+          [
+            "stable_plots",
+            "integer"
+          ],
+          [
+            "positive_fire",
+            "integer"
+          ],
+          [
+            "positive_insect",
+            "integer"
+          ],
+          [
+            "positive_disease",
+            "integer"
+          ]
+        ]
+      },
+      "key_check": {
+        "status": "not_checked",
+        "note": "The repository snapshot records schemas and locations; run build_inventory.py to verify keys against a data root."
+      }
+    },
+    {
+      "id": "analysis_tree_weighting_model_comparison",
+      "title": "Adult-tree CWM weighting coefficient comparison",
+      "family": "analysis",
+      "kind": "analysis",
+      "lifecycle": "active",
+      "path": "09_analysis/data/sensitivity/tree_weighting/tree_weighting_model_comparison.csv",
+      "format": "csv",
+      "one_row_is": "one coefficient term compared between abundance and basal-area weighting",
+      "keys": ["response", "term"],
+      "grain_id": "analysis_weighting_response_term",
+      "derived_from": "analysis_tree_weighting_model_coefficients",
+      "producer": "09_analysis/scripts/sensitivities/03_fit_tree_weighting_models.R",
+      "intended_access_mode": "prepared_download",
+      "access_mode": "catalog_only",
+      "review_status": "not_reviewed",
+      "facets": ["response", "term"],
+      "caveats": ["Estimate differences are basal-area minus abundance on identical samples."],
+      "availability": "available",
+      "observed": {
+        "bytes": 5160,
+        "n_columns": 16,
+        "columns": [
+          [
+            "response",
+            "character"
+          ],
+          [
+            "term",
+            "character"
+          ],
+          [
+            "estimate_abundance",
+            "numeric"
+          ],
+          [
+            "std_error_abundance",
+            "numeric"
+          ],
+          [
+            "p_value_abundance",
+            "numeric"
+          ],
+          [
+            "conf_low_abundance",
+            "numeric"
+          ],
+          [
+            "conf_high_abundance",
+            "numeric"
+          ],
+          [
+            "estimate_basal_area",
+            "numeric"
+          ],
+          [
+            "std_error_basal_area",
+            "numeric"
+          ],
+          [
+            "p_value_basal_area",
+            "numeric"
+          ],
+          [
+            "conf_low_basal_area",
+            "numeric"
+          ],
+          [
+            "conf_high_basal_area",
+            "numeric"
+          ],
+          [
+            "estimate_basal_area_minus_abundance",
+            "numeric"
+          ],
+          [
+            "estimate_direction_agrees",
+            "logical"
+          ],
+          [
+            "abundance_p_below_0_05",
+            "logical"
+          ],
+          [
+            "basal_area_p_below_0_05",
+            "logical"
           ]
         ]
       },

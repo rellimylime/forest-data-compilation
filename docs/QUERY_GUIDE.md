@@ -1,6 +1,6 @@
 # Dataset Query Guide
 
-**Snapshot generated:** 2026-09-25 19:26:54 UTC
+**Snapshot generated:** 2026-10-04 23:51:20 UTC
 **Join registry:** 1.1.0
 **Preset registry:** 1.1.0
 
