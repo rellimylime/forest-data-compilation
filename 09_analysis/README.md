@@ -47,6 +47,6 @@ Rscript site_climate/scripts/extract_terraclimate_points.R `
 
 Persisted floating-point summaries use canonical reduction order so row order, operating system, and DuckDB thread scheduling do not change derived values. The R scripts use the repository `renv` library. The runner executes the SQL files through the tracked R DuckDB dependency and must be started from within the repository checkout.
 
-See [methods](docs/METHODS.md), [data products](docs/PRODUCTS.md), and [future work](docs/FUTURE_WORK.md). The authoritative model output and its Git-backed version history are documented in [results/model_runs/README.md](results/model_runs/README.md).
+See [methods](docs/METHODS.md), [data products](docs/PRODUCTS.md), [CWM sensitivities](docs/SENSITIVITIES.md), and [future work](docs/FUTURE_WORK.md). The authoritative model output and its Git-backed version history are documented in [results/model_runs/README.md](results/model_runs/README.md).
 
 `qa/outputs/` contains small validation summaries grouped by the numbered script that creates them. `qa/qa_products.csv` is the machine-readable map from each QA result to its tracked producer. Separate live-plus-dead severity remains undefined and is not implemented here.
