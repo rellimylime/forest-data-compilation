@@ -214,3 +214,19 @@ Do not move to final thermophilization modeling until:
 3. `species_niche_gap_ledger.csv` has been regenerated from current products,
 4. high-weight missing species have been reviewed, and
 5. downstream CWM coverage is acceptable for the plots being modeled.
+
+### Resumable clipping-sensitivity runner
+
+Run the clipping sensitivity through the watchdog wrapper:
+
+```bash
+06_species_niches/qa/scripts/run_bien_clipping_with_watchdog.sh
+```
+
+The driver writes versioned condition and plot checkpoints, logs timestamped
+start/finish messages and row counts, and writes `RUN_SUCCESS` only after final
+validation and manifest creation. The wrapper limits each attempt to four hours
+and retries one timeout from completed checkpoints. It does not retry ordinary
+errors. Override the defaults with `BIEN_CLIPPING_ATTEMPT_LIMIT` and
+`BIEN_CLIPPING_MAX_ATTEMPTS`. Downstream jobs must require `RUN_SUCCESS`; process
+exit alone is not evidence of completion.
