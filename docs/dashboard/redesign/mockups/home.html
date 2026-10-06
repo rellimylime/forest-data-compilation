@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Home</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#f5f3ec;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#20251f}
+a{color:#315c43}a:hover{color:#1f3d2c}
+.btn{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 20px;border-radius:8px;background:#315c43;color:#fff;font-size:15px;font-weight:600;text-decoration:none;border:2px solid #315c43;box-sizing:border-box}
+.btn:hover{background:#244632;color:#fff}
+.btn2{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 20px;border-radius:8px;background:#fff;color:#315c43;font-size:15px;font-weight:600;text-decoration:none;border:2px solid #315c43;box-sizing:border-box}
+.btn2:hover{background:#e9efe9;color:#244632}
+.nav a{color:#20251f;text-decoration:none;font-size:15px;padding:10px 14px;border-radius:8px}
+.nav a:hover{background:#e6e2d4;color:#20251f}
+.card{display:flex;flex-direction:column;gap:10px;background:#fffefa;border:1px solid #d7d2c5;border-radius:12px;padding:24px;box-sizing:border-box}
+</style>
+</helmet>
+<div style="max-width:1280px;margin:0 auto;box-sizing:border-box;padding:0 40px 80px">
+
+<div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:20px 0;border-bottom:1px solid #d7d2c5">
+<div style="font-size:18px;font-weight:700;color:#315c43">Forest Data Explorer</div>
+<nav class="nav" style="display:flex;flex-wrap:wrap;gap:4px" aria-label="Main">
+<a href="Home.dc.html" style="background:#315c43;color:#fff;font-weight:600">Home</a>
+<a href="Main.dc.html">Analysis</a>
+<a href="Home.dc.html">Data</a>
+<a href="Home.dc.html">Other workstreams</a>
+</nav>
+</div>
+
+<!-- hero: question, one search, one primary action -->
+<div style="padding:56px 0 40px;max-width:820px">
+<h1 style="margin:0 0 16px;font-size:44px;line-height:1.15">Forest community change after disturbance</h1>
+<p style="margin:0 0 28px;font-size:19px;line-height:1.5;color:#3d443b">Are forest communities shifting toward species from warmer or drier parts of their ranges, and do fire, insect or disease deaths help explain it?</p>
+<div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:28px">
+<a class="btn" href="Main.dc.html">See the results</a>
+<a class="btn2" href="Home.dc.html">See how it is built</a>
+</div>
+<label for="q" style="display:block;font-size:14px;font-weight:600;margin-bottom:6px">Looking for a table, variable or script?</label>
+<input id="q" type="search" placeholder="Try mortality, SPCD, CONDID, site CWD" style="width:100%;box-sizing:border-box;min-height:52px;padding:0 16px;font-size:16px;border:2px solid #bdb7a9;border-radius:10px;background:#fffefa;color:#20251f">
+</div>
+
+<!-- what you can do: 3 equal cards, whole card is the link -->
+<h2 style="margin:0 0 16px;font-size:24px">What do you want to do?</h2>
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-bottom:56px">
+<sc-for list="{{tasks}}" as="t" hint-placeholder-count="3">
+<div class="card">
+<div style="font-size:20px;font-weight:700">{{t.title}}</div>
+<div style="font-size:16px;line-height:1.5;color:#3d443b;flex:1">{{t.body}}</div>
+<div><a class="btn2" href="Main.dc.html">{{t.cta}}</a></div>
+</div>
+</sc-for>
+</div>
+
+<!-- pipeline: reads left to right, no clickable-looking decoration -->
+<h2 style="margin:0 0 6px;font-size:24px">How the results are produced</h2>
+<p style="margin:0 0 16px;font-size:16px;color:#3d443b">Three steps, run in order. Each shows how many of its tables exist on this machine.</p>
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-bottom:56px">
+<sc-for list="{{steps}}" as="s" hint-placeholder-count="3">
+<div style="background:#fffefa;border:1px solid #d7d2c5;border-radius:12px;padding:24px;box-sizing:border-box">
+<div style="width:32px;height:32px;border-radius:50%;background:#315c43;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;margin-bottom:12px">{{s.n}}</div>
+<div style="font-size:18px;font-weight:700;margin-bottom:4px">{{s.title}}</div>
+<div style="font-size:14px;color:#5a6055;margin-bottom:12px">{{s.module}} · [x] of [y] tables present</div>
+<a href="Home.dc.html" style="font-size:15px;font-weight:600">{{s.link}}</a>
+</div>
+</sc-for>
+</div>
+
+<!-- low-priority -->
+<div style="border-top:1px solid #d7d2c5;padding-top:24px;font-size:15px;color:#3d443b">
+Not used by the current analysis: <a href="Home.dc.html">IDS survey</a>, <a href="Home.dc.html">Climate datasets</a>, <a href="Home.dc.html">Repository map</a>.
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1180}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      tasks: [
+        { title: 'Read the results', body: 'Model effects, figures and the robustness check, with every group visible at once.', cta: 'Open results' },
+        { title: 'Find or build a dataset', body: 'Search every table and variable, see how tables join, and get a ready-to-run export query.', cta: 'Open data tools' },
+        { title: 'Look up a raw FIA field', body: 'Browse FIADB tables and fields, including ones the pipeline has not extracted yet.', cta: 'Open field guide' }
+      ],
+      steps: [
+        { n: '1', title: 'FIA inventory', module: '05_fia', link: 'View processed FIA data' },
+        { n: '2', title: 'Species climate niches', module: '06_species_niches', link: 'View niche tables' },
+        { n: '3', title: 'Condition-level analysis', module: '09_analysis', link: 'View analysis pipeline' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

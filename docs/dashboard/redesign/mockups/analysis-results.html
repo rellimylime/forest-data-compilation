@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Analysis results</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#f5f3ec;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#20251f}
+a{color:#315c43}a:hover{color:#1f3d2c}
+.btn{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 20px;border-radius:8px;background:#315c43;color:#fff;font-size:15px;font-weight:600;text-decoration:none;border:2px solid #315c43;cursor:pointer;box-sizing:border-box}
+.btn:hover{background:#244632;color:#fff}
+.btn2{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 20px;border-radius:8px;background:#fff;color:#315c43;font-size:15px;font-weight:600;text-decoration:none;border:2px solid #315c43;cursor:pointer;box-sizing:border-box}
+.btn2:hover{background:#e9efe9;color:#244632}
+.nav a{color:#20251f;text-decoration:none;font-size:15px;padding:10px 14px;border-radius:8px}
+.nav a:hover{background:#e6e2d4;color:#20251f}
+</style>
+</helmet>
+<div style="max-width:1280px;margin:0 auto;box-sizing:border-box;padding:0 40px 80px">
+
+<!-- top bar -->
+<div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:20px 0;border-bottom:1px solid #d7d2c5">
+<div style="font-size:18px;font-weight:700;color:#315c43">Forest Data Explorer</div>
+<nav class="nav" style="display:flex;flex-wrap:wrap;gap:4px" aria-label="Main">
+<a href="Home.dc.html">Home</a>
+<a href="Main.dc.html" style="background:#315c43;color:#fff;font-weight:600">Analysis</a>
+<a href="Home.dc.html">Data</a>
+<a href="Home.dc.html">Other workstreams</a>
+</nav>
+</div>
+
+<!-- header -->
+<div style="display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:24px;padding:40px 0 28px">
+<div style="flex:1 1 520px;min-width:0">
+<div style="font-size:14px;font-weight:600;color:#6b6f63;margin-bottom:8px">Analysis / Results</div>
+<h1 style="margin:0 0 12px;font-size:40px;line-height:1.15">Did mortality shift forest communities?</h1>
+<p style="margin:0;font-size:18px;line-height:1.5;color:#3d443b;max-width:720px">Change in community climate affinity from each condition's first to last survey, against cumulative fire, insect and disease mortality. Preliminary models.</p>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:12px">
+<a class="btn" href="#">Download results report</a>
+<a class="btn2" href="#">Download robustness report</a>
+</div>
+</div>
+
+<!-- stats: one size, one row -->
+<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:48px">
+<sc-for list="{{stats}}" as="s" hint-placeholder-count="4">
+<div style="background:#fffefa;border:1px solid #d7d2c5;border-radius:12px;padding:20px;min-height:112px;box-sizing:border-box">
+<div style="font-size:14px;color:#5a6055">{{s.label}}</div>
+<div style="font-size:32px;font-weight:700;margin:6px 0 2px">{{s.value}}</div>
+<div style="font-size:14px;color:#5a6055">{{s.note}}</div>
+</div>
+</sc-for>
+</div>
+
+<!-- section 1: the answer -->
+<div style="display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:16px">
+<div>
+<h2 style="margin:0 0 6px;font-size:26px">Effect of each predictor</h2>
+<p style="margin:0;font-size:16px;color:#3d443b">Dots are estimates, lines are 95% intervals. A line crossing the centre mark means no clear effect. All three life-stage groups are shown together.</p>
+</div>
+<div role="tablist" aria-label="Response" style="display:flex;gap:4px;background:#e6e2d4;padding:4px;border-radius:10px">
+<sc-for list="{{tabs}}" as="t" hint-placeholder-count="3">
+<button role="tab" onClick="{{t.pick}}" style="{{t.style}}">{{t.label}}</button>
+</sc-for>
+</div>
+</div>
+
+<div style="background:#fffefa;border:1px solid #d7d2c5;border-radius:12px;padding:28px;margin-bottom:12px">
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:32px">
+<sc-for list="{{groups}}" as="g" hint-placeholder-count="3">
+<div>
+<div style="font-size:16px;font-weight:700;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid #e4e0d5">{{g.name}}</div>
+<sc-for list="{{g.rows}}" as="r" hint-placeholder-count="4">
+<div style="margin-bottom:18px">
+<div style="font-size:14px;color:#3d443b;margin-bottom:6px">{{r.label}}</div>
+<div style="position:relative;height:16px">
+<div style="position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:#bdb7a9"></div>
+<div style="{{r.line}}"></div>
+<div style="{{r.dot}}"></div>
+</div>
+</div>
+</sc-for>
+</div>
+</sc-for>
+</div>
+<div style="display:flex;justify-content:space-between;margin-top:8px;font-size:13px;color:#5a6055;border-top:1px solid #e4e0d5;padding-top:10px">
+<span>Shifted to cooler / wetter species</span><span>No change</span><span>Shifted to warmer / drier species</span>
+</div>
+</div>
+<div style="font-size:13px;color:#6b6f63;margin-bottom:12px">Layout mockup: positions are placeholders. Real values come from coefficients.csv. Uncertainty is HC1, clustered by stable plot.</div>
+<a class="btn2" href="#">Show full coefficient table</a>
+
+<!-- section 2: figures -->
+<h2 style="margin:56px 0 6px;font-size:26px">Figures</h2>
+<p style="margin:0 0 16px;font-size:16px;color:#3d443b">Every figure for the selected response, in one scrollable grid. Click one to enlarge.</p>
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px">
+<sc-for list="{{figs}}" as="f" hint-placeholder-count="6">
+<a href="#" style="display:block;text-decoration:none;color:#20251f;background:#fffefa;border:1px solid #d7d2c5;border-radius:12px;overflow:hidden">
+<div style="height:180px;background:#ece9df;display:flex;align-items:center;justify-content:center;font-size:14px;color:#6b6f63">figure preview</div>
+<div style="padding:14px 16px;font-size:15px;font-weight:600">{{f.title}}</div>
+</a>
+</sc-for>
+</div>
+
+<!-- section 3: robustness -->
+<h2 style="margin:56px 0 6px;font-size:26px">Does the weighting choice change the answer?</h2>
+<p style="margin:0 0 16px;font-size:16px;color:#3d443b;max-width:760px">The main analysis weights adult trees by abundance. This check weights by basal area instead, so large stems count more. Same histories, same predictors.</p>
+<div style="background:#fffefa;border:1px solid #d7d2c5;border-radius:12px;overflow:hidden">
+<div style="display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;padding:12px 20px;background:#ece9df;font-size:14px;font-weight:600">
+<span>Predictor</span><span>Abundance</span><span>Basal area</span><span>Same direction</span>
+</div>
+<sc-for list="{{rows}}" as="w" hint-placeholder-count="4">
+<div style="display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;padding:14px 20px;border-top:1px solid #e4e0d5;font-size:15px;align-items:center">
+<span>{{w.label}}</span><span style="color:#6b6f63">[estimate]</span><span style="color:#6b6f63">[estimate]</span>
+<span><span style="background:#dbe8dd;color:#1f3d2c;font-weight:600;font-size:13px;padding:4px 10px;border-radius:999px">yes / no</span></span>
+</div>
+</sc-for>
+</div>
+
+<!-- next steps -->
+<div style="margin-top:56px;display:flex;flex-wrap:wrap;gap:12px;align-items:center">
+<span style="font-size:16px;font-weight:600;margin-right:8px">Next</span>
+<a class="btn2" href="Home.dc.html">How the models are built</a>
+<a class="btn2" href="Home.dc.html">Browse the data behind them</a>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1900}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { resp: 0 }; }
+  renderVals() {
+    const resp = this.state.resp;
+    const names = ['Temperature', 'Precipitation', 'Climatic water deficit'];
+    const tabs = names.map((n, i) => ({
+      label: n,
+      pick: () => this.setState({ resp: i }),
+      style: i === resp
+        ? 'min-height:40px;padding:0 16px;border:0;border-radius:8px;background:#fffefa;color:#20251f;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.15)'
+        : 'min-height:40px;padding:0 16px;border:0;border-radius:8px;background:transparent;color:#3d443b;font-size:15px;font-weight:500;cursor:pointer'
+    }));
+    const preds = ['Fire mortality', 'Insect mortality', 'Disease mortality', 'Site climatic water deficit'];
+    // placeholder layout positions (low, est, high) in % of the track
+    const shapes = [
+      [[44,56,70],[38,47,58],[52,60,72],[30,41,50]],
+      [[46,52,60],[34,44,56],[40,49,62],[58,66,78]],
+      [[36,44,54],[48,58,70],[44,53,64],[32,40,52]]
+    ];
+    const groups = ['Saplings', 'Adults', 'Combined'].map((name, gi) => ({
+      name,
+      rows: preds.map((p, pi) => {
+        const s = shapes[(gi + resp) % 3][pi];
+        return {
+          label: p,
+          line: 'position:absolute;top:7px;height:2px;background:#315c43;left:' + s[0] + '%;width:' + (s[2] - s[0]) + '%',
+          dot: 'position:absolute;top:2px;width:12px;height:12px;border-radius:50%;background:#315c43;margin-left:-6px;left:' + s[1] + '%'
+        };
+      })
+    }));
+    const figs = ['Fire mortality', 'Insect mortality', 'Disease mortality', 'Site climatic water deficit', 'Residuals', 'Model fit'].map(t => ({ title: names[resp] + ': ' + t }));
+    return {
+      tabs, groups, figs,
+      stats: [
+        { label: 'Preliminary models', value: '9', note: '3 responses x 3 life-stage groups' },
+        { label: 'Conditions per model', value: '[min]-[max]', note: 'complete stable histories' },
+        { label: 'Stable plots', value: '[n]', note: 'largest model' },
+        { label: 'Last verified rebuild', value: '[date]', note: 'authoritative model run' }
+      ],
+      rows: preds.map(p => ({ label: p }))
+    };
+  }
+}
+</script>
+</body>
+</html>
